@@ -18,8 +18,8 @@ describe('buildAdminHubContent', () => {
   const apiTiles: AdminHomeTileApi[] = ADMIN_TILES.map(c => makeTile(c.tileKey));
   const result = buildAdminHubContent(apiTiles);
 
-  it('returns 4 tiles + 2 panels = 6 items total', () => {
-    expect(result).toHaveLength(6);
+  it('returns one item per configured tile, plus the 2 panels', () => {
+    expect(result).toHaveLength(ADMIN_TILES.length + 2);
   });
 
   it('panels come first (indices 0 and 1)', () => {
@@ -48,18 +48,18 @@ describe('buildAdminHubContent', () => {
     }
   });
 
-  it('home tile has rating 4', () => {
+  it('carries each tile config rating through to its model', () => {
     const tiles = result.slice(2) as ContentParallaxImageModel[];
-    const home = tiles.find(t => t.slug === 'homePage');
-    expect(home?.rating).toBe(4);
+    expect(tiles.length).toBe(ADMIN_TILES.length);
+    for (const [i, tile] of tiles.entries()) {
+      expect(tile.rating).toBe(ADMIN_TILES[i]?.rating);
+    }
   });
 
-  it('non-home tiles have rating 3', () => {
+  it('gives every tile a non-empty slug so isSlugNav can link it', () => {
     const tiles = result.slice(2) as ContentParallaxImageModel[];
-    const nonHome = tiles.filter(t => t.slug !== 'homePage');
-    expect(nonHome.length).toBeGreaterThan(0);
-    for (const tile of nonHome) {
-      expect(tile.rating).toBe(3);
+    for (const tile of tiles) {
+      expect(tile.slug).toBeTruthy();
     }
   });
 
@@ -116,7 +116,7 @@ describe('buildAdminHubContent', () => {
 
   it('works with an empty tiles array', () => {
     const res = buildAdminHubContent([]);
-    expect(res).toHaveLength(6);
+    expect(res).toHaveLength(ADMIN_TILES.length + 2);
     const tiles = res.slice(2) as ContentParallaxImageModel[];
     for (const tile of tiles) {
       expect(tile.imageUrl).toBe('');

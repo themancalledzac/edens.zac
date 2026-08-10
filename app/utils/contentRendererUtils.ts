@@ -4,6 +4,11 @@
  * Functions for normalizing content types to renderer props.
  * All content type checking and data extraction happens here,
  * so the renderer component doesn't need to know about content types.
+ *
+ * This is also where accessible naming is decided, for every surface that shows a photo:
+ * {@link humanLabel} is the single answer to "did a person write this?". Nothing downstream
+ * re-decides it, and nothing downstream invents a generic name that later code could mistake for
+ * authored text — see the note on the `alt` field of the props these builders return.
  */
 
 import { collectionPublicLabel } from '@/app/components/ui/Badge/Badge';
@@ -38,20 +43,89 @@ function extractImageDimensions(
 }
 
 /**
- * Extracts alt text with fallback options.
- *
- * Exported so every surface that renders a photo resolves alt the same way — the grid via
- * {@link normalizeContentToRendererProps} and the fullscreen viewer directly. The authored `alt`
- * field always wins; `title`/`caption` are only fallbacks for content that never got one.
+ * Media file extensions the backend keeps on the title it seeds from an upload. Covers the raw
+ * files a camera writes beside the JPEG (`.cr2`, `.cr3`, `.nef`, `.arw`, `.orf`, `.rw2`, `.dng`,
+ * `.raf`) as well as the delivery formats, because either can be the uploaded file.
  */
-export function extractAltText(
-  alt?: string | null,
-  title?: string | null,
-  caption?: string | null,
-  slug?: string | null,
-  defaultText = 'Image'
-): string {
-  return alt || title || caption || slug || defaultText;
+const MEDIA_EXTENSION =
+  /\.(?:arw|avif|cr[23]|dng|gif|heics?|heif|jpe?g|mov|mp4|nef|orf|png|raf|rw2|tiff?|webp)$/i;
+
+/**
+ * A camera-issued filename stem at the START of a label: `DSC_4364`, `_DSC4364`, `IMG-2031`,
+ * `DSCF1234`, `_MG_1234` (Canon), `GOPR0123`, `DJI_0001`, `PXL_20240712`, `P1010042` (Panasonic).
+ *
+ * Deliberately not anchored at the end. Someone who renames `IMG_2031` to `IMG_2031 sunset over
+ * the bay` authored the second half, and {@link authoredText} keeps it rather than throwing the
+ * whole label away.
+ *
+ * Every named prefix needs at least three digits immediately after it, and the bare `P` stem needs
+ * six, so camera MODELS inside authored titles survive: `P90 rifle`, `P1000 zoom test`,
+ * `DJI Phantom review`, `IMG Worldwide`.
+ */
+const CAMERA_STEM = /^_?(?:(?:dscf?|dji|gopr|imgp?|mg|pxl)[_-]?\d{3,}|p\d{6,})/i;
+
+/** Six or more characters of nothing but digits and separators: `113994030006-2`, `20240712_141530`. */
+const DIGITS_AND_SEPARATORS = /^\d[\d\s._-]{5,}$/;
+
+/** Separator debris left in front of the authored half once a camera stem is stripped. */
+const LEADING_SEPARATORS = /^[\s._-]+/;
+
+/** Any letter in any script — what makes a leftover fragment worth announcing rather than noise. */
+const CONTAINS_LETTER = /\p{L}/u;
+
+/** Shortest leftover fragment worth announcing, in characters. Below this it is counter debris. */
+const MIN_AUTHORED_LENGTH = 3;
+
+/**
+ * The part of one label a person actually wrote, trimmed — or undefined when a person wrote none
+ * of it.
+ *
+ * The backend seeds an image's `title` from the uploaded filename, so most photos carry that and
+ * nothing else. Announcing `DSC_4364.webp` to a screen reader is worse than announcing nothing,
+ * and it is what every tabbable photo tile used to say.
+ *
+ * A value that still has its media extension is a filename end to end, so it is dropped whole. A
+ * camera stem is only a prefix, so it is stripped and the remainder kept when it is substantive —
+ * three or more characters with a letter among them, which discards counter debris
+ * (`PXL_20240712_141530`) while keeping `IMG_2031 sunset over the bay`.
+ *
+ * The rules stay narrow so a real caption is never mistaken for a filename: the digit rule needs
+ * six characters, which leaves short numeric titles like `1984` intact, and every camera stem
+ * needs a counter immediately after the prefix, so `Image 2` and `Studio 54` survive.
+ */
+function authoredText(value: string | null | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  if (MEDIA_EXTENSION.test(trimmed) || DIGITS_AND_SEPARATORS.test(trimmed)) return undefined;
+  if (!CAMERA_STEM.test(trimmed)) return trimmed;
+
+  const remainder = trimmed.replace(CAMERA_STEM, '').replace(LEADING_SEPARATORS, '').trim();
+  return remainder.length >= MIN_AUTHORED_LENGTH && CONTAINS_LETTER.test(remainder)
+    ? remainder
+    : undefined;
+}
+
+/**
+ * The first of `candidates` that reads as something a person wrote, trimmed and stripped of any
+ * machine prefix — or undefined when none of them do.
+ *
+ * This is the ONE place that decides whether a string is a real human label. Every surface that
+ * shows a photo goes through it: the grid via {@link normalizeContentToRendererProps}, which walks
+ * a block's alt → title → caption chain, and the fullscreen viewer, which names its dialog and its
+ * `<img>` from the same fields.
+ *
+ * Callers supply their own fallback rather than receiving a generic one from here, because what a
+ * nameless element should say depends on what it does: a tile that opens the viewer announces the
+ * action ("View photo"), while an `<img>` announces the subject ("Photo"). Returning `undefined`
+ * rather than a stand-in is the point — a generic string baked in here would be indistinguishable
+ * from authored text one layer down, which is exactly the bug this shape prevents.
+ */
+export function humanLabel(...candidates: (string | null | undefined)[]): string | undefined {
+  for (const candidate of candidates) {
+    const authored = authoredText(candidate);
+    if (authored) return authored;
+  }
+  return undefined;
 }
 
 /**
@@ -142,6 +216,12 @@ export function resolveValidDimensions({
  * Normalizes any content type to ContentRendererProps
  * Handles all content type checking and data extraction
  *
+ * The `alt` it returns is authored text or the empty string — never a generic stand-in. This used
+ * to fall back to `'Image'`/`'Collection'`/`'GIF'`, which the renderer then could not tell apart
+ * from a photo a person had genuinely titled "Image", so a tile with no authored text anywhere
+ * announced "Image, button" instead of its action. Emptiness is the signal; each consumer picks
+ * the wording that fits what its element does.
+ *
  * @param content - Any content model to normalize
  * @param calculatedWidth - Pre-calculated display width
  * @param calculatedHeight - Pre-calculated display height
@@ -216,7 +296,7 @@ export function normalizeContentToRendererProps(
       imageUrl: coverImage?.imageUrl ?? '',
       imageWidth: dimensions.imageWidth,
       imageHeight: dimensions.imageHeight,
-      alt: extractAltText(undefined, content.title, undefined, content.slug, 'Collection'),
+      alt: humanLabel(content.title, content.slug) ?? '',
       overlayText: content.title,
       cardTypeBadge: collectionPublicLabel(content) ?? undefined,
       enableParallax: true,
@@ -240,7 +320,7 @@ export function normalizeContentToRendererProps(
       imageUrl: content.imageUrl,
       imageWidth: dimensions.imageWidth,
       imageHeight: dimensions.imageHeight,
-      alt: extractAltText(content.alt, content.title, content.caption),
+      alt: humanLabel(content.alt, content.title, content.caption) ?? '',
       overlayText: content.overlayText,
       // Only collection cards (parallax blocks converted from a collection, so they carry
       // a slug) get a badge — a plain parallax IMAGE's own tags must never surface as a
@@ -270,7 +350,7 @@ export function normalizeContentToRendererProps(
       imageUrl: content.imageUrl,
       imageWidth: dimensions.imageWidth,
       imageHeight: dimensions.imageHeight,
-      alt: extractAltText(content.alt, content.title, content.caption),
+      alt: humanLabel(content.alt, content.title, content.caption) ?? '',
       overlayText: content.overlayText,
       enableParallax: false,
       isCollection: false,
@@ -286,7 +366,7 @@ export function normalizeContentToRendererProps(
       imageUrl: content.gifUrlWeb ?? content.gifUrl,
       imageWidth: dimensions.imageWidth,
       imageHeight: dimensions.imageHeight,
-      alt: extractAltText(content.alt, content.title, content.caption, undefined, 'GIF'),
+      alt: humanLabel(content.alt, content.title, content.caption) ?? '',
       overlayText: content.overlayText,
       enableParallax: false,
       isCollection: false,

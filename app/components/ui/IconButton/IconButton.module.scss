@@ -1,4 +1,16 @@
+/* Same two ways of being off, and the same reason for handling both here, as `Button.module.scss`
+   — see the comment there. `IconButton` and the `CloseButton` built on it sit in the same pending
+   contexts (a dismiss inside a focus-trapped overlay is exactly the control that must not lose
+   focus mid-action), so the primitive covers the ARIA state before a call site needs it rather
+   than after. */
+@mixin enabled-hover {
+  &:hover:not(:disabled, [aria-disabled='true']) {
+    @content;
+  }
+}
+
 .iconButton {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -10,7 +22,8 @@
     background-color var(--duration-base) var(--ease-standard),
     color var(--duration-base) var(--ease-standard);
 
-  &:disabled {
+  &:disabled,
+  &[aria-disabled='true'] {
     opacity: 0.6;
     cursor: not-allowed;
   }
@@ -18,6 +31,43 @@
   &:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
+  }
+
+  /* Touch-target padding on coarse pointers only, and via an overlay rather than the box itself,
+     so both sizes clear the 44px minimum without the round/overlay variants growing into a bigger
+     visual disc than the layouts that place them expect.
+
+     The overlay is painted OUTSIDE the button's box: it overhangs by (44px - box) / 2 on every
+     side: 2px for .md (40px box) and 6px for .sm (32px box). A row whose gap is under that has
+     each overlay reaching across its neighbour and — painting later in DOM order — swallowing the
+     neighbour's taps, with no cursor feedback to reveal it. Keep rows of these at a gap >= the
+     overhang.
+
+     Escape hatch, for a cluster that genuinely cannot afford the gap: set --touch-target-min on
+     the row. It inherits, so one declaration covers every control inside it.
+
+       .denseRow {
+         --touch-target-min: 0; // or any value the row's pitch can afford
+       }
+
+     Legitimate use is narrow: a fixed, unavoidably dense cluster (a 16px chip-remove ×, a
+     segmented control) where widening the gap would break the grouping, and where the action is
+     reachable another way. Prefer growing the button's own box — as RatingStars does, safe there
+     because those buttons have no background or border to distort — over shrinking the target.
+     Lowering this to dodge a spacing bug does not fix the bug, it just makes the a11y failure
+     quieter than the tap-theft it replaces. */
+  @media (pointer: coarse) {
+    &::after {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100%;
+      min-width: var(--touch-target-min, 44px);
+      height: 100%;
+      min-height: var(--touch-target-min, 44px);
+      content: '';
+      transform: translate(-50%, -50%);
+    }
   }
 }
 
@@ -45,7 +95,7 @@
 .ghost {
   background-color: transparent;
 
-  &:hover:not(:disabled) {
+  @include enabled-hover {
     background-color: var(--color-overlay-soft);
   }
 }
@@ -54,7 +104,7 @@
   background-color: var(--color-overlay-strong);
   color: var(--color-white);
 
-  &:hover:not(:disabled) {
+  @include enabled-hover {
     background-color: var(--color-badge-bg);
   }
 }

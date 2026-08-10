@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { type ComponentProps } from 'react';
 
 import {
@@ -548,6 +548,62 @@ describe('FilterToolbar', () => {
       });
       expect(screen.getAllByRole('link')).toHaveLength(3);
       expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
+    });
+
+    /**
+     * `count` is optional because a section whose read failed has no count. Badging it `0` would
+     * assert the section is empty right beside a body that has just said the number is unknown —
+     * the same lie the section copy stopped telling, shrunk to fit a chip.
+     */
+    it('renders a section with no count as its bare label, with no badge', () => {
+      renderToolbar({
+        sections: [{ key: 'saved', label: 'Saved', href: '/user?tab=saved' }],
+        activeSectionKey: 'saved',
+      });
+      const chip = screen.getByRole('link', { name: 'Saved' });
+      expect(chip.textContent).toBe('Saved');
+    });
+
+    /**
+     * Scoped to the chip, and paired with a neighbour that genuinely counts 0, so the toolbar has
+     * a `0` in it either way. A toolbar-wide `queryByText('0')` would pass here for the wrong
+     * reason the moment no section on the bar happened to be empty.
+     */
+    it('does not print a 0 on the countless chip while its neighbour badges one', () => {
+      renderToolbar({
+        sections: [
+          { key: 'collections', label: 'Collections', count: 0, href: '/user?tab=collections' },
+          { key: 'saved', label: 'Saved', href: '/user?tab=saved' },
+        ],
+        activeSectionKey: 'saved',
+      });
+      const countless = screen.getByRole('link', { name: 'Saved' });
+      const counted = screen.getByRole('link', { name: 'Collections' });
+
+      expect(within(countless).queryByText('0')).not.toBeInTheDocument();
+      expect(within(counted).getByText('0')).toBeInTheDocument();
+    });
+
+    it('still badges a section that reports a real count of 0', () => {
+      renderToolbar({
+        sections: [{ key: 'saved', label: 'Saved', count: 0, href: '/user?tab=saved' }],
+        activeSectionKey: 'saved',
+      });
+      expect(screen.getByText('0')).toBeInTheDocument();
+    });
+
+    it('keeps a countless section navigable and current like any other', () => {
+      renderToolbar({
+        sections: [
+          { key: 'collections', label: 'Collections', count: 12, href: '/user?tab=collections' },
+          { key: 'saved', label: 'Saved', href: '/user?tab=saved' },
+        ],
+        activeSectionKey: 'saved',
+      });
+      const chip = screen.getByRole('link', { name: 'Saved' });
+      expect(chip).toHaveAttribute('href', '/user?tab=saved');
+      expect(chip).toHaveAttribute('aria-current', 'page');
+      expect(screen.getByText('12')).toBeInTheDocument();
     });
 
     it('keeps sections independent of the reset button', () => {

@@ -107,7 +107,7 @@ export function ContactForm({ onSubmit, lockedEmail, embedded = false }: Contact
             loading={status === 'submitting'}
             disabled={message.length === 0 || message.length > 5000}
           >
-            {status === 'submitting' ? 'Sending...' : 'Send'}
+            {status === 'submitting' ? 'Sending…' : 'Send'}
           </Button>
         </form>
       </div>

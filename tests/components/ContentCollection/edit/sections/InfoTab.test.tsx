@@ -1,6 +1,7 @@
 /**
- * Tests for the InfoTab date fields: the end-date input wiring and the soft-validation
- * advisory.
+ * Tests for the InfoTab date fields: the end-date input wiring, the soft-validation advisory,
+ * and both clear buttons (which are `IconButton`s — the `type="button"` that keeps them from
+ * submitting now comes from the primitive's default rather than from an inline attribute).
  *
  * A `role="status"` note ("End date is before the collection date.") renders only when both
  * dates are set AND the end date lexically precedes the start date (ISO strings compare
@@ -97,6 +98,40 @@ describe('InfoTab — end-date input wiring', () => {
   it('labels the collection-date input too (retrofitted alongside the end date)', () => {
     renderInfoTab({ collectionDate: '2026-03-01' });
     expect(screen.getByLabelText('Collection Date')).toHaveValue('2026-03-01');
+  });
+});
+
+describe('InfoTab — collection-date clear button', () => {
+  it('clears to null (not empty string) via the clear button', () => {
+    const { setUpdateField } = renderInfoTab({ collectionDate: '2026-03-01' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear date' }));
+
+    expect(setUpdateField).toHaveBeenCalledWith('collectionDate', null);
+  });
+
+  it('hides the clear button when no collection date is set', () => {
+    renderInfoTab({ collectionDate: undefined });
+    expect(screen.queryByRole('button', { name: 'Clear date' })).not.toBeInTheDocument();
+  });
+});
+
+describe('InfoTab — date clear buttons are non-submitting IconButtons', () => {
+  it('keeps type="button" on both clear controls now that IconButton supplies it', () => {
+    renderInfoTab({ collectionDate: '2026-03-01', collectionEndDate: '2026-03-07' });
+
+    expect(screen.getByRole('button', { name: 'Clear date' })).toHaveAttribute('type', 'button');
+    expect(screen.getByRole('button', { name: 'Clear end date' })).toHaveAttribute(
+      'type',
+      'button'
+    );
+  });
+
+  it('hides the ✕ glyph from the accessibility tree so the aria-label is the only name', () => {
+    renderInfoTab({ collectionDate: '2026-03-01' });
+
+    const clear = screen.getByRole('button', { name: 'Clear date' });
+    expect(clear.querySelector('[aria-hidden="true"]')).toHaveTextContent('✕');
   });
 });
 

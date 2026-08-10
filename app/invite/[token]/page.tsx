@@ -1,6 +1,7 @@
 import { type Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 
+import { skipTargetProps } from '@/app/components/ui/SkipLink/SkipLink';
 import { meServer } from '@/app/lib/api/auth';
 import { getInvitePreview } from '@/app/lib/api/users';
 
@@ -37,6 +38,10 @@ interface InvitePageProps {
  *
  * The interactive portion is delegated to `InviteForm` (a Client Component). The token-in-URL
  * referrer mitigation is handled by the exported `metadata` above.
+ *
+ * `<main>` carries the skip link's landing zone directly: the site-wide link is rendered
+ * unconditionally from the root layout, and this page has no header inside `<main>` for a nested
+ * target to exclude.
  */
 export default async function InvitePage({ params }: InvitePageProps) {
   const { token } = await params;
@@ -49,7 +54,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
   if (result.status === 'invalid') notFound();
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page} {...skipTargetProps}>
       <div className={styles.card}>
         <h1 className={styles.heading}>Set up your account</h1>
         <InviteForm

@@ -8,11 +8,18 @@ describe('Badge', () => {
     expect(screen.getByText('2024')).toBeInTheDocument();
   });
 
-  it('applies tone and position classes', () => {
-    render(<Badge label="x" tone="card" position="start" />);
+  it('pins the card tone to the start corner', () => {
+    render(<Badge label="x" tone="card" />);
     const el = screen.getByText('x');
     expect(el.className).toMatch(/card/);
     expect(el.className).toMatch(/start/);
+  });
+
+  it('pins the date tone to the end corner', () => {
+    render(<Badge label="x" tone="date" />);
+    const el = screen.getByText('x');
+    expect(el.className).toMatch(/date/);
+    expect(el.className).toMatch(/end/);
   });
 
   it('renders nothing when label is null', () => {

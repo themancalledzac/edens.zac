@@ -51,13 +51,6 @@
   border-radius: var(--radius-1);
 }
 
-.emptyState {
-  padding: var(--space-3);
-  text-align: center;
-  color: var(--sel-text-muted);
-  font-size: var(--text-sm);
-}
-
 .row {
   display: flex;
   align-items: center;
@@ -264,19 +257,12 @@ $toggle-col-width: 60px;
   box-shadow: 0 0 0 1px var(--sel-accent-parent);
 }
 
+/* Layout and the button reset live in Disclosure; this is the accordion row's own skin on top. */
 .typeHeaderRow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
   padding: 0.5rem 0.75rem;
   background: transparent;
   border: none;
   border-top: 1px solid var(--sel-border);
-  text-align: left;
-  cursor: pointer;
-  color: inherit;
-  font: inherit;
 
   &:hover {
     background: var(--sel-elev-1);
@@ -294,7 +280,6 @@ $toggle-col-width: 60px;
 }
 
 .typeHeaderChevron {
-  width: 1rem;
   color: var(--sel-text-muted);
 }
 

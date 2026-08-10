@@ -1,0 +1,32 @@
+/* Shared look for the two "there is nothing to show right now" messages — EmptyState and
+   LoadingText. They are one visual and two semantics: an empty result is static prose, while a
+   pending read is a live region. Keeping them in one module is what stops the two drifting apart
+   again; before this there were five different empty-state styles and six loading ones, including
+   two magic 0.9375rem font sizes and a hard-coded 3rem padding. */
+
+.text {
+  margin: 0;
+  color: var(--color-on-surface-muted);
+  font-size: var(--text-sm);
+}
+
+/* Flush against the surrounding list or panel body, which supplies its own padding. */
+.inline {
+  padding: var(--space-2) 0;
+}
+
+/* A whole page or grid resolved to nothing, so the message is the only content in the region and
+   carries its own vertical room. */
+.page {
+  padding: var(--space-8) 0;
+  text-align: center;
+}
+
+/* LoadingText keeps its live region mounted while nothing is loading (see its docblock), so the
+   empty node has to be invisible to layout — not `display: none`, which would take the region out
+   of the accessibility tree and put us back to announcing an insertion. An empty <p> with no
+   padding generates no line box and is therefore zero-height; only the placement padding above
+   needs unsetting. EmptyState never renders empty, so this only ever matches LoadingText. */
+.text:empty {
+  padding: 0;
+}

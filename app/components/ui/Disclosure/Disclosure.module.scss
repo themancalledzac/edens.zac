@@ -1,0 +1,21 @@
+/* Disclosure — the layout both adopters share for a toggle row and its chevron.
+   Deliberately no box: `padding`, `background` and `border` stay with the adopter, because the
+   panel header and the accordion row genuinely disagree there (flush versus padded, no rule versus
+   a separator on top) and a base declaration would only be something every caller has to undo. */
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Fixed-width so the labels of stacked disclosures line up, and never squeezed by a long title. */
+.chevron {
+  flex: none;
+  width: 1rem;
+}

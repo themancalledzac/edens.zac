@@ -82,6 +82,13 @@
   color: inherit;
   display: flex;
   align-items: center;
+
+  /* Stripping the background and border leaves the UA ring hugging the SVG's glyph rather than a
+     button box, which reads as an artefact instead of focus. Declare the house ring explicitly. */
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
 }
 
 .menu {

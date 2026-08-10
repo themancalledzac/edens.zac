@@ -10,6 +10,13 @@
   border-radius: var(--radius-1);
 }
 
+/* Collapsed, the panel must size to its header instead of filling the box it sits in —
+   AdminPanelRenderer drops the packer's fixed height at the same time, and the two together
+   are what actually reclaims the vertical space. */
+.isCollapsed {
+  height: auto;
+}
+
 .header {
   display: flex;
   justify-content: space-between;
@@ -19,11 +26,42 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* Collapsed there is no body below, so the rule under the header would be a trailing edge. */
+.isCollapsed .header {
+  border-bottom: none;
+}
+
 .title {
   margin: 0;
   font-size: var(--text-md);
   font-weight: 700;
   color: var(--color-on-surface);
+
+  /* Take the space the action controls leave, so the toggle's hit target is most of the bar. */
+  flex: 1;
+  min-width: 0;
+}
+
+/* Layout and the button reset live in Disclosure; this is the panel's own skin on top of it. */
+.toggle {
+  padding: 0;
+  background: none;
+  border: none;
+
+  &:hover .chevron {
+    color: var(--color-on-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-1);
+  }
+}
+
+.chevron {
+  color: var(--color-on-surface-muted);
+  transition: color var(--duration-base) var(--ease-standard);
 }
 
 .body {

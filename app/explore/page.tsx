@@ -2,6 +2,7 @@ import { type Metadata } from 'next';
 
 import { NavLink } from '@/app/components/ui/NavLink/NavLink';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { getMetadata } from '@/app/lib/api/collections';
 
 import styles from './Explore.module.scss';
@@ -50,7 +51,7 @@ export default async function ExplorePage() {
       </header>
 
       {isEmpty ? (
-        <p className={styles.empty}>Nothing to explore yet — check back soon.</p>
+        <EmptyState align="page">Nothing to explore yet — check back soon.</EmptyState>
       ) : (
         <div className={styles.sections}>
           <section className={styles.section} aria-labelledby="explore-locations">
@@ -58,7 +59,7 @@ export default async function ExplorePage() {
               Locations
             </h2>
             {locations.length === 0 ? (
-              <p className={styles.sectionEmpty}>No locations yet.</p>
+              <EmptyState>No locations yet.</EmptyState>
             ) : (
               <ul className={styles.linkList}>
                 {locations.map(loc => (
@@ -77,7 +78,7 @@ export default async function ExplorePage() {
               Tags
             </h2>
             {tags.length === 0 ? (
-              <p className={styles.sectionEmpty}>No tags yet.</p>
+              <EmptyState>No tags yet.</EmptyState>
             ) : (
               <ul className={styles.linkList}>
                 {tags.map(tag => (

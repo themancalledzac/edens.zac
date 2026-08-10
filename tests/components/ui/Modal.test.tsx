@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import Link from 'next/link';
 
 import { Modal } from '@/app/components/ui/Modal/Modal';
 
@@ -145,5 +146,85 @@ describe('Modal', () => {
     // null-safe path is exercised. Specifically, the trigger (never focused)
     // should NOT have focus.
     expect(screen.getByTestId('trigger')).not.toHaveFocus();
+  });
+
+  /**
+   * `.focus()` on a node that has left the document is a silent no-op, so a trigger that unmounted
+   * while the modal was open used to strand focus on `<body>` — one Tab from there restarts the
+   * whole page. The fallback is the first control in the page header, matching MenuDropdown.
+   */
+  describe('focus restore when the trigger unmounted while open', () => {
+    function HeaderHarness({ open, withTrigger }: { open: boolean; withTrigger: boolean }) {
+      return (
+        <>
+          <header>
+            <Link href="/">Zac Edens</Link>
+            <button type="button" data-testid="header-menu">
+              Menu
+            </button>
+          </header>
+          {withTrigger && (
+            <button type="button" data-testid="trigger">
+              Open
+            </button>
+          )}
+          <Modal open={open} onClose={jest.fn()} labelledBy="restore-title">
+            <h2 id="restore-title">Title</h2>
+            <button type="button">Only</button>
+          </Modal>
+        </>
+      );
+    }
+
+    it('falls back to the first control in the page header', () => {
+      const { rerender } = render(<HeaderHarness open={false} withTrigger />);
+      screen.getByTestId('trigger').focus();
+
+      rerender(<HeaderHarness open withTrigger />);
+      expect(screen.getByRole('dialog')).toHaveFocus();
+
+      rerender(<HeaderHarness open withTrigger={false} />);
+      rerender(<HeaderHarness open={false} withTrigger={false} />);
+
+      expect(screen.getByRole('link', { name: 'Zac Edens' })).toHaveFocus();
+      expect(document.body).not.toHaveFocus();
+    });
+
+    it('still prefers the trigger while it is connected', () => {
+      const { rerender } = render(<HeaderHarness open={false} withTrigger />);
+      const trigger = screen.getByTestId('trigger');
+      trigger.focus();
+
+      rerender(<HeaderHarness open withTrigger />);
+      rerender(<HeaderHarness open={false} withTrigger />);
+
+      expect(trigger).toHaveFocus();
+      expect(screen.getByRole('link', { name: 'Zac Edens' })).not.toHaveFocus();
+    });
+
+    it('closes without throwing when there is no header to fall back to', () => {
+      function Bare({ open, withTrigger }: { open: boolean; withTrigger: boolean }) {
+        return (
+          <>
+            {withTrigger && (
+              <button type="button" data-testid="trigger">
+                Open
+              </button>
+            )}
+            <Modal open={open} onClose={jest.fn()} labelledBy="bare-title">
+              <h2 id="bare-title">Title</h2>
+              <button type="button">Only</button>
+            </Modal>
+          </>
+        );
+      }
+
+      const { rerender } = render(<Bare open={false} withTrigger />);
+      screen.getByTestId('trigger').focus();
+
+      rerender(<Bare open withTrigger />);
+      rerender(<Bare open withTrigger={false} />);
+      expect(() => rerender(<Bare open={false} withTrigger={false} />)).not.toThrow();
+    });
   });
 });

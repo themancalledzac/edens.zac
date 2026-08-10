@@ -1,11 +1,5 @@
 /* MessagesPanel — compact message rows for a narrow admin column */
 
-.muted {
-  margin: 0;
-  color: var(--color-on-surface-muted);
-  font-size: var(--text-sm);
-}
-
 .viewAll {
   font-size: var(--text-sm);
   color: var(--color-on-surface-muted);
@@ -100,4 +94,21 @@
   margin: var(--space-2) 0 0;
   font-size: var(--text-sm);
   color: var(--color-danger);
+}
+
+/* Load failure — deliberately unlike the shared <EmptyState> the empty branch renders, so a dead
+   backend never reads as "no comments yet". Mirrors `.loadError` in UserManagementPanel, because
+   the two panels sit side by side on /admin and a recovery affordance that differs between them
+   reads as a bug. The nested reset is needed because `.error` is shared with the delete failure
+   below the list, where its top margin is the separation from the last row; here the flex `gap`
+   already supplies it and the margin would double up. */
+.loadError {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+
+  .error {
+    margin: 0;
+  }
 }

@@ -3,10 +3,17 @@
   border-radius: var(--radius-1);
   transition: background-color 0.12s ease;
 
-  &:hover,
+  &:hover {
+    background-color: rgb(0, 0, 0, 0.04);
+  }
+
+  /* Kept in its own block: folded in with :hover, the shared `outline: none` suppressed the ring on
+     the one state that needs it. This element is the only affordance for entering edit mode, so a
+     keyboard user has nothing else to aim at. */
   &:focus-visible {
     background-color: rgb(0, 0, 0, 0.04);
-    outline: none;
+    outline: var(--focus-ring);
+    outline-offset: 2px;
   }
 }
 

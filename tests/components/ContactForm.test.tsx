@@ -85,7 +85,7 @@ describe('ContactForm', () => {
     });
   });
 
-  it('disables button and shows "Sending..." during submission', async () => {
+  it('disables button and shows "Sending…" during submission', async () => {
     let resolveCall!: (v: contactApi.ContactResult) => void;
     mockSubmit.mockImplementation(
       () =>

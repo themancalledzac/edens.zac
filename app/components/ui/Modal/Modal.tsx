@@ -23,6 +23,27 @@ const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
+ * Hands focus back when the dialog closes.
+ *
+ * The element that opened the modal is preferred, but `.focus()` on a node that has left the
+ * document is a silent no-op that leaves focus on `<body>` — one Tab from there restarts the whole
+ * page. So when the trigger unmounted while the modal was open (a row that the modal's own save
+ * removed, a route change that remounts the surface), fall back to the first control in the page
+ * header: the same corner of the page the trigger lived in, so the tab order resumes roughly where
+ * the user left it. Mirrors `MenuDropdown`, which hand-rolls the same dialog semantics.
+ *
+ * If the document has no header either, there is genuinely nothing to restore to and this does
+ * nothing rather than inventing a target.
+ */
+function restoreFocus(previous: HTMLElement | null) {
+  if (previous?.isConnected) {
+    previous.focus();
+    return;
+  }
+  document.querySelector('header')?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
+}
+
+/**
  * Canonical modal. Owns the portal, backdrop, Escape-to-close, focus trap, body scroll lock, and
  * dialog ARIA. Note: portaled to `document.body` (outside any `[data-surface]` scope) — a sentinel
  * rendered at the in-tree position bridges the surface token so dark-admin descendants adapt correctly.
@@ -61,7 +82,7 @@ export function Modal({ open, onClose, variant = 'overlay', labelledBy, children
     }
 
     return () => {
-      previouslyFocusedRef.current?.focus();
+      restoreFocus(previouslyFocusedRef.current);
     };
   }, [open, getFocusable]);
 

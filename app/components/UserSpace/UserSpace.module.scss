@@ -1,0 +1,13 @@
+/* Placement-only override for the shared <EmptyState> in the user space view (colour, size and
+   vertical rhythm come from StatusText.module.scss). Shared by /user and /admin/users/[id]. */
+
+.empty {
+  /* Inset while the content grids above run full-bleed on mobile; reset at the desktop
+     breakpoint where the page's own sections wrapper regains its side padding. Mirrors the
+     shared filter bar (FilterToolbar .toolbar), which brackets the same grids. */
+  padding-inline: var(--page-padding-mobile);
+
+  @media (width >= 768px) {
+    padding-inline: 0;
+  }
+}

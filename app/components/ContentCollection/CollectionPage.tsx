@@ -1,5 +1,6 @@
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
+import { SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
 import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
@@ -126,18 +127,20 @@ export default function CollectionPage({
       <div className={styles.container}>
         <main className={styles.main}>
           <SiteHeader pageType="collection" collectionSlug={collection.slug} />
-          <h1 className={styles.srOnly}>{headingText}</h1>
-          <CollectionPageClient
-            collection={collection}
-            chunkSize={chunkSize}
-            serverContentWidth={ssrViewport?.contentWidth}
-            serverViewportHeight={ssrViewport?.viewportHeight}
-            serverIsMobile={ssrViewport?.isMobile}
-            editMode={editMode}
-            me={me}
-            initialSelectedIds={initialSelectedIds}
-            initialSavedImageIds={initialSavedImageIds}
-          />
+          <SkipTarget>
+            <h1 className={styles.srOnly}>{headingText}</h1>
+            <CollectionPageClient
+              collection={collection}
+              chunkSize={chunkSize}
+              serverContentWidth={ssrViewport?.contentWidth}
+              serverViewportHeight={ssrViewport?.viewportHeight}
+              serverIsMobile={ssrViewport?.isMobile}
+              editMode={editMode}
+              me={me}
+              initialSelectedIds={initialSelectedIds}
+              initialSavedImageIds={initialSavedImageIds}
+            />
+          </SkipTarget>
         </main>
       </div>
     );
@@ -152,18 +155,20 @@ export default function CollectionPage({
     <div className={styles.container}>
       <main className={styles.main}>
         <SiteHeader pageType="collectionsCollection" />
-        {contentBlocks.length > 0 ? (
-          <ContentBlockWithFullScreen
-            content={contentBlocks}
-            priorityBlockIndex={0}
-            enableFullScreenView
-            initialPageSize={30}
-            chunkSize={chunkSize}
-            serverContentWidth={ssrViewport?.contentWidth}
-            serverViewportHeight={ssrViewport?.viewportHeight}
-            serverIsMobile={ssrViewport?.isMobile}
-          />
-        ) : null}
+        <SkipTarget>
+          {contentBlocks.length > 0 ? (
+            <ContentBlockWithFullScreen
+              content={contentBlocks}
+              priorityBlockIndex={0}
+              enableFullScreenView
+              initialPageSize={30}
+              chunkSize={chunkSize}
+              serverContentWidth={ssrViewport?.contentWidth}
+              serverViewportHeight={ssrViewport?.viewportHeight}
+              serverIsMobile={ssrViewport?.isMobile}
+            />
+          ) : null}
+        </SkipTarget>
       </main>
     </div>
   );

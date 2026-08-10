@@ -5,15 +5,12 @@ import { tagNameToSlug } from '@/app/utils/tagUtils';
 import styles from './Badge.module.scss';
 
 export type BadgeTone = 'card' | 'date';
-export type BadgePosition = 'start' | 'end';
 
 export interface BadgeProps {
   /** Text to display. When null, the badge renders nothing. */
   label: string | null;
   /** Visual treatment: `card` (uppercase type chip) or `date`. Default `date`. */
   tone?: BadgeTone;
-  /** Corner: `start` (top-left) or `end` (top-right). Defaults from tone. */
-  position?: BadgePosition;
 }
 
 /**
@@ -66,13 +63,16 @@ export function collectionPublicLabel(collection: CollectionBadgeFields): string
   return null;
 }
 
-/** Canonical overlay badge: a positioned label chip (tone + corner). */
-export function Badge({ label, tone = 'date', position }: BadgeProps): ReactElement | null {
+/**
+ * Canonical overlay badge: a label chip whose corner follows its tone — `card`
+ * pins to the top-left, `date` to the top-right.
+ */
+export function Badge({ label, tone = 'date' }: BadgeProps): ReactElement | null {
   if (label === null) {
     return null;
   }
-  const pos: BadgePosition = position ?? (tone === 'card' ? 'start' : 'end');
-  const classes = [styles.badge, styles[tone], styles[pos]].filter(Boolean).join(' ');
+  const corner = tone === 'card' ? styles.start : styles.end;
+  const classes = [styles.badge, styles[tone], corner].filter(Boolean).join(' ');
   return <span className={classes}>{label}</span>;
 }
 

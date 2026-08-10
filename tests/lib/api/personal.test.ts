@@ -24,8 +24,8 @@ jest.mock('@/app/lib/api/core', () => ({
   fetchReadApi: jest.fn(),
 }));
 
-// The empty-on-error reader logs non-401 failures via the project logger (silenced in the test
-// env), so assert on the mocked logger.warn rather than a bare console.warn.
+// The fail-soft readers log non-401 failures via the project logger (silenced in the test env),
+// so assert on the mocked logger.warn rather than a bare console.warn.
 jest.mock('@/app/utils/logger', () => ({
   logger: { error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
 }));
@@ -146,6 +146,11 @@ describe('module exports', () => {
   });
 });
 
+/**
+ * This one keeps the bare-array contract on purpose: it seeds the SavesProvider, and an unseeded
+ * heart renders unlit — indistinguishable from "not saved", so no false claim is made and there is
+ * nothing for a caller to do with a failure flag.
+ */
 describe('listSavedImageIdsServer', () => {
   it('returns the ids from fetchReadApi', async () => {
     fetchReadApiMock.mockResolvedValueOnce([42, 43]);
@@ -160,9 +165,29 @@ describe('listSavedImageIdsServer', () => {
   it('returns [] when fetchReadApi throws (e.g. anonymous 401)', async () => {
     fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
     await expect(listSavedImageIdsServer()).resolves.toEqual([]);
+    expect(warnMock).not.toHaveBeenCalled();
+  });
+
+  it('still logs a non-401 failure even though it reports no flag', async () => {
+    // Discarding the flag is not the same as discarding the failure: the log is the only thing
+    // this path wants from the error, which is why it calls the logger directly rather than
+    // building a FailSoftRead to throw away.
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('boom', 500));
+
+    await expect(listSavedImageIdsServer()).resolves.toEqual([]);
+    expect(warnMock).toHaveBeenCalledWith(
+      'personal',
+      expect.stringContaining('saved image ids'),
+      expect.objectContaining({ error: expect.any(ApiError) })
+    );
   });
 });
 
+/**
+ * The two reads that BACK VISIBLE COPY report failure instead of resolving to `[]`. `[]` reaches
+ * `/user` as "You have not saved any images yet." — a claim about data nobody managed to read, and
+ * the owner-side twin of the defect already fixed on the admin path.
+ */
 describe('listSavedImagesServer', () => {
   const image = (id: number): ContentImageModel =>
     ({
@@ -171,48 +196,87 @@ describe('listSavedImagesServer', () => {
       imageUrl: `https://cdn.example.com/${id}.jpg`,
     }) as ContentImageModel;
 
-  it('returns the images from fetchReadApi', async () => {
+  it('returns the images from fetchReadApi as a loaded read', async () => {
     const images = [image(42), image(43)];
     fetchReadApiMock.mockResolvedValueOnce(images);
-    await expect(listSavedImagesServer()).resolves.toEqual(images);
+    await expect(listSavedImagesServer()).resolves.toEqual({ ok: true, items: images });
     expect(fetchReadApiMock).toHaveBeenCalledWith('/user/saves/images');
   });
 
-  it('returns [] when fetchReadApi returns null (204)', async () => {
+  it('reports a genuine empty as loaded when fetchReadApi returns null (204)', async () => {
     fetchReadApiMock.mockResolvedValueOnce(null);
-    await expect(listSavedImagesServer()).resolves.toEqual([]);
+    await expect(listSavedImagesServer()).resolves.toEqual({ ok: true, items: [] });
   });
 
-  it('returns [] silently on 401 (anonymous) without warning', async () => {
+  it('reports a 401 as unavailable — a lapsed session is not proof of an empty set', async () => {
     fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
-    await expect(listSavedImagesServer()).resolves.toEqual([]);
+    await expect(listSavedImagesServer()).resolves.toEqual({ ok: false });
+  });
+
+  it('does not warn on a 401, which is expected rather than broken', async () => {
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
+    await listSavedImagesServer();
     expect(warnMock).not.toHaveBeenCalled();
   });
 
-  it('returns [] but logs a warning on a non-401 failure (e.g. stale-backend 404)', async () => {
+  it('reports unavailable on a non-401 failure (e.g. stale-backend 404)', async () => {
     fetchReadApiMock.mockRejectedValueOnce(new ApiError('not found', 404));
-    await expect(listSavedImagesServer()).resolves.toEqual([]);
+    await expect(listSavedImagesServer()).resolves.toEqual({ ok: false });
+  });
+
+  it('logs the non-401 failure rather than swallowing it', async () => {
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('not found', 404));
+    await listSavedImagesServer();
     expect(warnMock).toHaveBeenCalledWith(
       'personal',
       expect.stringContaining('status 404'),
       expect.objectContaining({ error: expect.any(ApiError) })
     );
   });
+
+  it('reports unavailable and logs when the failure is not an ApiError at all', async () => {
+    fetchReadApiMock.mockRejectedValueOnce(new TypeError('fetch failed'));
+    await expect(listSavedImagesServer()).resolves.toEqual({ ok: false });
+    expect(warnMock).toHaveBeenCalledWith(
+      'personal',
+      expect.stringContaining('status unknown'),
+      expect.objectContaining({ error: expect.any(TypeError) })
+    );
+  });
+
+  it('carries no items on the failure arm, so a caller cannot flatten it to an empty list', async () => {
+    // The compiler is the real enforcement — `read.items` does not exist until `read.ok` has been
+    // checked — but the runtime shape has to agree, or a `toEqual` elsewhere would pass on a
+    // failure that still smuggles an empty array through as an answer.
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('boom', 500));
+
+    await expect(listSavedImagesServer()).resolves.not.toHaveProperty('items');
+  });
 });
 
 describe('listFollowedCollectionIdsServer', () => {
-  it('returns the ids from fetchReadApi', async () => {
+  it('returns the ids from fetchReadApi as a loaded read', async () => {
     fetchReadApiMock.mockResolvedValueOnce([3, 5]);
-    await expect(listFollowedCollectionIdsServer()).resolves.toEqual([3, 5]);
+    await expect(listFollowedCollectionIdsServer()).resolves.toEqual({ ok: true, items: [3, 5] });
   });
 
-  it('returns [] when fetchReadApi returns null', async () => {
+  it('reports a genuine empty as loaded when fetchReadApi returns null', async () => {
     fetchReadApiMock.mockResolvedValueOnce(null);
-    await expect(listFollowedCollectionIdsServer()).resolves.toEqual([]);
+    await expect(listFollowedCollectionIdsServer()).resolves.toEqual({ ok: true, items: [] });
   });
 
-  it('returns [] when fetchReadApi throws (anonymous 401)', async () => {
+  it('reports unavailable on a 401', async () => {
     fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
-    await expect(listFollowedCollectionIdsServer()).resolves.toEqual([]);
+    await expect(listFollowedCollectionIdsServer()).resolves.toEqual({ ok: false });
+  });
+
+  it('reports unavailable and logs on a 500', async () => {
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('boom', 500));
+    await expect(listFollowedCollectionIdsServer()).resolves.toEqual({ ok: false });
+    expect(warnMock).toHaveBeenCalledWith(
+      'personal',
+      expect.stringContaining('status 500'),
+      expect.objectContaining({ error: expect.any(ApiError) })
+    );
   });
 });

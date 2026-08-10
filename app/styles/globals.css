@@ -299,3 +299,29 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* Interactive controls opt out of the mobile double-tap-to-zoom heuristic, which otherwise holds
+   every tap for ~300ms waiting to see whether a second one follows. */
+button,
+a,
+[role='button'] {
+  touch-action: manipulation;
+}
+
+/* Global reduced-motion guard, so a module has to opt OUT rather than remember to opt in.
+   Durations collapse to ~0 rather than `none` so animation/transition end events still fire.
+   The two loading spinners (LoadingSpinner's .circle, ClientGalleryGate's .gateSpinner) re-assert
+   their rotation from inside their own modules: a spinner's motion is not decoration, it is the
+   only signal that work is still in flight, and a frozen one reads as a hung UI. That exemption
+   has to live in those files rather than here — CSS Modules hashes their class names, so no
+   selector written in this file can reach them. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

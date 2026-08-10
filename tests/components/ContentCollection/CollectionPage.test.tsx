@@ -218,3 +218,51 @@ describe('CollectionPage (collection array) — badge carry-through', () => {
     expect(collectionPublicLabel(block ?? {})).toBeNull();
   });
 });
+
+/**
+ * CollectionPage builds its own container/main/header instead of using PageShell, so it supplies
+ * the skip link's landing zone itself on BOTH branches. The link half is rendered once from the
+ * root layout, above the route's Suspense boundary — see tests/app/skipLink.layout.test.tsx, which
+ * pins that stream order and composes the two halves.
+ */
+describe('CollectionPage — skip target', () => {
+  const target = () => document.getElementById('main-content');
+
+  it('renders the target on the single-collection branch', () => {
+    render(<CollectionPage collection={makeCollection({ id: 1, slug: 'dolomites' })} />);
+
+    expect(target()).toBeInTheDocument();
+    expect(target()).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('renders it on the collection-array branch too', () => {
+    render(<CollectionPage collection={[makeCollection({ id: 1, slug: 'dolomites' })]} />);
+
+    expect(target()).toHaveAttribute('tabindex', '-1');
+  });
+
+  /**
+   * The target must sit INSIDE <main> wrapping only the content. Sequential focus navigation
+   * resumes from the focused element's own subtree, so a target that wrapped <main> would put the
+   * header straight back in the tab order and skip nothing.
+   */
+  it('nests the target inside main rather than around it', () => {
+    const { container } = render(
+      <CollectionPage collection={makeCollection({ id: 1, slug: 'dolomites' })} />
+    );
+
+    const main = container.querySelector('main');
+
+    expect(main).not.toBeNull();
+    expect(main).toContainElement(target());
+    expect(target()).not.toContainElement(main as HTMLElement);
+  });
+
+  it.each([
+    ['single-collection', () => makeCollection({ id: 1, slug: 'dolomites' })],
+    ['collection-array', () => [makeCollection({ id: 1, slug: 'dolomites' })]],
+  ])('renders no skip link of its own on the %s branch', (_name, build) => {
+    render(<CollectionPage collection={build()} />);
+    expect(screen.queryByRole('link', { name: /skip to main content/i })).not.toBeInTheDocument();
+  });
+});

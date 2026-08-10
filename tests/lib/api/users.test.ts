@@ -14,6 +14,8 @@ import {
   getInvitePreview,
   getMergePreview,
   getUserPageById,
+  listFollowedCollectionIdsByUserServer,
+  listSavedImagesByUserServer,
   listUsers,
   mergeUser,
   regenerateInvite,
@@ -25,6 +27,7 @@ import {
   type UserCreateRequest,
   type UserUpdateRequest,
 } from '@/app/types/User';
+import { logger } from '@/app/utils/logger';
 
 jest.mock('next/headers', () => ({ cookies: jest.fn() }));
 jest.mock('@/app/utils/environment', () => ({ isLocalEnvironment: jest.fn() }));
@@ -364,6 +367,130 @@ describe('getUserPageById', () => {
     (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(null);
 
     expect(await getUserPageById(5)).toBeNull();
+  });
+
+  // The docblock used to promise `null` on 404. It does not — `fetchAdminGetApi` throws for every
+  // non-OK status, and `loadUserSpace` relies on the throw to tell "no such page" from "backend
+  // down". If this ever starts resolving, the empty state upstream silently becomes a lie again.
+  it('throws rather than resolving null on a 404', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockRejectedValue(new ApiError('Not Found', 404));
+
+    await expect(getUserPageById(5)).rejects.toMatchObject({ name: 'ApiError', status: 404 });
+  });
+
+  it('throws on a backend outage', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockRejectedValue(new ApiError('Server Error', 500));
+
+    await expect(getUserPageById(5)).rejects.toMatchObject({ name: 'ApiError', status: 500 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listSavedImagesByUserServer / listFollowedCollectionIdsByUserServer
+//
+// Both are fail-soft on purpose (their endpoints are not on the deployed backend yet), but a
+// failure must stay DISTINGUISHABLE from a genuine empty: flattened to `[]`, the Saved section
+// asserts "This user has not saved any images yet" during an outage. `ok` is that distinction.
+//
+// Because those endpoints are missing, the failure path is the CURRENT path on every render of
+// /admin/users/[id] — so it logs at `warn`, matching the self-side twins in personal.ts. `error`
+// for an expected outcome is how an error channel stops being read.
+// ---------------------------------------------------------------------------
+
+describe('listSavedImagesByUserServer', () => {
+  it('reports ok with the images the endpoint returned', async () => {
+    const images = [{ id: 1, contentType: 'IMAGE' }];
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(images);
+
+    const result = await listSavedImagesByUserServer(5);
+
+    expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/users/5/saves/images');
+    expect(result).toEqual({ ok: true, items: images });
+  });
+
+  it('reports ok with an empty list for a genuinely empty read (empty body)', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(null);
+
+    expect(await listSavedImagesByUserServer(5)).toEqual({ ok: true, items: [] });
+  });
+
+  it('reports NOT ok when the read fails, so the section cannot claim the user saved nothing', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockRejectedValue(new ApiError('Not Found', 404));
+
+    expect(await listSavedImagesByUserServer(5)).toEqual({ ok: false });
+  });
+
+  it('carries no items on the failure arm, so a caller cannot flatten it to an empty list', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockRejectedValue(new ApiError('Not Found', 404));
+
+    expect(await listSavedImagesByUserServer(5)).not.toHaveProperty('items');
+  });
+
+  it('logs the failure instead of swallowing it', async () => {
+    const warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+    (core.fetchAdminGetApi as jest.Mock).mockRejectedValue(new ApiError('Server Error', 500));
+
+    await listSavedImagesByUserServer(5);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'users',
+      expect.stringContaining('saved images'),
+      expect.objectContaining({ error: expect.any(ApiError), userId: 5 })
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('logs a known-missing endpoint at warn, never error', async () => {
+    const warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+    const errorSpy = jest.spyOn(logger, 'error').mockImplementation(() => {});
+    (core.fetchAdminGetApi as jest.Mock).mockRejectedValue(new ApiError('Not Found', 404));
+
+    await listSavedImagesByUserServer(5);
+
+    expect(warnSpy).toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+});
+
+describe('listFollowedCollectionIdsByUserServer', () => {
+  it('reports ok with the ids the endpoint returned', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue([7, 9]);
+
+    const result = await listFollowedCollectionIdsByUserServer(5);
+
+    expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/users/5/follows');
+    expect(result).toEqual({ ok: true, items: [7, 9] });
+  });
+
+  it('reports ok with an empty list for a genuinely empty read (empty body)', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(null);
+
+    expect(await listFollowedCollectionIdsByUserServer(5)).toEqual({ ok: true, items: [] });
+  });
+
+  it('reports NOT ok when the read fails, so the section cannot claim the user follows nothing', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockRejectedValue(new ApiError('Not Found', 404));
+
+    expect(await listFollowedCollectionIdsByUserServer(5)).toEqual({ ok: false });
+  });
+
+  it('logs the failure at warn, never error, and never swallows it', async () => {
+    const warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+    const errorSpy = jest.spyOn(logger, 'error').mockImplementation(() => {});
+    (core.fetchAdminGetApi as jest.Mock).mockRejectedValue(new ApiError('Server Error', 500));
+
+    await listFollowedCollectionIdsByUserServer(5);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'users',
+      expect.stringContaining('follows'),
+      expect.objectContaining({ error: expect.any(ApiError), userId: 5 })
+    );
+    expect(errorSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 });
 

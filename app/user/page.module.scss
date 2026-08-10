@@ -24,16 +24,6 @@
   padding: var(--space-3) 0 var(--space-5);
 }
 
-.empty {
-  padding: var(--space-2) var(--page-padding-mobile);
-  color: var(--color-on-surface-muted);
-  font-size: 0.9375rem;
-
-  @media (width >= 768px) {
-    padding-inline: 0;
-  }
-}
-
 .topBar {
   display: flex;
   justify-content: flex-end;

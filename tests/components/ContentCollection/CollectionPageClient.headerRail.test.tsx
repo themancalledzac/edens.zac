@@ -19,6 +19,7 @@ import CollectionPageClient from '@/app/components/ContentCollection/CollectionP
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import type { CollectionModel } from '@/app/types/Collection';
 import type { AnyContentModel } from '@/app/types/Content';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 
 // jsdom ships no IntersectionObserver, and the real grid's lazy-render hook builds one on mount.
 // Rendering the unmocked grid is the whole point of this suite, so stub the API rather than mock
@@ -162,5 +163,107 @@ describe('CollectionPageClient — header rail', () => {
     render(<CollectionPageClient collection={bareCollection([collectionCard(1)])} {...ssr} />);
     expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
     expect(screen.queryAllByRole('link', { name: /collections/i })).toHaveLength(0);
+  });
+});
+
+/**
+ * The landing page is a curated showcase, not a browsable index — the running order is the point,
+ * so it never gets the filter bar however many facets its payload happens to carry.
+ *
+ * These pair each assertion with the same collection under a different slug, because otherwise a
+ * regression that removed the bar everywhere would still pass.
+ */
+describe('CollectionPageClient — the landing page never gets the filter bar', () => {
+  const withSlug = (slug: string): CollectionModel =>
+    ({ ...bareCollection([collectionCard(1)]), slug }) as CollectionModel;
+
+  it('suppresses the bar on the home collection even when sections are supplied', () => {
+    render(
+      <CollectionPageClient
+        collection={withSlug(HOME_SLUG)}
+        {...ssr}
+        sections={SECTIONS}
+        activeSectionKey="collections"
+      />
+    );
+    expect(screen.queryByRole('link', { name: /saved/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
+  });
+
+  it('still renders the bar for the same payload under any other slug', () => {
+    render(
+      <CollectionPageClient
+        collection={withSlug('dolomites')}
+        {...ssr}
+        sections={SECTIONS}
+        activeSectionKey="collections"
+      />
+    );
+    expect(screen.getByRole('link', { name: /saved/i })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
+  });
+
+  // The rule is a property of the home collection, not a caller preference, so the one prop that
+  // exists to force the bar on (`/collections` uses it) must not be able to override it.
+  it('outranks alwaysShowFilterBar', () => {
+    render(<CollectionPageClient collection={withSlug(HOME_SLUG)} {...ssr} alwaysShowFilterBar />);
+    expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
+  });
+
+  it('honours alwaysShowFilterBar under any other slug', () => {
+    render(
+      <CollectionPageClient collection={withSlug('dolomites')} {...ssr} alwaysShowFilterBar />
+    );
+    expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * ...but the suppression above is about how the page READS, so it lifts while the page is being
+ * CURATED. An admin at `/home?manage=1` is arranging exactly the running order the rule protects,
+ * and both the toolbar and the edit-mode row-density slider mount from this page's filter context
+ * with no other source — suppressing them there removes the controls rather than the temptation.
+ *
+ * `Row density` is the edit-mode density control (visitors get the `Photo size` tiers instead), so
+ * finding it proves both that the bar mounted and that it mounted in its curator form. Assertions
+ * are paired against the same payload under a different slug, matching the suite above.
+ */
+describe('CollectionPageClient — the landing page keeps the filter bar while curated', () => {
+  const browsable = (slug: string): CollectionModel =>
+    ({ ...bareCollection([collectionCard(1), collectionCard(2)]), slug }) as CollectionModel;
+
+  it('renders the bar on the home collection in manage mode', () => {
+    render(<CollectionPageClient collection={browsable(HOME_SLUG)} {...ssr} editMode />);
+    expect(screen.getByLabelText('Row density')).toBeInTheDocument();
+  });
+
+  it('renders the same curator bar for the payload under any other slug', () => {
+    render(<CollectionPageClient collection={browsable('dolomites')} {...ssr} editMode />);
+    expect(screen.getByLabelText('Row density')).toBeInTheDocument();
+  });
+
+  it('still suppresses the bar on the home collection when it is only being viewed', () => {
+    render(<CollectionPageClient collection={browsable(HOME_SLUG)} {...ssr} />);
+    expect(screen.queryByLabelText('Row density')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
+  });
+
+  it('still renders the bar for the same viewed payload under any other slug', () => {
+    render(<CollectionPageClient collection={browsable('dolomites')} {...ssr} />);
+    expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
+  });
+
+  // Nothing about `alwaysShowFilterBar` is special in manage mode: with the home rule lifted, the
+  // prop is simply back in force, so it can carry a payload that has nothing of its own to filter.
+  it('honours alwaysShowFilterBar on the home collection in manage mode', () => {
+    render(
+      <CollectionPageClient
+        collection={{ ...bareCollection([collectionCard(1)]), slug: HOME_SLUG } as CollectionModel}
+        {...ssr}
+        editMode
+        alwaysShowFilterBar
+      />
+    );
+    expect(screen.getByLabelText('Row density')).toBeInTheDocument();
   });
 });

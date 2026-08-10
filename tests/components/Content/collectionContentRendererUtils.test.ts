@@ -2,7 +2,10 @@
  * Unit tests for the pure helpers extracted from {@link CollectionContentRenderer}.
  */
 
+import { type KeyboardEvent } from 'react';
+
 import {
+  activatableProps,
   getClickEligibility,
   toCollectionDimensions,
 } from '@/app/components/Content/collectionContentRendererUtils';
@@ -193,5 +196,86 @@ describe('getClickEligibility', () => {
       hasClickHandler: true,
       isSlugNav: false,
     });
+  });
+});
+
+/**
+ * The keyboard contract for a tile. It was only ever covered through the rendered component, which
+ * left the two least visible rules unpinned: Space must suppress the page scroll, and a held key
+ * must not re-fire. Both are invisible today because every `onActivate` happens to be idempotent.
+ */
+describe('activatableProps', () => {
+  const keyEvent = (key: string, repeat = false) => {
+    const preventDefault = jest.fn();
+    const event = { key, repeat, preventDefault } as unknown as KeyboardEvent<HTMLElement>;
+    return { event, preventDefault };
+  };
+
+  it('returns nothing for an inert tile, so it advertises no role and takes no tab stop', () => {
+    expect(activatableProps(false, jest.fn())).toEqual({});
+  });
+
+  it('exposes a button role, a tab stop and the click handler when active', () => {
+    const onActivate = jest.fn();
+    const props = activatableProps(true, onActivate);
+
+    expect(props.role).toBe('button');
+    expect(props.tabIndex).toBe(0);
+    expect(props.onClick).toBe(onActivate);
+  });
+
+  it.each([
+    ['Enter', 'Enter'],
+    ['Space', ' '],
+  ])('activates on %s', (_name, key) => {
+    const onActivate = jest.fn();
+    const { event } = keyEvent(key);
+
+    activatableProps(true, onActivate).onKeyDown?.(event);
+
+    expect(onActivate).toHaveBeenCalledTimes(1);
+  });
+
+  it('prevents the default on Space so the page does not scroll out from under the tile', () => {
+    const { event, preventDefault } = keyEvent(' ');
+
+    activatableProps(true, jest.fn()).onKeyDown?.(event);
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['a', 'Tab', 'Escape', 'ArrowRight'])(
+    'ignores %s and leaves its default behaviour intact',
+    key => {
+      const onActivate = jest.fn();
+      const { event, preventDefault } = keyEvent(key);
+
+      activatableProps(true, onActivate).onKeyDown?.(event);
+
+      expect(onActivate).not.toHaveBeenCalled();
+      expect(preventDefault).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    ['Enter', 'Enter'],
+    ['Space', ' '],
+  ])('does not re-activate on an auto-repeat of a held %s', (_name, key) => {
+    const onActivate = jest.fn();
+    const props = activatableProps(true, onActivate);
+
+    props.onKeyDown?.(keyEvent(key).event);
+    props.onKeyDown?.(keyEvent(key, true).event);
+    props.onKeyDown?.(keyEvent(key, true).event);
+
+    expect(onActivate).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps suppressing the scroll on every repeat of a held Space', () => {
+    const { event, preventDefault } = keyEvent(' ', true);
+
+    activatableProps(true, jest.fn()).onKeyDown?.(event);
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
   });
 });

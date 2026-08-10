@@ -3,11 +3,18 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import CollectionContentRenderer from '@/app/components/Content/CollectionContentRenderer';
+import { CollectionRailProvider } from '@/app/components/ContentCollection/CollectionRailContext';
 import {
   type InlineEditContextValue,
   InlineEditProvider,
 } from '@/app/components/ContentCollection/edit/InlineEditContext';
-import type { TextBlockItem } from '@/app/types/Content';
+import type { AnyContentModel, TextBlockItem } from '@/app/types/Content';
+import { normalizeContentToRendererProps } from '@/app/utils/contentRendererUtils';
+import {
+  createCollectionContent,
+  createGifContent,
+  createImageContent,
+} from '@/tests/fixtures/contentFixtures';
 
 const pushMock = jest.fn();
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: pushMock }) }));
@@ -417,5 +424,283 @@ describe('CollectionContentRenderer — cover-pick entry point for a coverless c
   it('withholds it when the active manage mode owns grid clicks (null toggle)', () => {
     renderRail({ hasCover: false, onTogglePickCover: null });
     expect(screen.queryByRole('button', { name: /Set cover image/ })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * The photo tile that opens the fullscreen viewer cannot be a real <button> — it wraps a
+ * next/image and carries the overlay chrome — and unlike the slug-navigating variant it has no
+ * href to fall back on. It was a bare <div onClick>, so the entire photo grid (every collection
+ * page, /collections, /user, every taxonomy page) was mouse-only.
+ */
+describe('CollectionContentRenderer — the image tile is keyboard operable', () => {
+  const imageProps = {
+    ...baseProps,
+    contentType: 'IMAGE' as const,
+    imageUrl: 'https://cdn.example/photo.jpg',
+    alt: 'A photo',
+  };
+
+  it('exposes the tile as a button and opens the viewer on click', () => {
+    const onFullScreenImageClick = jest.fn();
+    render(
+      <CollectionContentRenderer
+        {...imageProps}
+        enableFullScreenView
+        onFullScreenImageClick={onFullScreenImageClick}
+      />
+    );
+
+    const tile = screen.getByRole('button', { name: 'A photo' });
+    fireEvent.click(tile);
+    expect(onFullScreenImageClick).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['Enter', '{Enter}'],
+    ['Space', ' '],
+  ])('opens the viewer on %s', (key, _label) => {
+    const onFullScreenImageClick = jest.fn();
+    render(
+      <CollectionContentRenderer
+        {...imageProps}
+        enableFullScreenView
+        onFullScreenImageClick={onFullScreenImageClick}
+      />
+    );
+
+    const tile = screen.getByRole('button', { name: 'A photo' });
+    expect(tile).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(tile, { key: key === 'Space' ? ' ' : key });
+    expect(onFullScreenImageClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores keys that are not Enter or Space', () => {
+    const onFullScreenImageClick = jest.fn();
+    render(
+      <CollectionContentRenderer
+        {...imageProps}
+        enableFullScreenView
+        onFullScreenImageClick={onFullScreenImageClick}
+      />
+    );
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'A photo' }), { key: 'a' });
+    expect(onFullScreenImageClick).not.toHaveBeenCalled();
+  });
+
+  // A tile with nothing to activate must stay inert rather than advertising a button role it
+  // cannot honour — otherwise every decorative tile becomes a dead tab stop.
+  it('stays inert when the tile has no action', () => {
+    render(<CollectionContentRenderer {...imageProps} />);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * What the tile is called. Making tiles tabbable turned every photo into an announced control, and
+ * the name it announced was whatever `alt` collapsed to — which for an image the backend titled
+ * from its upload is the raw filename ("DSC_4364.webp, button"). Authored text still wins; a
+ * filename is replaced by the action the tile performs.
+ */
+describe('CollectionContentRenderer — the tile never announces a filename', () => {
+  const filenameProps = {
+    ...baseProps,
+    contentType: 'IMAGE' as const,
+    imageUrl: 'https://cdn.example/DSC_4364.webp',
+    alt: 'DSC_4364.webp',
+  };
+
+  const openable = { enableFullScreenView: true, onFullScreenImageClick: jest.fn() };
+
+  it('names a filename-titled tile after its action', () => {
+    render(<CollectionContentRenderer {...filenameProps} {...openable} />);
+
+    expect(screen.getByRole('button', { name: 'View photo' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'DSC_4364.webp' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the filename off the image alt too, on an inert tile with no wrapper label', () => {
+    render(<CollectionContentRenderer {...filenameProps} />);
+
+    expect(screen.getByAltText('Photo')).toBeInTheDocument();
+    expect(screen.queryByAltText('DSC_4364.webp')).not.toBeInTheDocument();
+  });
+
+  it('names an activatable tile from the authored description', () => {
+    render(
+      <CollectionContentRenderer
+        {...filenameProps}
+        alt="Low sun over a granite ridge"
+        {...openable}
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Low sun over a granite ridge' })
+    ).toBeInTheDocument();
+  });
+
+  // aria-label on the tile already describes everything inside it. Repeating the string on the
+  // <img> is invisible in normal reading (the label overrides the subtree) but reads as a stutter
+  // to anyone stepping through elements one at a time.
+  it('leaves the image unnamed when the tile around it carries the name', () => {
+    const { container } = render(
+      <CollectionContentRenderer
+        {...filenameProps}
+        alt="Low sun over a granite ridge"
+        {...openable}
+      />
+    );
+
+    expect(container.querySelector('img')).toHaveAttribute('alt', '');
+    expect(screen.queryByAltText('Low sun over a granite ridge')).not.toBeInTheDocument();
+  });
+
+  it('prefers the overlay caption over a filename alt', () => {
+    render(
+      <CollectionContentRenderer {...filenameProps} overlayText="Sunset Ridge" {...openable} />
+    );
+
+    expect(screen.getByRole('button', { name: 'Sunset Ridge' })).toBeInTheDocument();
+  });
+
+  it('names an animation tile after its own action', () => {
+    render(
+      <CollectionContentRenderer
+        {...filenameProps}
+        contentType="GIF"
+        imageUrl="https://cdn.example/IMG_2031.mp4"
+        alt="IMG_2031.mp4"
+        {...openable}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'View animation' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * The same contract, driven through the chain production actually uses: a content MODEL, run
+ * through `normalizeContentToRendererProps`, rendered from the props that come out.
+ *
+ * Handing `alt` to the component directly — as every test above does — silently skips the step
+ * that broke it. The normalizer used to collapse a block's alt → title → caption chain onto the
+ * literal strings 'Image', 'Collection' and 'GIF' when the block carried no text, and those are
+ * not filename-shaped, so the naming filter passed them straight through as if a person had typed
+ * them. A tile with nothing authored anywhere announced "Image, button" and its `<img>` said
+ * `alt="Image"`; the fallbacks below were unreachable in production while every test of them
+ * passed.
+ */
+describe('CollectionContentRenderer — naming through the real normalizer', () => {
+  const openable = { enableFullScreenView: true, onFullScreenImageClick: jest.fn() };
+
+  const renderContent = (content: AnyContentModel, extra: Record<string, unknown> = {}) =>
+    render(
+      <CollectionContentRenderer
+        {...normalizeContentToRendererProps(content, 300, 200, 'imageSingle', false)}
+        {...extra}
+      />
+    );
+
+  const untitledImage = () =>
+    createImageContent(1, {
+      alt: undefined,
+      title: undefined,
+      caption: undefined,
+      overlayText: undefined,
+    });
+
+  it('names a text-less image tile after its action, not "Image"', () => {
+    renderContent(untitledImage(), openable);
+
+    expect(screen.getByRole('button', { name: 'View photo' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Image' })).not.toBeInTheDocument();
+  });
+
+  it('gives a text-less inert image tile the generic subject alt, not "Image"', () => {
+    renderContent(untitledImage());
+
+    expect(screen.getByAltText('Photo')).toBeInTheDocument();
+    expect(screen.queryByAltText('Image')).not.toBeInTheDocument();
+  });
+
+  it('names a text-less GIF tile after its action, not "GIF"', () => {
+    renderContent(
+      createGifContent(1, { alt: undefined, title: undefined, caption: undefined }),
+      openable
+    );
+
+    expect(screen.getByRole('button', { name: 'View animation' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'GIF' })).not.toBeInTheDocument();
+  });
+
+  it('gives a title-less, slug-less collection card the cover alt, not "Collection"', () => {
+    renderContent(createCollectionContent(1, { title: undefined, slug: undefined }));
+
+    expect(screen.getByAltText('Collection cover')).toBeInTheDocument();
+    expect(screen.queryByAltText('Collection')).not.toBeInTheDocument();
+  });
+
+  it('still announces a filename title as its action', () => {
+    renderContent(createImageContent(1, { alt: undefined, title: 'DSC_4364.webp' }), openable);
+
+    expect(screen.getByRole('button', { name: 'View photo' })).toBeInTheDocument();
+  });
+
+  // Provenance, not string shape: the fix must not blacklist the word. A photo a person genuinely
+  // titled "Image" is named "Image", while a photo with no title at all is not.
+  it('keeps a photo a person actually titled "Image"', () => {
+    renderContent(createImageContent(1, { alt: undefined, title: 'Image' }), openable);
+
+    expect(screen.getByRole('button', { name: 'Image' })).toBeInTheDocument();
+  });
+
+  it('keeps the authored title when a person renamed the camera file around it', () => {
+    renderContent(
+      createImageContent(1, { alt: undefined, title: 'IMG_20260101 sunset over the bay' }),
+      openable
+    );
+
+    expect(screen.getByRole('button', { name: 'sunset over the bay' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * The rail is where page-level content that is *about* the collection goes, beside the date,
+ * location, description and filter bar — `/user`'s Account and Admin cards, and the admin
+ * view-as note. It arrives by context because the rail is rendered from a content MODEL several
+ * layers down the layout pipeline.
+ */
+describe('CollectionContentRenderer — TEXT branch rail extras', () => {
+  const renderWithExtras = (extras: React.ReactNode, textItems: TextBlockItem[] = []) =>
+    render(
+      <CollectionRailProvider value={extras}>
+        <CollectionContentRenderer {...baseProps} textItems={textItems} />
+      </CollectionRailProvider>
+    );
+
+  it('renders the extras inside the rail', () => {
+    renderWithExtras(<p>Account details</p>, [{ type: 'description', value: 'A description' }]);
+    expect(screen.getByText('Account details')).toBeInTheDocument();
+  });
+
+  // The gate used to bail on empty textItems alone, which would have thrown away the extras on
+  // exactly the page that needs them: /user's synthetic collection has no date, location or
+  // siblings, so its rail is item-less by construction.
+  it('keeps an otherwise-empty rail alive when only extras are present', () => {
+    renderWithExtras(<p>Account details</p>, []);
+    expect(screen.getByText('Account details')).toBeInTheDocument();
+  });
+
+  it('still collapses the rail when there are no items, no controls and no extras', () => {
+    const { container } = render(<CollectionContentRenderer {...baseProps} textItems={[]} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('renders extras alongside the description rather than replacing it', () => {
+    renderWithExtras(<p>Account details</p>, [{ type: 'description', value: 'A description' }]);
+    expect(screen.getByText('A description')).toBeInTheDocument();
+    expect(screen.getByText('Account details')).toBeInTheDocument();
   });
 });

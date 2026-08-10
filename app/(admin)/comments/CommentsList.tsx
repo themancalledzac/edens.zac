@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { MessageRow } from '@/app/components/messages/MessageRow';
 import { Button } from '@/app/components/ui/Button/Button';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { useMessageDelete } from '@/app/hooks/useMessageDelete';
 import { type AdminMessageView, getAdminMessages } from '@/app/lib/api/messages';
 
@@ -30,7 +31,7 @@ export function CommentsList({ initialMessages, initialTotal }: Props) {
   };
 
   if (messages.length === 0) {
-    return <p className={styles.empty}>No comments yet.</p>;
+    return <EmptyState align="page">No comments yet.</EmptyState>;
   }
 
   return (
@@ -50,7 +51,7 @@ export function CommentsList({ initialMessages, initialTotal }: Props) {
       {error && <p className={styles.error}>{error}</p>}
       {messages.length < total && (
         <Button variant="outline" onClick={loadMore} disabled={loading} className={styles.loadMore}>
-          {loading ? 'Loading...' : `Load more (${total - messages.length} remaining)`}
+          {loading ? 'Loading…' : `Load more (${total - messages.length} remaining)`}
         </Button>
       )}
     </>

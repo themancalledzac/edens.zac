@@ -22,9 +22,12 @@ export default async function LocationPage({
   coverImage,
 }: LocationPageProps) {
   // Seed the viewer's followed collection ids so the FollowsProvider primes without a client
-  // round-trip. Only logged-in viewers can follow; the read returns [] for anonymous viewers.
+  // round-trip. Only logged-in viewers can follow. The read reports failure as `ok: false`, but
+  // seeding makes no claim to the viewer — an unseeded Follow button renders unfollowed either
+  // way — so a failed read is deliberately flattened here and degrades to unfollowed.
   const me = await meServer();
-  const followedIds = me ? await listFollowedCollectionIdsServer() : [];
+  const followedRead = me ? await listFollowedCollectionIdsServer() : null;
+  const followedIds = followedRead?.ok ? followedRead.items : [];
 
   // FollowButton self-gates to null when no FollowsProvider is present, so mount the provider only
   // for logged-in viewers. Anonymous viewers render the client WITHOUT it — no Follow button that

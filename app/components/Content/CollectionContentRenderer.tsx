@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react';
 import { useMe } from '@/app/components/auth/MeProvider';
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
+import { useCollectionRailExtras } from '@/app/components/ContentCollection/CollectionRailContext';
 import { InlineEditableText } from '@/app/components/ContentCollection/edit/InlineEditableText';
 import { useInlineEdit } from '@/app/components/ContentCollection/edit/InlineEditContext';
 import { FollowButton } from '@/app/components/Personal/FollowButton';
@@ -29,13 +30,18 @@ import { COVER_IMAGE_CONTENT_ID } from '@/app/utils/contentLayout';
 import {
   buildParallaxWrapperClassName,
   buildWrapperClassName,
+  humanLabel,
   resolveValidDimensions,
 } from '@/app/utils/contentRendererUtils';
 import { slugify } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
 import { manageHref } from '@/app/utils/manageUrl';
 
-import { getClickEligibility, toCollectionDimensions } from './collectionContentRendererUtils';
+import {
+  activatableProps,
+  getClickEligibility,
+  toCollectionDimensions,
+} from './collectionContentRendererUtils';
 import cbStyles from './ContentComponent.module.scss';
 import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
@@ -54,6 +60,21 @@ import { SelectStar } from './SelectStar';
  * {@link ContentParallaxImageModel.collectionId}. The button lives beside the `Tile` rather than
  * inside it, mirroring `CoverCard`: a `<button>` nested in an `<a>` is invalid content. It
  * self-gates on an active `FollowsProvider`, so it resolves to null wherever none is mounted.
+ *
+ * Accessible naming: `overlayText` and `alt` are the only text this component receives. `alt` has
+ * already collapsed the block's alt/title/caption chain through {@link humanLabel}, so it is
+ * authored text or empty — it is never a generic stand-in, which is what lets the empty case be
+ * detected here at all. `overlayText` is raw and routinely a filename (the backend seeds `title`
+ * from the upload), so it goes through the same filter. What survives names both the tile and the
+ * image; what does not leaves each element to say what it does ("View photo") or what it is
+ * ("Photo"), rather than "DSC_4364.webp". There is no per-tile index or location in these props,
+ * so a richer name ("photo 3 of 24") would have to be threaded down from the layout first.
+ *
+ * The image itself goes unnamed (`alt=""`) whenever the tile around it carries the name, which is
+ * exactly when the tile is activatable: `aria-label` on the link or button already describes the
+ * whole tile, and a second copy on the `<img>` only shows up as a duplicate to someone stepping
+ * through elements one at a time. An inert tile has no such wrapper, so there the image keeps the
+ * name.
  */
 export default function CollectionContentRenderer({
   contentId,
@@ -120,6 +141,14 @@ export default function CollectionContentRenderer({
     currentCollectionId,
   });
 
+  const authoredLabel = humanLabel(overlayText, alt);
+  const mediaAlt = hasClickHandler
+    ? ''
+    : (authoredLabel ?? (isCollection ? 'Collection cover' : 'Photo'));
+  const tileActionLabel =
+    authoredLabel ?? (contentType === 'GIF' ? 'View animation' : 'View photo');
+  const cardLinkLabel = authoredLabel ?? 'View collection';
+
   const handleClick = useCallback(() => {
     if (contentType === 'TEXT') return;
     if (isReorderMode) return;
@@ -171,6 +200,7 @@ export default function CollectionContentRenderer({
   }, [contentId, onImageLoadError]);
 
   const collectionFilter = useCollectionFilter();
+  const railExtras = useCollectionRailExtras();
   const inlineEdit = useInlineEdit();
   const me = useMe();
 
@@ -216,11 +246,13 @@ export default function CollectionContentRenderer({
   );
 
   if (contentType === 'TEXT') {
-    // The header rail carries more than text: the filter toolbar and the client-gallery download
-    // row mount into it. A collection with no metadata (no date, locations, description or
-    // siblings — that is `/user`) produces an item-less rail, so bailing on empty `textItems`
-    // alone would throw away the bar. Mirrors the layout-side gate, `forceHeaderRail`.
-    const railHasControls = collectionFilter !== null || (canDownload && Boolean(collectionSlug));
+    // The header rail carries more than text: the filter toolbar, the client-gallery download row
+    // and any page-level rail extras mount into it. A collection with no metadata (no date,
+    // locations, description or siblings — that is `/user`) produces an item-less rail, so bailing
+    // on empty `textItems` alone would throw away all three. Mirrors `forceHeaderRail` on the
+    // layout side.
+    const railHasControls =
+      collectionFilter !== null || Boolean(railExtras) || (canDownload && Boolean(collectionSlug));
     const items = textItems ?? [];
     if (items.length === 0 && !railHasControls) {
       return null;
@@ -391,6 +423,7 @@ export default function CollectionContentRenderer({
             {canDownload && collectionSlug && (
               <ClientGalleryDownload collectionSlug={collectionSlug} />
             )}
+            {railExtras}
           </div>
           {collectionFilter && (
             <div className={cbStyles.filterBarWrapper}>
@@ -449,7 +482,11 @@ export default function CollectionContentRenderer({
           cursor: hasClickHandler ? 'pointer' : 'default',
         }}
       >
-        <div className={cbStyles.imageWrapper} onClick={handleClick}>
+        <div
+          className={cbStyles.imageWrapper}
+          {...activatableProps(hasClickHandler, handleClick)}
+          aria-label={hasClickHandler ? tileActionLabel : undefined}
+        >
           <video
             autoPlay
             loop
@@ -501,7 +538,7 @@ export default function CollectionContentRenderer({
         <Tile
           key={contentId}
           href={`/${hasSlug}`}
-          aria-label={overlayText ?? alt}
+          aria-label={cardLinkLabel}
           className={placeholderClassName}
           style={{ width: placeholderWidth, height: placeholderHeight }}
         >
@@ -514,19 +551,7 @@ export default function CollectionContentRenderer({
       <div
         key={contentId}
         className={placeholderClassName}
-        onClick={hasClickHandler ? handleClick : undefined}
-        role={hasClickHandler ? 'button' : undefined}
-        tabIndex={hasClickHandler ? 0 : undefined}
-        onKeyDown={
-          hasClickHandler
-            ? e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleClick();
-                }
-              }
-            : undefined
-        }
+        {...activatableProps(hasClickHandler, handleClick)}
         style={{
           width: placeholderWidth,
           height: placeholderHeight,
@@ -564,19 +589,7 @@ export default function CollectionContentRenderer({
       <div
         key={contentId}
         className={placeholderClassName}
-        onClick={hasClickHandler ? handleClick : undefined}
-        role={hasClickHandler ? 'button' : undefined}
-        tabIndex={hasClickHandler ? 0 : undefined}
-        onKeyDown={
-          hasClickHandler
-            ? e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleClick();
-                }
-              }
-            : undefined
-        }
+        {...activatableProps(hasClickHandler, handleClick)}
         style={{
           width: placeholderWidth,
           height: placeholderHeight,
@@ -630,7 +643,7 @@ export default function CollectionContentRenderer({
 
   const imageProps = {
     src: imageUrl,
-    alt,
+    alt: mediaAlt,
     width: imageWidth,
     height: imageHeight,
     sizes: `(max-width: 768px) 100vw, ${Math.round(width)}px`,
@@ -710,7 +723,7 @@ export default function CollectionContentRenderer({
         {...wrapperProps}
         {...(enableParallax ? { 'data-parallax-container': '' } : { 'data-image-wrapper': '' })}
       >
-        <Tile href={`/${hasSlug}`} aria-label={overlayText ?? alt}>
+        <Tile href={`/${hasSlug}`} aria-label={cardLinkLabel}>
           <span className={cbStyles.imageWrapper}>{imageWrapperContent}</span>
         </Tile>
         {followButton}
@@ -734,7 +747,11 @@ export default function CollectionContentRenderer({
       {...wrapperProps}
       {...(enableParallax ? { 'data-parallax-container': '' } : { 'data-image-wrapper': '' })}
     >
-      <div className={cbStyles.imageWrapper} onClick={handleClick}>
+      <div
+        className={cbStyles.imageWrapper}
+        {...activatableProps(hasClickHandler, handleClick)}
+        aria-label={hasClickHandler ? tileActionLabel : undefined}
+      >
         {imageWrapperContent}
       </div>
       {showCoverUpdateShortcut && (

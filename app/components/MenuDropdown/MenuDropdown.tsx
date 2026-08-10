@@ -2,12 +2,14 @@
 
 import { CircleX } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { type KeyboardEvent, useEffect, useRef, useState, useTransition } from 'react';
 
 import { About } from '@/app/components/About/About';
 import { ContactForm } from '@/app/components/ContactForm/ContactForm';
 import GitHubIcon from '@/app/components/Icons/GitHubIcon';
 import InstagramIcon from '@/app/components/Icons/InstagramIcon';
+import { Disclosure } from '@/app/components/ui/Disclosure/Disclosure';
+import { NavLink } from '@/app/components/ui/NavLink/NavLink';
 import { BREAKPOINTS } from '@/app/constants';
 import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import { useFetchMe } from '@/app/hooks/useFetchMe';
@@ -24,14 +26,80 @@ interface MenuDropdownProps {
   onClose: () => void;
   pageType?: 'default' | 'manage' | 'collection' | 'collectionsCollection';
   collectionSlug?: string;
+  /** Applied to the overlay root so the trigger can point `aria-controls` at it. */
+  id?: string;
+}
+
+/** Elements the focus trap treats as tabbable (mirrors the shared `Modal`). */
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Skin for the two `Disclosure` rows. No `headingLevel`: these are menu items inside a labelled
+ * `dialog`, not sections of the document outline, so a heading here would be a phantom level.
+ */
+const disclosureClassNames = {
+  header: styles.dropdownMenuItem,
+  toggle: styles.dropdownMenuButton,
+  chevron: styles.disclosureChevron,
+  panel: styles.disclosurePanel,
+};
+
+/**
+ * Hands focus back when the overlay closes.
+ *
+ * The element that opened the menu is preferred, but `.focus()` on a node that has left the
+ * document is a silent no-op that leaves focus on `<body>` — one Tab from there restarts the whole
+ * page. So when the trigger unmounted while the menu was open (a route change that remounts the
+ * header, say), fall back to the first control in the page header: the same corner of the page the
+ * trigger lived in, so the tab order resumes roughly where the user left it.
+ *
+ * If the document has no header either, there is genuinely nothing to restore to and this does
+ * nothing rather than inventing a target.
+ */
+function restoreFocus(previous: HTMLElement | null) {
+  if (previous?.isConnected) {
+    previous.focus();
+    return;
+  }
+  document.querySelector('header')?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
 }
 
 /**
  * Menu Dropdown
  *
- * Full-screen navigation menu with expandable sections for About and Contact.
- * Features body scroll locking, click-outside-to-close on desktop, and
- * social media integration. Manages nested form states and navigation.
+ * Full-screen navigation overlay with expandable sections for About and Contact.
+ *
+ * Destinations are real `NavLink` anchors, so cmd-click / middle-click / open-in-new-tab and
+ * Next's route prefetch all work; `onClick={onClose}` only dismisses the overlay. Only genuine
+ * actions (log in/out, clear cache, the two disclosures) stay `<button>`s.
+ *
+ * Modal semantics are hand-rolled rather than delegated to the shared `Modal`: `Modal` paints a
+ * scrim behind its dialog and sizes the dialog to the backdrop, which would darken the page behind
+ * this menu and break the desktop-only click-outside-to-close. Those are the only two reasons —
+ * `Modal` does not touch the `fullscreen-open` body class (that is `FullScreenModal`'s, applied
+ * outside the primitive). So this owns Escape, body scroll lock, click-outside, focus trap, and
+ * focus restore directly.
+ *
+ * Escape ignores `isComposing` keydowns: dismissing an IME candidate list is a cancel inside the
+ * ContactForm's inputs, not a request to tear the whole menu down and discard the draft.
+ *
+ * About and Contact are the shared `Disclosure` primitive, which owns the generated panel id,
+ * `aria-expanded`, and the `aria-controls` that is emitted only while the panel is mounted. Its
+ * chevron is hidden here (`.disclosureChevron`): the rows are right-aligned display type with no
+ * affordance glyph on any other item, and it is `aria-hidden` decoration, so hiding it costs
+ * nothing a screen reader can hear. The panel wrappers that carry the ids are `display: contents`,
+ * so About/ContactForm stay direct flex children of the scroll container and the layout is
+ * unchanged.
+ *
+ * Clear Cache goes `aria-disabled` rather than `disabled` while its action is in flight. Disabling
+ * the focused button drops focus to `<body>`, and the Tab trap is a handler on the overlay root —
+ * once focus is out there no keydown reaches it and Tab walks the `aria-modal`'d page behind the
+ * overlay. Staying focusable keeps focus inside; the handler guards the pending state itself.
+ *
+ * "Update" links to `/[slug]?manage=1`, the same route the page is already on, so the soft
+ * navigation hands `CollectionPageClient` `editMode=true` without remounting it. No slug falls
+ * back to the create surface.
  *
  * Public items (including Explore — the /explore taxonomy directory is
  * deliberately ungated, see proxy.ts) render for logged-out visitors; admin
@@ -45,8 +113,10 @@ export function MenuDropdown({
   onClose,
   pageType = 'default',
   collectionSlug,
+  id,
 }: MenuDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -78,6 +148,8 @@ export function MenuDropdown({
   };
 
   const handleClearCache = () => {
+    if (isClearing) return;
+
     startClearing(async () => {
       const result = await clearCacheAction();
       if (result.ok) {
@@ -87,68 +159,46 @@ export function MenuDropdown({
     });
   };
 
-  const handleNavigation = {
-    home: () => {
-      router.push('/');
-      onClose();
-    },
-    user: () => {
-      router.push('/user');
-      onClose();
-    },
-    explore: () => {
-      router.push('/explore');
-      onClose();
-    },
-    collections: () => {
-      router.push('/collections');
-      onClose();
-    },
-    create: () => {
-      router.push('/collection/manage');
-      onClose();
-    },
-    update: () => {
-      // Soft-navigate to the same /[slug] route with ?manage=1 so CollectionPageClient is NOT
-      // remounted (no full refresh) — it just receives editMode=true. No-slug falls back to create.
-      router.push(collectionSlug ? manageHref(collectionSlug) : '/collection/manage');
-      onClose();
-    },
-    metadata: () => {
-      router.push('/metadata');
-      onClose();
-    },
-    comments: () => {
-      router.push('/comments');
-      onClose();
-    },
-    roles: () => {
-      router.push('/admin/roles');
-      onClose();
-    },
-    instagram: () => {
-      window.open('https://instagram.com/themancalledzac', '_blank', 'noopener,noreferrer');
-      onClose();
-    },
-    github: () => {
-      window.open('https://github.com/themancalledzac', '_blank', 'noopener,noreferrer');
-      onClose();
-    },
-  };
-
   const handleToggle = {
-    about: () => {
-      setShowAbout(prev => !prev);
+    about: (open: boolean) => {
+      setShowAbout(open);
       setShowContactForm(false);
     },
-    contact: () => {
-      setShowContactForm(prev => !prev);
+    contact: (open: boolean) => {
+      setShowContactForm(open);
       setShowAbout(false);
     },
   };
 
   const handleContactSubmit = () => {
     onClose();
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Tab') return;
+
+    const node = dropdownRef.current;
+    if (!node) return;
+
+    const focusable = [...node.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)];
+    if (focusable.length === 0) {
+      event.preventDefault();
+      return;
+    }
+
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
+    const active = document.activeElement;
+
+    if (event.shiftKey) {
+      if (active === first || active === node || !node.contains(active)) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else if (active === last || !node.contains(active)) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
   // Click outside to close on desktop only
@@ -171,20 +221,33 @@ export function MenuDropdown({
 
   // Escape key to close dropdown
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.isComposing && isOpen) {
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('keydown', handleEscape);
     }
 
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
   useBodyScrollLock(isOpen);
+
+  // Move focus into the overlay on open; hand it back to the trigger on close
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const active = document.activeElement;
+    previouslyFocusedRef.current = active instanceof HTMLElement ? active : null;
+    dropdownRef.current?.focus();
+
+    return () => {
+      restoreFocus(previouslyFocusedRef.current);
+    };
+  }, [isOpen]);
 
   // Reset forms when dropdown closes
   useEffect(() => {
@@ -205,7 +268,16 @@ export function MenuDropdown({
   if (!isOpen) return null;
 
   return (
-    <div className={styles.dropdown} ref={dropdownRef}>
+    <div
+      className={styles.dropdown}
+      ref={dropdownRef}
+      id={id}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Site navigation"
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+    >
       <div className={styles.dropdownCloseButtonWrapper}>
         <button
           type="button"
@@ -220,26 +292,18 @@ export function MenuDropdown({
       <div className={styles.dropdownMenuOptionsWrapper}>
         {pathname !== '/' && (
           <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.home}
-            >
+            <NavLink href="/" className={styles.dropdownMenuLink} onClick={onClose}>
               <span className={styles.dropdownMenuOptions}>Home</span>
-            </button>
+            </NavLink>
           </div>
         )}
 
         {!meLoading && me && (
           <>
             <div className={styles.dropdownMenuItem}>
-              <button
-                type="button"
-                className={styles.dropdownMenuButton}
-                onClick={handleNavigation.user}
-              >
+              <NavLink href="/user" className={styles.dropdownMenuLink} onClick={onClose}>
                 <span className={styles.dropdownMenuOptions}>Me</span>
-              </button>
+              </NavLink>
             </div>
             <div className={styles.dropdownMenuItem}>
               <button type="button" className={styles.dropdownMenuButton} onClick={handleLogout}>
@@ -257,103 +321,81 @@ export function MenuDropdown({
           </div>
         )}
 
-        <div className={styles.dropdownMenuItem}>
-          <button type="button" className={styles.dropdownMenuButton} onClick={handleToggle.about}>
-            <span className={styles.dropdownMenuOptions}>About</span>
-          </button>
-        </div>
+        <Disclosure
+          title={<span className={styles.dropdownMenuOptions}>About</span>}
+          open={showAbout}
+          onOpenChange={handleToggle.about}
+          classNames={disclosureClassNames}
+        >
+          <About />
+        </Disclosure>
 
-        {showAbout && <About />}
-
-        <div className={styles.dropdownMenuItem}>
-          <button
-            type="button"
-            className={styles.dropdownMenuButton}
-            onClick={handleToggle.contact}
-          >
-            <span className={styles.dropdownMenuOptions}>Contact</span>
-          </button>
-        </div>
-
-        {showContactForm && <ContactForm onSubmit={handleContactSubmit} />}
+        <Disclosure
+          title={<span className={styles.dropdownMenuOptions}>Contact</span>}
+          open={showContactForm}
+          onOpenChange={handleToggle.contact}
+          classNames={disclosureClassNames}
+        >
+          <ContactForm onSubmit={handleContactSubmit} />
+        </Disclosure>
 
         <div className={styles.dropdownMenuItem}>
-          <button
-            type="button"
-            className={styles.dropdownMenuButton}
-            onClick={handleNavigation.explore}
-          >
+          <NavLink href="/explore" className={styles.dropdownMenuLink} onClick={onClose}>
             <span className={styles.dropdownMenuOptions}>Explore</span>
-          </button>
+          </NavLink>
         </div>
 
         <div className={styles.dropdownMenuItem}>
-          <button
-            type="button"
-            className={styles.dropdownMenuButton}
-            onClick={handleNavigation.collections}
-          >
+          <NavLink href="/collections" className={styles.dropdownMenuLink} onClick={onClose}>
             <span className={styles.dropdownMenuOptions}>Collections</span>
-          </button>
+          </NavLink>
         </div>
 
         {isAdmin && (
           <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.create}
+            <NavLink
+              href="/collection/manage"
+              className={styles.dropdownMenuLink}
+              onClick={onClose}
             >
               <span className={styles.dropdownMenuOptions}>Create</span>
-            </button>
+            </NavLink>
           </div>
         )}
 
         {isAdmin && pageType === 'collection' && (
           <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.update}
+            <NavLink
+              href={collectionSlug ? manageHref(collectionSlug) : '/collection/manage'}
+              className={styles.dropdownMenuLink}
+              onClick={onClose}
             >
               <span className={styles.dropdownMenuOptions}>Update</span>
-            </button>
+            </NavLink>
           </div>
         )}
 
         {isAdmin && (
           <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.metadata}
-            >
+            <NavLink href="/metadata" className={styles.dropdownMenuLink} onClick={onClose}>
               <span className={styles.dropdownMenuOptions}>Metadata</span>
-            </button>
+            </NavLink>
           </div>
         )}
 
         {isAdmin && (
           <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.comments}
-            >
+            <NavLink href="/comments" className={styles.dropdownMenuLink} onClick={onClose}>
               <span className={styles.dropdownMenuOptions}>Comments</span>
-            </button>
+            </NavLink>
           </div>
         )}
 
         {isAdmin && (
           <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.roles}
-            >
+            <NavLink href="/admin/roles" className={styles.dropdownMenuLink} onClick={onClose}>
               <span className={styles.dropdownMenuOptions}>Roles</span>
-            </button>
+            </NavLink>
           </div>
         )}
 
@@ -369,7 +411,7 @@ export function MenuDropdown({
               type="button"
               className={styles.dropdownMenuButton}
               onClick={handleClearCache}
-              disabled={isClearing}
+              aria-disabled={isClearing || undefined}
             >
               <span className={styles.dropdownMenuOptions}>
                 {isClearing ? 'Clearing…' : 'Clear Cache'}
@@ -382,22 +424,26 @@ export function MenuDropdown({
       <div
         className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons} ${styles.dropdownSocialIconsWrapper}`}
       >
-        <button
-          type="button"
+        <a
+          href="https://instagram.com/themancalledzac"
+          target="_blank"
+          rel="noopener noreferrer"
           className={styles.socialIconButton}
-          onClick={handleNavigation.instagram}
+          onClick={onClose}
           aria-label="Visit Instagram"
         >
           <InstagramIcon size={32} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
+        </a>
+        <a
+          href="https://github.com/themancalledzac"
+          target="_blank"
+          rel="noopener noreferrer"
           className={styles.socialIconButton}
-          onClick={handleNavigation.github}
+          onClick={onClose}
           aria-label="Visit GitHub"
         >
           <GitHubIcon size={32} className={styles.githubIcon} aria-hidden="true" />
-        </button>
+        </a>
       </div>
     </div>
   );

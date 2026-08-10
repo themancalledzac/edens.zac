@@ -1,16 +1,65 @@
 /**
- * Pure helpers for {@link CollectionContentRenderer} — filter-dimension mapping and
- * click-eligibility derivation. Kept out of the component so the JSX stays thin and the logic is
- * unit-testable in isolation. No hooks, no JSX, no side effects. NaN-dimension recovery
- * (`resolveValidDimensions`) lives in `@/app/utils/contentRendererUtils` and is shared with the
- * generic content renderer.
+ * Pure helpers for {@link CollectionContentRenderer} — keyboard activation, filter-dimension
+ * mapping and click-eligibility derivation. Kept out of the component so the JSX stays thin and
+ * the logic is unit-testable in isolation. No hooks, no JSX, no side effects.
+ *
+ * Accessible naming is NOT here: `humanLabel` lives in `@/app/utils/contentRendererUtils` beside
+ * the normalizer that produces the fields it filters, so the grid and the fullscreen viewer share
+ * one answer to "did a person write this?". NaN-dimension recovery (`resolveValidDimensions`)
+ * lives there too, for the same reason.
  */
+
+import { type KeyboardEvent } from 'react';
 
 import { type CollectionInfoOptions } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { type ToolbarDimension } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { type ContentType, type ViewableContent } from '@/app/types/Content';
 import { type ArrayFilterKey } from '@/app/types/GalleryFilter';
 import { dayLabels } from '@/app/utils/collectionDates';
+
+export interface ActivatableProps {
+  onClick?: () => void;
+  role?: 'button';
+  tabIndex?: 0;
+  onKeyDown?: (event: KeyboardEvent<HTMLElement>) => void;
+}
+
+/**
+ * Make a plain element behave like a button for pointer AND keyboard users.
+ *
+ * A content tile cannot be a real `<button>` — it wraps a `next/image` and carries the overlay
+ * chrome — and the slug-navigating variant is already a real `<a>` via `Tile`. What is left is
+ * the tile that opens the fullscreen viewer, which has no href to navigate to.
+ *
+ * Returns nothing when `active` is false, so a tile with no action stays inert rather than
+ * advertising a button role it cannot honour.
+ *
+ * This existed inline in three places in the renderer, and the one that mattered most — the real
+ * image tile, as opposed to its two placeholder fallbacks — was the one that had been missed, so
+ * the entire photo grid was mouse-only.
+ *
+ * A held key still calls `preventDefault` on every repeat (Space must not scroll the page for as
+ * long as it is down) but activates only once. That is deliberately STRICTER than a native
+ * `<button>`, which does re-fire on a held Enter — only Space is single-shot there, and only
+ * because it activates on keyup. Nothing a tile does (open the viewer, select an image) is worth
+ * repeating at the keyboard's auto-repeat rate. Today's `onActivate`s are idempotent, so nothing
+ * observable changed; the guard is here because this is a shared primitive and the next handler
+ * wired to it may not be.
+ */
+export function activatableProps(active: boolean, onActivate: () => void): ActivatableProps {
+  if (!active) return {};
+  return {
+    onClick: onActivate,
+    role: 'button',
+    tabIndex: 0,
+    onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      if (event.repeat) return;
+      onActivate();
+    },
+  };
+}
 
 /**
  * Maps the collection page's CollectionInfoOptions (per-dimension `filterable`

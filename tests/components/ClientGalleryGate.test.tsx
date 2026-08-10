@@ -47,6 +47,21 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
   };
 }
 
+/**
+ * A `validateClientGalleryAccess` that parks in the verifying state until `settle()` is called, so
+ * a test can inspect the form mid-request.
+ */
+function deferredValidate() {
+  let resolveValidate!: (value: { hasAccess: boolean }) => void;
+  mockValidate.mockImplementation(
+    () =>
+      new Promise(resolve => {
+        resolveValidate = resolve;
+      })
+  );
+  return { settle: (value: { hasAccess: boolean }) => resolveValidate(value) };
+}
+
 describe('ClientGalleryGate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -210,14 +225,8 @@ describe('ClientGalleryGate', () => {
     });
   });
 
-  it('disables the submit button while a request is in-flight', async () => {
-    let resolve!: (value: { hasAccess: boolean }) => void;
-    mockValidate.mockImplementation(
-      () =>
-        new Promise(r => {
-          resolve = r;
-        })
-    );
+  it('marks the submit button aria-disabled while a request is in-flight', async () => {
+    const { settle } = deferredValidate();
 
     render(<ClientGalleryGate collection={makeCollection()} />);
 
@@ -227,12 +236,101 @@ describe('ClientGalleryGate', () => {
     fireEvent.click(screen.getByRole('button', { name: /enter gallery/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /verifying/i })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /verifying/i })).toHaveAttribute(
+        'aria-disabled',
+        'true'
+      );
     });
 
-    resolve({ hasAccess: true });
+    settle({ hasAccess: true });
     await waitFor(() => {
       expect(mockRefresh).toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * The gate lives inside a `Modal`, so a control that drops focus on the way into its pending
+   * state drops it onto `<body>` — outside the dialog, from where one Tab walks the page the
+   * password is protecting. Neither control may use the real `disabled` attribute.
+   */
+  describe('verifying state keeps focus inside the dialog', () => {
+    it('leaves the password field focusable and focused — readOnly, not disabled', async () => {
+      const { settle } = deferredValidate();
+
+      render(<ClientGalleryGate collection={makeCollection()} />);
+      const input = screen.getByPlaceholderText('Gallery password') as HTMLInputElement;
+      input.focus();
+      fireEvent.change(input, { target: { value: 'pw' } });
+
+      fireEvent.submit(input.closest('form')!);
+
+      await waitFor(() => expect(input).toHaveAttribute('readonly'));
+
+      // A disabled field is not a focusable area, so this is the assertion that fails if the
+      // verifying state ever goes back to the real attribute and drops focus onto <body>.
+      expect(input).not.toBeDisabled();
+      expect(input).toHaveFocus();
+
+      settle({ hasAccess: false });
+      await waitFor(() => expect(input).not.toHaveAttribute('readonly'));
+    });
+
+    it('keeps the typed password in the field while it is being checked', async () => {
+      const { settle } = deferredValidate();
+
+      render(<ClientGalleryGate collection={makeCollection()} />);
+      const input = screen.getByPlaceholderText('Gallery password') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'pw' } });
+      fireEvent.click(screen.getByRole('button', { name: /enter gallery/i }));
+
+      await waitFor(() => expect(input).toHaveAttribute('readonly'));
+      expect(input.value).toBe('pw');
+      expect(mockValidate).toHaveBeenCalledWith('smith-wedding', 'pw');
+
+      settle({ hasAccess: false });
+      await waitFor(() => expect(input.value).toBe(''));
+    });
+
+    it('leaves the submit button focusable while pending', async () => {
+      const { settle } = deferredValidate();
+
+      render(<ClientGalleryGate collection={makeCollection()} />);
+      fireEvent.change(screen.getByPlaceholderText('Gallery password'), {
+        target: { value: 'pw' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /enter gallery/i }));
+
+      const button = await screen.findByRole('button', { name: /verifying/i });
+      expect(button).not.toBeDisabled();
+
+      // A `disabled` button is not a focusable area: this is the assertion that fails if the
+      // pending state ever goes back to dropping focus on <body>, outside the dialog.
+      button.focus();
+      expect(button).toHaveFocus();
+
+      settle({ hasAccess: false });
+      await waitFor(() => expect(button).not.toHaveAttribute('aria-disabled'));
+    });
+
+    it('ignores a repeat submit while the first is in flight instead of double-posting', async () => {
+      const { settle } = deferredValidate();
+
+      render(<ClientGalleryGate collection={makeCollection()} />);
+      const input = screen.getByPlaceholderText('Gallery password') as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'pw' } });
+      fireEvent.click(screen.getByRole('button', { name: /enter gallery/i }));
+
+      await waitFor(() => expect(mockValidate).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByRole('button', { name: /verifying/i }));
+      fireEvent.submit(input.closest('form')!);
+
+      expect(mockValidate).toHaveBeenCalledTimes(1);
+
+      settle({ hasAccess: false });
+      await waitFor(() =>
+        expect(screen.getByText('Incorrect password. Please try again.')).toBeInTheDocument()
+      );
     });
   });
 

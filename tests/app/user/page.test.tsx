@@ -46,6 +46,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
+import { AccountCard } from '@/app/components/Personal/AccountCard';
+import { AdminCard } from '@/app/components/Personal/AdminCard';
+import { FormError } from '@/app/components/ui/Field/FormError';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
+import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
 import { getAllCollections } from '@/app/lib/api/collections';
@@ -65,7 +70,14 @@ const imageBlock = (id: number) => ({
 });
 const gifBlock = (id: number) => ({ id, contentType: 'GIF' });
 
-/** Walk the rendered element tree and return the first element of the given type's props. */
+/**
+ * Walk the rendered element tree and return the first element of the given type's props.
+ *
+ * `UserSpace` is invoked rather than descended, because the sections live inside it and it renders
+ * the collection stack itself — it has no `children` to walk. It is a plain synchronous server
+ * component with no hooks, so calling it here is safe, and it keeps these assertions end-to-end:
+ * they still check the props the shared stack actually receives, not just what the page forwards.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function findProps(node: any, type: unknown): any {
   if (!node || typeof node !== 'object') return null;
@@ -77,6 +89,7 @@ function findProps(node: any, type: unknown): any {
     return null;
   }
   if (node.type === type) return node.props;
+  if (node.type === UserSpace) return findProps(node.type(node.props), type);
   return node.props?.children ? findProps(node.props.children, type) : null;
 }
 
@@ -104,8 +117,8 @@ function seedApis() {
     coverImage: { id: 42, contentType: 'IMAGE', imageUrl: 'https://cdn/cover.jpg' },
     content: [collectionBlock(1), collectionBlock(2), imageBlock(3), gifBlock(4)],
   });
-  (listSavedImagesServer as jest.Mock).mockResolvedValue([]);
-  (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue([]);
+  (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: true, items: [] });
+  (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: true, items: [] });
   (getAllCollections as jest.Mock).mockResolvedValue([]);
   (resolveSsrViewport as jest.Mock).mockResolvedValue({
     contentWidth: 1200,
@@ -166,13 +179,13 @@ describe('UserPage', () => {
   });
 
   it('passes the saved images for ?tab=saved', async () => {
-    (listSavedImagesServer as jest.Mock).mockResolvedValue([imageBlock(9)]);
+    (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: true, items: [imageBlock(9)] });
     const grid = gridProps(await renderTab('saved'));
     expect(grid.collection.content.map((b: { id: number }) => b.id)).toEqual([9]);
   });
 
   it('wraps followed collections as COLLECTION blocks keyed by referencedCollectionId', async () => {
-    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue([7]);
+    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: true, items: [7] });
     (getAllCollections as jest.Mock).mockResolvedValue([
       { id: 7, slug: 'seven', title: 'Seven' },
       { id: 8, slug: 'eight', title: 'Eight' },
@@ -223,8 +236,8 @@ describe('UserPage', () => {
   });
 
   it('labels all four sections with their counts regardless of the active section', async () => {
-    (listSavedImagesServer as jest.Mock).mockResolvedValue([imageBlock(9)]);
-    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue([7]);
+    (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: true, items: [imageBlock(9)] });
+    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: true, items: [7] });
     (getAllCollections as jest.Mock).mockResolvedValue([{ id: 7, slug: 'seven' }, { id: 8 }]);
     const { sections, activeKey } = sectionProps(await renderTab('saved'));
     expect(sections.map((s: { label: string; count: number }) => [s.label, s.count])).toEqual([
@@ -265,7 +278,10 @@ describe('UserPage', () => {
   it('seeds the saves provider from the saved-images read (no separate ids fetch)', async () => {
     // The full saved images read is the single source for both the Saved section and the seeded
     // SavesProvider ids — there is no separate `/user/saves` ids-only read to duplicate it.
-    (listSavedImagesServer as jest.Mock).mockResolvedValue([imageBlock(7), imageBlock(8)]);
+    (listSavedImagesServer as jest.Mock).mockResolvedValue({
+      ok: true,
+      items: [imageBlock(7), imageBlock(8)],
+    });
     const grid = gridProps(await renderTab());
     expect(grid.initialSavedImageIds).toEqual([7, 8]);
     expect(listSavedImagesServer).toHaveBeenCalledTimes(1);
@@ -296,5 +312,124 @@ describe('UserPage', () => {
     const grid = gridProps(await renderTab('following'));
     expect(grid.collection.content).toEqual([]);
     expect(grid.collection.description).toBe('Photos I have been tagged in.');
+  });
+});
+
+/**
+ * `/user` is the owner's own page and the busier of the two surfaces, and it carried the same
+ * defect the admin path did: `personal.ts` flattened every failed read to `[]`, so a backend
+ * outage told the OWNER "You have not saved any images yet." These assert end-to-end — from the
+ * `personal.ts` mock through `loadUserSpace` to the props and nodes the page actually renders.
+ */
+describe('UserPage — a failed personal read never claims the owner has nothing', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    seedApis();
+  });
+
+  const failSaved = () =>
+    (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: false, items: [] });
+
+  it('says the saved images are unavailable, in the second person', async () => {
+    failSaved();
+    const props = findProps(await renderTab('saved'), FormError);
+    expect(props.children).toBe('Your saved images are unavailable right now.');
+  });
+
+  it('renders no EmptyState, so "You have not saved any images yet." never appears', async () => {
+    failSaved();
+    expect(findProps(await renderTab('saved'), EmptyState)).toBeNull();
+  });
+
+  it('drops the Saved chip’s count rather than badging it 0', async () => {
+    failSaved();
+    const { sections } = sectionProps(await renderTab('saved'));
+    const saved = sections.find((s: { key: string }) => s.key === 'saved');
+    expect(saved.count).toBeUndefined();
+  });
+
+  it('keeps every loaded section’s count intact', async () => {
+    failSaved();
+    const { sections } = sectionProps(await renderTab('saved'));
+    expect(
+      sections
+        .filter((s: { key: string }) => s.key !== 'saved')
+        .map((s: { key: string; count?: number }) => [s.key, s.count])
+    ).toEqual([
+      ['collections', 2],
+      ['images', 2],
+      ['following', 0],
+    ]);
+  });
+
+  it('reports the followed collections unavailable when that read fails', async () => {
+    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: false, items: [] });
+    const props = findProps(await renderTab('following'), FormError);
+    expect(props.children).toBe('Your followed collections are unavailable right now.');
+  });
+
+  it('still renders the genuine empty copy when the read succeeded with nothing', async () => {
+    const props = findProps(await renderTab('saved'), EmptyState);
+    expect(props.children).toBe('You have not saved any images yet.');
+    expect(findProps(await renderTab('saved'), FormError)).toBeNull();
+  });
+
+  it('badges a genuinely empty section with 0, which is a true count', async () => {
+    const { sections } = sectionProps(await renderTab('saved'));
+    const saved = sections.find((s: { key: string }) => s.key === 'saved');
+    expect(saved.count).toBe(0);
+  });
+
+  it('still renders the page rather than 500-ing when both reads fail', async () => {
+    failSaved();
+    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: false, items: [] });
+    expect(gridProps(await renderTab('saved'))).not.toBeNull();
+  });
+});
+
+/**
+ * The Account and Admin cards ride in the collection header rail — the TEXT block leading the
+ * first row, beside the cover — not in a slab below the grid. That rail is where this app already
+ * puts what is *about* a collection (date, location, description, filter bar), so these assert on
+ * the `railExtras` node handed to UserSpace rather than on the page's own children.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const railExtras = (result: unknown): any => findProps(result, UserSpace)?.railExtras ?? null;
+
+describe('UserPage — header rail cards', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    seedApis();
+  });
+
+  it('puts the Account card in the rail, not below the grid', async () => {
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    const result = await renderTab();
+
+    expect(findProps(railExtras(result), AccountCard)).not.toBeNull();
+    // Nothing account-shaped is left loose in the page body.
+    expect(findProps(result.props?.children, AccountCard)).toBeNull();
+  });
+
+  /**
+   * This card is the site's only navigation into /admin: the hub used to be reachable because
+   * localhost redirected `/` to it, and MenuDropdown links to /admin/roles but never the hub.
+   * It must gate on the real `isAdmin` principal — never an environment check — because it is
+   * meant to render in production too.
+   */
+  it('omits the Admin card for an ordinary signed-in user', async () => {
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    expect(findProps(railExtras(await renderTab()), AdminCard)).toBeNull();
+  });
+
+  it('puts the Admin card in the rail for an admin principal', async () => {
+    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
+    expect(findProps(railExtras(await renderTab()), AdminCard)).not.toBeNull();
+  });
+
+  it('links to the admin hub, which nothing else in the nav does', async () => {
+    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
+    expect(renderToStaticMarkup(railExtras(await renderTab()))).toContain('href="/admin"');
   });
 });

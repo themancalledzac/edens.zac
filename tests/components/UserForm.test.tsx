@@ -158,6 +158,15 @@ describe('UserForm', () => {
       expect(onSuccess).toHaveBeenCalledTimes(1);
     });
 
+    it('labels the roles block as a named group, not a heading', async () => {
+      render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
+
+      await waitFor(() => expect(screen.getByRole('group', { name: 'Roles' })).toBeInTheDocument());
+      // The form renders under an <h2> in UserManagementPanel and under an <h1> on
+      // /admin/users/[id]; no fixed heading level is correct in both, so it emits none.
+      expect(screen.queryByRole('heading', { name: /roles/i })).not.toBeInTheDocument();
+    });
+
     it('sends a changed email in the update payload and fires onSuccess', async () => {
       mockUpdateUser.mockResolvedValue({ ...user, email: 'kenneth@y.com' });
 
@@ -213,6 +222,32 @@ describe('UserForm', () => {
       expect(onCancel).toHaveBeenCalledTimes(1);
     });
 
+    // An admin auditing permissions must never be shown "Not in any roles yet." for a read that
+    // failed — both role calls throw on any non-OK response, and `[]` is a different claim.
+    it('reports unknown role membership instead of claiming the user has no roles', async () => {
+      mockListUserRoles.mockRejectedValue(new ApiError('Backend unreachable', 500));
+      mockListRoles.mockResolvedValue([]);
+
+      render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(/could not load roles for this user/i);
+      });
+      expect(screen.queryByText(/not in any roles yet/i)).not.toBeInTheDocument();
+    });
+
+    it('reports the roles failure when the all-roles read is the one that throws', async () => {
+      mockListUserRoles.mockResolvedValue([]);
+      mockListRoles.mockRejectedValue(new ApiError('Backend unreachable', 500));
+
+      render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(/membership is unknown/i);
+      });
+      expect(screen.queryByText(/not in any roles yet/i)).not.toBeInTheDocument();
+    });
+
     it('adding a role calls addUserToRole and refreshes the membership list', async () => {
       mockListUserRoles.mockResolvedValue([]);
       mockListRoles.mockResolvedValue([{ id: 3, name: 'power' }]);
@@ -228,7 +263,7 @@ describe('UserForm', () => {
       // After adding, the refresh reads back the joined role.
       mockListUserRoles.mockResolvedValue([{ roleId: 3, name: 'power' }]);
 
-      fireEvent.change(screen.getByDisplayValue('Add to role...'), { target: { value: '3' } });
+      fireEvent.change(screen.getByDisplayValue('Add to role…'), { target: { value: '3' } });
       fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
 
       await waitFor(() => {

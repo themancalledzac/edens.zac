@@ -1,37 +1,7 @@
-/* AccountCard — email + passkey (Face / Touch ID) enrollment block on /user.
-   Sits below the sectioned content grid; the heading row mirrors the shared
-   filter bar's chip typography and top border so the card reads as a sibling
-   of that bar rather than as a /user-only slab. */
+/* AccountCard — email + passkey (Face / Touch ID) enrollment, on /user.
 
-.card {
-  margin-top: var(--space-5);
-
-  /* Keep the card inset while the content grids above run full-bleed on mobile;
-     reset at the desktop breakpoint where .sections regains its own side padding.
-     Mirrors the shared filter bar (FilterToolbar .toolbar). */
-  padding-inline: var(--page-padding-mobile);
-
-  @media (width >= 768px) {
-    padding-inline: 0;
-  }
-}
-
-.heading {
-  margin: 0;
-  padding: var(--space-2) 0 var(--space-3);
-  border-bottom: 1px solid var(--color-border);
-  font-family: var(--font-serif);
-  font-size: 1rem;
-  font-weight: 500;
-  line-height: 1.1;
-}
-
-.body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-2) 0;
-}
+   The section shell (heading, rule, body, and the `flex: 0 0 auto` the header rail depends on)
+   comes from <Card>. Only the content inside it is styled here. */
 
 .email {
   margin: 0;

@@ -13,8 +13,17 @@ describe('ADMIN_TILES', () => {
     }
   });
 
-  it('points the home tile at /homePage (escape route, not /)', () => {
-    const home = ADMIN_TILES.find(t => t.tileKey === 'home');
-    expect(home?.href).toBe('/homePage');
+  it('carries no home tile — the hub no longer needs its own way back to /', () => {
+    expect(ADMIN_TILES.find(t => t.tileKey === 'home')).toBeUndefined();
+  });
+
+  // buildAdminHubContent derives a tile's slug as `href.replace(/^\//, '')`, and
+  // getClickEligibility gates isSlugNav on `!!hasSlug`. A tile pointing at '/' would
+  // therefore render but navigate nowhere, so no tile may point at the root.
+  it('has no tile pointing at the root, which would derive an empty (falsy) slug', () => {
+    for (const tile of ADMIN_TILES) {
+      expect(tile.href).not.toBe('/');
+      expect(tile.href.replace(/^\//, '').length).toBeGreaterThan(0);
+    }
   });
 });

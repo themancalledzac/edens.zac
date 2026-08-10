@@ -26,6 +26,9 @@ export interface IconButtonProps extends Omit<
  * Icon-only button. The `aria-label` prop is required by the type because there
  * is no visible text to name the control.
  *
+ * As with {@link Button}, `aria-disabled` is painted the same as `disabled`, for controls that
+ * must stay focusable while their action is in flight.
+ *
  * Server-Component-friendly: no hooks, so no 'use client' needed.
  */
 export function IconButton({

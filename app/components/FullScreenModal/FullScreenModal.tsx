@@ -2,22 +2,26 @@
 
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   type Dispatch,
   type MouseEvent,
   type RefObject,
   type SetStateAction,
   useEffect,
+  useId,
 } from 'react';
 
 import { useMe } from '@/app/components/auth/MeProvider';
 import FullScreenDownloadButton from '@/app/components/ClientGalleryDownload/FullScreenDownloadButton';
+import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
+import { IconButton } from '@/app/components/ui/IconButton/IconButton';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import { type CollectionModel } from '@/app/types/Collection';
 import type { ViewableContent } from '@/app/types/Content';
-import { extractAltText } from '@/app/utils/contentRendererUtils';
+import { humanLabel } from '@/app/utils/contentRendererUtils';
 import { formatLongDate } from '@/app/utils/formatDateRange';
 import { canDownloadCollection } from '@/app/utils/galleryAccess';
 
@@ -59,6 +63,25 @@ interface FullScreenModalProps {
   navigateToPrevious: () => void;
 }
 
+/**
+ * Fullscreen photo viewer: the framed photo, its metadata panel, and the overlay chrome
+ * (close / prev / next / position counter / per-image download).
+ *
+ * Controls: close and the metadata toggle are `IconButton`s so they share the design system's
+ * focus ring and coarse-pointer hit area. Both carry a viewer-local `className` that keeps this
+ * surface's lighter scrim (50% black brightening on hover) instead of the `overlay` variant's
+ * token fill — see the doubled-class rules in fullscreen-image.module.scss. The prev/next
+ * chevrons stay hand-rolled: they are non-square rails (40×56 / 56×80) that IconButton's
+ * square-footprint size scale cannot express.
+ *
+ * ARIA: `aria-controls` on the metadata toggle is emitted only while the panel is mounted —
+ * a reference to an absent id is invalid (same convention as EditBar and MenuDropdown).
+ *
+ * The dialog's name and the photo's `alt` both come from `humanLabel`, the same filter the grid
+ * tiles use: the backend seeds `title` from the uploaded filename, so naming the dialog straight
+ * off `title` announced "Fullscreen image: DSC_4364.webp". A filename-shaped value is dropped in
+ * favour of the next authored field, and the generic name when there is none.
+ */
 export function FullScreenModal({
   fullScreenState,
   loadedImageIds,
@@ -111,6 +134,9 @@ export function FullScreenModal({
   // before the early returns to satisfy the rules of hooks; degrades to null outside a MeProvider.
   const me = useMe();
 
+  // Target of the toggle's aria-controls. Only emitted while the panel is mounted (see below).
+  const metadataPanelId = useId();
+
   if (!fullScreenState) return null;
 
   const currentImage = fullScreenState.images[fullScreenState.currentIndex];
@@ -149,9 +175,8 @@ export function FullScreenModal({
     hideImage();
   };
 
-  const accessibleName = currentImage.title
-    ? `Fullscreen image: ${currentImage.title}`
-    : 'Fullscreen image';
+  const viewerTitle = humanLabel(currentImage.title);
+  const accessibleName = viewerTitle ? `Fullscreen image: ${viewerTitle}` : 'Fullscreen image';
 
   const modalContent = (
     <div
@@ -187,13 +212,10 @@ export function FullScreenModal({
               <Image
                 key={currentImage.id}
                 src={currentImage.imageUrl}
-                alt={extractAltText(
-                  currentImage.alt,
-                  currentImage.title,
-                  currentImage.caption,
-                  undefined,
+                alt={
+                  humanLabel(currentImage.alt, currentImage.title, currentImage.caption) ??
                   'Full screen image'
-                )}
+                }
                 width={currentImage.imageWidth || IMAGE.defaultWidth}
                 height={currentImage.imageHeight || IMAGE.defaultHeight}
                 className={`${styles.fullScreenImage} ${currentImageLoaded ? styles.fullScreenImageLoaded : ''}`}
@@ -216,7 +238,7 @@ export function FullScreenModal({
               onClick={e => e.stopPropagation()}
             >
               {showMetadata && (
-                <div className={styles.metadataContent}>
+                <div id={metadataPanelId} className={styles.metadataContent}>
                   {currentImage.title && (
                     <div className={styles.metadataTitle}>{currentImage.title}</div>
                   )}
@@ -311,20 +333,25 @@ export function FullScreenModal({
                       <div className={styles.metadataSectionRow}>
                         <div className={styles.metadataSectionHeader}>Collections</div>
                         <div className={styles.metadataSectionItems}>
-                          {currentImage.collections.map((c, index) => (
-                            <div
-                              key={c.collectionId || index}
-                              className={`${styles.metadataSectionItem} ${c.slug ? styles.metadataSectionItemClickable : ''}`}
-                              onClick={e => {
-                                e.stopPropagation();
-                                if (c.slug) {
-                                  router.push(`/${c.slug}`);
-                                }
-                              }}
-                            >
-                              {c.name || `Collection ${c.collectionId}`}
-                            </div>
-                          ))}
+                          {currentImage.collections.map((c, index) =>
+                            c.slug ? (
+                              <Link
+                                key={c.collectionId || index}
+                                href={`/${c.slug}`}
+                                className={`${styles.metadataSectionItem} ${styles.metadataSectionItemClickable}`}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                {c.name || `Collection ${c.collectionId}`}
+                              </Link>
+                            ) : (
+                              <div
+                                key={c.collectionId || index}
+                                className={styles.metadataSectionItem}
+                              >
+                                {c.name || `Collection ${c.collectionId}`}
+                              </div>
+                            )
+                          )}
                         </div>
                       </div>
                     </div>
@@ -332,15 +359,17 @@ export function FullScreenModal({
                 </div>
               )}
               {!immersive && (
-                <button
+                <IconButton
+                  shape="square"
+                  variant="overlay"
                   className={styles.metadataToggle}
                   onClick={toggleMetadata}
                   aria-label={showMetadata ? 'Hide metadata' : 'Show metadata'}
                   aria-expanded={showMetadata}
-                  type="button"
+                  aria-controls={showMetadata ? metadataPanelId : undefined}
                 >
                   <span aria-hidden="true">{showMetadata ? '✕' : '↖'}</span>
-                </button>
+                </IconButton>
               )}
             </div>
           )}
@@ -382,14 +411,12 @@ export function FullScreenModal({
       )}
 
       {!immersive && (
-        <button
-          type="button"
+        <CloseButton
+          variant="overlay"
           className={styles.closeButton}
           onClick={hideImage}
           aria-label="Close fullscreen image"
-        >
-          <span aria-hidden="true">&#10005;</span>
-        </button>
+        />
       )}
 
       {!immersive && canDownloadCollection(me, collectionData) && !isGif && (
