@@ -21,7 +21,7 @@ import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import { type CollectionModel } from '@/app/types/Collection';
 import type { ViewableContent } from '@/app/types/Content';
-import { extractAltText } from '@/app/utils/contentRendererUtils';
+import { humanLabel } from '@/app/utils/contentRendererUtils';
 import { formatLongDate } from '@/app/utils/formatDateRange';
 import { canDownloadCollection } from '@/app/utils/galleryAccess';
 
@@ -76,6 +76,11 @@ interface FullScreenModalProps {
  *
  * ARIA: `aria-controls` on the metadata toggle is emitted only while the panel is mounted —
  * a reference to an absent id is invalid (same convention as EditBar and MenuDropdown).
+ *
+ * The dialog's name and the photo's `alt` both come from `humanLabel`, the same filter the grid
+ * tiles use: the backend seeds `title` from the uploaded filename, so naming the dialog straight
+ * off `title` announced "Fullscreen image: DSC_4364.webp". A filename-shaped value is dropped in
+ * favour of the next authored field, and the generic name when there is none.
  */
 export function FullScreenModal({
   fullScreenState,
@@ -170,9 +175,8 @@ export function FullScreenModal({
     hideImage();
   };
 
-  const accessibleName = currentImage.title
-    ? `Fullscreen image: ${currentImage.title}`
-    : 'Fullscreen image';
+  const viewerTitle = humanLabel(currentImage.title);
+  const accessibleName = viewerTitle ? `Fullscreen image: ${viewerTitle}` : 'Fullscreen image';
 
   const modalContent = (
     <div
@@ -208,13 +212,10 @@ export function FullScreenModal({
               <Image
                 key={currentImage.id}
                 src={currentImage.imageUrl}
-                alt={extractAltText(
-                  currentImage.alt,
-                  currentImage.title,
-                  currentImage.caption,
-                  undefined,
+                alt={
+                  humanLabel(currentImage.alt, currentImage.title, currentImage.caption) ??
                   'Full screen image'
-                )}
+                }
                 width={currentImage.imageWidth || IMAGE.defaultWidth}
                 height={currentImage.imageHeight || IMAGE.defaultHeight}
                 className={`${styles.fullScreenImage} ${currentImageLoaded ? styles.fullScreenImageLoaded : ''}`}

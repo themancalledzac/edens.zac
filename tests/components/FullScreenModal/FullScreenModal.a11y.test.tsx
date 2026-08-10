@@ -6,7 +6,9 @@
  *    panel, so an open viewer usually had NO accessible name. The name now lives in a
  *    visually-hidden <h2> that always renders.
  *  - the viewer built its alt text from title/caption and ignored `alt`, the one field authored for
- *    screen readers. It now resolves alt exactly like the grid does (extractAltText).
+ *    screen readers. It now resolves alt exactly like the grid does, through `humanLabel`, which
+ *    walks the same alt → title → caption chain and additionally discards filename-shaped values —
+ *    the backend seeds `title` from the upload, so most photos have nothing else.
  */
 import { render, screen } from '@testing-library/react';
 
@@ -73,6 +75,14 @@ describe('FullScreenModal — dialog accessible name', () => {
     // The visible title still renders inside the panel, separate from the dialog's name.
     expect(screen.getByText('Sunset Ridge')).toBeInTheDocument();
   });
+
+  // The backend seeds `title` from the uploaded file, so naming the dialog straight off it
+  // announced "Fullscreen image: DSC underscore 4364 dot webp".
+  it('falls back to the generic name rather than announcing a filename title', () => {
+    renderModal(img(1, { title: 'DSC_4364.webp' }));
+
+    expect(screen.getByRole('dialog', { name: 'Fullscreen image' })).toBeVisible();
+  });
 });
 
 describe('FullScreenModal — image alt text', () => {
@@ -98,6 +108,18 @@ describe('FullScreenModal — image alt text', () => {
 
   it('falls back to a generic description when the image carries no text at all', () => {
     renderModal(img(1, { alt: undefined, title: undefined, caption: undefined }));
+
+    expect(screen.getByAltText('Full screen image')).toBeInTheDocument();
+  });
+
+  it('skips a filename title and uses the authored caption instead', () => {
+    renderModal(img(1, { alt: undefined, title: 'DSC_4364.webp', caption: 'Day three' }));
+
+    expect(screen.getByAltText('Day three')).toBeInTheDocument();
+  });
+
+  it('falls back to the generic description when the only text is a filename', () => {
+    renderModal(img(1, { alt: undefined, title: 'DSC_4364.webp', caption: undefined }));
 
     expect(screen.getByAltText('Full screen image')).toBeInTheDocument();
   });

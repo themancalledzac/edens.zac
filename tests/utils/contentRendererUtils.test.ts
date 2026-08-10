@@ -9,6 +9,7 @@ import {
   buildWrapperClassName,
   determineContentRendererProps,
   determinePositionClassName,
+  humanLabel,
   normalizeContentToRendererProps,
   resolveValidDimensions,
 } from '@/app/utils/contentRendererUtils';
@@ -154,14 +155,16 @@ describe('contentRendererUtils', () => {
         expect(result.alt).toBe('collection-1');
       });
 
-      it('should use default alt text if title and slug missing', () => {
+      // No generic stand-in: a card with nothing authored reports emptiness, so the renderer can
+      // tell it apart from a collection genuinely titled "Collection" and name the link itself.
+      it('leaves alt empty if title and slug are both missing', () => {
         const collection = createCollectionContent(1, {
           title: undefined,
           slug: undefined,
         });
         const result = normalizeContentToRendererProps(collection, 500, 300, 'imageSingle', false);
 
-        expect(result.alt).toBe('Collection');
+        expect(result.alt).toBe('');
       });
     });
 
@@ -266,7 +269,19 @@ describe('contentRendererUtils', () => {
           caption: undefined,
         });
         const result4 = normalizeContentToRendererProps(image4, 500, 300, 'imageSingle', false);
-        expect(result4.alt).toBe('Image');
+        expect(result4.alt).toBe('');
+      });
+
+      // The whole chain is filename-shaped, which is the normal case for an untouched upload.
+      it('leaves alt empty when every field in the chain is a camera filename', () => {
+        const image = createImageContent(1, {
+          alt: undefined,
+          title: 'DSC_4364.webp',
+          caption: '_MG_1234.CR2',
+        });
+        const result = normalizeContentToRendererProps(image, 500, 300, 'imageSingle', false);
+
+        expect(result.alt).toBe('');
       });
 
       it('should preserve overlayText', () => {
@@ -304,7 +319,7 @@ describe('contentRendererUtils', () => {
         expect(result.imageHeight).toBe(800);
       });
 
-      it('should extract alt text with GIF default', () => {
+      it('leaves alt empty for an untitled GIF', () => {
         const gif = createGifContent(1, {
           alt: undefined,
           title: undefined,
@@ -312,7 +327,7 @@ describe('contentRendererUtils', () => {
         });
         const result = normalizeContentToRendererProps(gif, 500, 300, 'imageSingle', false);
 
-        expect(result.alt).toBe('GIF');
+        expect(result.alt).toBe('');
       });
 
       it('should use gifUrlWeb for the in-row imageUrl when present', () => {
@@ -782,5 +797,115 @@ describe('resolveValidDimensions', () => {
     expect(
       resolveValidDimensions({ width: Number.NaN, height: 200, imageWidth: 0, imageHeight: 0 })
     ).toEqual({ width: 300, height: 200 });
+  });
+});
+
+/**
+ * The single decision point for "did a person write this?". It lives here, beside the normalizer
+ * that feeds it, because the grid and the fullscreen viewer must answer the question identically —
+ * and because a generic fallback invented upstream of this filter is indistinguishable from
+ * authored text downstream of it, which is how "Image, button" reached production.
+ */
+describe('humanLabel', () => {
+  describe('machine-generated labels are discarded', () => {
+    it.each([
+      ['a camera stem with a delivery extension', 'DSC_4364.webp'],
+      ['a bare counter with an extension', '113994030006-2.webp'],
+      ['a slugified filename', 'santorini-sunset.jpeg'],
+      ['a hyphenated stem', 'IMG-2031'],
+      ['a leading-underscore stem', '_DSC4364'],
+      ['a Fuji stem', 'DSCF1234'],
+      ['a Pixel stem', 'PXL_20240712'],
+      ['a Pixel stem with a time suffix', 'PXL_20240712_141530'],
+      ['a Panasonic stem', 'P1010042'],
+      ['a GoPro stem', 'GOPR0123'],
+      ['a DJI stem', 'DJI_0001'],
+      ['a bare timestamp', '20240712_141530'],
+      ['surrounding whitespace', '  DSC_4364.webp  '],
+    ])('drops %s (%s)', (_case, value) => {
+      expect(humanLabel(value)).toBeUndefined();
+    });
+
+    // Canon's stem starts with the underscore the `^_?` used to swallow, leaving nothing to match,
+    // and its raw sibling files were absent from the extension list. Both had to be wrong for
+    // `_MG_1234.CR2` to be announced letter by letter, and both were.
+    it.each(['_MG_1234.CR2', '_MG_1234', 'MG_1234'])('drops the Canon stem %s', value => {
+      expect(humanLabel(value)).toBeUndefined();
+    });
+
+    it.each(['IMG_1234.cr2', 'IMG_1234.nef', 'IMG_1234.arw', 'IMG_1234.orf', 'IMG_1234.rw2'])(
+      'drops the raw file %s',
+      value => {
+        expect(humanLabel(value)).toBeUndefined();
+      }
+    );
+  });
+
+  /**
+   * The regression guard. Every one of these is a label a person could plausibly write, and each
+   * sits close enough to a camera stem that a looser rule would eat it.
+   */
+  describe('authored labels survive untouched', () => {
+    it.each([
+      'Sunset Ridge',
+      'Image 2',
+      'Low sun over a granite ridge',
+      'Lisbon',
+      '1984',
+      '2026',
+      'Studio 54',
+      'Imagined',
+      'IMG Worldwide',
+      'P90 rifle',
+      'P1000 zoom test',
+      'DJI Phantom review',
+    ])('keeps %s', value => {
+      expect(humanLabel(value)).toBe(value);
+    });
+  });
+
+  /**
+   * A camera stem is a PREFIX, not the whole label. Anchoring only at `^` and rejecting the match
+   * threw away the half a person had typed; the stem is stripped and the remainder kept instead.
+   */
+  describe('a renamed file keeps the half a person typed', () => {
+    it.each([
+      ['IMG_20260101 sunset over the bay', 'sunset over the bay'],
+      ['DSC_4364 - Low sun over a granite ridge', 'Low sun over a granite ridge'],
+      ['_DSC4364_Lisbon rooftops', 'Lisbon rooftops'],
+    ])('reduces %s to %s', (value, expected) => {
+      expect(humanLabel(value)).toBe(expected);
+    });
+
+    it.each([
+      ['counter debris', 'PXL_20240712_141530'],
+      ['a one-character suffix', 'DSC_4364 a'],
+      ['a bare version marker', 'IMG_2031-2'],
+    ])('rejects %s as too slight to announce (%s)', (_case, value) => {
+      expect(humanLabel(value)).toBeUndefined();
+    });
+  });
+
+  describe('candidate walking', () => {
+    it('returns the first authored candidate', () => {
+      expect(humanLabel('Sunset Ridge', 'Day three')).toBe('Sunset Ridge');
+    });
+
+    it('falls through a filename to the next authored candidate', () => {
+      expect(humanLabel('DSC_4364.webp', 'Sunset Ridge')).toBe('Sunset Ridge');
+    });
+
+    it('returns undefined when every candidate is a filename', () => {
+      expect(humanLabel('DSC_4364.webp', 'IMG-2031')).toBeUndefined();
+    });
+
+    it('skips blank, whitespace-only, null and undefined candidates', () => {
+      expect(humanLabel('', '   ', null, undefined, 'Sunset Ridge')).toBe('Sunset Ridge');
+      expect(humanLabel('', '   ', null)).toBeUndefined();
+    });
+
+    it('trims the label it returns', () => {
+      expect(humanLabel('  Sunset Ridge  ')).toBe('Sunset Ridge');
+    });
   });
 });

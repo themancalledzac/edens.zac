@@ -1,9 +1,12 @@
 /**
- * Pure helpers for {@link CollectionContentRenderer} — filter-dimension mapping and
- * click-eligibility derivation. Kept out of the component so the JSX stays thin and the logic is
- * unit-testable in isolation. No hooks, no JSX, no side effects. NaN-dimension recovery
- * (`resolveValidDimensions`) lives in `@/app/utils/contentRendererUtils` and is shared with the
- * generic content renderer.
+ * Pure helpers for {@link CollectionContentRenderer} — keyboard activation, filter-dimension
+ * mapping and click-eligibility derivation. Kept out of the component so the JSX stays thin and
+ * the logic is unit-testable in isolation. No hooks, no JSX, no side effects.
+ *
+ * Accessible naming is NOT here: `humanLabel` lives in `@/app/utils/contentRendererUtils` beside
+ * the normalizer that produces the fields it filters, so the grid and the fullscreen viewer share
+ * one answer to "did a person write this?". NaN-dimension recovery (`resolveValidDimensions`)
+ * lives there too, for the same reason.
  */
 
 import { type KeyboardEvent } from 'react';
@@ -34,6 +37,14 @@ export interface ActivatableProps {
  * This existed inline in three places in the renderer, and the one that mattered most — the real
  * image tile, as opposed to its two placeholder fallbacks — was the one that had been missed, so
  * the entire photo grid was mouse-only.
+ *
+ * A held key still calls `preventDefault` on every repeat (Space must not scroll the page for as
+ * long as it is down) but activates only once. That is deliberately STRICTER than a native
+ * `<button>`, which does re-fire on a held Enter — only Space is single-shot there, and only
+ * because it activates on keyup. Nothing a tile does (open the viewer, select an image) is worth
+ * repeating at the keyboard's auto-repeat rate. Today's `onActivate`s are idempotent, so nothing
+ * observable changed; the guard is here because this is a shared primitive and the next handler
+ * wired to it may not be.
  */
 export function activatableProps(active: boolean, onActivate: () => void): ActivatableProps {
   if (!active) return {};
@@ -42,10 +53,10 @@ export function activatableProps(active: boolean, onActivate: () => void): Activ
     role: 'button',
     tabIndex: 0,
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        onActivate();
-      }
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      if (event.repeat) return;
+      onActivate();
     },
   };
 }

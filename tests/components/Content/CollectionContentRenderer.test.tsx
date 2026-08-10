@@ -8,7 +8,13 @@ import {
   type InlineEditContextValue,
   InlineEditProvider,
 } from '@/app/components/ContentCollection/edit/InlineEditContext';
-import type { TextBlockItem } from '@/app/types/Content';
+import type { AnyContentModel, TextBlockItem } from '@/app/types/Content';
+import { normalizeContentToRendererProps } from '@/app/utils/contentRendererUtils';
+import {
+  createCollectionContent,
+  createGifContent,
+  createImageContent,
+} from '@/tests/fixtures/contentFixtures';
 
 const pushMock = jest.fn();
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: pushMock }) }));
@@ -488,6 +494,175 @@ describe('CollectionContentRenderer — the image tile is keyboard operable', ()
   it('stays inert when the tile has no action', () => {
     render(<CollectionContentRenderer {...imageProps} />);
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * What the tile is called. Making tiles tabbable turned every photo into an announced control, and
+ * the name it announced was whatever `alt` collapsed to — which for an image the backend titled
+ * from its upload is the raw filename ("DSC_4364.webp, button"). Authored text still wins; a
+ * filename is replaced by the action the tile performs.
+ */
+describe('CollectionContentRenderer — the tile never announces a filename', () => {
+  const filenameProps = {
+    ...baseProps,
+    contentType: 'IMAGE' as const,
+    imageUrl: 'https://cdn.example/DSC_4364.webp',
+    alt: 'DSC_4364.webp',
+  };
+
+  const openable = { enableFullScreenView: true, onFullScreenImageClick: jest.fn() };
+
+  it('names a filename-titled tile after its action', () => {
+    render(<CollectionContentRenderer {...filenameProps} {...openable} />);
+
+    expect(screen.getByRole('button', { name: 'View photo' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'DSC_4364.webp' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the filename off the image alt too, on an inert tile with no wrapper label', () => {
+    render(<CollectionContentRenderer {...filenameProps} />);
+
+    expect(screen.getByAltText('Photo')).toBeInTheDocument();
+    expect(screen.queryByAltText('DSC_4364.webp')).not.toBeInTheDocument();
+  });
+
+  it('names an activatable tile from the authored description', () => {
+    render(
+      <CollectionContentRenderer
+        {...filenameProps}
+        alt="Low sun over a granite ridge"
+        {...openable}
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Low sun over a granite ridge' })
+    ).toBeInTheDocument();
+  });
+
+  // aria-label on the tile already describes everything inside it. Repeating the string on the
+  // <img> is invisible in normal reading (the label overrides the subtree) but reads as a stutter
+  // to anyone stepping through elements one at a time.
+  it('leaves the image unnamed when the tile around it carries the name', () => {
+    const { container } = render(
+      <CollectionContentRenderer
+        {...filenameProps}
+        alt="Low sun over a granite ridge"
+        {...openable}
+      />
+    );
+
+    expect(container.querySelector('img')).toHaveAttribute('alt', '');
+    expect(screen.queryByAltText('Low sun over a granite ridge')).not.toBeInTheDocument();
+  });
+
+  it('prefers the overlay caption over a filename alt', () => {
+    render(
+      <CollectionContentRenderer {...filenameProps} overlayText="Sunset Ridge" {...openable} />
+    );
+
+    expect(screen.getByRole('button', { name: 'Sunset Ridge' })).toBeInTheDocument();
+  });
+
+  it('names an animation tile after its own action', () => {
+    render(
+      <CollectionContentRenderer
+        {...filenameProps}
+        contentType="GIF"
+        imageUrl="https://cdn.example/IMG_2031.mp4"
+        alt="IMG_2031.mp4"
+        {...openable}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'View animation' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * The same contract, driven through the chain production actually uses: a content MODEL, run
+ * through `normalizeContentToRendererProps`, rendered from the props that come out.
+ *
+ * Handing `alt` to the component directly — as every test above does — silently skips the step
+ * that broke it. The normalizer used to collapse a block's alt → title → caption chain onto the
+ * literal strings 'Image', 'Collection' and 'GIF' when the block carried no text, and those are
+ * not filename-shaped, so the naming filter passed them straight through as if a person had typed
+ * them. A tile with nothing authored anywhere announced "Image, button" and its `<img>` said
+ * `alt="Image"`; the fallbacks below were unreachable in production while every test of them
+ * passed.
+ */
+describe('CollectionContentRenderer — naming through the real normalizer', () => {
+  const openable = { enableFullScreenView: true, onFullScreenImageClick: jest.fn() };
+
+  const renderContent = (content: AnyContentModel, extra: Record<string, unknown> = {}) =>
+    render(
+      <CollectionContentRenderer
+        {...normalizeContentToRendererProps(content, 300, 200, 'imageSingle', false)}
+        {...extra}
+      />
+    );
+
+  const untitledImage = () =>
+    createImageContent(1, {
+      alt: undefined,
+      title: undefined,
+      caption: undefined,
+      overlayText: undefined,
+    });
+
+  it('names a text-less image tile after its action, not "Image"', () => {
+    renderContent(untitledImage(), openable);
+
+    expect(screen.getByRole('button', { name: 'View photo' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Image' })).not.toBeInTheDocument();
+  });
+
+  it('gives a text-less inert image tile the generic subject alt, not "Image"', () => {
+    renderContent(untitledImage());
+
+    expect(screen.getByAltText('Photo')).toBeInTheDocument();
+    expect(screen.queryByAltText('Image')).not.toBeInTheDocument();
+  });
+
+  it('names a text-less GIF tile after its action, not "GIF"', () => {
+    renderContent(
+      createGifContent(1, { alt: undefined, title: undefined, caption: undefined }),
+      openable
+    );
+
+    expect(screen.getByRole('button', { name: 'View animation' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'GIF' })).not.toBeInTheDocument();
+  });
+
+  it('gives a title-less, slug-less collection card the cover alt, not "Collection"', () => {
+    renderContent(createCollectionContent(1, { title: undefined, slug: undefined }));
+
+    expect(screen.getByAltText('Collection cover')).toBeInTheDocument();
+    expect(screen.queryByAltText('Collection')).not.toBeInTheDocument();
+  });
+
+  it('still announces a filename title as its action', () => {
+    renderContent(createImageContent(1, { alt: undefined, title: 'DSC_4364.webp' }), openable);
+
+    expect(screen.getByRole('button', { name: 'View photo' })).toBeInTheDocument();
+  });
+
+  // Provenance, not string shape: the fix must not blacklist the word. A photo a person genuinely
+  // titled "Image" is named "Image", while a photo with no title at all is not.
+  it('keeps a photo a person actually titled "Image"', () => {
+    renderContent(createImageContent(1, { alt: undefined, title: 'Image' }), openable);
+
+    expect(screen.getByRole('button', { name: 'Image' })).toBeInTheDocument();
+  });
+
+  it('keeps the authored title when a person renamed the camera file around it', () => {
+    renderContent(
+      createImageContent(1, { alt: undefined, title: 'IMG_20260101 sunset over the bay' }),
+      openable
+    );
+
+    expect(screen.getByRole('button', { name: 'sunset over the bay' })).toBeInTheDocument();
   });
 });
 
