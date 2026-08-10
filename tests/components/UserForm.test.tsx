@@ -1,11 +1,18 @@
 /**
  * Tests for UserForm — the reusable inline create/edit user form.
  *
- * Create mode: collects email + display name, calls createUser, shows the copyable invite link,
- * and "Done" fires onSuccess. Validation + 409 surface inline (role="alert").
+ * Create mode: collects email + name, calls createUser, shows the copyable invite link, and "Done"
+ * fires onSuccess. Validation + 409 surface inline (role="alert").
  * Edit mode: prefills fields (email included — it is editable), saves email + displayName +
  * status + description via updateUser, requires a non-empty email, surfaces 409 email conflicts
  * inline, and Cancel fires onCancel.
+ *
+ * Role membership moved to UserRolesSection and is covered in that component's own suite; what
+ * remains here is the form's end of the contract — that edit mode mounts the section and create
+ * mode does not.
+ *
+ * This form backs the /admin hub panel only. The /admin/users/[id] page does not use it: its
+ * fields are inline-editable in place (see UserDetailCard), with no form and no submit step.
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -36,10 +43,6 @@ const mockCreateUser = usersApi.createUser as jest.MockedFunction<typeof usersAp
 const mockUpdateUser = usersApi.updateUser as jest.MockedFunction<typeof usersApi.updateUser>;
 const mockListUserRoles = rolesApi.listUserRoles as jest.MockedFunction<
   typeof rolesApi.listUserRoles
->;
-const mockListRoles = rolesApi.listRoles as jest.MockedFunction<typeof rolesApi.listRoles>;
-const mockAddUserToRole = rolesApi.addUserToRole as jest.MockedFunction<
-  typeof rolesApi.addUserToRole
 >;
 
 // jsdom does not implement navigator.clipboard — stub it (InviteLinkResult uses it).
@@ -131,12 +134,12 @@ describe('UserForm', () => {
 
       render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
 
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText('Email');
       expect(emailInput).toHaveValue('ken@x.com');
       expect(emailInput).not.toHaveAttribute('readonly');
-      expect(screen.getByLabelText(/display name/i)).toHaveValue('Ken');
+      expect(screen.getByLabelText('Name')).toHaveValue('Ken');
 
-      fireEvent.change(screen.getByLabelText(/display name/i), {
+      fireEvent.change(screen.getByLabelText('Name'), {
         target: { value: 'Kenneth' },
       });
       fireEvent.change(screen.getByLabelText(/status/i), {
@@ -158,13 +161,21 @@ describe('UserForm', () => {
       expect(onSuccess).toHaveBeenCalledTimes(1);
     });
 
-    it('labels the roles block as a named group, not a heading', async () => {
+    // Membership behaviour is UserRolesSection's, and is covered there. What belongs to the form is
+    // that edit mode mounts it for the user being edited — and that create mode does not, since
+    // there is no user id to hang membership on until the account exists.
+    it('mounts the roles section for the edited user', async () => {
       render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
 
       await waitFor(() => expect(screen.getByRole('group', { name: 'Roles' })).toBeInTheDocument());
-      // The form renders under an <h2> in UserManagementPanel and under an <h1> on
-      // /admin/users/[id]; no fixed heading level is correct in both, so it emits none.
-      expect(screen.queryByRole('heading', { name: /roles/i })).not.toBeInTheDocument();
+      expect(mockListUserRoles).toHaveBeenCalledWith(8);
+    });
+
+    it('omits the roles section in create mode', () => {
+      render(<UserForm mode="create" onSuccess={onSuccess} onCancel={onCancel} />);
+
+      expect(screen.queryByRole('group', { name: 'Roles' })).not.toBeInTheDocument();
+      expect(mockListUserRoles).not.toHaveBeenCalled();
     });
 
     it('sends a changed email in the update payload and fires onSuccess', async () => {
@@ -220,55 +231,6 @@ describe('UserForm', () => {
       render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
       fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
       expect(onCancel).toHaveBeenCalledTimes(1);
-    });
-
-    // An admin auditing permissions must never be shown "Not in any roles yet." for a read that
-    // failed — both role calls throw on any non-OK response, and `[]` is a different claim.
-    it('reports unknown role membership instead of claiming the user has no roles', async () => {
-      mockListUserRoles.mockRejectedValue(new ApiError('Backend unreachable', 500));
-      mockListRoles.mockResolvedValue([]);
-
-      render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
-
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent(/could not load roles for this user/i);
-      });
-      expect(screen.queryByText(/not in any roles yet/i)).not.toBeInTheDocument();
-    });
-
-    it('reports the roles failure when the all-roles read is the one that throws', async () => {
-      mockListUserRoles.mockResolvedValue([]);
-      mockListRoles.mockRejectedValue(new ApiError('Backend unreachable', 500));
-
-      render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
-
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent(/membership is unknown/i);
-      });
-      expect(screen.queryByText(/not in any roles yet/i)).not.toBeInTheDocument();
-    });
-
-    it('adding a role calls addUserToRole and refreshes the membership list', async () => {
-      mockListUserRoles.mockResolvedValue([]);
-      mockListRoles.mockResolvedValue([{ id: 3, name: 'power' }]);
-      mockAddUserToRole.mockResolvedValue();
-
-      render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
-
-      // Wait for the add-role dropdown to be populated from listRoles (silences act() warning).
-      await waitFor(() => {
-        expect(screen.getByRole('option', { name: 'power' })).toBeInTheDocument();
-      });
-
-      // After adding, the refresh reads back the joined role.
-      mockListUserRoles.mockResolvedValue([{ roleId: 3, name: 'power' }]);
-
-      fireEvent.change(screen.getByDisplayValue('Add to role…'), { target: { value: '3' } });
-      fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
-
-      await waitFor(() => {
-        expect(mockAddUserToRole).toHaveBeenCalledWith(8, 3);
-      });
     });
   });
 });

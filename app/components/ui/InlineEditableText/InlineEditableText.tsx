@@ -16,6 +16,16 @@ export interface InlineEditableTextProps {
   onCommit: (value: string) => void;
   /** Class applied to the read-only element so it matches the surrounding text. */
   readOnlyClassName?: string;
+  /**
+   * Class applied to the control while editing, alongside the default editor class.
+   *
+   * The counterpart to {@link readOnlyClassName}, and the way a caller makes the swap invisible.
+   * `Input`/`Textarea` ship a bordered, padded box at a fixed height, so by default entering edit
+   * mode visibly redraws the field. A caller that wants typing to look like reading — the admin
+   * user detail surface does — passes a class here that strips the box and inherits the read
+   * state's own typography, leaving the caret as the only difference.
+   */
+  editorClassName?: string;
   placeholder?: string;
   ariaLabel?: string;
 }
@@ -23,12 +33,17 @@ export interface InlineEditableTextProps {
 /**
  * Read-only text that turns into an Input or Textarea on click/focus. Commits via onCommit on
  * blur and Enter (Shift+Enter inserts a newline in textarea); Escape reverts and exits.
+ *
+ * There is no separate "edit mode" to enter first: the value IS the control. Callers that want the
+ * transition to be visually silent as well as modeless pair {@link readOnlyClassName} with
+ * {@link editorClassName} so both states resolve to the same box.
  */
 export function InlineEditableText({
   value,
   as,
   onCommit,
   readOnlyClassName,
+  editorClassName,
   placeholder,
   ariaLabel,
 }: InlineEditableTextProps) {
@@ -93,6 +108,7 @@ export function InlineEditableText({
     );
   }
 
+  const editorClasses = [styles.editor, editorClassName].filter(Boolean).join(' ');
   const sharedProps = {
     autoFocus: true,
     value: draft,
@@ -105,9 +121,9 @@ export function InlineEditableText({
   };
 
   return as === 'textarea' ? (
-    <Textarea {...sharedProps} className={styles.editor} />
+    <Textarea {...sharedProps} className={editorClasses} />
   ) : (
-    <Input {...sharedProps} className={styles.editor} />
+    <Input {...sharedProps} className={editorClasses} />
   );
 }
 

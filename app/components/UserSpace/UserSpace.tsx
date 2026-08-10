@@ -31,8 +31,8 @@ export interface UserSpaceProps {
   ssrViewport: SsrViewport | null;
   /**
    * Page-level content for the header rail, beside the cover image. This is where the things that
-   * are *about* the space go — `/user`'s Account and Admin cards, the admin view's "whose space
-   * is this" note — rather than in a slab below the grid.
+   * are *about* the space go — `/user`'s Account and Admin cards, the admin view's role
+   * membership — rather than in a slab below the grid.
    */
   railExtras?: ReactNode;
 }

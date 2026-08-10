@@ -219,6 +219,100 @@ describe('CollectionContentRenderer — TEXT branch inline edit context', () => 
     fireEvent.click(screen.getByRole('button', { name: 'Dolomites' }));
     expect(onEditLocation).toHaveBeenCalledTimes(1);
   });
+
+  // The admin user rail mounts this same context for a PERSON, which has no locations. Gating the
+  // location affordance on `inlineEdit` alone put an "Add location" button on a user's profile.
+  it('omits the location affordance when the surface supplies no onEditLocation', () => {
+    const ctx: InlineEditContextValue = {
+      title: 'Cara',
+      description: 'Wedding client',
+      onCommitField: jest.fn(),
+    };
+
+    render(
+      <InlineEditProvider value={ctx}>
+        <CollectionContentRenderer
+          {...baseProps}
+          textItems={[{ type: 'description', value: 'Wedding client' }]}
+        />
+      </InlineEditProvider>
+    );
+
+    expect(screen.queryByRole('button', { name: /add location/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Collection title')).toHaveTextContent('Cara');
+  });
+
+  it('renames the two text fields and pins an aside when the surface asks it to', () => {
+    const ctx: InlineEditContextValue = {
+      title: 'Cara',
+      description: 'Wedding client',
+      onCommitField: jest.fn(),
+      titleLabel: 'Name',
+      descriptionLabel: 'Description',
+      titleAside: <span data-testid="status-slot">ACTIVE</span>,
+      beforeDescription: <span data-testid="email-slot">cara@x.com</span>,
+    };
+
+    render(
+      <InlineEditProvider value={ctx}>
+        <CollectionContentRenderer
+          {...baseProps}
+          textItems={[{ type: 'description', value: 'Wedding client' }]}
+        />
+      </InlineEditProvider>
+    );
+
+    expect(screen.getByLabelText('Name')).toHaveTextContent('Cara');
+    expect(screen.getByLabelText('Description')).toHaveTextContent('Wedding client');
+    expect(screen.queryByLabelText('Collection title')).not.toBeInTheDocument();
+    expect(screen.getByTestId('status-slot')).toBeInTheDocument();
+    expect(screen.getByTestId('email-slot')).toBeInTheDocument();
+  });
+
+  // The admin user rail leads with the email: the space's cover already carries the person's name,
+  // so the title slot takes the surface's own node instead of the editable title.
+  it('lets titleLead take the leading slot instead of the title', () => {
+    const ctx: InlineEditContextValue = {
+      title: 'Cara',
+      description: 'Wedding client',
+      onCommitField: jest.fn(),
+      titleLabel: 'Name',
+      titleLead: <span data-testid="email-lead">cara@x.com</span>,
+      titleAside: <span data-testid="status-slot">ACTIVE</span>,
+    };
+
+    render(
+      <InlineEditProvider value={ctx}>
+        <CollectionContentRenderer
+          {...baseProps}
+          textItems={[{ type: 'description', value: 'Wedding client' }]}
+        />
+      </InlineEditProvider>
+    );
+
+    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
+    expect(screen.getByTestId('email-lead')).toBeInTheDocument();
+    expect(screen.getByTestId('status-slot')).toBeInTheDocument();
+  });
+
+  it('still renders the editable title when no titleLead is supplied', () => {
+    const ctx: InlineEditContextValue = {
+      title: 'My Trip',
+      description: 'A trip writeup',
+      onCommitField: jest.fn(),
+    };
+
+    render(
+      <InlineEditProvider value={ctx}>
+        <CollectionContentRenderer
+          {...baseProps}
+          textItems={[{ type: 'description', value: 'A trip writeup' }]}
+        />
+      </InlineEditProvider>
+    );
+
+    expect(screen.getByLabelText('Collection title')).toHaveTextContent('My Trip');
+  });
 });
 
 describe('CollectionContentRenderer — coverless collection tile (regression)', () => {

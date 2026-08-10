@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 
 import { InviteLinkResult } from '@/app/components/InviteLinkResult/InviteLinkResult';
 import { Button } from '@/app/components/ui/Button/Button';
@@ -9,21 +8,23 @@ import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
 import { Textarea } from '@/app/components/ui/Field/Textarea';
-import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { ApiError } from '@/app/lib/api/core';
-import { addUserToRole, listRoles, listUserRoles, removeUserFromRole } from '@/app/lib/api/roles';
 import { createUser, updateUser } from '@/app/lib/api/users';
-import { type RoleSummary, type UserRoleRow } from '@/app/types/Role';
 import { type AdminUserSummary, type UserStatus } from '@/app/types/User';
-import { logger } from '@/app/utils/logger';
 
 import styles from './UserForm.module.scss';
+import { UserRolesSection } from './UserRolesSection';
 
 const STATUS_OPTIONS: UserStatus[] = ['INVITED', 'ACTIVE', 'DISABLED'];
 
+interface UserFormCommonProps {
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
 export type UserFormProps =
-  | { mode: 'create'; onSuccess: () => void; onCancel: () => void }
-  | { mode: 'edit'; user: AdminUserSummary; onSuccess: () => void; onCancel: () => void };
+  | ({ mode: 'create' } & UserFormCommonProps)
+  | ({ mode: 'edit'; user: AdminUserSummary } & UserFormCommonProps);
 
 /**
  * Reusable inline form for creating or editing a user. In `create` mode it collects email + display
@@ -32,32 +33,24 @@ export type UserFormProps =
  * user owns it), display name, status, and description via {@link updateUser}. Designed to live
  * inside `UserManagementPanel`'s body, not a modal.
  *
- * A failed roles read surfaces as `rolesError` rather than an empty list. Both role calls throw
- * `ApiError` out of `fetchAdminGetApi` on any non-OK response, and substituting `[]` there would
- * tell an admin auditing permissions that the user is "Not in any roles yet." while also hiding
- * the add-role control (it gates on `availableRoles.length`) — a confident, wrong answer about
- * who can see what. Unknown membership is reported as unknown.
+ * Field order is Name (+ Status beside it), Email, Description, Roles — identity first, then how
+ * to reach them, then the free text, then access. Status shares the Name row and carries only an
+ * `aria-label`: its three values (`ACTIVE` / `INVITED` / `DISABLED`) name the thing they are, so a
+ * visible "Status" caption above them spent a line of vertical space restating the options.
  *
- * The roles block is labelled by a `role="group"` + `aria-labelledby` pair rather than a heading.
- * This form renders in two places with different heading contexts: inside `UserManagementPanel`,
- * where `AdminPanel` supplies an `<h2>` and an `<h3>` here nests correctly, and on
- * `/admin/users/[id]`, where the nearest ancestor is the page `<h1>` and the same `<h3>` skips a
- * level. No fixed number is right in both, and the component cannot know which one it is in — so
- * it stops contributing to the document outline entirely. `role="group"` is the ARIA equivalent
- * of `<fieldset>`/`<legend>` (kept as a div so the existing `.roles` styling is untouched): the
- * block keeps an announced name for the controls it wraps without claiming an outline position
- * it cannot get right. A `<section aria-labelledby>` was rejected — a named section becomes a
- * `region` landmark, which promotes a form subsection to page-level navigation.
+ * Role membership lives in {@link UserRolesSection}, which both this form and the read-only view
+ * on `/admin/users/[id]` render — including the rule that a failed roles read is reported as
+ * unknown rather than as "no roles". See that component for why.
  *
- * The email input is `required` so the "Email *" asterisk is a real, announced constraint rather
- * than a visual-only promise, but the form is `noValidate`: native validation bubbles would
- * pre-empt {@link handleSubmit} and route this one field around the inline `FormError`
- * (`role="alert"`) channel every other failure here uses — including the whitespace-only email
- * that `required` does not catch. The constraint is advertised; this form still reports it.
+ * The email input is `required` so the constraint is real and announced, but the form is
+ * `noValidate`: native validation bubbles would pre-empt {@link handleSubmit} and route this one
+ * field around the inline `FormError` (`role="alert"`) channel every other failure here uses —
+ * including the whitespace-only email that `required` does not catch. The label carries no `*`;
+ * the asterisk duplicated in punctuation what `required` already announces, and it was the only
+ * field caption on the page wearing one.
  */
 export function UserForm(props: UserFormProps) {
   const isEdit = props.mode === 'edit';
-  const editUser = isEdit ? props.user : null;
   const [email, setEmail] = useState(isEdit ? (props.user.email ?? '') : '');
   const [displayName, setDisplayName] = useState(isEdit ? (props.user.displayName ?? '') : '');
   const [status, setStatus] = useState<UserStatus>(isEdit ? props.user.status : 'INVITED');
@@ -65,56 +58,8 @@ export function UserForm(props: UserFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-  const [userRoles, setUserRoles] = useState<UserRoleRow[]>([]);
-  const [allRoles, setAllRoles] = useState<RoleSummary[]>([]);
-  const [addRoleId, setAddRoleId] = useState<string>('');
-  const [rolesError, setRolesError] = useState<string | null>(null);
-  const editUserId = editUser?.id ?? null;
 
-  useEffect(() => {
-    if (editUserId === null) return;
-    setRolesError(null);
-    void (async () => {
-      try {
-        const [membership, all] = await Promise.all([listUserRoles(editUserId), listRoles()]);
-        setUserRoles(membership);
-        setAllRoles(all);
-      } catch (error_) {
-        logger.error('UserForm', 'Failed to load role membership', error_, { userId: editUserId });
-        setUserRoles([]);
-        setAllRoles([]);
-        setRolesError(
-          'Could not load roles for this user — their membership is unknown. Reload to try again.'
-        );
-      }
-    })();
-  }, [editUserId]);
-
-  const availableRoles = allRoles.filter(r => !userRoles.some(ur => ur.roleId === r.id));
-
-  async function addRole() {
-    if (editUserId === null || !addRoleId) return;
-    try {
-      await addUserToRole(editUserId, Number(addRoleId));
-      setUserRoles(await listUserRoles(editUserId));
-      setAddRoleId('');
-    } catch {
-      setError('Failed to add role. Please try again.');
-    }
-  }
-
-  async function removeRole(roleId: number) {
-    if (editUserId === null) return;
-    try {
-      await removeUserFromRole(editUserId, roleId);
-      setUserRoles(await listUserRoles(editUserId));
-    } catch {
-      setError('Failed to remove role. Please try again.');
-    }
-  }
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const save = async () => {
     setError(null);
 
     if (!email.trim()) {
@@ -164,6 +109,11 @@ export function UserForm(props: UserFormProps) {
     }
   };
 
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    void save();
+  };
+
   if (inviteUrl) {
     return (
       <div className={styles.form}>
@@ -182,7 +132,37 @@ export function UserForm(props: UserFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className={styles.form} noValidate>
-      <Field label="Email *" htmlFor="user-form-email">
+      <div className={styles.identityRow}>
+        <Field label="Name" htmlFor="user-form-display-name" className={styles.nameField}>
+          <Input
+            id="user-form-display-name"
+            value={displayName}
+            onChange={e => setDisplayName(e.target.value)}
+            placeholder="Jane Smith"
+            autoComplete="off"
+            disabled={submitting}
+          />
+        </Field>
+
+        {isEdit && (
+          <select
+            id="user-form-status"
+            aria-label="Status"
+            className={styles.statusSelect}
+            value={status}
+            onChange={e => setStatus(e.target.value as UserStatus)}
+            disabled={submitting}
+          >
+            {STATUS_OPTIONS.map(s => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      <Field label="Email" htmlFor="user-form-email">
         <Input
           id="user-form-email"
           type="email"
@@ -195,17 +175,6 @@ export function UserForm(props: UserFormProps) {
         />
       </Field>
 
-      <Field label="Display Name" htmlFor="user-form-display-name">
-        <Input
-          id="user-form-display-name"
-          value={displayName}
-          onChange={e => setDisplayName(e.target.value)}
-          placeholder="Jane Smith"
-          autoComplete="off"
-          disabled={submitting}
-        />
-      </Field>
-
       {isEdit && (
         <Field label="Description" htmlFor="user-form-description">
           <Textarea
@@ -214,75 +183,13 @@ export function UserForm(props: UserFormProps) {
             onChange={e => setDescription(e.target.value)}
             placeholder="Short profile description shown on the user's page"
             maxLength={500}
-            rows={4}
+            rows={3}
             disabled={submitting}
           />
         </Field>
       )}
 
-      {isEdit && (
-        <Field label="Status" htmlFor="user-form-status">
-          <select
-            id="user-form-status"
-            className={styles.select}
-            value={status}
-            onChange={e => setStatus(e.target.value as UserStatus)}
-            disabled={submitting}
-          >
-            {STATUS_OPTIONS.map(s => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </Field>
-      )}
-
-      {isEdit && (
-        <div className={styles.roles} role="group" aria-labelledby="user-form-roles-heading">
-          <p id="user-form-roles-heading" className={styles.rolesHeading}>
-            Roles
-          </p>
-          {rolesError && <FormError>{rolesError}</FormError>}
-          {!rolesError && userRoles.length === 0 && <EmptyState>Not in any roles yet.</EmptyState>}
-          {userRoles.map(r => (
-            <div key={r.roleId} className={styles.roleRow}>
-              <span>{r.name}</span>
-              <Button variant="ghost" size="sm" type="button" onClick={() => removeRole(r.roleId)}>
-                Remove
-              </Button>
-            </div>
-          ))}
-          {availableRoles.length > 0 && (
-            <div className={styles.roleRow}>
-              <select
-                aria-label="Add to role"
-                value={addRoleId}
-                onChange={e => setAddRoleId(e.target.value)}
-              >
-                <option value="">Add to role…</option>
-                {availableRoles.map(r => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-              <Button
-                variant="ghost"
-                size="sm"
-                type="button"
-                onClick={addRole}
-                disabled={!addRoleId}
-              >
-                Add
-              </Button>
-            </div>
-          )}
-          <Link href="/admin/roles" className={styles.manageRolesLink}>
-            Manage roles and grants
-          </Link>
-        </div>
-      )}
+      {isEdit && <UserRolesSection userId={props.user.id} />}
 
       {error && <FormError>{error}</FormError>}
 

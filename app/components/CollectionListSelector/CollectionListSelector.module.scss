@@ -17,14 +17,6 @@
   --sel-current-accent: var(--color-accent);
 }
 
-/* Dark-surface override: flip elevation locals back to white-alpha so they lift on charcoal. */
-[data-surface='dark'] .container {
-  --sel-elev-1: rgb(255 255 255 / 5%);
-  --sel-elev-2: rgb(255 255 255 / 10%);
-  --sel-elev-hover: rgb(255 255 255 / 14%);
-  --sel-border: rgb(255 255 255 / 12%);
-}
-
 .header {
   display: flex;
   align-items: center;
@@ -135,7 +127,7 @@
 
     &::before {
       content: '−';
-      color: var(--color-danger);
+      color: var(--color-danger-text);
     }
   }
 

@@ -93,7 +93,7 @@
 .error {
   margin: var(--space-2) 0 0;
   font-size: var(--text-sm);
-  color: var(--color-danger);
+  color: var(--color-danger-text);
 }
 
 /* Load failure — deliberately unlike the shared <EmptyState> the empty branch renders, so a dead
