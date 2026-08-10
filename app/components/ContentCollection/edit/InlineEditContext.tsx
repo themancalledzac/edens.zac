@@ -1,32 +1,70 @@
 'use client';
 
-import { createContext, useContext } from 'react';
+import { createContext, type ReactNode, useContext } from 'react';
 
-/** Collection fields that can be committed from an inline on-page editor. */
+/** The two free-text fields any inline-editable header rail exposes. */
 export type InlineEditField = 'title' | 'description';
 
+/**
+ * The inline-editable header rail.
+ *
+ * Two surfaces mount this. `EditModeLayer` supplies the collection shape (every member below).
+ * `/admin/users/[id]` supplies a user: title is the display name, description is the profile
+ * blurb, and the collection-only members are simply absent — which is why everything past
+ * `onCommitField` is optional. The renderer treats each one's presence as the switch for its own
+ * affordance rather than inferring a "mode", so a consumer gets exactly the controls it filled in.
+ */
 export interface InlineEditContextValue {
-  /** Current title buffer value (mirrors the edit hook's updateData.title). */
+  /** Current title buffer value (collection title, or the user's display name). */
   title: string;
-  /** Current description buffer value (mirrors the edit hook's updateData.description). */
+  /** Current description buffer value. */
   description: string;
   /** Write a field to the shared edit buffer and persist (save-on-blur). */
   onCommitField: (field: InlineEditField, value: string) => void;
-  /** Open the location picker so locations can be edited. */
-  onEditLocation: () => void;
+  /**
+   * Accessible names for the two text fields. Default to the collection wording; the user surface
+   * overrides them, because "Collection title" announced on a person's name is simply wrong.
+   */
+  titleLabel?: string;
+  descriptionLabel?: string;
+  /**
+   * Applied to the title and description CONTROLS, on top of the class their read state already
+   * carries, so a surface can make entering edit visually silent.
+   *
+   * Absent (collection manage) the controls keep `Input`/`Textarea`'s bordered box — the long-
+   * standing look there. The admin user rail passes a class that strips that box, so clicking a
+   * value to change it redraws nothing.
+   */
+  textEditorClassName?: string;
+  /** Open the location picker so locations can be edited. Collection surfaces only. */
+  onEditLocation?: () => void;
   /**
    * Enter or leave cover-pick mode, where a click on any grid image commits it as the cover.
    * Null when the active manage mode already owns grid clicks (reorder, select, pick-date), which
    * is what gates the affordance — the renderer has no other view of the manage state machine.
    */
-  onTogglePickCover: (() => void) | null;
+  onTogglePickCover?: (() => void) | null;
   /** True while cover-pick mode is active; flips the affordance to its cancel label. */
-  isPickingCover: boolean;
+  isPickingCover?: boolean;
   /**
    * Whether the collection has a cover image. False means no cover block is laid out at all, so
    * the metadata rail — not the (absent) cover — has to carry the entry point into cover-pick.
    */
-  hasCover: boolean;
+  hasCover?: boolean;
+  /**
+   * Rendered at the end of the title row, opposite the title itself.
+   *
+   * The admin user surface puts account status there: it belongs beside the name it qualifies, and
+   * the top corner of the rail is the one spot in this block that is not already spoken for.
+   */
+  titleAside?: ReactNode;
+  /**
+   * Rendered directly above the description.
+   *
+   * The admin user surface puts the email here, which is where a reader looks for it — under the
+   * name, over the prose — and where a duplicate block above the space would otherwise have put it.
+   */
+  beforeDescription?: ReactNode;
 }
 
 const InlineEditContext = createContext<InlineEditContextValue | null>(null);

@@ -1,0 +1,107 @@
+/* Admin controls injected into a user's own space header rail.
+
+   Everything here is sized to sit inside the rail beside the cover image, so it borrows the rail's
+   own scale rather than setting a new one. The rail supplies the measure and the padding. */
+
+/* Strips the Input/Textarea chrome so typing looks like reading.
+
+   Doubled selector on purpose. `Field.module.scss` (.control/.input/.textarea) and the inline
+   primitive's .editor are all single-class rules, so a single-class override here would win or
+   lose on stylesheet order — which CSS-module bundling decides, not this file. `.seamless.seamless`
+   raises specificity to (0,2,0) and settles it deterministically.
+
+   The accent underline is the one permitted difference between reading and typing, and it doubles
+   as the focus indicator: it replaces the inherited focus ring, which would have drawn exactly the
+   box these fields exist to avoid. `inset` box-shadow rather than border-bottom so nothing reflows
+   by a pixel when it appears. `font: inherit` is what pulls the serif title face and the muted
+   email scale onto the control, since each is paired with the read state's own class. */
+.seamless.seamless {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  box-shadow: inset 0 -1px 0 0 var(--color-accent);
+
+  &:focus,
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 -2px 0 0 var(--color-accent);
+  }
+}
+
+textarea.seamless.seamless {
+  min-height: 3lh;
+  resize: vertical;
+}
+
+/* Email — the line above the description, matching the rail's muted supporting text. */
+.email {
+  display: block;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--color-on-surface-muted);
+  overflow-wrap: anywhere;
+}
+
+/* The rail's top-right cluster: account status and the invite/reset action, which belong together
+   because both are about the ACCOUNT rather than the person. `--space-2` is the same gap the role
+   chips and the rail's own children use, so one rhythm runs down the whole block. */
+.aside {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Account status, pinned opposite the name in the rail's title row. Always a <select>, so there is
+   no read/edit swap to hide — only the native arrow to drop, which would be the one piece of
+   chrome in a rail that has none.
+
+   Wears the same chip vocabulary as the role chips and the filter bar below it — --radius-1,
+   one --color-border hairline, transparent fill, --text-sm at weight 500 — so the rail has one
+   chip look rather than three.
+
+   The border colour carries the state; the text carries it too, so meaning never rests on hue. */
+.status {
+  flex: 0 0 auto;
+  appearance: none;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-1);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-fg);
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  &[data-status='ACTIVE'] {
+    border-color: var(--color-success);
+  }
+
+  &[data-status='INVITED'] {
+    border-color: var(--color-warning);
+  }
+
+  &[data-status='DISABLED'] {
+    border-color: var(--color-danger);
+  }
+}

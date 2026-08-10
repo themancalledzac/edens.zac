@@ -2,7 +2,7 @@ import '@testing-library/jest-dom';
 
 import { fireEvent, render, screen } from '@testing-library/react';
 
-import { InlineEditableText } from '@/app/components/ContentCollection/edit/InlineEditableText';
+import { InlineEditableText } from '@/app/components/ui/InlineEditableText/InlineEditableText';
 
 describe('InlineEditableText', () => {
   it('renders read-only text until clicked, then becomes an editable input', () => {

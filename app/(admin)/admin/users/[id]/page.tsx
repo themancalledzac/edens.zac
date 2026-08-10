@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
+import { UserRolesSection } from '@/app/components/UserForm/UserRolesSection';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { loadUserSpace, resolveTabKey } from '@/app/components/UserSpace/userSpaceData';
 import { ApiError } from '@/app/lib/api/core';
@@ -12,10 +13,9 @@ import { getAdminUser } from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
-import { GenerateInviteButton } from '../GenerateInviteButton';
+import { AdminUserSpaceEditor } from './AdminUserSpaceEditor';
 import styles from './page.module.scss';
 import { UpgradePersonButton } from './UpgradePersonButton';
-import { UserDetailEditor } from './UserDetailEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,12 +40,23 @@ interface AdminUserDetailPageProps {
  * target's. `UserSpace` receives `me={null}`, which disarms every personal-action control — see
  * its docblock for why that matters (a save heart here would write to the ADMIN's bookmarks).
  *
- * Editing a user happens through the surfaces around the space, not inside it: {@link
- * UserDetailEditor} for email / name / status / description (the description is what
- * `UserPageAssembler` renders as the space's own description), and drilling into a collection tile
- * for that collection's contents. The space itself stays read-only because it is a synthetic
- * aggregation (slug "user", no backing collection row) — mounting the edit layer on it loads
- * /api/admin/collections/user/update and 404s with "Collection not found with slug: user".
+ * Editing a user happens INSIDE the space's header rail, via {@link AdminUserSpaceEditor}. The
+ * rail already renders this person's name and description — the description it shows is literally
+ * the field being edited, since `UserPageAssembler` feeds it from the same column — so a separate
+ * profile card above the space displayed the same value twice and pushed the actual page down by a
+ * screenful. Name, status, email, description and role membership all live in the rail now; the
+ * only thing left above it is the breadcrumb.
+ *
+ * The GRID stays read-only, which is a different question from the rail. The collection is a
+ * synthetic aggregation (slug "user", no backing row), so mounting the collection edit layer on it
+ * would load /api/admin/collections/user/update and 404 with "Collection not found with slug:
+ * user". `AdminUserSpaceEditor` supplies only the inline-edit context — writes go to
+ * `updateUser`, never to a collection endpoint. That same missing row is why there is no per-user
+ * cover-image control: there is nothing to save one against, on the user record or on the space.
+ *
+ * A user whose space read returns null has no rail to edit in. That case falls back to the empty
+ * state, which points at the Users panel on `/admin` — `UserManagementPanel` mounts the full
+ * `UserForm` for any user and does not depend on an assembled page existing.
  *
  * Tag-only PERSON identities have no account: no email, no invite/reset, no space. They get a
  * minimal view instead (which also guards direct-URL access), with {@link UpgradePersonButton} to
@@ -84,37 +95,26 @@ export default async function AdminUserDetailPage({
 
   if (user.status === 'PERSON') {
     return (
-      <PageShell pageType="collectionsCollection">
+      <PageShell pageType="collectionsCollection" className={styles.page}>
         <div className={styles.header}>
           <Link href="/admin" className={styles.back}>
             ← Admin
           </Link>
-          <h1 className={styles.title}>{user.displayName ?? '—'}</h1>
         </div>
 
-        <dl className={styles.details}>
-          <div className={styles.field}>
-            <dt className={styles.dt}>Email</dt>
-            <dd className={styles.dd}>—</dd>
-          </div>
-          <div className={styles.field}>
-            <dt className={styles.dt}>Name</dt>
-            <dd className={styles.dd}>{user.displayName ?? '—'}</dd>
-          </div>
-          <div className={styles.field}>
-            <dt className={styles.dt}>Status</dt>
-            <dd className={styles.dd}>
-              <span className={styles.badge}>tag-only · no account</span>
-            </dd>
-          </div>
-        </dl>
+        <div className={styles.personCard}>
+          <p className={styles.personIdentity}>
+            <span className={styles.personName}>{user.displayName ?? '—'}</span>
+            <span className={styles.badge}>tag-only · no account</span>
+          </p>
 
-        <UpgradePersonButton person={user} />
+          <UpgradePersonButton person={user} />
 
-        <p className={styles.hint}>
-          Tag-only identity — upgrade it to an account here, or merge it into an existing one from
-          the Users panel.
-        </p>
+          <p className={styles.hint}>
+            Tag-only identity — upgrade it to an account here, or merge it into an existing one from
+            the Users panel.
+          </p>
+        </div>
       </PageShell>
     );
   }
@@ -131,38 +131,38 @@ export default async function AdminUserDetailPage({
   ]);
 
   return (
-    <PageShell pageType="collectionsCollection">
+    <PageShell pageType="collectionsCollection" className={styles.page}>
       <div className={styles.header}>
         <Link href="/admin" className={styles.back}>
           ← Admin
         </Link>
-        <h1 className={styles.title}>{displayName}</h1>
-      </div>
-
-      <UserDetailEditor user={user} />
-
-      <div className={styles.actions}>
-        <GenerateInviteButton userId={user.id} email={user.email ?? ''} status={user.status} />
       </div>
 
       {data ? (
-        <div className={styles.space}>
-          <UserSpace
-            data={data}
-            activeKey={activeKey}
-            basePath={`/admin/users/${userId}`}
-            me={null}
-            ssrViewport={ssrViewport}
-            railExtras={
-              <p className={styles.spaceNote}>
-                Viewing {displayName}&rsquo;s space as they see it. Saving and following are
-                disabled here — they would act on your own account, not theirs.
-              </p>
-            }
-          />
-        </div>
+        <AdminUserSpaceEditor user={user}>
+          <div className={styles.space}>
+            <UserSpace
+              data={data}
+              activeKey={activeKey}
+              basePath={`/admin/users/${userId}`}
+              me={null}
+              ssrViewport={ssrViewport}
+              railExtras={
+                <div className={styles.rail}>
+                  <UserRolesSection userId={user.id} compact />
+                  <p className={styles.spaceNote}>
+                    Viewing {displayName}&rsquo;s space as they see it. Saving and following are
+                    disabled here — they would act on your own account, not theirs.
+                  </p>
+                </div>
+              }
+            />
+          </div>
+        </AdminUserSpaceEditor>
       ) : (
-        <EmptyState>This user has no galleries yet.</EmptyState>
+        <EmptyState>
+          This user has no galleries yet — edit their profile from the Users panel on /admin.
+        </EmptyState>
       )}
     </PageShell>
   );

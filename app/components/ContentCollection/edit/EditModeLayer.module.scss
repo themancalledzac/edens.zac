@@ -81,7 +81,12 @@
 
 /* Applied to an <IconButton size="sm">, which supplies the 32px round box, the ghost hover wash,
    the focus ring and the coarse-pointer 44px hit area. Only the banner-local glyph treatment
-   remains: the danger text colour (IconButton is `color: inherit`) and the resting fade.
+   remains: the danger text colour (IconButton is `color: inherit`).
+
+   No resting `opacity` fade here. It used to sit at 0.8 and lift to 1 on hover, which was hover
+   feedback the ghost variant already provides (IconButton defaults to variant="ghost") — and the
+   fade was compositing the glyph toward its own wash background, dragging it to 3.63:1 against
+   the banner. At full strength the same colour is 4.73:1, so dropping the fade is what clears AA.
 
    Class doubled so the colour outranks IconButton's single-class `.iconButton` rule without
    depending on which module's stylesheet webpack emits first. */
@@ -90,9 +95,4 @@
   color: var(--color-danger-text);
   font-size: var(--text-md);
   line-height: 1;
-  opacity: 0.8;
-
-  &:hover {
-    opacity: 1;
-  }
 }

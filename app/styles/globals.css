@@ -140,19 +140,32 @@ html,
   --color-secondary-dark: #5a6268;
   --color-success: #22c55e;
   --color-success-dark: #16a34a;
-  --color-danger: #dc3545;
+  --color-danger: #dc3545; /* brand red for FILLS and BORDERS; danger text reads --color-danger-text */
   --color-disabled: #ccc;
 
   /* Hover state */
   --color-hover-grey: #333;
 
-  /* Danger colors for dark backgrounds (tailwind red-600/red-300) */
-  --color-danger-dark: rgb(220, 38, 38);
-  --color-danger-subtle: rgb(220, 38, 38, 0.2);
-  --color-danger-text: rgb(252, 165, 165);
+  /* Danger TEXT role. Separate from --color-danger above because the two carry
+     different contrast bars: a fill/border only needs 3:1, text needs 4.5:1, and
+     --color-danger clears 4.5:1 on pure white by 0.03 — it already fails on
+     --color-surface-raised (4.30:1) and on the -subtle wash below (3.31:1). So
+     danger text steps DARKER than the brand red on light, and is re-pointed
+     LIGHTER under [data-surface='dark'], where the brand red is only 3.8:1.
+     Read --color-danger for fills and borders; read this for glyphs and copy.
 
-  /* Light-blue text accent on dark surfaces (tailwind blue-300) */
-  --color-blue-text: rgb(147, 197, 253);
+     (--color-danger-dark, red-600, was deleted here: it was filed under "danger
+     colors for dark backgrounds" but 3.56:1 on charcoal is unusable there — it
+     was a light-surface red all along, and a near-duplicate of --color-danger,
+     which now covers its four border call sites. --color-blue-text, blue-300,
+     was deleted too: zero call sites, same reasoning as the --scrim-dark-* ramp
+     above — reintroduce on first real need rather than carrying it on spec.) */
+  --color-danger-text: #b91c1c; /* tailwind red-700 — 6.5:1 on white, 6.1:1 on raised, 4.7:1 on -subtle */
+
+  /* Danger background wash. An alpha tint rather than a fixed color, so it
+     composites correctly on either surface (pale pink over white, dark maroon
+     over charcoal) and needs no dark-surface counterpart. */
+  --color-danger-subtle: rgb(220, 38, 38, 0.2);
 
   /* Shadows */
   --shadow-sm: 0 2px 4px rgb(0, 0, 0, 0.1);
@@ -225,6 +238,13 @@ html,
   /* The primary <Button> fill is --color-fg (near-white) on dark, so its hover must
      DIM toward gray, not deepen toward black like the light-surface default does. */
   --color-primary-hover: #d4d4d6;
+
+  /* Danger text inverts the light-surface step: there it goes darker than the brand
+     red, here it must go lighter. --color-danger is only 3.8:1 on this charcoal;
+     red-300 is 9.1:1 on it and 7.8:1 over the --color-danger-subtle wash. The fill
+     token itself is deliberately NOT re-declared — like --color-heart/--color-star,
+     the brand red must read as the same color on both surfaces. */
+  --color-danger-text: rgb(252, 165, 165); /* tailwind red-300 */
 }
 
 /* Desktop heading sizes */

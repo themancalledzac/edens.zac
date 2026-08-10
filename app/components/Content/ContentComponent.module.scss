@@ -477,8 +477,13 @@
 }
 
 /* Editable title row — only rendered in on-page edit mode */
+/* The title, plus whatever the surface pins opposite it (`titleAside` — account status on the
+   admin user rail). `align-items: center` keeps a short chip centred on the title's cap height
+   rather than hanging off its baseline; the gap only applies when an aside is actually present. */
 .metadataTitleRow {
   display: flex;
+  align-items: center;
+  gap: var(--space-2);
   width: 100%;
 }
 
@@ -518,6 +523,8 @@
 
 .metadataTitle {
   display: block;
+  flex: 1 1 auto;
+  min-width: 0;
   width: 100%;
   font-family: var(--font-serif), serif;
   font-weight: 700;
@@ -717,16 +724,6 @@
   &:hover {
     background-color: rgb(0 0 0 / 12%);
     border-color: rgb(0 0 0 / 25%);
-  }
-}
-
-[data-surface='dark'] .metadataSiblingChip {
-  background-color: rgb(255 255 255 / 6%);
-  border-color: rgb(255 255 255 / 12%);
-
-  &:hover {
-    background-color: rgb(255 255 255 / 12%);
-    border-color: rgb(255 255 255 / 25%);
   }
 }
 

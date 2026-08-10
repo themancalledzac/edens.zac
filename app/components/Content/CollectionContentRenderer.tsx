@@ -9,11 +9,11 @@ import { useMe } from '@/app/components/auth/MeProvider';
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { useCollectionRailExtras } from '@/app/components/ContentCollection/CollectionRailContext';
-import { InlineEditableText } from '@/app/components/ContentCollection/edit/InlineEditableText';
 import { useInlineEdit } from '@/app/components/ContentCollection/edit/InlineEditContext';
 import { FollowButton } from '@/app/components/Personal/FollowButton';
 import { Badge } from '@/app/components/ui/Badge/Badge';
 import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { InlineEditableText } from '@/app/components/ui/InlineEditableText/InlineEditableText';
 import { Tile } from '@/app/components/ui/Tile/Tile';
 import { useParallax } from '@/app/hooks/useParallax';
 import {
@@ -291,9 +291,14 @@ export default function CollectionContentRenderer({
                   value={inlineEdit.title}
                   onCommit={value => inlineEdit.onCommitField('title', value)}
                   readOnlyClassName={cbStyles.metadataTitle}
+                  editorClassName={
+                    inlineEdit.textEditorClassName &&
+                    `${cbStyles.metadataTitle} ${inlineEdit.textEditorClassName}`
+                  }
                   placeholder="Title"
-                  ariaLabel="Collection title"
+                  ariaLabel={inlineEdit.titleLabel ?? 'Collection title'}
                 />
+                {inlineEdit.titleAside}
               </div>
             )}
             {/* A cover-less collection lays out a text-only header, so there is no cover to hover
@@ -309,10 +314,12 @@ export default function CollectionContentRenderer({
                 {isPickingCover ? 'Cancel cover selection' : 'Set cover image'}
               </button>
             )}
-            {(dateItem || locationItem || inlineEdit) && (
+            {/* `onEditLocation`, not `inlineEdit`: a surface with no locations to pick (the admin
+                user rail) would otherwise get an empty row offering to "Add location" to a user. */}
+            {(dateItem || locationItem || inlineEdit?.onEditLocation) && (
               <div className={cbStyles.metadataHeaderRow}>
                 {dateItem && <div className={cbStyles.metadataDate}>{dateItem.value}</div>}
-                {inlineEdit ? (
+                {inlineEdit?.onEditLocation ? (
                   <button
                     type="button"
                     className={cbStyles.metadataLocation}
@@ -332,6 +339,7 @@ export default function CollectionContentRenderer({
                 )}
               </div>
             )}
+            {inlineEdit?.beforeDescription}
             {/* Always render the description container so it stays the
                 flex-grow spacer that pushes the download bar + toolbar to the
                 bottom — even when this gallery has no description text. */}
@@ -342,8 +350,12 @@ export default function CollectionContentRenderer({
                   value={inlineEdit.description}
                   onCommit={value => inlineEdit.onCommitField('description', value)}
                   readOnlyClassName={cbStyles.metadataDescription}
+                  editorClassName={
+                    inlineEdit.textEditorClassName &&
+                    `${cbStyles.metadataDescription} ${inlineEdit.textEditorClassName}`
+                  }
                   placeholder="Add a description"
-                  ariaLabel="Collection description"
+                  ariaLabel={inlineEdit.descriptionLabel ?? 'Collection description'}
                 />
               ) : (
                 descriptionItem && (
