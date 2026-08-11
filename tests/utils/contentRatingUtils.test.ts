@@ -3,11 +3,16 @@
  * Tests unified standalone detection logic
  */
 
+import { type ContentPanelModel, pinnedHeight } from '@/app/types/Content';
 import { buildAllCollectionsContentBlock } from '@/app/utils/allCollectionsContentBlock';
 import {
   getArExtremeness,
   getEffectiveRating,
+  getHeightClamp,
   getHeightDemand,
+  getMaxWidth,
+  getMinWidth,
+  getPinnedHeight,
   getProminence,
   getWidthCost,
   isCollectionCard,
@@ -205,5 +210,61 @@ describe('Hv / Vv decomposition', () => {
     const portrait = createVerticalImage(2, 5);
     expect(getWidthCost(pano)).toBeGreaterThan(getHeightDemand(pano));
     expect(getHeightDemand(portrait)).toBeGreaterThan(getWidthCost(portrait));
+  });
+});
+
+// ===================== Shape-bound accessor Tests =====================
+
+/**
+ * The declared shape bounds a UI block hands the layout engine. Both accessors normalize rather
+ * than trust: a bound that is absent, malformed or self-contradictory must resolve to something
+ * every consumer can reason about, because the packer and the sizer read these independently and
+ * a disagreement between them is a hole in the page.
+ */
+describe('shape-bound accessors', () => {
+  const block = (overrides: Partial<ContentPanelModel>) =>
+    createPanelContent(1, { width: 600, height: 1100, ...overrides });
+
+  it('reads a declared maxWidth and rejects a malformed one', () => {
+    expect(getMaxWidth(block({ maxWidth: 700 }))).toBe(700);
+    expect(getMaxWidth(block({}))).toBeUndefined();
+    expect(getMaxWidth(block({ maxWidth: 0 }))).toBeUndefined();
+    expect(getMaxWidth(block({ maxWidth: Number.NaN }))).toBeUndefined();
+  });
+
+  /**
+   * An inverted pair is not "impossible" to any single consumer — the packer would evict row-mates
+   * to clear the 400px floor and the sizer would then clamp the block to 300px, leaving 100px of
+   * dead strip the packer had already spent. Normalizing up to the minimum keeps the invariant
+   * both halves assume: `getMinWidth ≤ getMaxWidth`.
+   */
+  it('normalizes a maxWidth below the same block’s minWidth up to that minimum', () => {
+    const inverted = block({ minWidth: 400, maxWidth: 300 });
+
+    expect(getMinWidth(inverted)).toBe(400);
+    expect(getMaxWidth(inverted)).toBe(400);
+  });
+
+  it('leaves a maxWidth above the minimum alone', () => {
+    expect(getMaxWidth(block({ minWidth: 400, maxWidth: 700 }))).toBe(700);
+  });
+
+  /**
+   * `pinnedHeight` exists so this equality is true by construction. A pin and a 2px clamp band
+   * are different code paths in both the composer and the sizer, and hand-written fields are one
+   * typo away from declaring the second while meaning the first.
+   */
+  it('recognizes a pin declared through the pinnedHeight helper', () => {
+    expect(pinnedHeight(56)).toEqual({ minHeight: 56, maxHeight: 56 });
+    expect(getPinnedHeight(block({ ...pinnedHeight(56) }))).toBe(56);
+    expect(getHeightClamp(block({ ...pinnedHeight(56) }))).toEqual({
+      minHeight: 56,
+      maxHeight: 56,
+    });
+  });
+
+  it('does not read a lone maxHeight, or an unequal clamp band, as a pin', () => {
+    expect(getPinnedHeight(block({ maxHeight: 56 }))).toBeUndefined();
+    expect(getPinnedHeight(block({ minHeight: 56, maxHeight: 58 }))).toBeUndefined();
   });
 });

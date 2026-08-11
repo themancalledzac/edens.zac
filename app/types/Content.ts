@@ -105,8 +105,9 @@ export interface Content {
    * tallest sibling (`H(W) = clamp(a·W + b, minHeight, maxHeight)`).
    *
    * Setting both to the same value pins the block's height outright (a collapsed
-   * panel's 56px bar). `minHeight` wins if the two ever conflict. Undefined skips the
-   * entire clamp path — photographs never enter it.
+   * panel's 56px bar) — declare that with {@link pinnedHeight} rather than by hand.
+   * `minHeight` wins if the two ever conflict. Undefined skips the entire clamp path —
+   * photographs never enter it.
    */
   minHeight?: number;
   maxHeight?: number;
@@ -115,6 +116,24 @@ export interface Content {
   overlayText?: string;
   cardTypeBadge?: string;
   dateBadge?: string;
+}
+
+/**
+ * Declare a block's height as PINNED at `px` — independent of the width it is given.
+ *
+ * The layout engine models every block as `H(W) = a·W + b` and reads a pin as `a = 0`, which is
+ * a different code path from an ordinary clamp in both halves of the engine: the composer scores
+ * a pinned block by its rendered height instead of its aspect ratio, and the sizer re-asserts the
+ * pin instead of scaling it to absorb a CSS gap. What marks a block as pinned is `minHeight ===
+ * maxHeight`, tested by `getPinnedHeight`.
+ *
+ * That equality is an invariant two hand-written fields cannot hold on their own. Spreading this
+ * helper makes it true by construction, so a pin can never drift into a 2px-tall clamp band that
+ * looks pinned, reads as flexible, and sends the two halves of the engine down different paths
+ * for the same block.
+ */
+export function pinnedHeight(px: number): { minHeight: number; maxHeight: number } {
+  return { minHeight: px, maxHeight: px };
 }
 
 /**

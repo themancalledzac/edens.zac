@@ -48,7 +48,12 @@
  */
 
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
-import type { AnyContentModel, ContentPanelModel, PanelType } from '@/app/types/Content';
+import {
+  type AnyContentModel,
+  type ContentPanelModel,
+  type PanelType,
+  pinnedHeight,
+} from '@/app/types/Content';
 import { clampParallaxDimensions } from '@/app/utils/contentLayout';
 import { isPanelContent } from '@/app/utils/contentTypeGuards';
 
@@ -178,9 +183,10 @@ export interface AdminPanelCounts {
 /**
  * The height a panel reserves for `rowCount` rows, bounded by {@link PANEL_HEIGHT_BOUNDS}.
  *
- * Declared to the layout engine as both `minHeight` and `maxHeight` — equal, which is what marks a
- * block's height as independent of its width. Anything that makes a row's height depend on the
- * panel's width invalidates this: see the load-bearing CSS listed in `AdminPanelRenderer`.
+ * Declared to the layout engine through {@link pinnedHeight}, whose equal `minHeight`/`maxHeight`
+ * pair is what marks a block's height as independent of its width. Anything that makes a row's
+ * height depend on the panel's width invalidates this: see the load-bearing CSS listed in
+ * `AdminPanelRenderer`.
  */
 export function panelContentHeight(panelType: PanelType, rowCount: number): number {
   const chrome =
@@ -248,8 +254,7 @@ export function buildAdminHubContent(
     height: 1100,
     minWidth: PANEL_MIN_WIDTH,
     maxWidth: PANEL_MAX_WIDTH,
-    minHeight: usersHeight,
-    maxHeight: usersHeight,
+    ...pinnedHeight(usersHeight),
     orderIndex: 100,
     visible: true,
   };
@@ -264,8 +269,7 @@ export function buildAdminHubContent(
     height: 1100,
     minWidth: PANEL_MIN_WIDTH,
     maxWidth: PANEL_MAX_WIDTH,
-    minHeight: messagesHeight,
-    maxHeight: messagesHeight,
+    ...pinnedHeight(messagesHeight),
     orderIndex: 101,
     visible: true,
   };
@@ -280,8 +284,7 @@ export function buildAdminHubContent(
     height: 1100,
     minWidth: PANEL_MIN_WIDTH,
     maxWidth: PANEL_MAX_WIDTH,
-    minHeight: rolesHeight,
-    maxHeight: rolesHeight,
+    ...pinnedHeight(rolesHeight),
     orderIndex: 102,
     visible: true,
   };
@@ -341,7 +344,7 @@ export const COLLAPSED_PANEL_HEIGHT =
  *   packer squeezing the bar's still-visible header controls to nothing — the same reason nav
  *   tiles carry `TILE_MIN_WIDTH`. The expanded form's 700px legibility cap protects list ROWS
  *   from stretching into a sparse table; a bar has no list rows, so it has no cap to inherit.
- * - `minHeight === maxHeight: COLLAPSED_PANEL_HEIGHT` — the pin. The sizer reads an equal pair
+ * - `pinnedHeight(COLLAPSED_PANEL_HEIGHT)` — the pin. The sizer reads that equal pair
  *   as `a = 0` in `H(W) = a·W + b`, so the bar renders at exactly this height at every viewport
  *   regardless of its declared AR. The pin, not the ratio, is what makes it a bar.
  */
@@ -351,8 +354,7 @@ export const COLLAPSED_PANEL_SIZE = {
   rating: 1,
   minWidth: PANEL_MIN_WIDTH,
   maxWidth: undefined,
-  minHeight: COLLAPSED_PANEL_HEIGHT,
-  maxHeight: COLLAPSED_PANEL_HEIGHT,
+  ...pinnedHeight(COLLAPSED_PANEL_HEIGHT),
 } as const;
 
 /**

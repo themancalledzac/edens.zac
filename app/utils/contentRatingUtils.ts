@@ -174,9 +174,20 @@ function declaredBound(value: number | undefined): number | undefined {
  * Declared maximum rendered width in CSS px, or `undefined`. A render-time cap applied
  * by the sizer (see {@link Content.maxWidth}) — it does not enter row membership, so no
  * precheck in the packer keys on it.
+ *
+ * A cap below the same item's {@link getMinWidth} is normalized up to it rather than honoured.
+ * The two bounds mean different things to different consumers — the packer evicts row-mates to
+ * clear the minimum while the sizer clamps to the maximum — so an inverted pair does not read as
+ * "impossible" anywhere; it reads as the packer reserving width the sizer then refuses to use,
+ * which is a dead strip on the page. Resolving it in favour of the minimum matches the sizer's
+ * own `minHeight`-wins rule for an inverted height clamp, and keeps the invariant every consumer
+ * assumes: `getMinWidth ≤ getMaxWidth`.
  */
 export function getMaxWidth(item: AnyContentModel): number | undefined {
-  return declaredBound(item.maxWidth);
+  const maxWidth = declaredBound(item.maxWidth);
+  if (maxWidth === undefined) return undefined;
+  const minWidth = getMinWidth(item);
+  return minWidth === undefined ? maxWidth : Math.max(maxWidth, minWidth);
 }
 
 /**
