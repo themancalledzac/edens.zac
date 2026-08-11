@@ -9,6 +9,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import { UserManagementPanel } from '@/app/components/UserManagementPanel/UserManagementPanel';
+import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import * as usersApi from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
 
@@ -52,6 +53,8 @@ const USERS: AdminUserSummary[] = [
 describe('UserManagementPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearCachedPanelData();
+    window.localStorage.clear();
     mockListUsers.mockResolvedValue(USERS);
   });
 

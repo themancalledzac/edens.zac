@@ -10,6 +10,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { RolesPanel } from '@/app/components/RolesPanel/RolesPanel';
+import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { ApiError } from '@/app/lib/api/core';
 import * as rolesApi from '@/app/lib/api/roles';
 import { type RoleDetail, type RoleSummary } from '@/app/types/Role';
@@ -62,6 +63,8 @@ const ALPHA_DETAIL: RoleDetail = { id: 1, name: 'alpha', members: [], collection
 describe('RolesPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearCachedPanelData();
+    window.localStorage.clear();
     window.confirm = jest.fn(() => true);
     mockSearchParams = new URLSearchParams();
     mockListRoles.mockResolvedValue(ROLES);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 
 import { GenerateInviteButton } from '@/app/(admin)/admin/users/GenerateInviteButton';
 import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
@@ -12,9 +12,9 @@ import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { UpgradeUserModal } from '@/app/components/UpgradeUserModal/UpgradeUserModal';
 import { UserForm } from '@/app/components/UserForm/UserForm';
+import { useCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { listUsers } from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
-import { logger } from '@/app/utils/logger';
 import { compareNames } from '@/app/utils/sortByName';
 
 import styles from './UserManagementPanel.module.scss';
@@ -39,10 +39,13 @@ interface UserManagementPanelProps {
  * something the user must see: the create and edit forms both live in the body, so opening one
  * while collapsed would otherwise look like the "+ New User" button did nothing.
  *
- * A failed load gets its own body branch, checked ahead of the empty state. `listUsers` throws
- * `ApiError` out of `fetchAdminGetApi` on any non-OK response, so a `catch`-less `refresh` would
- * leave `users` at `[]` and tell an admin whose backend is down that there are no users — an
- * invitation to create a duplicate account. Failed and empty must never look alike here.
+ * A failed load gets its own body branch, checked ahead of the empty state — an admin whose
+ * backend is down must never be told there are no users, an invitation to create a duplicate
+ * account. `useCachedPanelData` owns that distinction now: `loadError` is set only when a load
+ * fails with nothing cached to show, while a failed background revalidation keeps the cached
+ * list on screen. The list itself is cached across remounts (the hub re-packs — and remounts
+ * panels — whenever one collapses) and across page loads, so it paints instantly and only
+ * re-renders when a fetch actually changes it.
  *
  * The {@link LoadingText} region sits outside the `view.mode === 'list'` guard, not inside it. It
  * has to outlive the branches it reports on (see its docblock), and `backToList` flips the view and
@@ -52,31 +55,21 @@ interface UserManagementPanelProps {
  */
 export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManagementPanelProps) {
   const router = useRouter();
-  const [users, setUsers] = useState<AdminUserSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [view, setView] = useState<View>({ mode: 'list' });
   const [showPeople, setShowPeople] = useState(false);
   const [mergeFor, setMergeFor] = useState<AdminUserSummary | null>(null);
   const [upgradeFor, setUpgradeFor] = useState<AdminUserSummary | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      setUsers(await listUsers({ includePeople: showPeople }));
-    } catch (error) {
-      logger.error('UserManagementPanel', 'Failed to load users', error);
-      setUsers([]);
-      setLoadError('Could not load users. Retry, or check that the backend is running.');
-    } finally {
-      setLoading(false);
-    }
-  }, [showPeople]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const {
+    data: users,
+    loading,
+    loadError,
+    refresh,
+  } = useCachedPanelData<AdminUserSummary[]>(
+    showPeople ? 'users:people' : 'users:base',
+    () => listUsers({ includePeople: showPeople }),
+    'Could not load users. Retry, or check that the backend is running.'
+  );
 
   const backToList = useCallback(() => {
     setView({ mode: 'list' });
@@ -96,7 +89,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
   // Alphabetical by display name (falling back to email), case-insensitive.
   const sortedUsers = useMemo(
     () =>
-      [...users].sort((a, b) =>
+      [...(users ?? [])].sort((a, b) =>
         compareNames(a.displayName ?? a.email ?? '', b.displayName ?? b.email ?? '')
       ),
     [users]
@@ -231,7 +224,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
       {view.mode === 'list' && mergeFor && (
         <MergeIdentityModal
           source={mergeFor}
-          candidates={users.filter(u => u.id !== mergeFor.id)}
+          candidates={sortedUsers.filter(u => u.id !== mergeFor.id)}
           open
           onClose={() => setMergeFor(null)}
           onMerged={async () => {

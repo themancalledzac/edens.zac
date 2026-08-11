@@ -1,16 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useCallback } from 'react';
 
 import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
 import { MessageRow } from '@/app/components/messages/MessageRow';
 import { Button } from '@/app/components/ui/Button/Button';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
+import { useCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { useMessageDelete } from '@/app/hooks/useMessageDelete';
 import { type AdminMessageView, getAdminMessages } from '@/app/lib/api/messages';
-import { logger } from '@/app/utils/logger';
 
 import styles from './MessagesPanel.module.scss';
 
@@ -27,49 +27,68 @@ interface MessagesPanelProps {
  * simply forwards both props.
  *
  * `getAdminMessages` resolves `null` only for an empty (204) body — any non-OK response throws
- * `ApiError` out of `fetchAdminGetApi`. The load therefore needs a real `catch`: without one the
- * `finally` never runs and the panel sits on "Loading…" forever, and a swallowed throw would
- * render the "No comments yet." empty state over a backend that is simply down.
+ * `ApiError` out of `fetchAdminGetApi`. `useCachedPanelData` turns a throw with nothing cached
+ * into the failed branch below, and never renders "No comments yet." over a backend that is
+ * simply down. With a cached list showing, a failed background revalidation keeps it showing.
  *
  * The failure branch offers Retry rather than telling the admin to reload the page, matching
  * {@link UserManagementPanel}: both panels sit side by side on the `/admin` hub, and one of them
  * asking for a full page reload to recover from the same transient backend blip is a difference
- * with no reason behind it. `load` is shaped for that — it clears the previous error and re-enters
- * the loading state, so a retry is indistinguishable from the first attempt.
+ * with no reason behind it. `refresh` is shaped for that — with no data showing it clears the
+ * previous error and re-enters loading, so a retry is indistinguishable from the first attempt.
+ *
+ * The delete flow's setters wrap the cache hook's write-through `setData`, keeping
+ * {@link useMessageDelete}'s optimistic-update contract while making sure a deleted message
+ * cannot resurrect from stale cache on the next remount.
  *
  * The {@link LoadingText} region renders outside the body branch on purpose; see its docblock. The
  * branch below therefore resolves to nothing at all while the read is in flight.
  */
+interface MessagesPayload {
+  messages: AdminMessageView[];
+  total: number;
+}
+
+const EMPTY_PAYLOAD: MessagesPayload = { messages: [], total: 0 };
+
+async function fetchMessages(): Promise<MessagesPayload> {
+  const result = await getAdminMessages(100, 0);
+  if (!result) return EMPTY_PAYLOAD;
+  const sorted = [...result.messages].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  return { messages: sorted, total: result.total };
+}
+
 export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelProps) {
-  const [messages, setMessages] = useState<AdminMessageView[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const { data, loading, loadError, refresh, setData } = useCachedPanelData<MessagesPayload>(
+    'messages',
+    fetchMessages,
+    'Could not load messages. Retry, or check that the backend is running.'
+  );
+  const messages = data?.messages ?? EMPTY_PAYLOAD.messages;
+  const total = data?.total ?? 0;
+
+  const setMessages = useCallback<Dispatch<SetStateAction<AdminMessageView[]>>>(
+    action =>
+      setData(previous => {
+        const base = previous ?? EMPTY_PAYLOAD;
+        return {
+          ...base,
+          messages: typeof action === 'function' ? action(base.messages) : action,
+        };
+      }),
+    [setData]
+  );
+  const setTotal = useCallback<Dispatch<SetStateAction<number>>>(
+    action =>
+      setData(previous => {
+        const base = previous ?? EMPTY_PAYLOAD;
+        return { ...base, total: typeof action === 'function' ? action(base.total) : action };
+      }),
+    [setData]
+  );
   const { deletingId, error, handleDelete } = useMessageDelete(messages, setMessages, setTotal);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const result = await getAdminMessages(100, 0);
-      if (result) {
-        const sorted = [...result.messages].sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-        setMessages(sorted);
-        setTotal(result.total);
-      }
-    } catch (error_) {
-      logger.error('MessagesPanel', 'Failed to load admin messages', error_);
-      setLoadError('Could not load messages. Retry, or check that the backend is running.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const action = (
     <Link href="/comments" className={styles.viewAll}>
@@ -83,7 +102,7 @@ export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelPro
       body = (
         <div className={styles.loadError} role="alert">
           <p className={styles.error}>{loadError}</p>
-          <Button variant="secondary" size="sm" onClick={() => void load()}>
+          <Button variant="secondary" size="sm" onClick={() => void refresh()}>
             Retry
           </Button>
         </div>

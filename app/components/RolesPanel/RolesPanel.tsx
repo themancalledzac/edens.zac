@@ -2,8 +2,10 @@
 
 import { useSearchParams } from 'next/navigation';
 import {
+  type Dispatch,
   type FormEvent,
   type ReactNode,
+  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -18,6 +20,7 @@ import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
+import { useCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { ApiError } from '@/app/lib/api/core';
 import { createRole, deleteRole, listRoles } from '@/app/lib/api/roles';
 import { type RoleSummary } from '@/app/types/Role';
@@ -58,10 +61,12 @@ interface RolesPanelProps {
  * the user must see: the create form and the detail editor both live in the body, so opening one
  * while collapsed would otherwise look like the control did nothing.
  *
- * A failed load gets its own body branch, checked ahead of the empty state. `listRoles` throws
- * `ApiError` out of `fetchAdminGetApi` on any non-OK response, so a `catch`-less `refresh` would
- * leave `roles` at `[]` and tell an admin whose backend is down that there are no roles — an
- * invitation to create a duplicate. Failed and empty must never look alike here.
+ * A failed load gets its own body branch, checked ahead of the empty state — an admin whose
+ * backend is down must never be told there are no roles, an invitation to create a duplicate.
+ * `useCachedPanelData` owns that distinction: `loadError` is set only when a load fails with
+ * nothing cached to show, while a failed background revalidation keeps the cached list up. The
+ * optimistic delete's `setRoles` wraps the hook's write-through `setData`, so a deleted role
+ * cannot resurrect from stale cache on the next remount.
  *
  * The {@link LoadingText} region sits outside the `view.mode === 'list'` guard, not inside it. It
  * has to outlive the branches it reports on (see its docblock), and `backToList` flips the view and
@@ -69,9 +74,6 @@ interface RolesPanelProps {
  */
 export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
   const searchParams = useSearchParams();
-  const [roles, setRoles] = useState<RoleSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [view, setView] = useState<View>({ mode: 'list' });
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -79,23 +81,21 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
   const [createError, setCreateError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      setRoles(await listRoles());
-    } catch (error) {
-      logger.error('RolesPanel', 'Failed to load roles', error);
-      setRoles([]);
-      setLoadError('Could not load roles. Retry, or check that the backend is running.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, loading, loadError, refresh, setData } = useCachedPanelData<RoleSummary[]>(
+    'roles',
+    listRoles,
+    'Could not load roles. Retry, or check that the backend is running.'
+  );
+  const roles = useMemo(() => data ?? [], [data]);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const setRoles = useCallback<Dispatch<SetStateAction<RoleSummary[]>>>(
+    action =>
+      setData(previous => {
+        const base = previous ?? [];
+        return typeof action === 'function' ? action(base) : action;
+      }),
+    [setData]
+  );
 
   const backToList = useCallback(() => {
     setView({ mode: 'list' });

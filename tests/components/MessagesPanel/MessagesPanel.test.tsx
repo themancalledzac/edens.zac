@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
 
 import { MessagesPanel } from '@/app/components/MessagesPanel/MessagesPanel';
+import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import * as messagesApi from '@/app/lib/api/messages';
 
 jest.mock('next/link', () => ({
@@ -40,6 +41,8 @@ const makeMessage = (
 describe('MessagesPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearCachedPanelData();
+    window.localStorage.clear();
     window.confirm = jest.fn(() => true);
   });
 

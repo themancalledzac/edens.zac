@@ -14,6 +14,7 @@ import userEvent from '@testing-library/user-event';
 
 import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { UserManagementPanel } from '@/app/components/UserManagementPanel/UserManagementPanel';
+import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { ApiError } from '@/app/lib/api/core';
 import { listUsers, upgradeUser } from '@/app/lib/api/users';
 
@@ -34,6 +35,8 @@ const person = { id: 2, email: null, displayName: 'Danny Nieves', status: 'PERSO
 
 beforeEach(() => {
   jest.clearAllMocks();
+  clearCachedPanelData();
+  window.localStorage.clear();
   (listUsers as jest.Mock).mockImplementation(async (opts?: { includePeople?: boolean }) =>
     opts?.includePeople ? [account, person] : [account]
   );
