@@ -153,10 +153,13 @@ describe('AdminPanelRenderer', () => {
   });
 
   /**
-   * Collapsed takes the identical path — the bar occupies the 56px the collapsed footprint pins,
-   * with no special-casing left in this component. The old code had to strip its cap here, because
-   * a `max-height` below the header's natural height clipped the bar to a sliver on narrow
-   * viewports; the height it is given is now simply correct at every width.
+   * Collapsed takes the identical path — the bar occupies exactly the height it is handed, with no
+   * special-casing left in this component. The 56 below is an arbitrary bar-ish number chosen to
+   * show that this component does not know or care what the pin is; the shipped footprint pins
+   * `COLLAPSED_PANEL_HEIGHT` (102px), and `page.collapsedLayout.test.ts` is what asserts THAT
+   * number reaches the row. The old code had to strip its cap here, because a `max-height` below
+   * the header's natural height clipped the bar to a sliver on narrow viewports; the height it is
+   * given is now simply correct at every width.
    */
   it('renders a collapsed bar at the pinned height, by the same rule as an expanded panel', () => {
     const { container } = render(

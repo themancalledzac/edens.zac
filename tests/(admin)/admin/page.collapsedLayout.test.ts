@@ -18,17 +18,24 @@ import { measureRow } from '@/app/utils/layoutDebug';
  * each bar took a full-width row rendered at a 400px cap — one bar, ~874px of dead space (Zac's
  * 2026-08-10 review: a collapsed panel is "STILL a part of the atomic design as a whole … think a
  * '0-1 star horizontal'"). These pin the settled model: the collapsed footprint is an ordinary
- * small pinned block — under the extremeness ramp, rated low, carrying the same width bounds as
- * its expanded form — so it shares rows, stacks into columns, and renders 56px tall everywhere.
+ * small pinned block — under the extremeness ramp, rated low, carrying the same width floor as its
+ * expanded form — so it shares rows, stacks into columns, and renders exactly
+ * `COLLAPSED_PANEL_HEIGHT` (102px, summed from the panel's own chrome tokens) tall at every
+ * viewport — asserted below by 'pins every collapsed bar to its declared bar height'.
  *
  * DESKTOP is the real max desktop content width (`getContentWidth()` = pageMaxWidth 1300 −
- * desktopPadding 25.6), not a round number. It has to be: each panel declares a 400px
- * {@link Content.minWidth}, and three of them share a row only at or above a measured 1232.0px of
- * content width. (Not 3×400 + 2×gap = 1225.6 — that is where the RENDERED width reaches 400, while
- * membership is decided from the packer's stricter share estimate; see the header docblock of
- * `adminHubContent.ts`.) NARROW_DESKTOP below sits deliberately under that threshold and pins what
- * the packer does there, so the difference between "the feature moved" and "the viewport is too
- * narrow for three panels" can never be confused again.
+ * desktopPadding 25.6), not a round number. NARROW_DESKTOP is one step under it, and the test
+ * below asserts the packer keeps all three panels in one row THERE too — by stacking two of them
+ * into a column rather than by squeezing three 400px columns side by side.
+ *
+ * An earlier revision of this header called 1232.0px the width above which three panels share a
+ * row, which the very next test contradicts. There is no such threshold: swept in 0.1px steps
+ * through `buildContentRows`, this file's fixture (default cover shapes, 12/2/6 rows) packs all
+ * three into one row from 1134.72px up, and the zero-count fallback shares from 712.80px, splits
+ * again from 1045.48px, and shares once more from 1232.00px. Membership is non-monotonic in width
+ * because a stacked column is available and the pinned-row predicates can reject a wider
+ * arrangement a narrower one satisfies; the header docblock of `adminHubContent.ts` carries the
+ * measured picture on all three fixtures.
  */
 const DESKTOP = { contentWidth: 1274.4, viewportHeight: 900, isMobile: false };
 const NARROW_DESKTOP = { contentWidth: 1174.4, viewportHeight: 900, isMobile: false };
@@ -181,16 +188,6 @@ describe('admin hub collapsed layout', () => {
   });
 
   /**
-   * Collapsing reclaims space — measured as the page getting SHORTER, which is what a reader
-   * experiences, rather than as any one panel getting wider.
-   *
-   * The old assertion here was `roles` widening on each collapse. That was a proxy for "the freed
-   * space got used" and it stopped being true once the composer could stack: freeing `users` now
-   * lets two nav tiles join the panels' row, so `roles` narrows 626 → 510 while the panel rows
-   * collapse from 1224.5px to 601.9px total. Denser, not wider — the proxy inverted while the
-   * property it stood for got stronger.
-   */
-  /**
    * Collapse reclaims space AGAINST THE BASELINE, not stepwise. Per-step monotonicity was
    * abandoned by design in Zac's 2026-08-10 review rounds: filling the body width, uniform
    * column widths, and panels grouped in one column all outrank a shorter page, and honouring
@@ -209,6 +206,21 @@ describe('admin hub collapsed layout', () => {
    * shorter than it renders; grouping items by rounded width merges two same-width columns standing
    * side by side and overstates it), so having exactly one measured definition of row height,
    * itself under test, is the point.
+   *
+   * NOT MONOTONIC IN ROW COUNT EITHER, and deliberately so. Collapsing a panel can ADD rows to the
+   * hub, and which panel you collapse decides the direction. Measured through `rowsFor` at widths
+   * this suite does not otherwise assert at — this same fixture at a 812.8px body packs 2 rows with
+   * everything open, 1 row with `users` collapsed, and 3 rows with `messages` collapsed (4 with
+   * `users+messages`); the live-cover fixture of `page.collapseStates.test.ts` goes 1 row → 2 rows
+   * at a 1000px body when `users` alone collapses.
+   *
+   * Accepted, not a defect in the collapse mechanism. Collapse only swaps one block's footprint;
+   * everything after that is ordinary composition, and the freed width is handed to the nav TILES,
+   * whose covers then re-compose — a portrait cover that lands alone claims a row of its own. The
+   * candidate fixes (a tile maxHeight, excluding low-rated items from the row-AR pull, changing
+   * tile shape semantics) are all new design decisions with baseline-regression risk across every
+   * collection page, so the behaviour is documented rather than tuned away. The height half of the
+   * same phenomenon is pinned at exact values in `page.collapseStates.test.ts`.
    */
   it('never renders a collapsed state taller than the all-open page', () => {
     const totalHeight = (collapsed: Record<PanelType, boolean>) =>

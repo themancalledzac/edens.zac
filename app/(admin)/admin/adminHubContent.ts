@@ -28,23 +28,43 @@
  *
  * Row composition, not rating, is the lever for a panel's width: the packer splits a row's budget
  * among whatever shares it, so a panel's width moves only when the number or shape of its
- * row-mates changes. Verified by measuring identical 298px panel widths at a 1274px content width
- * across rating 1, 2, and 3 alike, with row composition held fixed.
+ * row-mates changes. Re-measured through `buildContentRows` at the 1274.4px max desktop content
+ * width with 12/2/6 row counts: ratings 1 through 5 all render the three panels at 478.10px each
+ * against the default cover shapes. (Against the live covers `page.collapseStates.test.ts`
+ * carries, all five ratings give 700.00px — true but weaker evidence, since that is {@link
+ * PANEL_MAX_WIDTH} binding rather than the solve landing in the same place.)
  *
  * That is why each panel declares {@link PANEL_MIN_WIDTH} rather than a higher rating: the minimum
- * acts on row MEMBERSHIP, which is the lever that actually moves. At the 1274.4px max desktop
- * content width it takes all three nav tiles out of the panels' row, and the panels go from
- * 298.13px each to 416.27px each (measured through `buildContentRows`).
+ * acts on row MEMBERSHIP, and membership is still the lever that moves. `firstCleanExtension`
+ * refuses to grow a row into a composition that starves a declared minimum, so the row closes
+ * instead. At 1274.4px that no longer changes the outcome — the fill and shared-width predicates
+ * bind first, and stripping `minWidth` off the three panels leaves every row's membership and
+ * widths unchanged on all three fixtures below — but across the narrow-desktop band it is
+ * decisive: at a 900px body with the live covers the panels render 542.89px each with the minimum
+ * declared, and are squeezed to 347.02px each without it.
  *
- * Three panels share a row only at or above **1232.0px** of content width; below it the packer
- * drops the third to its own row, and by phone widths it is one panel per row. Do NOT recompute
- * that threshold as 3 × 400 + 2 × gap = 1225.6px and conclude the code is wrong — 1225.6 is where
- * the RENDERED width reaches 400 (the sizer's equal-height solve redistributes the gap budget so
- * all three panels land at exactly `(W − 2 × gap) / 3`), but membership is decided earlier, from
- * the packer's gap-aware share ESTIMATE, which charges a leaf nested under two horizontal nodes a
- * share of both gaps (⅚ × gap, not ⅔ × gap). That stricter test clears 400px at 1232.0px, 6.4px
- * later. Bisected through the real `processContentForDisplay`: 1232.0 → 609.60/609.60 + 1232.00,
- * 1232.1 → 402.17 × 3.
+ * There is no single content width at which "three panels share a row" starts being true. An
+ * earlier revision of this docblock put that threshold at 1232.0px; the claim predates two things.
+ * The composer can now STACK panels into one column, so three panels fit a row far narrower than
+ * three 400px columns would need, and the pinned-row membership predicates can reject a WIDER
+ * arrangement that a narrower one satisfies. Membership is therefore non-monotonic in width, and
+ * depends on the panels' content heights and the nav tiles' cover shapes as much as on the width.
+ * Swept in 0.1px steps from 390 to 1300 and each transition bisected to four decimals through
+ * `buildContentRows` — the recipe is to pack `withPanelFootprints(buildAdminHubContent(tiles,
+ * counts), noneCollapsed)` at a given `contentWidth` and count the rows holding a panel:
+ *
+ * - live 2026-08-10 covers + 12/2/6 rows (what the real page packs): all three share ONE row
+ *   between **903.23px and 1284.98px** — the entire desktop band up to the 1274.4px page cap.
+ *   Below 903.23px they split.
+ * - default cover shapes + 12/2/6 rows (the `page.collapsedLayout.test.ts` fixture): one row from
+ *   **1134.72px** up.
+ * - the zero-count fallback: one row from **712.80px**, split again from **1045.48px**, one row
+ *   once more from **1232.00px**. That last figure is where the retired claim's number came from —
+ *   one of three transitions in one fixture, not a page-wide threshold.
+ *
+ * Do NOT recompute any of these as 3 × 400 + 2 × gap = 1225.6px. That is the width at which three
+ * SIDE-BY-SIDE 400px columns would first fit, and a flat three-column row is not the arrangement
+ * the composer picks at any of the transitions above.
  */
 
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
@@ -298,8 +318,9 @@ export function buildAdminHubContent(
  * Zac's round-3 review: a closed panel is not only its header — it shows a small strip of the
  * (empty) body surface, "as tall as the padding around it, maybe twice as tall". Body padding is
  * 32px total ({@link PANEL_CHROME}.bodyPadding), so the visible body lands at 48px — inside his
- * stated band. Mirrored by the collapsed body's `min-height` in `AdminPanel.module.scss`; change
- * the two together.
+ * stated band. Mirrored in `AdminPanel.module.scss` by the `.isCollapsed::after` strip, whose
+ * `min-height: var(--space-4)` (16px) inside `margin: var(--space-4)` (32px in total) is the same
+ * 32 + 16 arithmetic; change the two together.
  */
 const COLLAPSED_BODY_SLIVER = 16;
 

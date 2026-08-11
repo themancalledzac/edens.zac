@@ -15,12 +15,15 @@ import { buildAdminHubContent, COLLAPSED_PANEL_SIZE } from '@/app/(admin)/admin/
  */
 
 /**
- * The real max desktop content width (pageMaxWidth 1300 − desktopPadding 25.6). Each panel
- * declares a 400px {@link Content.minWidth}, and three share a row only at or above a measured
- * 1232.0px of content width (NOT 3×400 + 2×gap = 1225.6 — membership is decided from the packer's
- * share estimate, which is stricter than the rendered width; see `adminHubContent.ts`). Below that
- * the packer legitimately splits them and this test's "collapsing one widens the rest" premise
- * stops being about collapsing at all. `page.collapsedLayout.test.ts` pins the narrow case.
+ * The real max desktop content width (pageMaxWidth 1300 − desktopPadding 25.6). This suite renders
+ * `buildAdminHubContent([])`, i.e. the zero-count fallback, and 1274.4px sits inside a band where
+ * that fixture packs all three panels into one row. There is no single "three panels share a row"
+ * threshold to quote — an earlier revision of this header claimed 1232.0px, but swept in 0.1px
+ * steps through `buildContentRows` the zero-count fallback shares a row from 712.80px, SPLITS
+ * again from 1045.48px, and shares once more from 1232.00px. See the header docblock of
+ * `adminHubContent.ts` for the measured picture on all three fixtures. What this test needs from
+ * the width is only that the click below re-packs a shared row rather than one panel per row;
+ * `page.collapsedLayout.test.ts` pins the narrow cases.
  */
 const DESKTOP_VIEWPORT = { contentWidth: 1274.4, viewportHeight: 900, isMobile: false };
 

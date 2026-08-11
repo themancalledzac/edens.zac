@@ -98,16 +98,26 @@ export interface Content {
   maxWidth?: number;
 
   /**
-   * Height clamp in CSS px, applied by the sizer AFTER width allocation. Width
-   * distribution and row membership still run on the declared `width`/`height` aspect
-   * ratio — the clamp only changes the height this block RENDERS at, which is what
-   * lets a short or collapsed block sit top-aligned in a row without stretching to its
-   * tallest sibling (`H(W) = clamp(a·W + b, minHeight, maxHeight)`).
+   * Height clamp in CSS px, applied by the sizer AFTER width allocation:
+   * `H(W) = clamp(a·W + b, minHeight, maxHeight)`. What lets a short or collapsed block sit
+   * top-aligned in a row without stretching to its tallest sibling.
    *
-   * Setting both to the same value pins the block's height outright (a collapsed
-   * panel's 56px bar) — declare that with {@link pinnedHeight} rather than by hand.
-   * `minHeight` wins if the two ever conflict. Undefined skips the entire clamp path —
-   * photographs never enter it.
+   * How much of the engine sees it depends on whether the two ends are EQUAL:
+   *
+   * - An unequal band is invisible to the packer. `heightModel` (composer) and
+   *   `computeHeightCoeffs` (sizer) both model the leaf as `flexibleLeaf(declaredAR)`, so width
+   *   distribution and row membership run on the declared `width`/`height` ratio and only the
+   *   rendered height is clamped.
+   * - Equal ends are a PIN, and a pin changes both. The composer models the block as `a = 0` and
+   *   scores its row by RENDERED height rather than by declared AR (`renderedAR`, gated on the
+   *   `pinned` precheck in `pickBestComposition`), and `buildRows` puts any row that could carry
+   *   a pinned member through the stricter clean-extension membership rules instead of the
+   *   width-cost fill budget. Do not read the first bullet as covering pins.
+   *
+   * Declare a pin with {@link pinnedHeight} rather than by hand — that is what makes the
+   * equality true by construction (a collapsed admin panel's bar, 102px: see
+   * `COLLAPSED_PANEL_HEIGHT`, summed from the panel's own chrome tokens). `minHeight` wins if
+   * the two ever conflict. Undefined skips the entire clamp path — photographs never enter it.
    */
   minHeight?: number;
   maxHeight?: number;

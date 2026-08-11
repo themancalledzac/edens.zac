@@ -27,13 +27,18 @@ interface AdminPanelProps {
  *
  * When collapsible, the header becomes a {@link Disclosure} — the title turns into the toggle and
  * the body unmounts, while the `action` controls stay outside the button and remain usable. This
- * panel keeps only what is its own: the boxed chrome, and the `.isCollapsed` hook that lets the
- * shell size to its header instead of filling the box the packer gave it.
+ * panel keeps only what is its own: the boxed chrome, and the `.isCollapsed` hook.
+ *
+ * `.isCollapsed` makes the shell FILL the box the packer gave it (`height: 100%`) rather than size
+ * to its header. The packer's box for a collapsed panel is the uniform `COLLAPSED_PANEL_HEIGHT`
+ * bar, and filling it is what keeps a text-only header's bar exactly as tall as a
+ * button-carrying one — three closed panels read as one row of bars, not three heights.
  *
  * `.isCollapsed` also paints the strip of empty body surface a closed panel keeps showing, through
- * an `::after`. That is presentation with no content, so it belongs to the stylesheet and not to
- * this component: as markup it was two nested divs whose only job was to be seen and not read,
- * held out of the accessibility tree by an `aria-hidden` that any later edit could drop.
+ * an `::after` that takes the space below the header. That is presentation with no content, so it
+ * belongs to the stylesheet and not to this component: as markup it was two nested divs whose only
+ * job was to be seen and not read, held out of the accessibility tree by an `aria-hidden` that any
+ * later edit could drop.
  *
  * `collapsed` is inverted into the disclosure's `open` rather than renamed, because the panel's
  * callers and the renderer that owns the state both speak in terms of collapsing.

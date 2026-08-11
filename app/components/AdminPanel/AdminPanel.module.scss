@@ -1,10 +1,12 @@
 /* AdminPanel — shared shell for admin hub panels (header + scrollable body) */
 
-/* Height is deliberately absent: the panel is a flex item of AdminPanelRenderer's .box, which
-   carries the packer's height as a max-height, so the panel is as tall as its contents up to that
-   cap. `overflow: hidden` is what lets it shrink past its content size when the cap binds (it
-   zeroes the flex automatic minimum size) and hand the overflow to .body's scroll — an explicit
-   `min-height: 0` here would be a second mechanism for the same job. */
+/* Height is deliberately absent HERE: the panel is a flex item of AdminPanelRenderer's .box, which
+   carries the packer's number as a real `height` (not a max-height — the packed number IS the
+   panel's content height, `chrome + rowCount * rowHeight`). As a non-growing flex item the panel is
+   then as tall as its own contents, bounded by that box. `overflow: hidden` is what lets it shrink
+   past its content size when the box binds (it zeroes the flex automatic minimum size) and hand the
+   overflow to .body's scroll — an explicit `min-height: 0` here would be a second mechanism for the
+   same job. `.isCollapsed` below is the one state that opts out and fills the box instead. */
 .panel {
   display: flex;
   flex-direction: column;
