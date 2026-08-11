@@ -1,15 +1,25 @@
-import { buildAdminHubContent, withCollapsedPanels } from '@/app/(admin)/admin/adminHubContent';
+import {
+  buildAdminHubContent,
+  COLLAPSED_PANEL_SIZE,
+  PANEL_MAX_WIDTH,
+  withPanelFootprints,
+} from '@/app/(admin)/admin/adminHubContent';
 import { buildContentRows } from '@/app/components/Content/componentUtils';
 import { LAYOUT } from '@/app/constants';
 import type { PanelType } from '@/app/types/Content';
 import { isPanelContent } from '@/app/utils/contentTypeGuards';
+import type { BoxTree } from '@/app/utils/rowCombination';
 
 /**
- * Collapsing a hub panel has to move the LAYOUT, not just the panel's own rendering. The roles
- * branch made a collapsed panel's own box shrink (max-height + align-self), but its row still
- * stood as tall as its tallest sibling and every other item kept its packer-assigned width. These
- * pin the part that closes that gap: the packer sees the collapsed footprint, gives the bar its own
- * full-width row, and re-solves widths for everything left.
+ * Collapsing a hub panel has to move the LAYOUT, not just the panel's own rendering — and it has
+ * to move it the way ANY block would. Both halves were learned the hard way. The roles branch made
+ * a collapsed panel's own box shrink (max-height + align-self) while its row stood as tall as its
+ * tallest sibling. The first fix over-corrected: a 1200×56 footprint tripped `isSoloHero`, and
+ * each bar took a full-width row rendered at a 400px cap — one bar, ~874px of dead space (Zac's
+ * 2026-08-10 review: a collapsed panel is "STILL a part of the atomic design as a whole … think a
+ * '0-1 star horizontal'"). These pin the settled model: the collapsed footprint is an ordinary
+ * small pinned block — under the extremeness ramp, rated low, carrying the same width bounds as
+ * its expanded form — so it shares rows, stacks into columns, and renders 56px tall everywhere.
  *
  * DESKTOP is the real max desktop content width (`getContentWidth()` = pageMaxWidth 1300 −
  * desktopPadding 25.6), not a round number. It has to be: each panel declares a 400px
@@ -27,13 +37,21 @@ const MOBILE = { contentWidth: 390, viewportHeight: 844, isMobile: true };
 const NONE: Record<PanelType, boolean> = { users: false, messages: false, roles: false };
 const ALL: Record<PanelType, boolean> = { users: true, messages: true, roles: true };
 
+/**
+ * The live hub's row counts, so these rows are packed against heights the real page produces
+ * rather than the zero-count floor. Twelve accounts, two messages and six roles is exactly the
+ * data in Zac's 2026-08-10 screenshots, which is what makes the "different heights" assertion
+ * below a check on the reported bug and not on an invented fixture.
+ */
+const COUNTS = { users: 12, messages: 2, roles: 6 };
+
 const rowsFor = (
   collapsed: Record<PanelType, boolean>,
   viewport = DESKTOP,
   mobileChunkSize?: number
 ) =>
   buildContentRows(
-    withCollapsedPanels(buildAdminHubContent([]), collapsed),
+    withPanelFootprints(buildAdminHubContent([], COUNTS), collapsed),
     undefined,
     viewport,
     LAYOUT.defaultChunkSize,
@@ -43,19 +61,6 @@ const rowsFor = (
 const panelRows = (collapsed: Record<PanelType, boolean>, viewport = DESKTOP) =>
   rowsFor(collapsed, viewport).filter(row => row.items.some(item => isPanelContent(item.content)));
 
-const widthOf = (
-  collapsed: Record<PanelType, boolean>,
-  panelType: PanelType,
-  viewport = DESKTOP
-) => {
-  for (const row of rowsFor(collapsed, viewport)) {
-    for (const item of row.items) {
-      if (isPanelContent(item.content) && item.content.panelType === panelType) return item.width;
-    }
-  }
-  throw new Error(`no ${panelType} panel in the layout`);
-};
-
 describe('admin hub collapsed layout', () => {
   it('packs all three expanded panels into a single shared row', () => {
     const rows = panelRows(NONE);
@@ -64,86 +69,236 @@ describe('admin hub collapsed layout', () => {
     expect(rows[0]?.items.filter(item => isPanelContent(item.content))).toHaveLength(3);
   });
 
-  it('drops the third panel to its own row once the viewport cannot fit three minimums', () => {
+  /**
+   * A narrow desktop no longer splits the panels across rows, and that is the feature working
+   * rather than a regression. Three panels only ever needed three side-by-side 400px columns
+   * because the composer could not stack them; now `roles` sits UNDER `messages` in one shared
+   * column, so the row needs two columns instead of three and 1174.4px is ample. What still has
+   * to hold at every viewport is the minimum itself.
+   */
+  it('keeps three panels in one row at a narrow desktop by stacking, not by squeezing', () => {
     const rows = panelRows(NONE, NARROW_DESKTOP);
 
-    expect(rows.map(row => row.items.length)).toEqual([2, 1]);
-    for (const row of rows) {
-      for (const item of row.items) {
-        expect(item.width).toBeGreaterThanOrEqual(400);
-      }
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.items.filter(item => isPanelContent(item.content))).toHaveLength(3);
+    for (const item of rows[0]!.items) {
+      if (isPanelContent(item.content)) expect(item.width).toBeGreaterThanOrEqual(400);
     }
   });
 
   /**
-   * The narrow desktop is where the layout is most asymmetric and where collapsing therefore
-   * behaves least like the marketing story, so it gets pinned rather than assumed. Collapsing the
-   * FIRST panel does not widen `roles` — it narrows it, 1174.4 → 580.8, because `roles` was only
-   * full-width as the odd one out of a 2+1 split, and freeing `users` lets `messages` join it.
-   * Collapsing the second then hands `roles` the whole width. Both moves are correct; what must
-   * hold throughout is that no standing panel is ever pushed under its declared minimum.
+   * Collapsing frees space; what the layout DOES with it is now the packer's call, and it no
+   * longer means "the survivors get wider". With a stackable column available it more often
+   * pulls extra items up into the row, which makes a standing panel NARROWER while making the
+   * page shorter — the outcome that actually matters. So this pins the two invariants that
+   * survive: no standing panel drops under its minimum, and none exceeds its maximum.
    */
-  it('keeps every standing panel above its minimum through a narrow-desktop collapse', () => {
-    const rolesExpanded = widthOf(NONE, 'roles', NARROW_DESKTOP);
-    const rolesAfterOne = widthOf({ ...NONE, users: true }, 'roles', NARROW_DESKTOP);
-    const rolesAfterTwo = widthOf(
+  it('keeps every standing panel within its width bounds through a narrow-desktop collapse', () => {
+    const states = [
+      NONE,
+      { ...NONE, users: true },
+      { ...NONE, messages: true },
       { ...NONE, users: true, messages: true },
-      'roles',
-      NARROW_DESKTOP
-    );
+    ];
 
-    expect(rolesAfterOne).toBeLessThan(rolesExpanded);
-    expect(rolesAfterOne).toBeGreaterThanOrEqual(400);
-    expect(rolesAfterTwo).toBeGreaterThan(rolesAfterOne);
-    expect(Math.round(rolesAfterTwo)).toBe(Math.round(NARROW_DESKTOP.contentWidth));
-
-    for (const collapsed of [NONE, { ...NONE, users: true }, { ...NONE, messages: true }]) {
+    for (const collapsed of states) {
       for (const row of panelRows(collapsed, NARROW_DESKTOP)) {
         for (const item of row.items) {
+          if (!isPanelContent(item.content)) continue;
           expect(item.width).toBeGreaterThanOrEqual(400);
+          expect(item.width).toBeLessThanOrEqual(PANEL_MAX_WIDTH);
         }
       }
     }
   });
 
-  it('gives each collapsed panel its own full-width row', () => {
+  /**
+   * `maxWidth` as a bound, at every collapse state. Whether the cap BINDS depends on the tile
+   * covers (this file's fixture declares none, and its solve rests below the cap; the live-AR
+   * fixture in `page.collapseStates.test.ts` is where the all-open row presses Users against
+   * exactly 700) — what holds universally is that no expanded panel ever exceeds it.
+   */
+  it('keeps every standing panel at or under its maxWidth in every state', () => {
+    const states = [NONE, { ...NONE, users: true }, { ...NONE, users: true, messages: true }, ALL];
+    for (const collapsed of states) {
+      for (const row of panelRows(collapsed)) {
+        for (const item of row.items) {
+          if (!isPanelContent(item.content)) continue;
+          if (collapsed[item.content.panelType]) continue;
+          expect(item.width).toBeLessThanOrEqual(PANEL_MAX_WIDTH);
+        }
+      }
+    }
+  });
+
+  /**
+   * The reversal of this feature's first design, which gave each collapsed bar its OWN full-width
+   * row (1200×56 tripped `isSoloHero`) with the bar render-capped at 400px — dead space to its
+   * right, one orphan row per bar. Ordinary blocks share rows: all three bars pack into one row,
+   * each rendered inside the same width bounds its expanded form declares.
+   */
+  it('packs all three collapsed bars into one shared row, inside the panel width bounds', () => {
     const rows = panelRows(ALL);
 
-    expect(rows).toHaveLength(3);
-    for (const row of rows) {
-      expect(row.items).toHaveLength(1);
-      expect(Math.round(row.items[0]!.width)).toBe(Math.round(DESKTOP.contentWidth));
+    expect(rows).toHaveLength(1);
+    const bars = rows[0]!.items.filter(item => isPanelContent(item.content));
+    expect(bars).toHaveLength(3);
+    for (const bar of bars) {
+      expect(bar.width).toBeGreaterThanOrEqual(COLLAPSED_PANEL_SIZE.minWidth);
+      expect(bar.width).toBeLessThan(DESKTOP.contentWidth);
     }
   });
 
-  it('re-packs the tiles into rows carrying no panel once every panel collapses', () => {
-    const tileRows = rowsFor(ALL).filter(
-      row => !row.items.some(item => isPanelContent(item.content))
-    );
+  /**
+   * The bug as Zac measured it: collapse Users and the bar took a 1274.4×56 row of its own —
+   * 400px of bar, 874px of nothing — before the standing panels started a second row. A single
+   * collapsed bar belongs in the standing panels' row (the composer stacks it atop one of them).
+   */
+  it('keeps a single collapsed bar in the standing panels row — no orphan row', () => {
+    const rows = panelRows({ ...NONE, users: true });
 
-    expect(tileRows.length).toBeGreaterThan(0);
-    expect(tileRows.flatMap(row => row.items).length).toBeGreaterThan(0);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.items.filter(item => isPanelContent(item.content))).toHaveLength(3);
   });
 
-  it('widens the panels left standing — the point of the feature', () => {
-    expect(widthOf({ ...NONE, users: true }, 'roles')).toBeGreaterThan(widthOf(NONE, 'roles'));
-    expect(widthOf({ ...NONE, users: true, messages: true }, 'roles')).toBeGreaterThan(
-      widthOf({ ...NONE, users: true }, 'roles')
-    );
+  /**
+   * Bars are ordinary blocks, so the tiles pack WITH them rather than being pushed into rows of
+   * their own — an earlier revision asserted the opposite (a panel-free tile row), which was the
+   * solo-hero layout's segregation surviving as a test.
+   */
+  it('packs tiles into shared rows with the bars once every panel collapses', () => {
+    const rows = rowsFor(ALL);
+    const tileCount = rows.flatMap(row => row.items).filter(item => !isPanelContent(item.content));
+
+    expect(tileCount.length).toBeGreaterThan(0);
+    expect(
+      rows.some(
+        row =>
+          row.items.some(item => isPanelContent(item.content)) &&
+          row.items.some(item => !isPanelContent(item.content))
+      )
+    ).toBe(true);
   });
 
-  it('allocates a collapsed row far shorter than an expanded panel', () => {
-    const collapsedBar = panelRows(ALL)[0]?.items[0];
-    const expandedPanel = panelRows(NONE)[0]?.items[0];
+  /**
+   * Collapsing reclaims space — measured as the page getting SHORTER, which is what a reader
+   * experiences, rather than as any one panel getting wider.
+   *
+   * The old assertion here was `roles` widening on each collapse. That was a proxy for "the freed
+   * space got used" and it stopped being true once the composer could stack: freeing `users` now
+   * lets two nav tiles join the panels' row, so `roles` narrows 626 → 510 while the panel rows
+   * collapse from 1224.5px to 601.9px total. Denser, not wider — the proxy inverted while the
+   * property it stood for got stronger.
+   */
+  /**
+   * Collapse reclaims space AGAINST THE BASELINE, not stepwise. Per-step monotonicity was
+   * abandoned by design in Zac's 2026-08-10 review rounds: filling the body width, uniform
+   * column widths, and panels grouped in one column all outrank a shorter page, and honouring
+   * them can re-compose a step taller than its predecessor. What must stay true is the feature's
+   * point — a page with panels collapsed never runs TALLER than the all-open page.
+   */
+  it('never renders a collapsed state taller than the all-open page', () => {
+    // A row is as tall as its tallest COLUMN, and the BoxTree is the only honest map of what a
+    // column is. Two earlier metrics here each inverted an assertion: `max(item.height)` reports
+    // a stacked row far shorter than it renders, and group-items-by-rounded-width merges two
+    // same-width columns standing side by side (a collapsed bar over Messages beside Roles is
+    // exactly that shape) and overstates the row. So walk the tree: a leaf is its item's height
+    // (items arrive in tree-traversal order), a vertical join sums plus the gap, a horizontal
+    // join takes the taller side.
+    const totalHeight = (collapsed: Record<PanelType, boolean>) =>
+      rowsFor(collapsed).reduce((sum, row) => {
+        let cursor = 0;
+        const walk = (tree: BoxTree): number => {
+          if (tree.type === 'leaf') return row.items[cursor++]!.height;
+          const first = walk(tree.children[0]);
+          const second = walk(tree.children[1]);
+          return tree.direction === 'vertical'
+            ? first + LAYOUT.gridGap + second
+            : Math.max(first, second);
+        };
+        return sum + walk(row.boxTree);
+      }, 0);
 
-    expect(collapsedBar?.height).toBeLessThan(60);
-    expect(expandedPanel?.height).toBeGreaterThan(400);
+    const expanded = totalHeight(NONE);
+
+    for (const collapsed of [
+      { ...NONE, users: true },
+      { ...NONE, users: true, messages: true },
+      ALL,
+    ]) {
+      expect(totalHeight(collapsed)).toBeLessThan(expanded);
+    }
   });
 
-  it('keeps every collapsed bar full-width on a phone', () => {
+  /**
+   * The blank well, pinned shut. Row 0 packs to its tallest member with nothing left over: the
+   * Messages/Roles column plus the tile pulled up beside them fills Users' full height. Before
+   * this, Messages rendered 251px into a 986px row and left 735px of nothing.
+   */
+  it('leaves no vertical slack in the panel row', () => {
+    const row = panelRows(NONE)[0]!;
+    const rowHeight = Math.max(...row.items.map(item => item.height));
+    const columns = new Map<number, number>();
+
+    for (const item of row.items) {
+      const x = Math.round(item.width);
+      columns.set(x, (columns.get(x) ?? 0) + item.height);
+    }
+
+    // Every column either is the tallest member or stacks to within a gap of it.
+    for (const stacked of columns.values()) {
+      expect(stacked).toBeGreaterThan(rowHeight - 3 * LAYOUT.gridGap);
+    }
+  });
+
+  it('pins every collapsed bar to its declared bar height at every viewport', () => {
+    expect(panelRows(ALL)[0]?.items[0]?.height).toBe(COLLAPSED_PANEL_SIZE.minHeight);
+    for (const row of rowsFor(ALL, MOBILE, 1)) {
+      if (row.items.some(item => isPanelContent(item.content))) {
+        expect(row.items[0]!.height).toBe(COLLAPSED_PANEL_SIZE.minHeight);
+      }
+    }
+    expect(panelRows(NONE)[0]?.items[0]?.height).toBeGreaterThan(400);
+  });
+
+  it('keeps every collapsed bar full-width on a phone, where the row is narrower than the cap', () => {
     for (const row of rowsFor(ALL, MOBILE, 1)) {
       expect(row.items).toHaveLength(1);
-      expect(Math.round(row.items[0]!.width)).toBe(MOBILE.contentWidth);
+      if (row.items.some(item => isPanelContent(item.content))) {
+        expect(Math.round(row.items[0]!.width)).toBe(MOBILE.contentWidth);
+      }
     }
+  });
+
+  /**
+   * The gap Zac's 2026-08-10 review was about, now closed and pinned from the other side.
+   *
+   * Before this, the three expanded panels reserved one shared row of EQUAL height — a two-message
+   * Messages panel got the same ~763px well as a twelve-user Users panel, and the difference showed
+   * up as blank space. Each panel now reserves `chrome + rowCount × rowHeight`, so with 12/2/6 rows
+   * the three heights must differ and must order the same way the counts do.
+   */
+  it('reserves a different, content-derived height for each expanded panel', () => {
+    const items = panelRows(NONE)[0]!.items;
+    const heightOf = (panelType: PanelType) =>
+      items.find(item => isPanelContent(item.content) && item.content.panelType === panelType)!
+        .height;
+
+    expect(new Set(items.map(item => Math.round(item.height))).size).toBeGreaterThan(1);
+    expect(heightOf('users')).toBeGreaterThan(heightOf('roles'));
+    expect(heightOf('roles')).toBeGreaterThan(heightOf('messages'));
+  });
+
+  /**
+   * The reserved box has to be the box the panel actually needs — the reason the row can stop
+   * padding it. 2 messages at 86px plus 79px of chrome is 251px; anything materially above that is
+   * the blank well coming back.
+   */
+  it('reserves the true two-message box for Messages, not a column', () => {
+    const messages = panelRows(NONE)[0]!.items.find(
+      item => isPanelContent(item.content) && item.content.panelType === 'messages'
+    )!;
+
+    expect(messages.height).toBeCloseTo(79 + 2 * 86, 5);
   });
 });

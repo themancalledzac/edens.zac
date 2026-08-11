@@ -74,6 +74,11 @@ export function AdminPanel({
           <div className={styles.body}>{children}</div>
         </>
       )}
+      {isCollapsed ? (
+        <div className={styles.collapsedBody} aria-hidden="true">
+          <div className={styles.collapsedList} />
+        </div>
+      ) : null}
     </section>
   );
 }

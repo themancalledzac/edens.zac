@@ -15,12 +15,17 @@
   font-size: var(--text-sm);
 }
 
+/* The list sits on the white content-frame surface — slightly lighter than the panel's raised
+   grey — with its rows padded inward from the frame edge (Zac's 2026-08-10 review). Shared look
+   with MessagesPanel/RolesPanel lists; keep the three in step. */
 .list {
   display: flex;
   flex-direction: column;
   margin: 0;
-  padding: 0;
+  padding: 0 var(--space-2);
   list-style: none;
+  background: var(--content-frame);
+  border-radius: var(--radius-1);
 }
 
 .row {
@@ -28,7 +33,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) 0;
+  padding: var(--space-2);
   border-bottom: 1px solid var(--color-border);
 
   &:last-child {

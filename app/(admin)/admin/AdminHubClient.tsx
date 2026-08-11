@@ -6,7 +6,7 @@ import { AdminPanelCollapseProvider } from '@/app/components/AdminPanel/AdminPan
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { type AnyContentModel, type PanelType } from '@/app/types/Content';
 
-import { withCollapsedPanels } from './adminHubContent';
+import { withPanelFootprints } from './adminHubContent';
 
 interface AdminHubClientProps {
   content: AnyContentModel[];
@@ -24,6 +24,10 @@ interface AdminHubClientProps {
  * still standing widen, and the nav tiles grow with them. State held any lower (it used to live in
  * `AdminPanelRenderer`) can only shrink one panel's own box; its row stays as tall as its tallest
  * sibling and nothing else moves.
+ *
+ * Collapse is the ONLY thing that rewrites a footprint. Feeding each panel's *measured* size back
+ * in was tried and reverted on 2026-08-10 — see the `AdminPanelRenderer` docblock for why it
+ * cannot converge, and what a future attempt has to prove first.
  *
  * Panels that force themselves open — `UserManagementPanel` entering create/edit, `RolesPanel`
  * opening a role from `?role=[id]` — do it through the same `onCollapsedChange`, so they re-pack
@@ -44,7 +48,6 @@ export function AdminHubClient({
     messages: false,
     roles: false,
   });
-
   const collapse = useMemo(
     () => ({
       isCollapsed: (panelType: PanelType) => collapsed[panelType],
@@ -57,7 +60,7 @@ export function AdminHubClient({
   );
 
   const laidOutContent = useMemo(
-    () => withCollapsedPanels(content, collapsed),
+    () => withPanelFootprints(content, collapsed),
     [content, collapsed]
   );
 

@@ -76,14 +76,25 @@ describe('admin hub mobile layout', () => {
     }
   });
 
-  it('documents the un-pinned budget still pairing nav tiles — why mobileChunkSize is pinned', () => {
-    const tileRow = layout(tilesWithCovers(1600, 2400)).find(row =>
+  /**
+   * This used to document the opposite: at the un-pinned budget the nav tiles PAIRED on a 430px
+   * phone, each rendering under half the content width, and that pairing was the reason
+   * `mobileChunkSize={1}` had to be pinned in `page.tsx`.
+   *
+   * The tiles now declare their own `minWidth`, so two of them cannot share a 430px row — the
+   * packer honours the minimum and gives each its own. The pin in `page.tsx` stays (it is what
+   * keeps a PANEL off a shared mobile row, and it is cheap insurance), but the tiles no longer
+   * depend on it.
+   */
+  it('no longer pairs nav tiles at the un-pinned budget — their minimum forbids it', () => {
+    const tileRows = layout(tilesWithCovers(1600, 2400)).filter(row =>
       row.items.every(item => item.content.contentType !== 'PANEL')
     );
 
-    expect(tileRow?.items).toHaveLength(2);
-    for (const item of tileRow?.items ?? []) {
-      expect(item.width).toBeLessThan(MOBILE_VIEWPORT.contentWidth / 2);
+    expect(tileRows.length).toBeGreaterThan(0);
+    for (const row of tileRows) {
+      expect(row.items).toHaveLength(1);
+      expect(Math.round(row.items[0]!.width)).toBe(MOBILE_VIEWPORT.contentWidth);
     }
   });
 });

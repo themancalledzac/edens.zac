@@ -17,12 +17,16 @@
 
 /* ---- list ---- */
 
+/* White content-frame surface + inward row padding, in step with the UserManagementPanel and
+   MessagesPanel lists — see the .list docblock there. Rows here pad via .rowMain already. */
 .list {
   display: flex;
   flex-direction: column;
   margin: 0;
-  padding: 0;
+  padding: 0 var(--space-2);
   list-style: none;
+  background: var(--content-frame);
+  border-radius: var(--radius-1);
 }
 
 .row {

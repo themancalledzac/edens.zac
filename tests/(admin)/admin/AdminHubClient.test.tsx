@@ -3,10 +3,10 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import { AdminHubClient } from '@/app/(admin)/admin/AdminHubClient';
-import { buildAdminHubContent } from '@/app/(admin)/admin/adminHubContent';
+import { buildAdminHubContent, COLLAPSED_PANEL_SIZE } from '@/app/(admin)/admin/adminHubContent';
 
 /**
- * `page.collapsedLayout.test.ts` proves `withCollapsedPanels` plus the real packer produce the
+ * `page.collapsedLayout.test.ts` proves `withPanelFootprints` plus the real packer produce the
  * right rows, but it drives that pure function directly and never mounts `AdminHubClient` itself —
  * so nothing exercised the component's own `useState`/`useMemo` wiring: the `setCollapsed`
  * same-value bail-out, or the dependency arrays that make a real collapse toggle re-derive
@@ -111,7 +111,8 @@ describe('AdminHubClient', () => {
     );
 
     const usersWidthBefore = Number.parseFloat(panelBox('UserManagementPanel').style.width);
-    const rolesWidthBefore = Number.parseFloat(panelBox('RolesPanel').style.width);
+    const usersHeightBefore = Number.parseFloat(panelBox('UserManagementPanel').style.height);
+    const rolesHeightBefore = Number.parseFloat(panelBox('RolesPanel').style.height);
 
     expect(usersWidthBefore).toBeLessThan(1000);
 
@@ -119,12 +120,19 @@ describe('AdminHubClient', () => {
 
     const usersBoxAfter = panelBox('UserManagementPanel');
     const usersWidthAfter = Number.parseFloat(usersBoxAfter.style.width);
-    const rolesWidthAfter = Number.parseFloat(panelBox('RolesPanel').style.width);
+    const usersHeightAfter = Number.parseFloat(usersBoxAfter.style.height);
+    const rolesHeightAfter = Number.parseFloat(panelBox('RolesPanel').style.height);
 
-    expect(usersWidthAfter).toBeGreaterThan(1000);
-    expect(Math.round(usersWidthAfter)).toBe(Math.round(DESKTOP_VIEWPORT.contentWidth));
+    expect(usersWidthAfter).toBeGreaterThanOrEqual(COLLAPSED_PANEL_SIZE.minWidth);
     expect(usersBoxAfter.style.maxHeight).toBe('');
-    expect(rolesWidthAfter).toBeGreaterThan(rolesWidthBefore);
+
+    // The collapse is a real re-pack, not a local restyle: Users drops to the bar height while
+    // Roles — untouched by the click — keeps the height its own row count dictates. Height is the
+    // honest signal now; the old assertion here was "roles gets WIDER", which the composer
+    // invalidated once it could reclaim freed space by pulling more items into the row instead.
+    expect(usersHeightAfter).toBe(COLLAPSED_PANEL_SIZE.minHeight);
+    expect(usersHeightAfter).toBeLessThan(usersHeightBefore);
+    expect(rolesHeightAfter).toBe(rolesHeightBefore);
 
     expect(screen.getByTestId('UserManagementPanel-collapsed')).toHaveTextContent('true');
   });

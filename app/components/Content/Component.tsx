@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useMe } from '@/app/components/auth/MeProvider';
 import { type ReorderMove } from '@/app/components/ContentCollection/edit/collectionEditUtils';
@@ -11,6 +11,7 @@ import { type AnyContentModel, type ViewableContent } from '@/app/types/Content'
 import { type MaybePinned, PINNED_SELECT } from '@/app/types/Selects';
 import { type RowWithPatternAndSizes } from '@/app/utils/contentLayout';
 import { canDownloadCollection } from '@/app/utils/galleryAccess';
+import { describeLayoutRows } from '@/app/utils/layoutDebug';
 
 import { BoxRenderer } from './BoxRenderer';
 import {
@@ -184,6 +185,18 @@ export default function Component({
       widthCostBaseline,
     ]
   );
+
+  /**
+   * Development-only layout log: one structural line per packed row (span×height, right-edge
+   * gap, internal pocket, tree, leaf sizes) on every re-pack. The console is the fastest shared
+   * view of what the packer decided — the same measurements the collapse-state tests assert on.
+   */
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    for (const line of describeLayoutRows(rows, viewport.contentWidth)) {
+      console.info('[layout]', line);
+    }
+  }, [rows, viewport.contentWidth]);
 
   // Must be computed before the early returns to satisfy the Rules of Hooks.
   const firstNonVisibleRowIndex = useMemo(
