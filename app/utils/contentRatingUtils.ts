@@ -165,6 +165,53 @@ export function getMinWidth(item: AnyContentModel): number | undefined {
   return declared !== undefined && Number.isFinite(declared) && declared > 0 ? declared : undefined;
 }
 
+/** Shared "declared px bound or nothing" validation for every shape accessor. */
+function declaredBound(value: number | undefined): number | undefined {
+  return value !== undefined && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+/**
+ * Declared maximum rendered width in CSS px, or `undefined`. A render-time cap applied
+ * by the sizer (see {@link Content.maxWidth}) — it does not enter row membership, so no
+ * precheck in the packer keys on it.
+ */
+export function getMaxWidth(item: AnyContentModel): number | undefined {
+  return declaredBound(item.maxWidth);
+}
+
+/**
+ * Declared height clamp in CSS px, or `undefined` on both ends. Same validation rule as
+ * {@link getMinWidth}: non-positive and non-finite values read as "not declared". When
+ * both bounds are declared and conflict, the sizer lets `minHeight` win.
+ */
+export function getHeightClamp(
+  item: AnyContentModel
+): { minHeight?: number; maxHeight?: number } | undefined {
+  const minHeight = declaredBound(item.minHeight);
+  const maxHeight = declaredBound(item.maxHeight);
+  if (minHeight === undefined && maxHeight === undefined) return undefined;
+  return { minHeight, maxHeight };
+}
+
+/**
+ * A block's height in px when it does not vary with width, or `undefined` when it does.
+ *
+ * `minHeight === maxHeight` is how a block declares a CONTENT-derived height — the admin hub's
+ * panels, sized `chrome + rowCount × rowHeight`. In the layout engine's affine height model
+ * `H(W) = a·W + b` that is the point `a = 0`, which both the packer's composition search and the
+ * sizer's equal-height solve handle directly.
+ *
+ * A lone `maxHeight` is deliberately NOT a pin. It is a cap, under which height still tracks width,
+ * so it stays on the pure-AR path. Both consumers key on THIS function rather than re-deriving the
+ * rule, so a pinned block cannot be pinned for the sizer and flexible for the packer.
+ */
+export function getPinnedHeight(item: AnyContentModel): number | undefined {
+  const clamp = getHeightClamp(item);
+  if (!clamp) return undefined;
+  const { minHeight, maxHeight } = clamp;
+  return minHeight !== undefined && minHeight === maxHeight ? minHeight : undefined;
+}
+
 /**
  * Vertical demand (Vv): the "height" dimension of prominence.
  *

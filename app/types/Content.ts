@@ -78,6 +78,31 @@ export interface Content {
    */
   minWidth?: number;
 
+  /**
+   * Maximum rendered width in CSS px, applied by the sizer as a cap on the leaf's
+   * allocated width. Unlike {@link minWidth} this does not participate in row
+   * membership — it binds at render time, which today matters for exactly one case: a
+   * block alone in its row (a collapsed panel bar on its own solo-hero row) renders at
+   * `min(rowWidth, maxWidth)` instead of spanning the page. A capped block narrower
+   * than its row leaves the trailing space empty; row-mates are NOT re-solved around
+   * it, so declare it only on blocks that claim solo rows.
+   */
+  maxWidth?: number;
+
+  /**
+   * Height clamp in CSS px, applied by the sizer AFTER width allocation. Width
+   * distribution and row membership still run on the declared `width`/`height` aspect
+   * ratio — the clamp only changes the height this block RENDERS at, which is what
+   * lets a short or collapsed block sit top-aligned in a row without stretching to its
+   * tallest sibling (`H(W) = clamp(a·W + b, minHeight, maxHeight)`).
+   *
+   * Setting both to the same value pins the block's height outright (a collapsed
+   * panel's 56px bar). `minHeight` wins if the two ever conflict. Undefined skips the
+   * entire clamp path — photographs never enter it.
+   */
+  minHeight?: number;
+  maxHeight?: number;
+
   // UI enhancements for cover images and display
   overlayText?: string;
   cardTypeBadge?: string;
