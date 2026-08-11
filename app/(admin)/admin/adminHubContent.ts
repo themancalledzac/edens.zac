@@ -39,9 +39,14 @@
  * refuses to grow a row into a composition that starves a declared minimum, so the row closes
  * instead. At 1274.4px that no longer changes the outcome — the fill and shared-width predicates
  * bind first, and stripping `minWidth` off the three panels leaves every row's membership and
- * widths unchanged on all three fixtures below — but across the narrow-desktop band it is
- * decisive: at a 900px body with the live covers the panels render 542.89px each with the minimum
- * declared, and are squeezed to 347.02px each without it.
+ * widths unchanged on all three fixtures below.
+ *
+ * Across the narrow-desktop band it is decisive, and decisive about MEMBERSHIP rather than about
+ * width. At a 900px body with the live covers, WITH the minimum declared the three panels take two
+ * rows — Users alone at 900.00px (one of the cases `LONE_PANEL_ROWS_TODAY` pins in
+ * `page.collapseStates.test.ts`), then Messages and Roles sharing a second row at 542.89px each
+ * beside two tiles. WITHOUT it they collapse into ONE row, all three squeezed to 347.02px, under
+ * the 400px their chrome needs. The minimum did not widen anything; it closed a row.
  *
  * There is no single content width at which "three panels share a row" starts being true. An
  * earlier revision of this docblock put that threshold at 1232.0px; the claim predates two things.

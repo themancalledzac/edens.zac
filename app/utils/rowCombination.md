@@ -114,8 +114,12 @@ target)` plus, for shaped rows only, `SLACK_WEIGHT · slack`,
 
 The **`AR_EQUITY_BAND` gate is retired**: equity is no longer a tiebreak inside a
 band around the AR-optimal candidate, it is the primary score, with `LAMBDA` (0.15)
-as a mild pull toward the target AR. The AR-closest candidate (then a flat `hChain`)
-survives only as the fallback for when nothing lands in band at all.
+as a mild pull toward the target AR. There is no "band" left to land in — tier 0
+either admits a candidate to scoring or drops it. `pickBestComposition` ends
+`return best ?? arClosest ?? hChain(items)`, so the AR-closest candidate (then a flat
+`hChain`) is reached only when tier 0 rejected EVERY candidate and `best` is still
+null, which is a row whose every arrangement is taller than wide or thinner than the
+ceiling allows.
 
 `MAX_ROW_IMAGES` (12) bounds both greedy fill and this enumeration (~2^(n-1)
 candidates for an n-leaf row).

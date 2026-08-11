@@ -414,10 +414,11 @@ const POCKET_TOLERANCE = 0.05;
  * This tolerance is NOT the contract. It is what the membership predicate allows itself while
  * reading a reporting artifact; what a shipped row must satisfy is tighter, and is asserted in
  * `tests/(admin)/admin/page.collapseStates.test.ts` — 'renders every panel in a row at one shared
- * width', which rounds each panel's rendered width to a whole pixel and requires ONE distinct
- * value across all 80 width × collapse-state combinations. So 12.8px of latitude here has to keep
- * producing widths that agree to the rounded pixel there; raising this number past the empty band
- * would admit rows that fail that assertion.
+ * width', which rounds each panel's rendered width to a whole pixel and requires AT MOST ONE
+ * distinct value per row, across all 80 width × collapse-state combinations (at most, not exactly
+ * one, because a row carrying no panel contributes an empty set). So 12.8px of latitude here has
+ * to keep producing widths that agree to the rounded pixel there; raising this number past the
+ * empty band would admit rows that fail that assertion.
  */
 const PINNED_WIDTH_SPREAD_GAPS = 1;
 
