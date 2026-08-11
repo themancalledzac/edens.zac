@@ -120,6 +120,30 @@ describe('MessagesPanel', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  /**
+   * A warm cache turns a dead backend into a silent one: the list paints from localStorage, the
+   * background revalidation fails, and nothing on screen says the messages are last session's.
+   * The notice is the only thing standing between "cached" and "current".
+   */
+  it('says the list is cached when a background refresh fails', async () => {
+    mockGet.mockResolvedValueOnce({
+      messages: [makeMessage(1, 'alice@example.com', 'Hello world', '2024-01-01T10:00:00Z')],
+      total: 1,
+      limit: 100,
+      offset: 0,
+    });
+    const warm = render(<MessagesPanel />);
+    await waitFor(() => expect(screen.getByText('alice@example.com')).toBeInTheDocument());
+    warm.unmount();
+
+    mockGet.mockRejectedValueOnce(new Error('Backend unreachable'));
+    render(<MessagesPanel />);
+
+    await waitFor(() => expect(screen.getByText(/showing cached data/i)).toBeInTheDocument());
+    expect(screen.getByText('alice@example.com')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   // The live region has to predate the text it announces, so the panel renders it outside the body
   // branch. Node identity across the transition is what proves it was not inserted mid-flight.
   it('announces the read through one region that outlives the load', async () => {

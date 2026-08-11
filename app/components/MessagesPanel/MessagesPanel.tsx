@@ -8,7 +8,8 @@ import { MessageRow } from '@/app/components/messages/MessageRow';
 import { Button } from '@/app/components/ui/Button/Button';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
-import { useCachedPanelData } from '@/app/hooks/useCachedPanelData';
+import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
+import { type AdminMessagesPayload, useCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { useMessageDelete } from '@/app/hooks/useMessageDelete';
 import { type AdminMessageView, getAdminMessages } from '@/app/lib/api/messages';
 
@@ -29,7 +30,9 @@ interface MessagesPanelProps {
  * `getAdminMessages` resolves `null` only for an empty (204) body — any non-OK response throws
  * `ApiError` out of `fetchAdminGetApi`. `useCachedPanelData` turns a throw with nothing cached
  * into the failed branch below, and never renders "No comments yet." over a backend that is
- * simply down. With a cached list showing, a failed background revalidation keeps it showing.
+ * simply down. With a cached list showing, a failed background revalidation keeps it showing and
+ * raises `revalidationFailed`, which the {@link StaleNotice} above the list reports — messages
+ * served from a dead backend are never presented as current.
  *
  * The failure branch offers Retry rather than telling the admin to reload the page, matching
  * {@link UserManagementPanel}: both panels sit side by side on the `/admin` hub, and one of them
@@ -44,14 +47,9 @@ interface MessagesPanelProps {
  * The {@link LoadingText} region renders outside the body branch on purpose; see its docblock. The
  * branch below therefore resolves to nothing at all while the read is in flight.
  */
-interface MessagesPayload {
-  messages: AdminMessageView[];
-  total: number;
-}
+const EMPTY_PAYLOAD: AdminMessagesPayload = { messages: [], total: 0 };
 
-const EMPTY_PAYLOAD: MessagesPayload = { messages: [], total: 0 };
-
-async function fetchMessages(): Promise<MessagesPayload> {
+async function fetchMessages(): Promise<AdminMessagesPayload> {
   const result = await getAdminMessages(100, 0);
   if (!result) return EMPTY_PAYLOAD;
   const sorted = [...result.messages].sort(
@@ -61,7 +59,7 @@ async function fetchMessages(): Promise<MessagesPayload> {
 }
 
 export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelProps) {
-  const { data, loading, loadError, refresh, setData } = useCachedPanelData<MessagesPayload>(
+  const { data, loading, loadError, revalidationFailed, refresh, setData } = useCachedPanelData(
     'messages',
     fetchMessages,
     'Could not load messages. Retry, or check that the backend is running.'
@@ -140,6 +138,7 @@ export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelPro
       onCollapsedChange={onCollapsedChange}
     >
       <LoadingText isLoading={loading}>Loading…</LoadingText>
+      {!loading && !loadError && revalidationFailed && <StaleNotice />}
       {body}
     </AdminPanel>
   );

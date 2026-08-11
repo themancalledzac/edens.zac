@@ -10,6 +10,7 @@ import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIde
 import { Button } from '@/app/components/ui/Button/Button';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
+import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
 import { UpgradeUserModal } from '@/app/components/UpgradeUserModal/UpgradeUserModal';
 import { UserForm } from '@/app/components/UserForm/UserForm';
 import { useCachedPanelData } from '@/app/hooks/useCachedPanelData';
@@ -43,9 +44,16 @@ interface UserManagementPanelProps {
  * backend is down must never be told there are no users, an invitation to create a duplicate
  * account. `useCachedPanelData` owns that distinction now: `loadError` is set only when a load
  * fails with nothing cached to show, while a failed background revalidation keeps the cached
- * list on screen. The list itself is cached across remounts (the hub re-packs — and remounts
- * panels — whenever one collapses) and across page loads, so it paints instantly and only
- * re-renders when a fetch actually changes it.
+ * list on screen and raises `revalidationFailed` instead — which the {@link StaleNotice} above
+ * the list reports, so accounts served from a dead backend are never presented as current. The
+ * list itself is cached across remounts (the hub re-packs — and remounts panels — whenever one
+ * collapses) and across page loads, so it paints instantly and only re-renders when a fetch
+ * actually changes it.
+ *
+ * Anything that changed the underlying users — a create, an edit, a merge, an upgrade — refreshes
+ * in the foreground, so a mutation that succeeded but whose list refresh then failed surfaces as
+ * `loadError` (which carries a Retry) rather than as a list that quietly did not update. Cancel
+ * refreshes silently, having changed nothing.
  *
  * The {@link LoadingText} region sits outside the `view.mode === 'list'` guard, not inside it. It
  * has to outlive the branches it reports on (see its docblock), and `backToList` flips the view and
@@ -64,17 +72,24 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
     data: users,
     loading,
     loadError,
+    revalidationFailed,
     refresh,
-  } = useCachedPanelData<AdminUserSummary[]>(
+  } = useCachedPanelData(
     showPeople ? 'users:people' : 'users:base',
     () => listUsers({ includePeople: showPeople }),
     'Could not load users. Retry, or check that the backend is running.'
   );
 
-  const backToList = useCallback(() => {
-    setView({ mode: 'list' });
-    void refresh();
-  }, [refresh]);
+  const returnToList = useCallback(
+    (foreground: boolean) => {
+      setView({ mode: 'list' });
+      void refresh({ foreground });
+    },
+    [refresh]
+  );
+
+  const backToList = useCallback(() => returnToList(false), [returnToList]);
+  const backToListAfterChange = useCallback(() => returnToList(true), [returnToList]);
 
   // Both forms render in the panel body, so entering one has to open the panel — otherwise the
   // header swaps to "New User" / "Edit User" with nothing beneath it.
@@ -212,12 +227,19 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
       <LoadingText isLoading={loading}>Loading users…</LoadingText>
 
       {view.mode === 'create' && (
-        <UserForm mode="create" onSuccess={backToList} onCancel={backToList} />
+        <UserForm mode="create" onSuccess={backToListAfterChange} onCancel={backToList} />
       )}
 
       {view.mode === 'edit' && (
-        <UserForm mode="edit" user={view.user} onSuccess={backToList} onCancel={backToList} />
+        <UserForm
+          mode="edit"
+          user={view.user}
+          onSuccess={backToListAfterChange}
+          onCancel={backToList}
+        />
       )}
+
+      {view.mode === 'list' && !loading && !loadError && revalidationFailed && <StaleNotice />}
 
       {view.mode === 'list' && listBody}
 
@@ -230,7 +252,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
           onMerged={async () => {
             setMergeFor(null);
             await revalidateMetadataCache();
-            void refresh();
+            void refresh({ foreground: true });
           }}
         />
       )}
@@ -241,7 +263,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
           onClose={() => setUpgradeFor(null)}
           onUpgraded={async () => {
             await revalidateMetadataCache();
-            void refresh();
+            void refresh({ foreground: true });
           }}
         />
       )}

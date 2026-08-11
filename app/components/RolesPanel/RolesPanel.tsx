@@ -20,6 +20,7 @@ import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
+import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
 import { useCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { ApiError } from '@/app/lib/api/core';
 import { createRole, deleteRole, listRoles } from '@/app/lib/api/roles';
@@ -64,9 +65,16 @@ interface RolesPanelProps {
  * A failed load gets its own body branch, checked ahead of the empty state — an admin whose
  * backend is down must never be told there are no roles, an invitation to create a duplicate.
  * `useCachedPanelData` owns that distinction: `loadError` is set only when a load fails with
- * nothing cached to show, while a failed background revalidation keeps the cached list up. The
- * optimistic delete's `setRoles` wraps the hook's write-through `setData`, so a deleted role
- * cannot resurrect from stale cache on the next remount.
+ * nothing cached to show, while a failed background revalidation keeps the cached list up and
+ * raises `revalidationFailed` instead — which is what the {@link StaleNotice} above the list
+ * reports, so a list served from a dead backend is never presented as current. The optimistic
+ * delete's `setRoles` wraps the hook's write-through `setData`, so a deleted role cannot
+ * resurrect from stale cache on the next remount, nor from a fetch that was already in the air
+ * when it was deleted.
+ *
+ * Returning to the list after a change refreshes in the foreground (`backToListAfterChange`),
+ * while a plain Cancel refreshes silently. A create that succeeded but whose list refresh then
+ * failed has to say so: foreground routes that failure to `loadError`, which carries a Retry.
  *
  * The {@link LoadingText} region sits outside the `view.mode === 'list'` guard, not inside it. It
  * has to outlive the branches it reports on (see its docblock), and `backToList` flips the view and
@@ -81,7 +89,7 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
   const [createError, setCreateError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const { data, loading, loadError, refresh, setData } = useCachedPanelData<RoleSummary[]>(
+  const { data, loading, loadError, revalidationFailed, refresh, setData } = useCachedPanelData(
     'roles',
     listRoles,
     'Could not load roles. Retry, or check that the backend is running.'
@@ -97,12 +105,18 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
     [setData]
   );
 
-  const backToList = useCallback(() => {
-    setView({ mode: 'list' });
-    setCreateError(null);
-    setName('');
-    void refresh();
-  }, [refresh]);
+  const returnToList = useCallback(
+    (foreground: boolean) => {
+      setView({ mode: 'list' });
+      setCreateError(null);
+      setName('');
+      void refresh({ foreground });
+    },
+    [refresh]
+  );
+
+  const backToList = useCallback(() => returnToList(false), [returnToList]);
+  const backToListAfterChange = useCallback(() => returnToList(true), [returnToList]);
 
   // The create form and the detail editor both render in the panel body, so entering one has to
   // open the panel — otherwise the header swaps to "New Role" with nothing beneath it.
@@ -142,7 +156,7 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
     try {
       setSubmitting(true);
       await createRole({ name: name.trim() });
-      backToList();
+      backToListAfterChange();
     } catch (error) {
       setCreateError(
         error instanceof ApiError && error.status === 409
@@ -265,7 +279,11 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
         </form>
       )}
 
-      {view.mode === 'detail' && <RoleDetailView role={view.role} onDeleted={backToList} />}
+      {view.mode === 'detail' && (
+        <RoleDetailView role={view.role} onDeleted={backToListAfterChange} />
+      )}
+
+      {view.mode === 'list' && !loading && !loadError && revalidationFailed && <StaleNotice />}
 
       {view.mode === 'list' && listBody}
     </AdminPanel>

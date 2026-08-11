@@ -71,6 +71,23 @@ describe('RolesPanel', () => {
     mockGetRole.mockResolvedValue(ALPHA_DETAIL);
   });
 
+  /**
+   * A warm cache turns a dead backend into a silent one: the list paints from localStorage, the
+   * background revalidation fails, and nothing on screen says the roles are last session's. The
+   * notice is the only thing standing between "cached" and "current".
+   */
+  it('says the list is cached when a background refresh fails', async () => {
+    const warm = render(<RolesPanel />);
+    await waitFor(() => expect(screen.getByText('alpha')).toBeInTheDocument());
+    warm.unmount();
+
+    mockListRoles.mockRejectedValueOnce(new ApiError('Backend unreachable', 500));
+    render(<RolesPanel />);
+
+    await waitFor(() => expect(screen.getByText(/showing cached data/i)).toBeInTheDocument());
+    expect(screen.getByText('alpha')).toBeInTheDocument();
+  });
+
   it('renders roles alphabetically, case-insensitively', async () => {
     render(<RolesPanel />);
 
