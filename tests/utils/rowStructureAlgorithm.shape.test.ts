@@ -148,22 +148,31 @@ describe('calculateSizesFromBoxTree — shaped blocks', () => {
     expect(sizes[1]?.height).toBeCloseTo(200 * scale, 5);
   });
 
-  it('content with no declared bounds is untouched — the entire shape path is skipped', () => {
+  /**
+   * The no-op guarantee, asserted rather than gestured at. This test used to claim it pinned exact
+   * values and then check that three widths and heights were positive and finite — true of any
+   * arithmetic whatsoever, and true of a shape path that had leaked into every photograph on the
+   * site. The goldens are the pre-shape geometry of three 1920×1080 leaves at 1000px, shared
+   * verbatim with `rowStructureAlgorithm.golden.test.ts` and with the pinned-height suite's
+   * no-op test, so a leak fails all three at once.
+   */
+  it('leaves content with no declared bounds at the exact pre-shape geometry', () => {
     const tree = hbox(
       leaf(createImageContent(1)),
       vbox(leaf(createImageContent(2)), leaf(createImageContent(3)))
     );
 
     const sizes = calculateSizesFromBoxTree(tree, 1000, GAP);
-    // 1920×1080 leaves: pre-shape geometry — the left leaf and the stacked pair solve so all
-    // heights balance; pin exact values so any leak from the shape path moves a number here.
-    for (const size of sizes) {
-      expect(size.width).toBeGreaterThan(0);
-      expect(size.height).toBeGreaterThan(0);
-      expect(Number.isFinite(size.height)).toBe(true);
+    const golden: Array<[number, number]> = [
+      [658.133333333333, 370.2],
+      [329.066666666667, 178.7],
+      [329.066666666667, 178.7],
+    ];
+
+    expect(sizes).toHaveLength(golden.length);
+    for (const [index, [width, height]] of golden.entries()) {
+      expect(sizes[index]?.width).toBeCloseTo(width, 6);
+      expect(sizes[index]?.height).toBeCloseTo(height, 6);
     }
-    const [left, top, bottom] = sizes;
-    expect(top?.width).toBe(bottom?.width);
-    expect(left!.width + top!.width + GAP).toBeCloseTo(1000, 5);
   });
 });

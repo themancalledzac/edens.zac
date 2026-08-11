@@ -110,21 +110,36 @@ describe('calculateSizesFromBoxTree — pinned-height blocks', () => {
     expect(panel!.width + image!.width + GAP).toBeCloseTo(1000, 6);
   });
 
-  it('splits width evenly between two pinned siblings instead of returning NaN', () => {
-    const sizes = calculateSizesFromBoxTree(
+  /**
+   * Two pinned siblings state no equation in W, so the equal-height solve is a 0/0 there and the
+   * DECLARED shapes share the width instead. The old name for this test said "splits width evenly",
+   * which was the original rule and is now only what the proportional rule happens to return for
+   * this equal-ratio pair — so the second case declares a 4:1 bar against a 0.545:1 panel and pins
+   * the 12/88 split the ratios actually call for.
+   */
+  it('divides width between two pinned siblings by their declared aspect ratios', () => {
+    const equalRatios = calculateSizesFromBoxTree(
       hbox(leaf(pinned(1, 300)), leaf(pinned(2, 180))),
       1000,
       GAP
     );
 
-    for (const size of sizes) {
-      expect(Number.isFinite(size.width)).toBe(true);
-      expect(Number.isFinite(size.height)).toBe(true);
-    }
-    expect(sizes[0]?.width).toBeCloseTo((1000 - GAP) / 2, 6);
-    expect(sizes[1]?.width).toBeCloseTo((1000 - GAP) / 2, 6);
-    expect(sizes[0]?.height).toBe(300);
-    expect(sizes[1]?.height).toBe(180);
+    expect(equalRatios[0]?.width).toBeCloseTo((1000 - GAP) / 2, 6);
+    expect(equalRatios[1]?.width).toBeCloseTo((1000 - GAP) / 2, 6);
+    expect(equalRatios[0]?.height).toBe(300);
+    expect(equalRatios[1]?.height).toBe(180);
+
+    const wideRight = calculateSizesFromBoxTree(
+      hbox(leaf(pinned(1, 300)), leaf(pinned(2, 180, { width: 1200, height: 300 }))),
+      1000,
+      GAP
+    );
+
+    // AR 0.5454 against AR 4: the panel takes 12% of the 987.2px available, the bar 88%.
+    expect(wideRight[0]?.width).toBeCloseTo(118.464, 6);
+    expect(wideRight[1]?.width).toBeCloseTo(868.736, 6);
+    expect(wideRight[0]?.height).toBe(300);
+    expect(wideRight[1]?.height).toBe(180);
   });
 
   it('never scales a pinned leaf inside a vbox — both keep their declared height', () => {
@@ -214,16 +229,26 @@ describe('calculateSizesFromBoxTree — pinned-height blocks', () => {
     expect(panel!.width + image!.width + GAP).toBeCloseTo(800, 6);
   });
 
-  it('leaves content declaring no bounds bit-identical to the pre-pin code', () => {
+  /**
+   * "Bit-identical to the pre-pin code" is a claim about NUMBERS, and this test used to check that
+   * two widths were equal, one sum reached 1000, and three heights were finite and positive — none
+   * of which a pin leaking into the photo path would have disturbed. The goldens below are the
+   * pre-pin geometry of three 1920×1080 leaves at 1000px, shared verbatim with
+   * `rowStructureAlgorithm.golden.test.ts` and with the shape suite's no-op test.
+   */
+  it('leaves content declaring no bounds at the exact pre-pin geometry', () => {
     const tree = hbox(leaf(photo(1)), vbox(leaf(photo(2)), leaf(photo(3))));
     const sizes = calculateSizesFromBoxTree(tree, 1000, GAP);
+    const golden: Array<[number, number]> = [
+      [658.133333333333, 370.2],
+      [329.066666666667, 178.7],
+      [329.066666666667, 178.7],
+    ];
 
-    const [left, top, bottom] = sizes;
-    expect(top?.width).toBe(bottom?.width);
-    expect(left!.width + top!.width + GAP).toBeCloseTo(1000, 5);
-    for (const size of sizes) {
-      expect(Number.isFinite(size.height)).toBe(true);
-      expect(size.height).toBeGreaterThan(0);
+    expect(sizes).toHaveLength(golden.length);
+    for (const [index, [width, height]] of golden.entries()) {
+      expect(sizes[index]?.width).toBeCloseTo(width, 6);
+      expect(sizes[index]?.height).toBeCloseTo(height, 6);
     }
   });
 });

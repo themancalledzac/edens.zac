@@ -8,7 +8,7 @@ import { buildContentRows } from '@/app/components/Content/componentUtils';
 import { LAYOUT } from '@/app/constants';
 import type { PanelType } from '@/app/types/Content';
 import { isPanelContent } from '@/app/utils/contentTypeGuards';
-import type { BoxTree } from '@/app/utils/rowCombination';
+import { measureRow } from '@/app/utils/layoutDebug';
 
 /**
  * Collapsing a hub panel has to move the LAYOUT, not just the panel's own rendering — and it has
@@ -196,34 +196,33 @@ describe('admin hub collapsed layout', () => {
    * column widths, and panels grouped in one column all outrank a shorter page, and honouring
    * them can re-compose a step taller than its predecessor. What must stay true is the feature's
    * point — a page with panels collapsed never runs TALLER than the all-open page.
+   *
+   * All SEVEN collapse states, not the three that used to be listed here. The missing four were
+   * not arbitrary: `messages`, `roles` and `messages+roles` are the states that collapse a SHORT
+   * panel and leave the tall one standing, which is where the freed width goes to the nav tiles
+   * instead of to a shorter page. `page.collapseStates.test.ts` runs the same invariant over the
+   * live-cover fixture, where `messages+roles` breaks it.
+   *
+   * The metric is `measureRow`, the same ruler the collapse-state suite and the development console
+   * use. It used to be a bespoke tree walk here, which is the same arithmetic — but two earlier
+   * metrics in this spot each inverted an assertion (`max(item.height)` reports a stacked row far
+   * shorter than it renders; grouping items by rounded width merges two same-width columns standing
+   * side by side and overstates it), so having exactly one measured definition of row height,
+   * itself under test, is the point.
    */
   it('never renders a collapsed state taller than the all-open page', () => {
-    // A row is as tall as its tallest COLUMN, and the BoxTree is the only honest map of what a
-    // column is. Two earlier metrics here each inverted an assertion: `max(item.height)` reports
-    // a stacked row far shorter than it renders, and group-items-by-rounded-width merges two
-    // same-width columns standing side by side (a collapsed bar over Messages beside Roles is
-    // exactly that shape) and overstates the row. So walk the tree: a leaf is its item's height
-    // (items arrive in tree-traversal order), a vertical join sums plus the gap, a horizontal
-    // join takes the taller side.
     const totalHeight = (collapsed: Record<PanelType, boolean>) =>
-      rowsFor(collapsed).reduce((sum, row) => {
-        let cursor = 0;
-        const walk = (tree: BoxTree): number => {
-          if (tree.type === 'leaf') return row.items[cursor++]!.height;
-          const first = walk(tree.children[0]);
-          const second = walk(tree.children[1]);
-          return tree.direction === 'vertical'
-            ? first + LAYOUT.gridGap + second
-            : Math.max(first, second);
-        };
-        return sum + walk(row.boxTree);
-      }, 0);
+      rowsFor(collapsed).reduce((sum, row) => sum + measureRow(row).heightPx, 0);
 
     const expanded = totalHeight(NONE);
 
     for (const collapsed of [
       { ...NONE, users: true },
+      { ...NONE, messages: true },
+      { ...NONE, roles: true },
       { ...NONE, users: true, messages: true },
+      { ...NONE, users: true, roles: true },
+      { ...NONE, messages: true, roles: true },
       ALL,
     ]) {
       expect(totalHeight(collapsed)).toBeLessThan(expanded);

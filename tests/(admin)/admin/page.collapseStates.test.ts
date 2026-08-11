@@ -1,4 +1,8 @@
-import { buildAdminHubContent, withPanelFootprints } from '@/app/(admin)/admin/adminHubContent';
+import {
+  buildAdminHubContent,
+  PANEL_MIN_WIDTH,
+  withPanelFootprints,
+} from '@/app/(admin)/admin/adminHubContent';
 import { ADMIN_TILES } from '@/app/(admin)/admin/adminTiles';
 import { buildContentRows } from '@/app/components/Content/componentUtils';
 import { LAYOUT } from '@/app/constants';
@@ -45,11 +49,22 @@ const COUNTS = { users: 12, messages: 2, roles: 6 };
  * Desktop widths the invariants are enforced at. The band below ~1174 is the one the review
  * found broken and no test covered: 742.4 is a half-screen laptop / iPad-landscape body,
  * 812.8 is exactly `2 × PANEL_MIN_WIDTH + gridGap` (the width the pinned membership rules
- * used to switch off at), and the rest sample the run up to the 1300px page cap. Widths
- * below 742.4 are not swept — two 400px panel columns plus a gap no longer fit, so the
- * layout is legitimately one block per row and the mobile path takes over.
+ * used to switch off at), and the rest sample the run up to the 1300px page cap.
+ *
+ * 600 covers the middle of the 390–742 desktop band, which nothing reached before. Below 812.8 a
+ * second 400px panel column does not fit, so the layout is legitimately one block per row — but
+ * "one block per row" is precisely the shape the composer's stopping rules were relaxed for, and
+ * the fill invariants still have to hold there. A desktop body of 600px is a narrow split pane, not
+ * a phone: `isMobile` is false, so this is the desktop path packing at a phone-ish width.
  */
-const WIDTHS = [742.4, 780, 812.8, 850, 900, 1000, 1100, 1174.4, 1274.4];
+const WIDTHS = [600, 742.4, 780, 812.8, 850, 900, 1000, 1100, 1174.4, 1274.4];
+
+/**
+ * Width at which a second panel column becomes possible: `2 × PANEL_MIN_WIDTH + gridGap`. Above it
+ * a panel sitting alone in a row is a layout choice rather than a necessity — see the lone-panel
+ * guard below.
+ */
+const TWO_PANEL_COLUMNS = 2 * PANEL_MIN_WIDTH + LAYOUT.gridGap;
 
 /** Right-edge tolerance: FILL_TOLERANCE_GAPS (2.5) × gridGap, the packer's own clean bar. */
 const EDGE_TOLERANCE = 2.5 * LAYOUT.gridGap;
@@ -186,5 +201,96 @@ describe.each(CASES)('admin hub at %spx, collapse state: %s', (width, _name, col
       );
       expect(panelWidths.size).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+/**
+ * The legibility bound `PANEL_MAX_WIDTH` used to guarantee, restated as a property of the LAYOUT
+ * rather than of the renderer.
+ *
+ * A 700px cap existed because a user list past roughly that width reads as a stretched table — the
+ * identity and its two buttons separated by a field of nothing. The cap now degrades for a block
+ * that is alone in its row, which is correct as far as it goes (a lone capped block otherwise
+ * leaves a dead strip beside it, and there is no row-mate to hand the width to). But it means the
+ * cap protects nothing on its own: the only thing left between the engine and a full-bleed user
+ * table is the packer's choice to give a panel a row-mate. So assert THAT instead — above
+ * `2 × PANEL_MIN_WIDTH + gridGap` a second panel column fits, and a panel alone in a row that wide
+ * is a decision the packer made, not a width it was forced into.
+ *
+ * It does not hold today, in three of the eighty width × state combinations swept, and this pins
+ * exactly which. The check is exact in both directions on purpose: a new lone-panel row fails it,
+ * and so does fixing one — the list is meant to shrink to `[]` and be deleted, not topped up.
+ */
+const LONE_PANEL_ROWS_TODAY = [
+  '850px all open: users renders 850.0px wide, alone',
+  '850px messages: users renders 850.0px wide, alone',
+  '900px all open: users renders 900.0px wide, alone',
+];
+
+describe('admin hub panel legibility', () => {
+  it('leaves a panel alone in a row wide enough for two only in the three known cases', () => {
+    const loneRows: string[] = [];
+
+    for (const width of WIDTHS) {
+      for (const [name, collapsed] of STATES) {
+        for (const row of rowsFor(collapsed, width)) {
+          const [only] = row.items;
+          if (row.items.length !== 1 || !only || !isPanelContent(only.content)) continue;
+          if (measureRow(row).spanPx <= TWO_PANEL_COLUMNS) continue;
+          loneRows.push(
+            `${width}px ${name}: ${only.content.panelType} renders ${only.width.toFixed(1)}px wide, alone`
+          );
+        }
+      }
+    }
+
+    expect(loneRows).toEqual(LONE_PANEL_ROWS_TODAY);
+  });
+});
+
+/** Page height as CSS renders it: every row's measured height, summed. */
+const pageHeight = (collapsed: Record<PanelType, boolean>, width = DESKTOP.contentWidth) =>
+  rowsFor(collapsed, width).reduce((sum, row) => sum + measureRow(row).heightPx, 0);
+
+/**
+ * Collapsing panels must not make the page LONGER — the one height property that survived the
+ * 2026-08-10 review rounds, since filling the body width, uniform column widths and grouping the
+ * panels into one column all outrank a shorter page and can re-compose any single step taller than
+ * its predecessor.
+ *
+ * `page.collapsedLayout.test.ts` asserts the same thing on the default-dims fixture, where it holds
+ * in all seven states. This is the live-cover fixture — All Collections 2079×2048, Client Galleries
+ * portrait 1728×2500 — and the portrait cover is what breaks it, exactly as it has broken every
+ * other hub invariant first.
+ */
+describe('admin hub page height against the all-open baseline', () => {
+  const openHeight = pageHeight(STATES[0]![1]);
+
+  it.each(STATES.slice(1).filter(([name]) => name !== 'messages+roles'))(
+    'runs shorter than the all-open page in the %s state',
+    (_name, collapsed) => {
+      expect(pageHeight(collapsed)).toBeLessThan(openHeight);
+    }
+  );
+
+  /**
+   * KNOWN VIOLATION, recorded rather than tolerated. `it.failing` passes only while the body fails,
+   * so fixing the engine turns this red and asks for the marker to come off — and the name is
+   * written as the defect rather than as the property, because a green tick beside "runs shorter
+   * than the all-open page" would read as the opposite of what this records.
+   *
+   * Collapsing Messages and Roles at the 1274.4px max desktop body takes the page from 1567.7px to
+   * 1607.0px. Nothing about the panels got taller: the panel column narrows 700 → 423px, the two
+   * nav tiles take the freed width (540 → 838px), and the portrait Client Galleries cover grows
+   * with its width — 670px tall beside the panels, 1040px in the wider column. The packer's
+   * objective is fill and pocket, and neither one can see page height, so it trades a shorter page
+   * for a tighter row every time.
+   *
+   * Worse one width down, and worth fixing together: at 1174.4px the same collapse pushes Client
+   * Galleries onto a row of its own where it renders 1174×1468, taking the page 1567.7 → 2683.6px,
+   * a 71% increase from collapsing two panels.
+   */
+  it.failing('does NOT yet run shorter than the all-open page in the messages+roles state', () => {
+    expect(pageHeight({ users: false, messages: true, roles: true })).toBeLessThan(openHeight);
   });
 });
