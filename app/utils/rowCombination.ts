@@ -370,6 +370,18 @@ function minWidthDeficit(component: AtomicComponent, componentWidth: number, gap
  */
 const POCKET_TOLERANCE = 0.05;
 
+/**
+ * How far two pinned blocks' rendered widths may differ and still count as one shared width,
+ * in gaps. An allowance for a known artifact rather than design latitude: {@link
+ * renderedLeafWidths} charges an hbox's two sides for the dividing gap asymmetrically, so
+ * members the sizer puts in ONE column can be reported half a gap apart.
+ *
+ * Measured over the hub's states, the two populations do not overlap and do not come close:
+ * same-column spreads land at 4.9–6.4px (≤ gap/2), genuinely-split columns at 24–148px. One
+ * gap sits in the empty band between them, and scales with the gap the artifact comes from.
+ */
+const PINNED_WIDTH_SPREAD_GAPS = 1;
+
 /** Result of {@link firstCleanExtension}: the clean count to grow to, and what it strands. */
 interface CleanExtension {
   count: number;
@@ -379,9 +391,10 @@ interface CleanExtension {
 
 /**
  * The pinned-row membership test: smallest count ≥ `fromCount` whose row composes CLEAN — the
- * best composition starves nothing, spans the row width to within the fill tolerance, and
- * pockets no more than {@link POCKET_TOLERANCE} of its box — or null when no extension within
- * the window does. Candidates skip the already-skipped standalones AND any not-yet-visited solo
+ * best composition starves nothing, spans the row width to within the fill tolerance, renders
+ * every pinned block at one shared width, and pockets no more than {@link POCKET_TOLERANCE} of
+ * its box — or null when no extension within the window does. Those four are Zac's fill rules,
+ * one predicate each. Candidates skip the already-skipped standalones AND any not-yet-visited solo
  * hero, mirroring what the fill loop will do when it reaches them, so a returned count means
  * exactly "keep adding until `sequentialCount` reaches me".
  *
@@ -391,8 +404,8 @@ interface CleanExtension {
  * that does NOT strand a lone item wins; a stranding count is returned — flagged — only when
  * it is the only clean option, and the caller decides whether standing pat beats taking it.
  *
- * O(window²) compositions in the worst case, bounded by `MAX_ROW_IMAGES`; only rows that
- * actually carry a pinned member ever pay it.
+ * O(window²) compositions in the worst case, bounded by `MAX_ROW_IMAGES`; only rows whose
+ * window could still hand them a pinned member ever pay it.
  */
 function firstCleanExtension(
   window: AnyContentModel[],
@@ -416,6 +429,9 @@ function firstCleanExtension(
     if (minWidthDeficit(composition, componentWidth, gap) > 0) return false;
     const unconsumed = componentWidth - consumedWidth(composition, componentWidth, gap);
     if (unconsumed > FILL_TOLERANCE_GAPS * gap) return false;
+    if (pinnedWidthSpread(composition, componentWidth, gap) > PINNED_WIDTH_SPREAD_GAPS * gap) {
+      return false;
+    }
     return slackFraction(composition, componentWidth, gap) <= POCKET_TOLERANCE;
   };
 
@@ -426,6 +442,39 @@ function firstCleanExtension(
     stranding ??= { count, strandsOne: true };
   }
   return stranding;
+}
+
+/**
+ * Widest minus narrowest rendered width among a row's PINNED blocks — 0 when the row carries
+ * fewer than two, which is every row that is not an admin hub row.
+ *
+ * The third of Zac's fill rules, in the same measured form as the other two: "when we combine
+ * all 3 dropdown contentComponents … the width should be the SAME for all of them". A row can
+ * span the body and pocket nothing and still put one panel at its 400px floor beside two
+ * collapsed bars at 762 — the packer is content, the page reads as three unrelated widths.
+ *
+ * PINNED is the generic spelling of "UI block" here, and it is the right one: a pinned height
+ * is exactly the property that makes width the block's only free variable, so a shared width is
+ * the only thing left that can make a set of them read as one group. A nav tile declares a
+ * minimum but no pin, and is deliberately NOT held to this — tiles are photographs and size to
+ * their own aspect ratios.
+ *
+ * Reads widths from {@link renderedLeafWidths}, which under a pin is the sizer's own solve
+ * rather than the share estimate — close, but not gap-for-gap identical, which is what
+ * {@link PINNED_WIDTH_SPREAD_GAPS} exists to absorb. It also does not narrow a column to
+ * `subtreeMaxWidth` the way the sizer does, so a binding cap can over-report a spread. Both
+ * errors point the same way: decline a row that would have rendered clean. The failure mode is
+ * a membership change, never a broken render.
+ */
+function pinnedWidthSpread(
+  component: AtomicComponent,
+  componentWidth: number,
+  gap: number
+): number {
+  const widths = renderedLeafWidths(component, componentWidth, gap)
+    .filter(leaf => getPinnedHeight(leaf.source) !== undefined)
+    .map(leaf => leaf.width);
+  return widths.length < 2 ? 0 : Math.max(...widths) - Math.min(...widths);
 }
 
 /** Whether any leaf under this composition declares a pinned (width-independent) height. */
@@ -713,16 +762,12 @@ export function buildRows(
    * then the fill loop below is the pre-feature code exactly. See the fill-cap comment for why a
    * pinned member invalidates the width-cost budget's stopping rule.
    *
-   * The width test is what keeps this off phones. Stacking only creates room when the row can
-   * hold a SECOND column — otherwise every member is full-width, nothing stacks beside anything,
-   * and lifting the cap just crams items onto a row that has no space for them. A 390px phone
-   * cannot fit two 400px columns, so it keeps the budget and stays one block per row.
+   * PAGE-scoped, and therefore only a gate — the question the fill loop asks is per-row, so it is
+   * re-asked over each window below. Mirrors `starvesMinWidth`, which pairs this same cheap page
+   * precheck with a per-candidate re-test.
    */
-  const widestMinimum = items.reduce((widest, item) => Math.max(widest, getMinWidth(item) ?? 0), 0);
-  const hasPinnedMember =
-    constrained &&
-    items.some(item => getPinnedHeight(item) !== undefined) &&
-    rowPixels >= 2 * widestMinimum + rowGap;
+  const pageHasPinnedMember =
+    constrained && items.some(item => getPinnedHeight(item) !== undefined);
 
   while (remaining.length > 0) {
     const window = remaining.slice(0, 5);
@@ -768,6 +813,24 @@ export function buildRows(
 
     const arFloor = rowWidth <= 2 ? 0 : targetARBaseline * AR_FLOOR_MULTIPLIER;
     const expandedWindow = remaining.slice(0, MAX_ROW_IMAGES);
+
+    /**
+     * Whether THIS row could carry a pinned block — the window is exactly the set of items that
+     * may still join it, so this is the honest scope for a question about the row's geometry. A
+     * page-scoped answer would make one pinned block anywhere pay `firstCleanExtension` on every
+     * unrelated row (a photo collection carrying a single admin panel), which is the cost
+     * `constrained` and `starvesMinWidth` are both careful to avoid.
+     *
+     * No width test guards this, and none is wanted. `firstCleanExtension` will not grow a row
+     * whose composition starves a declared minimum, so a viewport too narrow for a second column
+     * closes at one block on the strength of that alone — while a width test drawn at
+     * `2 × minWidth + gap` also switched the rules off across a whole band of real desktops
+     * (742–812px), where the composer went on scoring by the pinned model and the two halves of
+     * the engine disagreed about the same row.
+     */
+    const hasPinnedMember =
+      pageHasPinnedMember && expandedWindow.some(item => getPinnedHeight(item) !== undefined);
+
     let sequentialTotal = 0;
     let sequentialCount = 0;
     const skippedStandalones: number[] = [];
@@ -790,11 +853,12 @@ export function buildRows(
       //
       // Pinned rows get the stronger form: a row must COMPOSE CLEAN — no starved minimum, no
       // unconsumed width past the fill tolerance (a capped column asked to carry width its
-      // members may not render), no slack pocket past the pocket tolerance. And because pinned
-      // geometry is non-monotonic in the member count — [users, bar, roles] can only pocket
-      // while [users, bar, roles, tile] fills the box exactly — a defective candidate closes
-      // the row only after a LOOKAHEAD through the window fails to find a farther clean
-      // extension. Growth may pass through defective intermediates; it must LAND clean.
+      // members may not render), one shared width across its pinned blocks, and no slack pocket
+      // past the pocket tolerance. And because pinned geometry is non-monotonic in the member
+      // count — [users, bar, roles] can only pocket while [users, bar, roles, tile] fills the
+      // box exactly — a defective candidate closes the row only after a LOOKAHEAD through the
+      // window fails to find a farther clean extension. Growth may pass through defective
+      // intermediates; it must LAND clean.
       if (constrained && sequentialCount > 0 && sequentialCount + 1 > commitThrough) {
         if (hasPinnedMember) {
           const clean = firstCleanExtension(

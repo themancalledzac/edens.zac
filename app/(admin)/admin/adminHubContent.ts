@@ -76,7 +76,7 @@ import { ADMIN_TILES } from './adminTiles';
 export const PANEL_MIN_WIDTH = 400;
 
 /**
- * Widest a panel renders, however much room its row has.
+ * Widest a panel renders when it shares its row.
  *
  * The counterpart to {@link PANEL_MIN_WIDTH} and the other half of Zac's shape requirement: a
  * minimum keeps a panel's chrome legible, a maximum keeps it from "looking TOO wide, while still
@@ -86,8 +86,10 @@ export const PANEL_MIN_WIDTH = 400;
  *
  * Unlike the minimum this never touches row membership. The sizer applies it at render time as
  * `min(rowWidth, maxWidth)` (see {@link Content.maxWidth}), so it cannot change which items share
- * a row, and it binds only on viewports wide enough that the packer would otherwise hand a single
- * panel most of the page.
+ * a row. It also stops applying when the panel has no row-mate: a lone panel spans its row, since
+ * the alternative is a dead strip beside it and no one to hand the width to. That case is real on
+ * a narrow desktop — below `2 × PANEL_MIN_WIDTH + gap` a second panel column does not fit, so
+ * panels legitimately take rows of their own.
  */
 export const PANEL_MAX_WIDTH = 700;
 

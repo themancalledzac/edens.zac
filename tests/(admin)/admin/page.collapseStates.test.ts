@@ -39,6 +39,16 @@ const apiTiles: AdminHomeTileApi[] = ADMIN_TILES.map((c, i) => ({
 const DESKTOP = { contentWidth: 1274.4, viewportHeight: 900, isMobile: false };
 const COUNTS = { users: 12, messages: 2, roles: 6 };
 
+/**
+ * Desktop widths the invariants are enforced at. The band below ~1174 is the one the review
+ * found broken and no test covered: 742.4 is a half-screen laptop / iPad-landscape body,
+ * 812.8 is exactly `2 × PANEL_MIN_WIDTH + gridGap` (the width the pinned membership rules
+ * used to switch off at), and the rest sample the run up to the 1300px page cap. Widths
+ * below 742.4 are not swept — two 400px panel columns plus a gap no longer fit, so the
+ * layout is legitimately one block per row and the mobile path takes over.
+ */
+const WIDTHS = [742.4, 780, 812.8, 850, 900, 1000, 1100, 1174.4, 1274.4];
+
 /** Right-edge tolerance: FILL_TOLERANCE_GAPS (2.5) × gridGap, the packer's own clean bar. */
 const EDGE_TOLERANCE = 2.5 * LAYOUT.gridGap;
 
@@ -56,11 +66,11 @@ const STATES: Array<[string, Record<PanelType, boolean>]> = [
   ['all collapsed', { users: true, messages: true, roles: true }],
 ];
 
-const rowsFor = (collapsed: Record<PanelType, boolean>) =>
+const rowsFor = (collapsed: Record<PanelType, boolean>, contentWidth = DESKTOP.contentWidth) =>
   buildContentRows(
     withPanelFootprints(buildAdminHubContent(apiTiles, COUNTS), collapsed),
     undefined,
-    DESKTOP,
+    { ...DESKTOP, contentWidth },
     LAYOUT.defaultChunkSize
   ).rows;
 
@@ -81,13 +91,21 @@ describe('admin hub all-open baseline', () => {
   });
 });
 
-describe.each(STATES)('admin hub collapse state: %s', (_name, collapsed) => {
-  const rows = rowsFor(collapsed);
+const CASES: Array<[number, string, Record<PanelType, boolean>]> = WIDTHS.flatMap(width =>
+  STATES.map(([name, collapsed]): [number, string, Record<PanelType, boolean>] => [
+    width,
+    name,
+    collapsed,
+  ])
+);
+
+describe.each(CASES)('admin hub at %spx, collapse state: %s', (width, _name, collapsed) => {
+  const rows = rowsFor(collapsed, width);
 
   it('spans the body width in every row', () => {
     for (const row of rows) {
       const m = measureRow(row);
-      expect(DESKTOP.contentWidth - m.spanPx).toBeLessThanOrEqual(EDGE_TOLERANCE);
+      expect(width - m.spanPx).toBeLessThanOrEqual(EDGE_TOLERANCE);
     }
   });
 

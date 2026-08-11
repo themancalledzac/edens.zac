@@ -60,15 +60,44 @@ describe('calculateSizesFromBoxTree — shaped blocks', () => {
     }
   });
 
-  it('maxWidth caps a solo leaf’s width, and the clamped height derives from the capped width', () => {
+  /**
+   * The cap binds against a ROW-MATE, so a block that has none keeps the whole row. This
+   * reverses what shipped with the shape model, where a lone capped block rendered at
+   * `min(rowWidth, maxWidth)` and left the remainder empty — 42px of dead strip beside a
+   * 700px Users panel at a 742px body, 200px at 900px, across a whole band of narrow desktops
+   * that no test covered. Nothing can absorb that width: `buildAtomic` short-circuits
+   * single-item rows before any composition runs, and `padRowToWidth` refuses a row carrying a
+   * `minWidth` member. Degrading the cap is the same trade `minWidth` already makes for a lone
+   * item — a bound that costs a neighbour nothing is not worth a hole in the page.
+   */
+  it('does not cap a LONE block — with no row-mate to take the width, the cap degrades', () => {
     const [size] = calculateSizesFromBoxTree(
       leaf(panelBlock(1, { maxWidth: 400, minHeight: 56, maxHeight: 56 })),
       1274.4,
       GAP
     );
 
-    expect(size?.width).toBe(400);
+    expect(size?.width).toBe(1274.4);
     expect(size?.height).toBe(56);
+  });
+
+  /**
+   * The other half of the same rule, and the reason the degradation above is narrow rather than
+   * a retreat: with a row-mate present the cap binds exactly as it always has, and the clamped
+   * height still derives from the capped width. Only the ROW ROOT is exempt.
+   */
+  it('caps a leaf that HAS a row-mate, height clamped from the capped width', () => {
+    const sizes = calculateSizesFromBoxTree(
+      hbox(
+        leaf(panelBlock(1, { maxWidth: 400, minHeight: 56, maxHeight: 56 })),
+        leaf(panelBlock(2))
+      ),
+      1274.4,
+      GAP
+    );
+
+    expect(sizes[0]?.width).toBe(400);
+    expect(sizes[0]?.height).toBe(56);
   });
 
   it('clamps do not change width allocation between hbox siblings', () => {

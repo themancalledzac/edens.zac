@@ -79,13 +79,21 @@ export interface Content {
   minWidth?: number;
 
   /**
-   * Maximum rendered width in CSS px, applied by the sizer as a cap on the leaf's
-   * allocated width. Unlike {@link minWidth} this does not participate in row
-   * membership — it binds at render time, which today matters for exactly one case: a
-   * block alone in its row (a collapsed panel bar on its own solo-hero row) renders at
-   * `min(rowWidth, maxWidth)` instead of spanning the page. A capped block narrower
-   * than its row leaves the trailing space empty; row-mates are NOT re-solved around
-   * it, so declare it only on blocks that claim solo rows.
+   * Maximum rendered width in CSS px, applied by the sizer as a cap on the leaf's allocated
+   * width. Unlike {@link minWidth} it does not participate in row membership — it binds at
+   * render time, and row-mates are NOT re-solved around it, so a capped block can leave its
+   * column a little narrower than the solve intended.
+   *
+   * It binds only where a block HAS a row-mate. A block alone in its row spans the full row
+   * width regardless: the cap is a statement about sharing ("leave the rest to my neighbours"),
+   * and with no neighbour the width it gives up becomes a dead strip beside the content rather
+   * than going anywhere. That is the same degradation {@link minWidth} makes for a lone item,
+   * from the same premise — a bound that costs a neighbour nothing is not worth honouring
+   * against the page.
+   *
+   * So declare it on any block that reads badly stretched, not only on blocks that claim solo
+   * rows: the case it exists for is a block sharing a wide row with something that can use the
+   * width better.
    */
   maxWidth?: number;
 

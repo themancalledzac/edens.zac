@@ -244,7 +244,19 @@ export function calculateBoxTreeAspectRatio(tree: BoxTree): number {
 }
 
 /**
- * Calculate sizes from BoxTree structure.
+ * Size one leaf at an already-decided rendered width. Whether `maxWidth` narrowed that
+ * width is the caller's decision — see {@link calculateSizesFromBoxTree}.
+ */
+function sizeLeaf(tree: Extract<BoxTree, { type: 'leaf' }>, width: number): CalculatedContentSize {
+  const height =
+    getHeightClamp(tree.content) === undefined
+      ? width / calculateBoxTreeAspectRatio(tree)
+      : clampedLeafHeight(tree, width);
+  return { content: tree.content, width, height };
+}
+
+/**
+ * Calculate sizes for a whole ROW from its BoxTree.
  *
  * Generic recursive algorithm that follows the tree structure left-to-right,
  * top-to-bottom. For horizontal nodes, gap space is always 1 × gap (binary tree
@@ -252,8 +264,20 @@ export function calculateBoxTreeAspectRatio(tree: BoxTree): number {
  * total height including the gap equals the raw combined height — widths are kept
  * at the allocated size to prevent width errors in parent horizontal combinations.
  *
- * @param tree - BoxTree encoding how items are combined
- * @param targetWidth - Available width for this subtree
+ * A LONE block is the one place `maxWidth` does not bind, and the asymmetry is the point.
+ * A cap is a statement about sharing: "leave the rest to my row-mates, I read badly wider
+ * than this". With a row-mate the freed width goes somewhere; alone in a row it goes
+ * nowhere, and the block renders short of the body with a dead strip beside it (Zac's
+ * standing rule: the layout fits the width of the body, always). So a cap degrades when
+ * the block is the whole row — the exact dual of the `minWidth` degradation `buildAtomic`
+ * already performs for a lone item, and for the same reason: a bound that costs a
+ * neighbour nothing is not worth honouring against the page.
+ *
+ * Only the ROOT is exempt. Every leaf inside a composed row has a sibling that can take
+ * what its cap gives up, so {@link sizeSubtree} applies the cap normally.
+ *
+ * @param tree - BoxTree encoding how the row's items are combined
+ * @param targetWidth - The row's available width
  * @param gap - Gap between adjacent items (default: LAYOUT.gridGap = 12.8px)
  * @param chunkSize - Number of normal-width items per row (for slot width scaling)
  * @returns Array of sizes in tree traversal order (left-to-right, top-to-bottom)
@@ -264,13 +288,20 @@ export function calculateSizesFromBoxTree(
   gap: number = LAYOUT.gridGap,
   chunkSize: number = 4
 ): CalculatedContentSize[] {
+  if (tree.type === 'leaf') return [sizeLeaf(tree, targetWidth)];
+  return sizeSubtree(tree, targetWidth, gap, chunkSize);
+}
+
+/** {@link calculateSizesFromBoxTree}'s recursion, below the row root, where caps bind. */
+function sizeSubtree(
+  tree: BoxTree,
+  targetWidth: number,
+  gap: number,
+  chunkSize: number
+): CalculatedContentSize[] {
   if (tree.type === 'leaf') {
-    const ar = calculateBoxTreeAspectRatio(tree);
     const maxWidth = getMaxWidth(tree.content);
-    const width = maxWidth === undefined ? targetWidth : Math.min(targetWidth, maxWidth);
-    const height =
-      getHeightClamp(tree.content) === undefined ? width / ar : clampedLeafHeight(tree, width);
-    return [{ content: tree.content, width, height }];
+    return [sizeLeaf(tree, maxWidth === undefined ? targetWidth : Math.min(targetWidth, maxWidth))];
   }
 
   if (tree.direction === 'horizontal') {
@@ -280,13 +311,13 @@ export function calculateSizesFromBoxTree(
 
     // Hand each side no more than it may render, so a cap deep in a column narrows the whole
     // column (uniform stacked widths) instead of one member clamping alone mid-stack.
-    const leftSizes = calculateSizesFromBoxTree(
+    const leftSizes = sizeSubtree(
       tree.children[0],
       Math.min(leftWidth, subtreeMaxWidth(tree.children[0])),
       gap,
       chunkSize
     );
-    const rightSizes = calculateSizesFromBoxTree(
+    const rightSizes = sizeSubtree(
       tree.children[1],
       Math.min(rightWidth, subtreeMaxWidth(tree.children[1])),
       gap,
@@ -304,8 +335,8 @@ export function calculateSizesFromBoxTree(
     const { a: aL, b: bL } = computeHeightCoeffs(tree.children[0], gap);
     const { a: aR, b: bR } = computeHeightCoeffs(tree.children[1], gap);
 
-    const leftSizes = calculateSizesFromBoxTree(tree.children[0], columnWidth, gap, chunkSize);
-    const rightSizes = calculateSizesFromBoxTree(tree.children[1], columnWidth, gap, chunkSize);
+    const leftSizes = sizeSubtree(tree.children[0], columnWidth, gap, chunkSize);
+    const rightSizes = sizeSubtree(tree.children[1], columnWidth, gap, chunkSize);
 
     // Visual height each child would render at. Coefficients are exact for pure-AR
     // subtrees; a subtree carrying shape bounds needs the clamp-aware prediction, or a
