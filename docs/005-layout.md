@@ -15,6 +15,7 @@ The layout system arranges content into justified, rating-weighted rows. The V3 
 - **Lone-last-row image sizing — RECONCILE the duplicate designs.** [005-end-row-gap](superpowers/plans/005-end-row-gap.md) (a trailing "gap" spacer box) and the redesign spec [§13 FILLER atom](superpowers/specs/005-row-composition-redesign.md) solve the SAME problem two different ways. Pick ONE, then implement it with TDD.
 - **Confirm the `/tylerabby` reorder bug is dead under V3.** Its old fix target `reorderWithinRows` was deleted with the V3 cutover, so the swap should no longer be reachable — verify, then add the "vertical penalty = sizing only, not ordering" comment at `contentRatingUtils.ts`.
 - **Fold the reorder scenario fixtures into the layout property/characterization tests**, which live in chapter 006 ([006-property-based-tests](superpowers/plans/006-property-based-tests.md)) — not here.
+- **Shaped blocks (min/max width & height) — designed, awaiting review** ([2026-08-10 admin-hub panel shape design](superpowers/specs/2026-08-10-admin-hub-panel-shape-design.md)). From Zac's 0246 review: `Content.minWidth` (shipped in 0246) generalizes to four optional px bounds; the sizer's `H(W) = a·W + b` becomes `clamp(a·W + b, minHeight, maxHeight)`, making subtree AR width-dependent when (and only when) a leaf declares a bound — photographs stay on the untouched scalar-AR path. Kills the panel blank-well stretch, lets short panels vStack beside a tall one, and replaces the collapsed-panel full-width `isSoloHero` trip (rejected on review — a minimized panel must keep its width) with a `minHeight` bar footprint. Phase A (panel data caching, `useCachedPanelData`) shipped 2026-08-10 on `0246`.
 
 ## Sections
 
@@ -28,6 +29,7 @@ The layout system arranges content into justified, rating-weighted rows. The V3 
 | [Mobile Text Overlay Experiment](superpowers/plans/005-mobile-text-overlay.md)   | idea      | 🗒️     |
 | [Pattern Tree Exploration](spikes/005-pattern-tree-exploration.md)               | idea      | 🗒️     |
 | [WFC Mosaic Exploration](spikes/005-wfc-mosaic-exploration.md)                   | idea      | 🗒️     |
+| [Admin-hub panel shape model & caching](superpowers/specs/2026-08-10-admin-hub-panel-shape-design.md) | spec | 🟡 Phase A shipped · B/C awaiting review |
 
 ## Blocked on / open
 
