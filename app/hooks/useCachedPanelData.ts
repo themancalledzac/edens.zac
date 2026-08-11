@@ -202,15 +202,26 @@ export interface CachedPanelData<T> {
    */
   revalidationFailed: boolean;
   /**
-   * Re-fetch. Silent by default when cached data is showing (stale-while-revalidate) and a
-   * foreground load with error reporting when there is nothing to show — which makes the bare call
-   * directly usable as the error branch's Retry handler.
+   * Re-fetch. Two behaviours are in play and they are deliberately not the same switch.
    *
-   * Pass `{ foreground: true }` after a mutation. A create or a merge that succeeded against the
-   * backend but whose list refresh then failed must not look like it worked: forcing foreground
-   * routes that failure to `loadError`, which is the branch that carries a Retry.
+   * Whether it enters the loading state is never the caller's choice — it follows from what is on
+   * screen. Nothing to show, or an error branch showing, means "Loading…" is an improvement and it
+   * loads in the foreground. A correct list showing means it reconciles underneath, because
+   * blanking a list the admin is reading, to fetch what is probably the same list, is a regression
+   * dressed as feedback.
+   *
+   * Whether a failure is announced IS the caller's choice, via `reportErrors`. It defaults to
+   * matching the loading decision, which gives the two bare-call sites what they each need: the
+   * error branch's Retry (an error is showing, so: loud) and a plain return-to-list (a list is
+   * showing and nothing changed, so: silent).
+   *
+   * Pass `{ reportErrors: true }` after a mutation. A create or a merge that succeeded against the
+   * backend but whose list refresh then failed must not look like it worked — the failure has to
+   * reach `loadError`, which is the branch that carries a Retry — yet the list on screen is still
+   * correct until that fetch says otherwise, so it must not flash. Quiet over warm data, loud on
+   * failure.
    */
-  refresh: (options?: { foreground?: boolean }) => Promise<void>;
+  refresh: (options?: { reportErrors?: boolean }) => Promise<void>;
   /**
    * Write-through setter for optimistic mutations, shaped as a state dispatcher so existing
    * hooks like `useMessageDelete` keep their setter contract. Writing through matters: a delete
@@ -219,6 +230,14 @@ export interface CachedPanelData<T> {
    * A write is the newest truth for its key, so it supersedes any fetch in flight (see
    * {@link generations}) and clears `loading` — the superseded fetch no longer owns that flag, and
    * nothing else would come along to lower it.
+   *
+   * The generation bump happens at dispatch, deliberately outside the state updater. React only
+   * runs an updater eagerly while the fiber has no pending work, and every real mutation path
+   * dispatches something else first (`setDeletingId`, a cleared error), so an updater — and any
+   * guard living inside it — is deferred to the render pass. A fetch landing in that window would
+   * read the pre-bump generation, pass the guard, and commit; the mutation's own commit would then
+   * run during the render, leaving state holding the resurrected row and localStorage holding the
+   * filtered one.
    */
   setData: Dispatch<SetStateAction<T | null>>;
 }
@@ -273,6 +292,14 @@ export function useCachedPanelData<K extends PanelCacheKey>(
    */
   const latestFetchRef = useRef(0);
 
+  /**
+   * The live `loadError`, readable from the stable `refresh` callback. What is currently on screen
+   * decides whether a refresh may enter the loading state: an error branch is worth replacing with
+   * "Loading…", a correct list is not.
+   */
+  const loadErrorRef = useRef(loadError);
+  loadErrorRef.current = loadError;
+
   const [seededKey, setSeededKey] = useState<PanelCacheKey>(key);
   if (key !== seededKey) {
     setSeededKey(key);
@@ -289,13 +316,11 @@ export function useCachedPanelData<K extends PanelCacheKey>(
   }, []);
 
   const revalidate = useCallback(
-    async (forKey: K, foreground: boolean) => {
+    async (forKey: K, showLoading: boolean, reportErrors: boolean) => {
       const generation = bumpGeneration(forKey);
       latestFetchRef.current = generation;
-      if (foreground) {
-        setLoading(true);
-        setLoadError(null);
-      }
+      if (showLoading) setLoading(true);
+      if (reportErrors) setLoadError(null);
       try {
         const fresh = await fetcherRef.current();
         if (keyRef.current !== forKey || !isCurrentGeneration(forKey, generation)) return;
@@ -310,7 +335,7 @@ export function useCachedPanelData<K extends PanelCacheKey>(
         if (keyRef.current !== forKey || !isCurrentGeneration(forKey, generation)) return;
         logger.error('useCachedPanelData', `Failed to load "${forKey}"`, error);
         setRevalidationFailed(true);
-        if (foreground) setLoadError(errorMessage);
+        if (reportErrors) setLoadError(errorMessage);
       } finally {
         if (keyRef.current === forKey && latestFetchRef.current === generation) setLoading(false);
       }
@@ -334,17 +359,22 @@ export function useCachedPanelData<K extends PanelCacheKey>(
         }
       }
     }
-    void revalidate(key, !seeded);
+    void revalidate(key, !seeded, !seeded);
   }, [key, revalidate]);
 
   const refresh = useCallback(
-    (options?: { foreground?: boolean }) =>
-      revalidate(keyRef.current, options?.foreground ?? memoryCache[keyRef.current] === undefined),
+    (options?: { reportErrors?: boolean }) => {
+      const nothingToShow = memoryCache[keyRef.current] === undefined;
+      const showingAnError = loadErrorRef.current !== null;
+      const showLoading = nothingToShow || showingAnError;
+      return revalidate(keyRef.current, showLoading, options?.reportErrors ?? showLoading);
+    },
     [revalidate]
   );
 
   const setData = useCallback<Dispatch<SetStateAction<PanelCacheSchema[K] | null>>>(
     action => {
+      bumpGeneration(key);
       setDataState(previous => {
         const next =
           typeof action === 'function'
@@ -354,7 +384,6 @@ export function useCachedPanelData<K extends PanelCacheKey>(
           clearCachedPanelData(key);
         } else {
           commit(key, next, JSON.stringify(next));
-          bumpGeneration(key);
         }
         return next;
       });

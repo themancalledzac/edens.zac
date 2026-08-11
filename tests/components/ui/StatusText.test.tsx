@@ -4,6 +4,7 @@ import { render, screen } from '@testing-library/react';
 
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
+import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
 
 describe('EmptyState', () => {
   it('renders its message', () => {
@@ -117,5 +118,39 @@ describe('LoadingText', () => {
     const node = screen.getByRole('status');
     expect(node).toHaveClass('text', 'inline');
     expect(node).not.toHaveClass('caller');
+  });
+});
+
+describe('StaleNotice', () => {
+  /**
+   * The copy is the component's, not the caller's — all three admin panels say the same thing,
+   * and a message about the freshness of data should not be one a caller can quietly reword into
+   * something reassuring.
+   */
+  it('states that what is on screen came from cache', () => {
+    render(<StaleNotice />);
+    expect(screen.getByText(/showing cached data/i)).toBeInTheDocument();
+  });
+
+  /**
+   * Unlike EmptyState, this one appears without the viewer having done anything — a background
+   * read failed — so it announces. Politely: nothing here is urgent, the data is merely old.
+   */
+  it('announces via role=status', () => {
+    render(<StaleNotice />);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
+
+  it('shares the placement API with its siblings', () => {
+    const { rerender } = render(<StaleNotice />);
+    expect(screen.getByRole('status')).toHaveClass('text', 'inline');
+
+    rerender(<StaleNotice align="page" />);
+    expect(screen.getByRole('status')).toHaveClass('text', 'page');
+  });
+
+  it('adds a caller className alongside its own, rather than replacing them', () => {
+    render(<StaleNotice className="caller" />);
+    expect(screen.getByRole('status')).toHaveClass('text', 'inline', 'caller');
   });
 });

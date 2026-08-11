@@ -8,7 +8,8 @@
  * Keys are the real ones (`roles`, `users:base`, `users:people`) because the cache only accepts
  * keys from `PanelCacheSchema` — a fixture key would not type-check, which is the schema working.
  */
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, render, renderHook, waitFor } from '@testing-library/react';
+import { type Dispatch, type SetStateAction, useState } from 'react';
 
 import { clearCachedPanelData, useCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { type RoleSummary } from '@/app/types/Role';
@@ -29,6 +30,38 @@ function deferred<V>(): { promise: Promise<V>; resolve: (value: V) => void } {
     settle = resolve;
   });
   return { promise, resolve: (value: V) => settle(value) };
+}
+
+interface HarnessApi {
+  data: RoleSummary[] | null;
+  setData: Dispatch<SetStateAction<RoleSummary[] | null>>;
+  /** Dispatches an unrelated state update, leaving the fiber with pending work. */
+  dirty: () => void;
+}
+
+/**
+ * A component that can dirty its own fiber before writing to the cache.
+ *
+ * React only runs a state updater eagerly, at dispatch, while the fiber has no pending work.
+ * Every real delete path dispatches something else first — `setDeletingId`, a cleared error — so
+ * the updater and everything inside it are deferred to the render pass. `renderHook` alone never
+ * exercises that ordering, because its fiber is clean when the test calls `setData`.
+ */
+function DirtyFiberHarness({
+  fetcher,
+  api,
+}: {
+  fetcher: () => Promise<RoleSummary[]>;
+  api: { current: HarnessApi | null };
+}) {
+  const [, setTick] = useState(0);
+  const panel = useCachedPanelData('roles', fetcher, 'failed');
+  api.current = {
+    data: panel.data,
+    setData: panel.setData,
+    dirty: () => setTick(tick => tick + 1),
+  };
+  return null;
 }
 
 function user(id: number, displayName: string): AdminUserSummary {
@@ -163,7 +196,7 @@ describe('useCachedPanelData', () => {
     expect(result.current.revalidationFailed).toBe(false);
   });
 
-  it('a forced foreground refresh surfaces its failure even with cached data showing', async () => {
+  it('a post-mutation refresh surfaces its failure even with cached data showing', async () => {
     let fail = false;
     const fetcher = jest.fn(async (): Promise<RoleSummary[]> => {
       if (fail) throw new Error('backend down');
@@ -173,8 +206,86 @@ describe('useCachedPanelData', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     fail = true;
-    await act(() => result.current.refresh({ foreground: true }));
+    await act(() => result.current.refresh({ reportErrors: true }));
     expect(result.current.loadError).toBe('failed');
+    expect(result.current.loading).toBe(false);
+  });
+
+  /**
+   * The panels build their body inside `if (!loading)`, so entering the loading state blanks a
+   * list the admin is reading. A post-mutation refresh has no business doing that to a list that
+   * is still correct — it reports failures, it does not announce itself.
+   */
+  it('a post-mutation refresh reconciles without blanking a correct list', async () => {
+    const warm = jest.fn(async (): Promise<RoleSummary[]> => [{ id: 1, name: 'a' }]);
+    const inFlight = deferred<RoleSummary[]>();
+    const { result, rerender } = renderHook(
+      ({ fetcher }: { fetcher: () => Promise<RoleSummary[]> }) =>
+        useCachedPanelData('roles', fetcher, 'failed'),
+      { initialProps: { fetcher: warm as () => Promise<RoleSummary[]> } }
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    rerender({ fetcher: () => inFlight.promise });
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = result.current.refresh({ reportErrors: true });
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data).toEqual([{ id: 1, name: 'a' }]);
+
+    await act(async () => {
+      inFlight.resolve([
+        { id: 1, name: 'a' },
+        { id: 2, name: 'b' },
+      ]);
+      await pending;
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data).toEqual([
+      { id: 1, name: 'a' },
+      { id: 2, name: 'b' },
+    ]);
+  });
+
+  /**
+   * After a post-mutation refresh fails, `loadError` is set with a WARM cache — a combination the
+   * bare `refresh()` behind every Retry button had no case for. Deriving the loading decision from
+   * cache warmth alone left Retry neither entering the loading state nor clearing the error, so
+   * the button looked dead and the panel sat on its error branch.
+   */
+  it('Retry still loads loudly after a post-mutation failure left the cache warm', async () => {
+    let fail = true;
+    const retryFetcher = jest.fn(async (): Promise<RoleSummary[]> => {
+      if (fail) throw new Error('backend down');
+      return [{ id: 9, name: 'fresh' }];
+    });
+    const warm = jest.fn(async (): Promise<RoleSummary[]> => [{ id: 1, name: 'a' }]);
+    const { result, rerender } = renderHook(
+      ({ fetcher }: { fetcher: () => Promise<RoleSummary[]> }) =>
+        useCachedPanelData('roles', fetcher, 'failed'),
+      { initialProps: { fetcher: warm as () => Promise<RoleSummary[]> } }
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    rerender({ fetcher: retryFetcher });
+    await act(() => result.current.refresh({ reportErrors: true }));
+    expect(result.current.loadError).toBe('failed');
+
+    fail = false;
+    let retry: Promise<void> = Promise.resolve();
+    act(() => {
+      retry = result.current.refresh();
+    });
+
+    expect(result.current.loading).toBe(true);
+    expect(result.current.loadError).toBeNull();
+
+    await act(() => retry);
+    expect(result.current.data).toEqual([{ id: 9, name: 'fresh' }]);
+    expect(result.current.loadError).toBeNull();
     expect(result.current.loading).toBe(false);
   });
 
@@ -229,6 +340,48 @@ describe('useCachedPanelData', () => {
     });
 
     expect(second.result.current.data).toEqual([{ id: 2, name: 'b' }]);
+    expect(window.localStorage.getItem(ROLES_KEY)).toBe(JSON.stringify([{ id: 2, name: 'b' }]));
+  });
+
+  /**
+   * The same resurrection, but through the ordering a real panel actually takes. A delete
+   * dispatches `setDeletingId` first, so `setData`'s updater — and any guard inside it — is
+   * deferred to the render pass, and the fetch lands in the window between the two.
+   *
+   * The landing payload differs from the cached one (another admin added a role), which is what
+   * makes the deferred case bite: with a payload identical to the cache the fetch commits nothing
+   * and the ordering is harmless, so a same-payload test would pass either way. Here the fetch
+   * commits, and the mutation's own commit then runs during the render pass — leaving state
+   * holding the resurrected row while localStorage holds the filtered list, a split that survives
+   * the reload it takes to notice.
+   */
+  it('guards a mutation whose updater is deferred by other pending state', async () => {
+    const warm = jest.fn(
+      async (): Promise<RoleSummary[]> => [
+        { id: 1, name: 'a' },
+        { id: 2, name: 'b' },
+      ]
+    );
+    const first = renderHook(() => useCachedPanelData('roles', warm, 'failed'));
+    await waitFor(() => expect(first.result.current.loading).toBe(false));
+    first.unmount();
+
+    const inFlight = deferred<RoleSummary[]>();
+    const api: { current: HarnessApi | null } = { current: null };
+    render(<DirtyFiberHarness fetcher={() => inFlight.promise} api={api} />);
+    await waitFor(() => expect(api.current?.data).toHaveLength(2));
+
+    await act(async () => {
+      inFlight.resolve([
+        { id: 1, name: 'a' },
+        { id: 2, name: 'b' },
+        { id: 3, name: 'c' },
+      ]);
+      api.current?.dirty();
+      api.current?.setData(previous => (previous ?? []).filter(role => role.id !== 1));
+    });
+
+    expect(api.current?.data).toEqual([{ id: 2, name: 'b' }]);
     expect(window.localStorage.getItem(ROLES_KEY)).toBe(JSON.stringify([{ id: 2, name: 'b' }]));
   });
 

@@ -72,6 +72,50 @@ describe('RolesPanel', () => {
   });
 
   /**
+   * The body is built inside `if (!loading)`, so a refresh that enters the loading state blanks
+   * the list. After a successful create the list on screen is still correct — reconcile it
+   * underneath rather than flashing "Loading roles…" over it.
+   */
+  it('does not blank the list while a post-create refresh is in flight', async () => {
+    render(<RolesPanel />);
+    await waitFor(() => expect(screen.getByText('alpha')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /new role/i }));
+    fireEvent.change(screen.getByLabelText(/new role name/i), { target: { value: 'delta' } });
+    mockListRoles.mockReturnValueOnce(new Promise<RoleSummary[]>(() => {}));
+    fireEvent.click(screen.getByRole('button', { name: /create role/i }));
+
+    await waitFor(() => expect(mockCreateRole).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText('alpha')).toBeInTheDocument());
+    expect(screen.queryByText('Loading roles…')).not.toBeInTheDocument();
+  });
+
+  /**
+   * The other half of the same trade: quiet over a correct list, loud when the refresh fails. A
+   * create that succeeded but whose list refresh then failed must not read as a create that did
+   * nothing — and the Retry it offers has to work with a warm cache behind it.
+   */
+  it('surfaces a failed post-create refresh and recovers through Retry', async () => {
+    render(<RolesPanel />);
+    await waitFor(() => expect(screen.getByText('alpha')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /new role/i }));
+    fireEvent.change(screen.getByLabelText(/new role name/i), { target: { value: 'delta' } });
+    mockListRoles.mockRejectedValueOnce(new ApiError('Backend unreachable', 500));
+    fireEvent.click(screen.getByRole('button', { name: /create role/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(/could not load roles/i)
+    );
+
+    mockListRoles.mockResolvedValueOnce([...ROLES, { id: 4, name: 'delta' }]);
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(screen.getByText('delta')).toBeInTheDocument());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  /**
    * A warm cache turns a dead backend into a silent one: the list paints from localStorage, the
    * background revalidation fails, and nothing on screen says the roles are last session's. The
    * notice is the only thing standing between "cached" and "current".

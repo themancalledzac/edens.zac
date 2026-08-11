@@ -72,9 +72,10 @@ interface RolesPanelProps {
  * resurrect from stale cache on the next remount, nor from a fetch that was already in the air
  * when it was deleted.
  *
- * Returning to the list after a change refreshes in the foreground (`backToListAfterChange`),
- * while a plain Cancel refreshes silently. A create that succeeded but whose list refresh then
- * failed has to say so: foreground routes that failure to `loadError`, which carries a Retry.
+ * Returning to the list after a change (`backToListAfterChange`) reconciles underneath the list
+ * rather than blanking it, but announces a failure; a plain Cancel changed nothing, so it
+ * reconciles silently. A create that succeeded and then failed to refresh has to say so, and it
+ * lands in `loadError`, which carries a Retry.
  *
  * The {@link LoadingText} region sits outside the `view.mode === 'list'` guard, not inside it. It
  * has to outlive the branches it reports on (see its docblock), and `backToList` flips the view and
@@ -106,11 +107,11 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
   );
 
   const returnToList = useCallback(
-    (foreground: boolean) => {
+    (reportErrors: boolean) => {
       setView({ mode: 'list' });
       setCreateError(null);
       setName('');
-      void refresh({ foreground });
+      void refresh({ reportErrors });
     },
     [refresh]
   );

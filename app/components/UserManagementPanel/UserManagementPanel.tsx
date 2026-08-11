@@ -51,9 +51,10 @@ interface UserManagementPanelProps {
  * actually changes it.
  *
  * Anything that changed the underlying users — a create, an edit, a merge, an upgrade — refreshes
- * in the foreground, so a mutation that succeeded but whose list refresh then failed surfaces as
- * `loadError` (which carries a Retry) rather than as a list that quietly did not update. Cancel
- * refreshes silently, having changed nothing.
+ * with errors reported, so a mutation that succeeded but whose list refresh then failed surfaces
+ * as `loadError` (which carries a Retry) rather than as a list that quietly did not update. It
+ * still reconciles underneath the list rather than blanking a correct one. Cancel refreshes
+ * silently, having changed nothing.
  *
  * The {@link LoadingText} region sits outside the `view.mode === 'list'` guard, not inside it. It
  * has to outlive the branches it reports on (see its docblock), and `backToList` flips the view and
@@ -81,9 +82,9 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
   );
 
   const returnToList = useCallback(
-    (foreground: boolean) => {
+    (reportErrors: boolean) => {
       setView({ mode: 'list' });
-      void refresh({ foreground });
+      void refresh({ reportErrors });
     },
     [refresh]
   );
@@ -252,7 +253,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
           onMerged={async () => {
             setMergeFor(null);
             await revalidateMetadataCache();
-            void refresh({ foreground: true });
+            void refresh({ reportErrors: true });
           }}
         />
       )}
@@ -263,7 +264,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
           onClose={() => setUpgradeFor(null)}
           onUpgraded={async () => {
             await revalidateMetadataCache();
-            void refresh({ foreground: true });
+            void refresh({ reportErrors: true });
           }}
         />
       )}
