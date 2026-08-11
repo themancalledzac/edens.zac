@@ -47,7 +47,17 @@ function leafLabel(content: AnyContentModel): string {
   return `${content.contentType.toLowerCase()}:${title}`;
 }
 
-/** Measure one packed row. Rows without a tree (header rails) measure as their items alone. */
+/**
+ * Measure one packed row. Rows without a tree (header rails) measure as their items alone.
+ *
+ * A row's `items` are what `calculateSizesFromBoxTree` returned for its `boxTree`, in tree order,
+ * so the leaf count and the item count cannot legitimately disagree — a mismatch means the two
+ * came from different packs. This used to walk on regardless, substituting a 0×0 leaf for the
+ * missing item and ignoring any item the tree did not reach, which silently understates `spanPx`
+ * and `heightPx`. That matters more here than in most utilities: this function is the RULER three
+ * suites measure the fill invariants with, and a ruler that quietly reports a short row turns
+ * every assertion built on it into a test that cannot fail. So it throws instead.
+ */
 export function measureRow(row: RowLike, gap: number = LAYOUT.gridGap): RowMeasurements {
   if (!row.boxTree) {
     const width = row.items.reduce((sum, item) => sum + item.width, 0);
@@ -59,7 +69,13 @@ export function measureRow(row: RowLike, gap: number = LAYOUT.gridGap): RowMeasu
   const walk = (tree: BoxTree): { w: number; h: number; pocket: number; label: string } => {
     if (tree.type === 'leaf') {
       const item = row.items[cursor++];
-      if (!item) return { w: 0, h: 0, pocket: 0, label: leafLabel(tree.content) };
+      if (!item) {
+        throw new Error(
+          `measureRow: the BoxTree has more leaves than the row's ${row.items.length} sized ` +
+            `item(s) — ran out at leaf ${cursor} (${leafLabel(tree.content)}). The tree and the ` +
+            `sizes belong to different packs.`
+        );
+      }
       return { w: item.width, h: item.height, pocket: 0, label: leafLabel(item.content) };
     }
     const first = walk(tree.children[0]);
@@ -86,12 +102,25 @@ export function measureRow(row: RowLike, gap: number = LAYOUT.gridGap): RowMeasu
   };
 
   const root = walk(row.boxTree);
+  if (cursor !== row.items.length) {
+    throw new Error(
+      `measureRow: the BoxTree has ${cursor} leaves but the row carries ${row.items.length} sized ` +
+        `items — ${row.items.length - cursor} item(s) the tree never reaches, and their width is ` +
+        `missing from spanPx. The tree and the sizes belong to different packs.`
+    );
+  }
   return { spanPx: root.w, heightPx: root.h, pocketPx2: root.pocket, structure: root.label };
 }
 
 /**
  * One line per row: index, span×height, right-edge gap against `contentWidth`, internal pocket,
  * the structure string, then each leaf's rendered size in tree order.
+ *
+ * A row {@link measureRow} refuses to measure becomes a line saying so, rather than an exception.
+ * The only caller is `Component.tsx`'s development log — a diagnostic that must not be able to
+ * take down the page it exists to diagnose. The failure is not swallowed: it goes out on the same
+ * console the caller is already reading, naming the row and the reason. Tests call `measureRow`
+ * directly and get the throw.
  */
 export function describeLayoutRows(
   rows: RowLike[],
@@ -99,7 +128,13 @@ export function describeLayoutRows(
   gap: number = LAYOUT.gridGap
 ): string[] {
   return rows.map((row, index) => {
-    const m = measureRow(row, gap);
+    let m: RowMeasurements;
+    try {
+      m = measureRow(row, gap);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      return `row ${index}: UNMEASURABLE — ${reason}`;
+    }
     const edge =
       contentWidth === undefined ? '' : ` edgeGap=${(contentWidth - m.spanPx).toFixed(1)}`;
     const sizes = row.items
