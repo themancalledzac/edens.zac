@@ -57,9 +57,20 @@ export function pinnedLeaf(pinnedHeight: number): AffineHeight {
 
 /**
  * The model of a flexible leaf: height tracks width along the declared aspect ratio.
- * A non-positive AR (unreachable through either accessor chain on real content, both of
- * which clamp their degenerate answers to 1.0) degrades to a square rather than to a
- * negative or infinite coefficient.
+ * A non-positive AR degrades to a square rather than to a negative or infinite coefficient.
+ *
+ * The two accessor chains keep a ZERO out by different mechanisms, and only one of them is a
+ * clamp — do not read this guard as duplicating either:
+ *
+ * - The composer's chain clamps, explicitly. `getAspectRatio` answers a flat `1.0` for a PANEL
+ *   whose declared width or height is non-positive, for anything without a photographic shape,
+ *   and for a computed dimension pair that comes back non-positive.
+ * - The sizer's chain never clamps. `getContentDimensions` tests each candidate pair with `&&`,
+ *   so a zero (or absent) dimension is falsy and falls THROUGH to the next source and finally to
+ *   the 1300×867 placeholder; its callers add a `height === 0 ? 1 : …` belt on top.
+ *
+ * What neither rules out is a NEGATIVE stored dimension: it is truthy, so `&&` passes it along
+ * and `height === 0` does not catch it. That is the case this fallback is actually for.
  */
 export function flexibleLeaf(ar: number): AffineHeight {
   return { a: ar > 0 ? 1 / ar : 1, b: 0 };
@@ -111,7 +122,22 @@ export function combineDeclaredARHorizontal(left: number, right: number): number
   return left + right;
 }
 
-/** Declared aspect ratio of stacked children: the harmonic form, as product-over-sum. */
+/**
+ * Declared aspect ratio of stacked children: the harmonic form, spelled as product-over-sum.
+ *
+ * `(l·r)/(l+r)` and `1/(1/l + 1/r)` — the spelling `tests/utils/rowStructureAlgorithm.test.ts`
+ * computes its expectations in — agree to within floating-point rounding on positive finite
+ * operands, which is the only population that reaches here. They are NOT interchangeable in
+ * general, and the disagreements are categorical rather than ULP-scale:
+ *
+ * - `l = r = 0` — this form is `0/0` (NaN); the reciprocal form is `1/(∞+∞)` = 0.
+ * - `l + r === 0` with opposite signs — this form is `−1/0` = −∞; the reciprocal form is +∞.
+ * - either operand infinite — this form is `∞/∞` (NaN); the reciprocal form returns the finite
+ *   other side.
+ *
+ * All three are unreachable through the accessor chains (see {@link flexibleLeaf}), so the
+ * respelling is safe HERE and not in general.
+ */
 export function combineDeclaredARVertical(left: number, right: number): number {
   return (left * right) / (left + right);
 }

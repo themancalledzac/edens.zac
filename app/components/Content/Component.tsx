@@ -96,6 +96,12 @@ function itemKeyFragment(content: AnyContentModel): string {
  * internal pocket, tree, leaf sizes) on every re-pack. The console is the fastest shared view of
  * what the packer decided — the same measurements the collapse-state tests assert on.
  *
+ * With one thing to know before you go looking for it: {@link logger}'s `debug` calls
+ * `console.debug`, which DevTools files under the **Verbose** level, and Verbose is OFF under the
+ * default log-level filter. The lines are there; the console has to be asked for them. That is the
+ * cost of the routing below, and it is worth paying — but "open the console and collapse a panel"
+ * is not on its own sufficient instructions for anyone reproducing a layout report.
+ *
  * It goes out through {@link logger}, which is what keeps it out of Jest: the logger returns early
  * at `NODE_ENV === 'test'`, while the `production` check here is this diagnostic's own. A direct
  * `console.info` satisfied only the second, so every suite that packs a layout printed a line per

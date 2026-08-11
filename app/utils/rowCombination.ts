@@ -410,6 +410,14 @@ const POCKET_TOLERANCE = 0.05;
  * Measured over the hub's states, the two populations do not overlap and do not come close:
  * same-column spreads land at 4.9–6.4px (≤ gap/2), genuinely-split columns at 24–148px. One
  * gap sits in the empty band between them, and scales with the gap the artifact comes from.
+ *
+ * This tolerance is NOT the contract. It is what the membership predicate allows itself while
+ * reading a reporting artifact; what a shipped row must satisfy is tighter, and is asserted in
+ * `tests/(admin)/admin/page.collapseStates.test.ts` — 'renders every panel in a row at one shared
+ * width', which rounds each panel's rendered width to a whole pixel and requires ONE distinct
+ * value across all 80 width × collapse-state combinations. So 12.8px of latitude here has to keep
+ * producing widths that agree to the rounded pixel there; raising this number past the empty band
+ * would admit rows that fail that assertion.
  */
 const PINNED_WIDTH_SPREAD_GAPS = 1;
 
@@ -1645,7 +1653,9 @@ function equitySpread(component: AtomicComponent): number {
  * the number of internal nodes, bounded by row size.
  *
  * The two AR forms: hPair adds (ar = leftAR + rightAR), vStack takes the harmonic form
- * (1/ar = 1/leftAR + 1/rightAR), written here as the equivalent product-over-sum.
+ * (1/ar = 1/leftAR + 1/rightAR), written here as product-over-sum — equivalent on the positive
+ * finite ARs that reach here, but not in general; see `combineDeclaredARVertical` in
+ * `affineHeight.ts` for the cases where the two spellings part company.
  */
 function enumerateAssignments(node: AbstractNode): Candidate[] {
   if (node.kind === 'leaf') {

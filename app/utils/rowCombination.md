@@ -89,19 +89,72 @@ packing metric, not the balance metric.
 ## Phase 2 — direction enumeration (`pickRootAssignment`)
 
 Enumerate every hPair/vStack assignment of the Phase-1 tree (the root is forced
-to hPair — rows are horizontal by definition), then select two-tiered:
+to hPair — rows are horizontal by definition), then select in three tiers
+(`pickBestComposition`):
 
-1. **Hard AR floor at 1.0** — a row must never be taller than it is wide.
-   Sub-1.0 candidates carry a large penalty. Within a small AR band
-   (`AR_EQUITY_BAND`) of the best-scoring candidate…
-2. **…pick the most equitable** — the tree whose leaf areas best track each
-   image's **prominence `P`** (`equitySpread` / `leafShares`), so equal-prominence
-   images render at similar size instead of one ballooning while its siblings are
-   crushed. Using `P` (orientation-agnostic) is what lets a high-rated vertical
-   claim area rather than being shrunk by the old one-sided `cv`.
+0. **Shape rejection.** A candidate below the hard AR floor (`ROW_AR_FLOOR`, 1.0
+   — never taller than wide) or above the ceiling (`CEILING_MULT` × target, 2.0 —
+   never a thin strip) is dropped outright. Both are aesthetic guards over a shape
+   the composer is free to pick, so a row carrying a **pinned** member skips them:
+   its height is dictated by its content, not chosen.
+1. **Fewest violations.** `violationCount` counts the hard constraints a candidate
+   breaks — starving a declared `Content.minWidth`, and failing to span the row
+   within `FILL_TOLERANCE_GAPS` (2.5 gaps). Compared lexicographically, BEFORE the
+   score, so no score can buy a violation. This replaced a `+1000` numeric penalty,
+   which could not be proven to outrank `equitySpread` (an unbounded ratio, with
+   in-band candidates above 2e7).
+2. **Lowest score, then closest AR.** `equitySpread + LAMBDA · arPenalty(rowAR,
+target)` plus, for shaped rows only, `SLACK_WEIGHT · slack`,
+   `PINNED_SCATTER_WEIGHT · scatter`, and the graded remainders of the two
+   violations. `equitySpread` (`leafShares`) is the tree whose leaf areas best
+   track each image's **prominence `P`**, so equal-prominence images render at
+   similar size instead of one ballooning while its siblings are crushed. Using `P`
+   (orientation-agnostic) is what lets a high-rated vertical claim area rather than
+   being shrunk by the old one-sided `cv`.
+
+The **`AR_EQUITY_BAND` gate is retired**: equity is no longer a tiebreak inside a
+band around the AR-optimal candidate, it is the primary score, with `LAMBDA` (0.15)
+as a mild pull toward the target AR. The AR-closest candidate (then a flat `hChain`)
+survives only as the fallback for when nothing lands in band at all.
 
 `MAX_ROW_IMAGES` (12) bounds both greedy fill and this enumeration (~2^(n-1)
 candidates for an n-leaf row).
+
+## Shaped blocks — the pixel-aware branch
+
+Everything above is unitless: shapes and ratings, no pixels. A block may also
+declare a **shape** through four optional px bounds on `Content` — `minWidth`,
+`maxWidth`, `minHeight`, `maxHeight` — and that is the one place the engine reasons
+in pixels. Only UI blocks do it (admin panels, nav tiles); no photograph declares
+any of them, so every collection page runs the path exactly as it ran before the
+feature, guarded by O(n) prechecks (`constrained`, `pinned`, `capped`) hoisted above
+the candidate loops.
+
+- **`minWidth`** is a preference over row MEMBERSHIP, not a reservation of page
+  width: `buildRows` refuses to admit a row-mate that would starve it, and
+  `pickBestComposition` scores a starving arrangement out of contention. It
+  degrades for a block alone in a row narrower than its own minimum.
+- **`maxWidth`** binds at render time only; row-mates are not re-solved around it.
+  It also degrades for a block alone in its row — width given up with no neighbour
+  to take it is a dead strip, not a gift.
+- **`minHeight === maxHeight` is a PIN** (declare it with `pinnedHeight()`, which
+  makes the equality true by construction). A pin means "height does not vary with
+  width", which the shared affine model in `affineHeight.ts` expresses as `a = 0` in
+  `H(W) = a·W + b` — not a special case bolted on, the model's own vocabulary. An
+  unequal band is invisible to the packer and clamps only the rendered height.
+
+A row that could carry a pinned member is composed under stricter membership rules
+than the width-cost fill budget (`hasPinnedMember` → `firstCleanExtension`): the row
+must land CLEAN on four measured predicates — no starved minimum, no unconsumed
+width past `FILL_TOLERANCE_GAPS`, one shared width across its pinned blocks within
+`PINNED_WIDTH_SPREAD_GAPS`, and no slack pocket past `POCKET_TOLERANCE`. Because
+pinned geometry is non-monotonic in member count, growth may pass through defective
+intermediates; it must only LAND clean.
+
+Both halves of the engine — the composer scoring candidates, the sizer rendering the
+winner — read every formula in this model from `app/utils/affineHeight.ts`. They were
+once four hand-mirrored function pairs enforced by comments, and a divergence between
+them is exactly where the admin hub's dead-space bug came from.
 
 ## Design rationale
 
@@ -124,8 +177,8 @@ greedy direction picks can't see the cumulative effect (children that look fine
 in isolation can compose into a too-tall or too-wide row). Small trees (≤12
 leaves) make exhaustive enumeration cheap, so it finds the genuine optimum.
 
-**Why no special-case rules.** The floor + equity selection subsume the special
-cases older composers needed:
+**Why no special-case rules — for photographs.** The floor + equity selection
+subsume the special cases older composers needed:
 
 - Top-level no-vStack is a hard constraint (forced hPair at the root).
 - vertical-depth caps are unneeded — deep vStacks emerge when they make a row squarer at
@@ -135,10 +188,18 @@ cases older composers needed:
 - Same-orientation (V+V) avoidance is unneeded — narrow-AR vStacks push the row
   AR below 1.0 and get rejected.
 
-Selection is two-tiered, not a stack of special-case rules: (1) the AR floor plus closeness
-to the target row AR pick the acceptable band; (2) within it, the lowest
-area-vs-prominence spread wins, so sizing tracks `P` (the intended signal) rather than
-being an artifact of which subtree a leaf landed in.
+Selection is tiered, not a stack of special-case rules: the AR floor and ceiling reject
+unusable shapes, then the lowest area-vs-prominence spread wins, so sizing tracks `P`
+(the intended signal) rather than being an artifact of which subtree a leaf landed in.
+
+This claim is about the PHOTOGRAPHIC path, and it is exactly as strong as it was.
+A block that declares a shape is a different animal — a UI block's minimum width is a
+fact about its chrome, not a preference the engine may trade away — so the shaped-block
+branch above does carry named rules with measured constants. What keeps the two honest
+is that no photograph ever declares a bound, so none of those rules is reachable from a
+collection page; each is gated on an O(n) precheck that is false there. "No special
+cases" was never a claim that pixels do not exist, only that the composer does not need
+a rule per row shape.
 
 ## Known limitation — vertical prominence is decided by STRUCTURE, not rating
 
@@ -181,10 +242,14 @@ H (root, forced hPair)
 2. **The AR floor is enforced only at the ROOT**, not at internal nodes
    ([`rowARCost`](rowCombination.ts) / `pickRootAssignment`), so a sub-tree `vStack` of two
    verticals at AR 0.28 is permitted as long as the root row clears 1.0.
-3. **The equity tiebreak can't rescue it.** `equitySpread` (the only mechanism that tries to
-   make area track prominence) is confined to `AR_EQUITY_BAND` (0.3) around the AR-optimal
-   candidate — and every tree where both 5★s get a full-height column falls _outside_ that
-   band, so it is never even considered.
+3. **The equity tiebreak could not rescue it, for a reason that has since changed.**
+   `equitySpread` (the only mechanism that tries to make area track prominence) was, at the time
+   of this reproduction, confined to an `AR_EQUITY_BAND` (0.3) around the AR-optimal candidate —
+   and every tree where both 5★s get a full-height column fell _outside_ that band, so it was
+   never even considered. That gate is retired: equity is now the primary score with `LAMBDA`
+   (0.15) as a mild AR pull, so those trees ARE considered today. The band was only one of the
+   three causes, though — cause 1 (Phase-1 grouping) is untouched, so this reproduction has not
+   been re-run and the symptom should not be assumed fixed.
 
 **Why the prominence rewrite alone did not fix it.** Feeding prominence `P` to the
 equity metric (plan Phase 1) and removing the vertical penalty (plan Phase 3.2) are
