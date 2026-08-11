@@ -12,6 +12,7 @@ import { Disclosure } from '@/app/components/ui/Disclosure/Disclosure';
 import { NavLink } from '@/app/components/ui/NavLink/NavLink';
 import { BREAKPOINTS } from '@/app/constants';
 import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
+import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { useFetchMe } from '@/app/hooks/useFetchMe';
 import { clearCacheAction } from '@/app/lib/actions/clearCache';
 import { logout } from '@/app/lib/api/auth';
@@ -134,13 +135,16 @@ export function MenuDropdown({
 
   const handleLogout = () => {
     // Best-effort: even if logout() rejects, the cookie may already be cleared —
-    // refresh so server components re-render in the logged-out state.
+    // refresh so server components re-render in the logged-out state. The panel cache
+    // goes unconditionally for the same reason: admin emails and message bodies must
+    // not survive on a browser whose session may already be gone.
     void (async () => {
       try {
         await logout();
       } catch {
         // swallow — proceed to refresh regardless
       }
+      clearCachedPanelData();
       router.push('/');
       router.refresh();
       onClose();
