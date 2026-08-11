@@ -176,7 +176,7 @@ export function processContentForDisplay(
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;
 
-  const rows = buildRows(content, rowWidth, targetAR, componentWidth, effectiveGap);
+  const rows = buildRows(content, rowWidth, targetAR, { componentWidth, gap: effectiveGap });
 
   const contentRows = rows.map(row => {
     const items = calculateSizesFromBoxTree(row.boxTree, componentWidth, effectiveGap);

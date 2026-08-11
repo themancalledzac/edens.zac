@@ -15,7 +15,7 @@
  * Both stages are unitless — they reason in width-cost, not pixels — with ONE exception:
  * an item that declares {@link Content.minWidth} (a UI block that breaks below a pixel
  * width, never a photograph) makes both membership and composition width-dependent for
- * the row it sits in. Callers opt in by threading `componentWidth`/`gap`; every caller
+ * the row it sits in. Callers opt in by threading a {@link PixelContext}; every caller
  * that does not, and every row whose items declare no minimum, takes the unitless path
  * unchanged. See MIN-WIDTH CONSTRAINT below.
  */
@@ -60,6 +60,21 @@ export type BoxTree =
       direction: 'horizontal' | 'vertical';
       children: [BoxTree, BoxTree];
     };
+
+/**
+ * The pixels a caller threads to make the engine's one width-dependent corner measurable:
+ * the rendered row width and the CSS gap, together or not at all. One parameter rather
+ * than two optional holes because the pair is meaningless apart — a width with no gap
+ * mis-prices every hbox by 12.8px, a gap with no width prices nothing — and the previous
+ * positional `componentWidth?, gap?` signature made "one without the other"
+ * representable. Omit it entirely for the unitless path every collection page takes.
+ */
+export interface PixelContext {
+  /** Rendered width of the row in CSS px. */
+  componentWidth: number;
+  /** CSS gap between adjacent items in px. */
+  gap: number;
+}
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -441,7 +456,10 @@ function firstCleanExtension(
 
   const isClean = (count: number): boolean => {
     const imgs = eligible.slice(0, count).map(item => toImageType(item));
-    const composition = buildAtomic(imgs, rowTargetAR(imgs, targetARBaseline), componentWidth, gap);
+    const composition = buildAtomic(imgs, rowTargetAR(imgs, targetARBaseline), {
+      componentWidth,
+      gap,
+    });
     if (minWidthDeficit(composition, componentWidth, gap) > 0) return false;
     const unconsumed = componentWidth - consumedWidth(composition, componentWidth, gap);
     if (unconsumed > FILL_TOLERANCE_GAPS * gap) return false;
@@ -565,7 +583,10 @@ function starvesMinWidth(
   if (items.length <= 1) return false;
   if (!items.some(item => getMinWidth(item) !== undefined)) return false;
   const imgs = items.map(item => toImageType(item));
-  const composition = buildAtomic(imgs, rowTargetAR(imgs, targetARBaseline), componentWidth, gap);
+  const composition = buildAtomic(imgs, rowTargetAR(imgs, targetARBaseline), {
+    componentWidth,
+    gap,
+  });
   return minWidthDeficit(composition, componentWidth, gap) > 0;
 }
 
@@ -633,8 +654,8 @@ function createBlankLeaf(aspectRatio: number, id: number): BoxTree {
  * Skipping is also the right answer on the merits: a block that declares a pixel floor is
  * a deliberate UI shape, not a leftover photo that should keep an honest width share.
  *
- * That guard is the ONE part of the feature not gated on the caller threading
- * `componentWidth`/`gap`, and deliberately so. Padding is a decision about the row's
+ * That guard is the ONE part of the feature not gated on the caller threading a
+ * {@link PixelContext}, and deliberately so. Padding is a decision about the row's
  * shape, not about pixels — it needs no width to make — and the declaration alone is
  * enough to know the block is a UI shape. Gating it would mean an unthreaded caller
  * silently re-shrinks a block that asked not to be shrunk, which is the failure this
@@ -748,16 +769,14 @@ function collectRowItems(
  * @param rowWidth - Row width budget (5 desktop, 4 tablet, etc.).
  * @param targetARBaseline - Baseline (viewport) target AR. Fill and estimate use it
  *   directly; each row derives a per-row target from it via rowTargetAR.
- * @param componentWidth - Rendered width of the row in CSS px. Optional: supply it only
- *   to enable min-width enforcement; omitting it keeps the layout purely unitless.
- * @param gap - CSS gap between adjacent items in px, paired with componentWidth.
+ * @param pixelContext - Rendered row width and CSS gap. Optional: supply it only to
+ *   enable min-width enforcement; omitting it keeps the layout purely unitless.
  */
 export function buildRows(
   items: AnyContentModel[],
   rowWidth: number,
   targetARBaseline: number = 1.5,
-  componentWidth?: number,
-  gap?: number
+  pixelContext?: PixelContext
 ): RowResult[] {
   const rows: RowResult[] = [];
   const remaining = [...items];
@@ -768,9 +787,12 @@ export function buildRows(
   // make every deficit and every clean-extension test NaN, and NaN fails every comparison, so
   // the guards would quietly wave through the rows they exist to close. Falling back to the
   // unitless fill loop is the same code every collection page runs.
-  const hasPixels = Number.isFinite(componentWidth) && Number.isFinite(gap);
-  const rowPixels = hasPixels ? componentWidth! : 0;
-  const rowGap = hasPixels ? gap! : 0;
+  const hasPixels =
+    pixelContext !== undefined &&
+    Number.isFinite(pixelContext.componentWidth) &&
+    Number.isFinite(pixelContext.gap);
+  const rowPixels = hasPixels ? pixelContext.componentWidth : 0;
+  const rowGap = hasPixels ? pixelContext.gap : 0;
 
   // One O(n) precheck, hoisted above every loop below. False for every collection page —
   // no photograph declares a minimum — and then the fill loops are the pre-feature code.
@@ -974,8 +996,7 @@ export function buildRows(
       const composition = buildAtomic(
         rowImgs,
         rowTargetAR(rowImgs, targetARBaseline),
-        componentWidth,
-        gap
+        pixelContext
       );
       const boxTree = acToBoxTree(composition);
 
@@ -1059,8 +1080,7 @@ export function buildRows(
     const composition = buildAtomic(
       bestFitImgs,
       rowTargetAR(bestFitImgs, targetARBaseline),
-      componentWidth,
-      gap
+      pixelContext
     );
     const boxTree = acToBoxTree(composition);
 
@@ -1687,7 +1707,7 @@ function pickRootAssignment(tree: AbstractNode, targetAR: number): AtomicCompone
  * band. `counters`, when passed, records shapes/candidates for the perf-guard test.
  *
  * When — and only when — a member declares a {@link Content.minWidth} and the caller
- * threaded finite `componentWidth`/`gap` pixels, starvation can be measured at all, which
+ * threaded a finite {@link PixelContext}, starvation can be measured at all, which
  * makes the choice of arrangement width-dependent for this row. Rearrangement alone
  * cannot always satisfy a minimum (the root is a forced hPair, so n leaves always split
  * one width n ways); {@link buildRows}' membership guard is what frees up the width, and
@@ -1697,8 +1717,7 @@ function pickBestComposition(
   items: ImageType[],
   targetAR: number,
   counters?: { shapes: number; candidates: number },
-  componentWidth?: number,
-  gap?: number
+  pixelContext?: PixelContext
 ): AtomicComponent {
   const shapes = enumerateStructures(items);
   if (counters) counters.shapes += shapes.length;
@@ -1710,9 +1729,12 @@ function pickBestComposition(
   // single bad pixel would silently hand the row to whichever candidate happened to be scored
   // first. Unitless scoring is the honest fallback when the caller has no usable pixels — it is
   // what every collection page runs anyway.
-  const hasPixels = Number.isFinite(componentWidth) && Number.isFinite(gap);
-  const rowPixels = hasPixels ? componentWidth! : 0;
-  const rowGap = hasPixels ? gap! : 0;
+  const hasPixels =
+    pixelContext !== undefined &&
+    Number.isFinite(pixelContext.componentWidth) &&
+    Number.isFinite(pixelContext.gap);
+  const rowPixels = hasPixels ? pixelContext.componentWidth : 0;
+  const rowGap = hasPixels ? pixelContext.gap : 0;
 
   // One O(n) precheck, hoisted above the candidate loops: false for every collection
   // page, and then `consider` below scores exactly what it scored pre-feature.
@@ -1814,20 +1836,18 @@ function pickBestComposition(
  * that clears its declared minimum. No second degrade path exists, and none is wanted —
  * solo-hero rows never reach here either.
  *
- * @param componentWidth - Rendered row width in CSS px; supply with `gap` to enforce
+ * @param pixelContext - Rendered row width and CSS gap; supply to enforce
  *   {@link Content.minWidth}. Omitted by every caller that does not need it.
- * @param gap - CSS gap between adjacent items in px, paired with componentWidth.
  */
 export function buildAtomic(
   items: ImageType[],
   targetAR: number,
-  componentWidth?: number,
-  gap?: number
+  pixelContext?: PixelContext
 ): AtomicComponent {
   if (items.length === 0) throw new Error('buildAtomic requires at least 1 image');
   if (items.length === 1) return single(items[0]!);
 
-  return pickBestComposition(items, targetAR, undefined, componentWidth, gap);
+  return pickBestComposition(items, targetAR, undefined, pixelContext);
 }
 
 /**
