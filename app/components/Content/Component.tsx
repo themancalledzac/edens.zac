@@ -12,6 +12,7 @@ import { type MaybePinned, PINNED_SELECT } from '@/app/types/Selects';
 import { type RowWithPatternAndSizes } from '@/app/utils/contentLayout';
 import { canDownloadCollection } from '@/app/utils/galleryAccess';
 import { describeLayoutRows } from '@/app/utils/layoutDebug';
+import { logger } from '@/app/utils/logger';
 
 import { BoxRenderer } from './BoxRenderer';
 import {
@@ -88,6 +89,29 @@ export interface ContentComponentProps {
 function itemKeyFragment(content: AnyContentModel): string {
   const pinnedPrefix = (content as MaybePinned<AnyContentModel>)[PINNED_SELECT] ? 'pinned-' : '';
   return `${pinnedPrefix}${content.contentType}-${content.id ?? content.orderIndex}`;
+}
+
+/**
+ * Development-only layout log: one structural line per packed row (span×height, right-edge gap,
+ * internal pocket, tree, leaf sizes) on every re-pack. The console is the fastest shared view of
+ * what the packer decided — the same measurements the collapse-state tests assert on.
+ *
+ * It goes out through {@link logger}, which is what keeps it out of Jest: the logger returns early
+ * at `NODE_ENV === 'test'`, while the `production` check here is this diagnostic's own. A direct
+ * `console.info` satisfied only the second, so every suite that packs a layout printed a line per
+ * row per re-pack over the test output — and it was the last `console.*` call left outside
+ * `logger.ts` after the #171 migration.
+ *
+ * A hook rather than an inline effect so the reasoning above can live in a docblock; the project
+ * keeps prose out of component bodies.
+ */
+function useLayoutRowLog(rows: RowWithPatternAndSizes[], contentWidth: number): void {
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    for (const line of describeLayoutRows(rows, contentWidth)) {
+      logger.debug('layout', line);
+    }
+  }, [rows, contentWidth]);
 }
 
 /**
@@ -186,17 +210,7 @@ export default function Component({
     ]
   );
 
-  /**
-   * Development-only layout log: one structural line per packed row (span×height, right-edge
-   * gap, internal pocket, tree, leaf sizes) on every re-pack. The console is the fastest shared
-   * view of what the packer decided — the same measurements the collapse-state tests assert on.
-   */
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'production') return;
-    for (const line of describeLayoutRows(rows, viewport.contentWidth)) {
-      console.info('[layout]', line);
-    }
-  }, [rows, viewport.contentWidth]);
+  useLayoutRowLog(rows, viewport.contentWidth);
 
   // Must be computed before the early returns to satisfy the Rules of Hooks.
   const firstNonVisibleRowIndex = useMemo(
