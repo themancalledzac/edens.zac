@@ -67,6 +67,24 @@ function subtreeMaxWidth(tree: BoxTree, gap: number): number {
   return Math.min(left, right);
 }
 
+/**
+ * How far apart two hbox siblings' rendered heights may sit and still count as EQUAL, as a
+ * fraction of the taller one.
+ *
+ * {@link solveHboxSplit} equalises them by construction, but computes each side through a
+ * different chain of arithmetic, so the two never come out bit-identical: measured residuals are
+ * one to two ULP (5.7e-14 and 1.1e-13 at heights near 350px). A GENUINE difference is a different
+ * animal — the min-width band binding under a pin, which leaves the hub's 900px row with columns
+ * of 1418.6 and 1413.6px. Nine orders of magnitude of empty space separate the two populations,
+ * which is what lets one threshold tell them apart.
+ *
+ * The distinction is load-bearing because a tie must be broken by flexible height, not by
+ * argument order (see {@link absorbableHeight}). Sweeping 13,968 pin-bearing trees while breaking
+ * the tie on `>=`: 7,374 of them — 53%, i.e. a coin flip on the sign of a rounding error — took
+ * the wrong side and left up to 39.8px of the gap unabsorbed.
+ */
+const HBOX_HEIGHT_TIE = 1e-9;
+
 /** Whether any leaf under this tree declares a pinned (width-independent) height. */
 function treeHasPin(tree: BoxTree): boolean {
   if (tree.type === 'leaf') return getPinnedHeight(tree.content) !== undefined;
@@ -81,7 +99,8 @@ function treeHasPin(tree: BoxTree): boolean {
  * the subtree that MOVES. Two things do not move: a pinned leaf, which {@link sizeSubtree}'s
  * `applyScale` re-asserts at its declared height, and the CSS gaps inside the subtree, which are
  * fixed pixels the sizer never touches. So the basis is the sum of the FLEXIBLE leaves' current
- * heights — for an hbox, the taller side's, since a row of siblings is as tall as its tallest.
+ * heights — for an hbox, the BINDING side's, which is not simply the taller one (see
+ * {@link HBOX_HEIGHT_TIE}).
  *
  * Scaling against the whole visual height instead is what the admin hub's pockets were made of: a
  * pin two levels down inside a flexible stack left `gap × pinShare` of the gap unabsorbed (4–7px
@@ -115,8 +134,19 @@ function absorbableHeight(
     if (node.direction === 'vertical') {
       return { height: left.height + gap + right.height, flexible: left.flexible + right.flexible };
     }
-    const taller = left.height >= right.height ? left : right;
-    return { height: Math.max(left.height, right.height), flexible: taller.flexible };
+    // A row of siblings renders as tall as its tallest member — but the two sides do NOT shrink
+    // at the same rate under one scale factor, so "tallest now" does not identify which side
+    // limits the shrink. When the solve has equalised them, which is the normal case, the side
+    // with LESS flexible height is the tallest the moment any scale is applied, and it is what
+    // the node can give up. Breaking that tie on `>=` instead read the basis off whichever child
+    // came first, so the same tree absorbed a whole gap or a fraction of one depending only on
+    // which side held the pin.
+    const height = Math.max(left.height, right.height);
+    const flexible =
+      Math.abs(left.height - right.height) <= HBOX_HEIGHT_TIE * height
+        ? Math.min(left.flexible, right.flexible)
+        : (left.height > right.height ? left : right).flexible;
+    return { height, flexible };
   };
 
   return walk(tree).flexible;

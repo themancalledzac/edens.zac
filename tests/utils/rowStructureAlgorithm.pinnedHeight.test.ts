@@ -165,6 +165,39 @@ describe('calculateSizesFromBoxTree — pinned-height blocks', () => {
     expect(Math.abs(rendered - (a * 400 + b))).toBeLessThan(1);
   });
 
+  /**
+   * The same gap accounting, one level further out: the stack's flexible member is an hbox, and
+   * only ONE of that hbox's two sides hides the pin. `solveHboxSplit` equalises the two sides, so
+   * "the taller side" does not identify which one limits the shrink — and since the solve reaches
+   * that equality through two different chains of arithmetic, the sides differ by a rounding
+   * residual whose SIGN is arbitrary. Reading the basis off the taller side therefore picked
+   * correctly or catastrophically at random: over a sweep of 13,968 such trees, 53% took the
+   * wrong side and left up to 39.8px of the gap unabsorbed.
+   *
+   * The widths are the ones that failed, one per orientation, so the case is pinned deterministically
+   * rather than left to whichever way the residual happened to fall.
+   */
+  it.each([
+    ['pin on the left', 875, true],
+    ['pin on the left', 900, true],
+    ['pin on the right', 925, false],
+    ['pin on the right', 1000, false],
+  ])('absorbs a whole gap through an hbox with the %s at %spx', (_name, width, pinLeft) => {
+    const stack = vbox(leaf(pinned(2, 200)), leaf(photo(3)));
+    const row = pinLeft ? hbox(stack, leaf(photo(4))) : hbox(leaf(photo(4)), stack);
+    const tree = vbox(leaf(pinned(1, 100)), row);
+
+    const sizes = calculateSizesFromBoxTree(tree, width, GAP);
+    const { a, b } = computeHeightCoeffs(tree, GAP);
+    const byId = new Map(sizes.map(size => [size.content.id, size.height]));
+    const stackHeight = byId.get(2)! + GAP + byId.get(3)!;
+    const rendered = byId.get(1)! + GAP + Math.max(stackHeight, byId.get(4)!);
+
+    expect(byId.get(1)).toBe(100);
+    expect(byId.get(2)).toBe(200);
+    expect(Math.abs(rendered - (a * width + b))).toBeLessThan(1);
+  });
+
   it('keeps a tall pinned panel visible beside a short photo instead of collapsing it to zero', () => {
     // 991px of panel beside a photo that can only reach 0.5625 × 800 = 450px at full width.
     // The height equation has no solution, so the old code drove the panel's width negative.

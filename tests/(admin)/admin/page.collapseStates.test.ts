@@ -112,29 +112,6 @@ function stackedColumns(
   return columns;
 }
 
-/**
- * The renderer and the composer must describe the same column. A stacked column's rendered
- * height is `a·W + b` — the model `computeHeightCoeffs` hands the packer, and the basis for every
- * fill and pocket rule it applies. The sizer keeps that true by scaling the column's flexible
- * members down to swallow the CSS gap, and a pin is exempt from that scaling; when a pin sat two
- * levels down inside an otherwise-flexible stack the scale factor could not see it, so only part of
- * the gap was absorbed and the column rendered several px taller than the model it was chosen by
- * (~4-7px per nesting level, a multi-thousand px² pocket on the hub).
- *
- * A pixel of tolerance covers the model's own second-order residual — the gap a nested stack has
- * already absorbed is not available to absorb its parent's, worth `gap²/height` (< 0.8px here).
- */
-describe('rendered columns agree with the height model', () => {
-  it.each(STATES)('at width 900, collapse state: %s', (_name, collapsed) => {
-    for (const row of rowsFor(collapsed, 900)) {
-      for (const column of stackedColumns(row, LAYOUT.gridGap)) {
-        const { a, b } = computeHeightCoeffs(column.tree, LAYOUT.gridGap);
-        expect(Math.abs(column.renderedHeight - (a * column.width + b))).toBeLessThan(1);
-      }
-    }
-  });
-});
-
 describe('admin hub all-open baseline', () => {
   /**
    * The cap binding, pinned where it visibly happens: the live covers press Users against
@@ -174,6 +151,31 @@ describe.each(CASES)('admin hub at %spx, collapse state: %s', (width, _name, col
     for (const row of rows) {
       const m = measureRow(row);
       expect(m.pocketPx2).toBeLessThanOrEqual(POCKET_FRACTION * m.spanPx * m.heightPx);
+    }
+  });
+
+  /**
+   * The renderer and the composer must describe the same column. A stacked column's rendered
+   * height is `a·W + b` — the model `computeHeightCoeffs` hands the packer, and the basis for
+   * every fill and pocket rule it applies. The sizer keeps that true by scaling the column's
+   * flexible members down to swallow the CSS gap, and a pin is exempt from that scaling; when a
+   * pin sat two levels down inside an otherwise-flexible stack the scale factor could not see it,
+   * so only part of the gap was absorbed and the column rendered several px taller than the model
+   * it had been chosen by — 4-7px per nesting level, worst 20.6px, and a multi-thousand px²
+   * pocket in a row the composer had scored as pocket-free.
+   *
+   * Swept across every width, not one: the defect was worst at 1274.4 and absent at some widths
+   * entirely, since which state nests a pin under a flexible stack is a function of the width.
+   *
+   * A pixel of tolerance covers the model's own second-order residual — the gap a nested stack has
+   * already absorbed is not available to absorb its parent's, worth `gap²/height` (< 0.2px here).
+   */
+  it('renders every stacked column at the height the model predicts', () => {
+    for (const row of rows) {
+      for (const column of stackedColumns(row, LAYOUT.gridGap)) {
+        const { a, b } = computeHeightCoeffs(column.tree, LAYOUT.gridGap);
+        expect(Math.abs(column.renderedHeight - (a * column.width + b))).toBeLessThan(1);
+      }
     }
   });
 
