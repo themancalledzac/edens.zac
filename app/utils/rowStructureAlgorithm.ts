@@ -7,6 +7,19 @@
  */
 
 import { LAYOUT } from '@/app/constants';
+import {
+  type AffineHeight,
+  combineDeclaredARHorizontal,
+  combineDeclaredARVertical,
+  combineHorizontal,
+  combineMinWidthHorizontal,
+  combineMinWidthVertical,
+  combineVertical,
+  flexibleLeaf,
+  heightAt,
+  pinnedLeaf,
+  solveEqualHeightSplit,
+} from '@/app/utils/affineHeight';
 import type { CalculatedContentSize } from '@/app/utils/contentLayout';
 import {
   getHeightClamp,
@@ -39,7 +52,9 @@ function subtreeMinWidth(tree: BoxTree): number {
   if (tree.type === 'leaf') return getMinWidth(tree.content) ?? 0;
   const left = subtreeMinWidth(tree.children[0]);
   const right = subtreeMinWidth(tree.children[1]);
-  return tree.direction === 'horizontal' ? left + right : Math.max(left, right);
+  return tree.direction === 'horizontal'
+    ? combineMinWidthHorizontal(left, right)
+    : combineMinWidthVertical(left, right);
 }
 
 /**
@@ -205,105 +220,69 @@ function predictRenderedHeight(tree: BoxTree, width: number, gap: number): numbe
 }
 
 /**
- * Width given to an hbox's LEFT child so both children render the same height.
+ * Width given to an hbox's LEFT child so both children render the same height — the shared
+ * {@link solveEqualHeightSplit}, fed this tree's models, declared ARs (which the all-pinned
+ * branch splits proportionally — a bar declaring twice the AR of its sibling gets twice the
+ * width) and min-width floors (the band that keeps a one-pinned solve from running off the
+ * row and deleting a panel; a tall Users panel beside a short photo hits this exactly).
  *
- * The unconstrained answer solves `aL·W + bL = aR·(available − W) + bR`. Two cases break it, and
- * both arrive with pinned heights:
- *
- * - **Both children pinned** (`aL + aR === 0`): the equation degenerates to `bL = bR` — true or
- *   false, but never a statement about W, and the division is 0/0. There is no width that
- *   equalises them, so width is split evenly.
- * - **One child pinned, and the other cannot reach that height at any width it could be given**:
- *   the solve runs off the end of the row and the old `Math.max(0, …)` clamp handed the pinned
- *   child ZERO width, deleting a panel from the page. A tall Users panel beside a short photo hits
- *   this exactly. Keeping the split inside the `minWidth` band leaves both children renderable and
- *   lets the row simply be as tall as its pinned member.
- *
- * The band is applied ONLY when a pin is present. Without one, this returns the original
- * expression unchanged, so `minWidth` keeps its existing meaning everywhere else — a preference
- * over row MEMBERSHIP in the packer, not a reservation of page width in the sizer.
+ * MUST stay behaviour-identical to `splitLeftWidth` in `rowCombination.ts`, which scores
+ * compositions through the same solve; both now delegate to the one implementation, and
+ * `tests/utils/affineHeight.mirror.test.ts` pins the agreement of what each adapter feeds it.
+ * Exported for that mirror test; production callers are all in this file.
  */
-function solveHboxSplit(
+export function solveHboxSplit(
   tree: Extract<BoxTree, { type: 'combined' }>,
   availableWidth: number,
   gap: number
 ): number {
-  const { a: aL, b: bL } = computeHeightCoeffs(tree.children[0], gap);
-  const { a: aR, b: bR } = computeHeightCoeffs(tree.children[1], gap);
-
-  // All-pinned: heights yield no equation, so the DECLARED shapes share the width — a bar
-  // declaring twice the AR of its sibling gets twice the width. An even split (the old rule)
-  // gave a nested pair half of what a lone sibling got, which starved declared minimums the
-  // renderer's own band would then have to undo. Mirrored in rowCombination's splitLeftWidth.
-  const arL = calculateBoxTreeAspectRatio(tree.children[0]);
-  const arR = calculateBoxTreeAspectRatio(tree.children[1]);
-  const raw =
-    aL + aR === 0
-      ? availableWidth * (arL + arR > 0 ? arL / (arL + arR) : 0.5)
-      : (aR * availableWidth + bR - bL) / (aL + aR);
-
-  if (aL !== 0 && aR !== 0) return Math.max(0, Math.min(availableWidth, raw));
-
-  const floor = Math.min(subtreeMinWidth(tree.children[0]), availableWidth);
-  const ceiling = Math.max(floor, availableWidth - subtreeMinWidth(tree.children[1]));
-  return Math.max(0, Math.min(availableWidth, Math.min(ceiling, Math.max(floor, raw))));
+  return solveEqualHeightSplit({
+    left: computeHeightCoeffs(tree.children[0], gap),
+    right: computeHeightCoeffs(tree.children[1], gap),
+    availableWidth,
+    leftDeclaredAR: calculateBoxTreeAspectRatio(tree.children[0]),
+    rightDeclaredAR: calculateBoxTreeAspectRatio(tree.children[1]),
+    leftMinWidth: subtreeMinWidth(tree.children[0]),
+    rightMinWidth: subtreeMinWidth(tree.children[1]),
+  });
 }
 
 /**
- * Linear height coefficients for a BoxTree subtree.
- * The rendered height at width W is: H(W) = a * W + b
- *
- * For leaves, b = 0 (no internal gaps). For nested trees, b captures
- * the cumulative height reduction from internal CSS gaps.
+ * Linear height coefficients for a BoxTree subtree: the shared {@link AffineHeight} model,
+ * under the name this file has always exported it as. Rendered height at width W is
+ * `H(W) = a·W + b`; for leaves, b = 0 (no internal gaps) unless pinned; for nested trees,
+ * b captures the cumulative height contribution of internal CSS gaps.
  */
-export interface HeightCoeffs {
-  a: number;
-  b: number;
-}
+export type HeightCoeffs = AffineHeight;
 
 /**
  * Compute height coefficients {a, b} for a BoxTree subtree where H(W) = a*W + b.
  *
- * These coefficients enable gap-aware width distribution: when distributing
- * width between horizontal siblings, using these coefficients (instead of raw ARs)
- * ensures both sides render at the same height, even with asymmetric nesting.
+ * These coefficients enable gap-aware width distribution: when distributing width between
+ * horizontal siblings, using these coefficients (instead of raw ARs) ensures both sides
+ * render at the same height, even with asymmetric nesting.
+ *
+ * The sizer's adapter onto the shared affine core (`affineHeight.ts`): this walk owns the
+ * BoxTree traversal and the leaf accessors (`getPinnedHeight`, `getContentDimensions` — the
+ * render-time dimension chain), the core owns every formula. `heightModel` in
+ * `rowCombination.ts` is the composer's adapter onto the same core, so the two can no
+ * longer drift rule by rule; what CAN still drift is what the adapters feed in, which the
+ * mirror test pins.
  */
 export function computeHeightCoeffs(tree: BoxTree, gap: number): HeightCoeffs {
   if (tree.type === 'leaf') {
     const pinned = getPinnedHeight(tree.content);
-    // `a = 0` is not a special case bolted onto the model — it IS the model's expression of
-    // "height does not vary with width". Every formula below already handles it.
-    if (pinned !== undefined) return { a: 0, b: pinned };
+    if (pinned !== undefined) return pinnedLeaf(pinned);
 
     const { width, height } = getContentDimensions(tree.content);
-    const ar = height === 0 ? 1 : width / height;
-    return { a: 1 / ar, b: 0 };
+    return flexibleLeaf(height === 0 ? 1 : width / height);
   }
 
   const left = computeHeightCoeffs(tree.children[0], gap);
   const right = computeHeightCoeffs(tree.children[1], gap);
-  const sumA = left.a + right.a;
-
-  if (tree.direction === 'horizontal') {
-    // Two pinned children cannot be equalised by trading width, and `sumA` is the divisor of
-    // that trade — so the general formula is a 0/0 here. Side by side, the pair is as tall as
-    // its taller member.
-    if (sumA === 0) return { a: 0, b: Math.max(left.b, right.b) };
-
-    return {
-      a: (left.a * right.a) / sumA,
-      b: (-left.a * right.a * gap + left.a * right.b + right.a * left.b) / sumA,
-    };
-  }
-
-  // vertical: CSS visual height = sum of raw child heights (vbox scaling + CSS gap cancel out).
-  // That cancellation assumes something in the stack can be scaled down to swallow the gap. When
-  // BOTH children are pinned nothing can, so the gap is real added height and has to be declared
-  // — otherwise the parent solve sizes this stack one gap shorter than it renders.
-  return {
-    a: sumA,
-    b: left.b + right.b + (left.a === 0 && right.a === 0 ? gap : 0),
-  };
+  return tree.direction === 'horizontal'
+    ? combineHorizontal(left, right, gap)
+    : combineVertical(left, right, gap);
 }
 
 /**
@@ -332,7 +311,9 @@ export function calculateBoxTreeAspectRatio(tree: BoxTree): number {
   const leftAR = calculateBoxTreeAspectRatio(tree.children[0]);
   const rightAR = calculateBoxTreeAspectRatio(tree.children[1]);
 
-  return tree.direction === 'horizontal' ? leftAR + rightAR : 1 / (1 / leftAR + 1 / rightAR);
+  return tree.direction === 'horizontal'
+    ? combineDeclaredARHorizontal(leftAR, rightAR)
+    : combineDeclaredARVertical(leftAR, rightAR);
 }
 
 /**
@@ -415,8 +396,8 @@ function sizeSubtree(tree: BoxTree, targetWidth: number, gap: number): Calculate
     // Use coefficient-predicted visual heights (not sum of returned sizes) because
     // summing returned sizes overcounts hbox children (side-by-side, not stacked).
     const columnWidth = Math.min(targetWidth, subtreeMaxWidth(tree, gap));
-    const { a: aL, b: bL } = computeHeightCoeffs(tree.children[0], gap);
-    const { a: aR, b: bR } = computeHeightCoeffs(tree.children[1], gap);
+    const leftCoeffs = computeHeightCoeffs(tree.children[0], gap);
+    const rightCoeffs = computeHeightCoeffs(tree.children[1], gap);
 
     const leftSizes = sizeSubtree(tree.children[0], columnWidth, gap);
     const rightSizes = sizeSubtree(tree.children[1], columnWidth, gap);
@@ -427,10 +408,10 @@ function sizeSubtree(tree: BoxTree, targetWidth: number, gap: number): Calculate
     const shaped = treeHasShapeBounds(tree);
     const leftVisualH = shaped
       ? predictRenderedHeight(tree.children[0], columnWidth, gap)
-      : aL * columnWidth + bL;
+      : heightAt(leftCoeffs, columnWidth);
     const rightVisualH = shaped
       ? predictRenderedHeight(tree.children[1], columnWidth, gap)
-      : aR * columnWidth + bR;
+      : heightAt(rightCoeffs, columnWidth);
     // CSS adds a gap between the two children, so heights scale down to compensate. WHICH child
     // pays for it is the pinned-height question: a pinned block has one correct height and
     // shrinking it by a share of the gap is simply rendering it wrong. So the flexible member
@@ -440,8 +421,8 @@ function sizeSubtree(tree: BoxTree, targetWidth: number, gap: number): Calculate
     // The scale is sized against what can MOVE, not against the whole height — see
     // {@link absorbableHeight}. A remainder no larger than the gap absorbs nothing rather than
     // inverting the stack.
-    const leftPinned = aL === 0;
-    const rightPinned = aR === 0;
+    const leftPinned = leftCoeffs.a === 0;
+    const rightPinned = rightCoeffs.a === 0;
     const absorb = (basis: number) => (basis > gap ? (basis - gap) / basis : 1);
     const absorbable = (child: BoxTree, sizes: CalculatedContentSize[], visualH: number) =>
       shaped ? absorbableHeight(child, sizes, visualH, gap) : visualH;

@@ -23,6 +23,19 @@
 import { EXTREMENESS_RAMP_START } from '@/app/constants';
 import type { AnyContentModel, ContentBlankModel } from '@/app/types/Content';
 import {
+  type AffineHeight,
+  combineDeclaredARHorizontal,
+  combineDeclaredARVertical,
+  combineHorizontal,
+  combineMinWidthHorizontal,
+  combineMinWidthVertical,
+  combineVertical,
+  flexibleLeaf,
+  heightAt,
+  pinnedLeaf,
+  solveEqualHeightSplit,
+} from '@/app/utils/affineHeight';
+import {
   getArExtremeness,
   getEffectiveRating,
   getHeightDemand,
@@ -498,7 +511,7 @@ function hasPinnedLeaf(component: AtomicComponent): boolean {
  * reports every panel in it as starved. That is what made "Roles under Messages under a tile"
  * score 1000+ on starvation and lose to a two-column arrangement that leaves a third of the
  * row blank. Under a pin, widths come from the sizer's own solve instead — exact rather than
- * estimated, because the same `HeightModel` drives both.
+ * estimated, because the same {@link AffineHeight} model drives both.
  */
 function renderedLeafWidths(
   component: AtomicComponent,
@@ -1296,53 +1309,39 @@ function rowARCost(rowAR: number, target: number): number {
 /**
  * Affine height model of a composition: rendered height at width W is `a·W + b`.
  *
- * The same model `computeHeightCoeffs` gives the sizer, evaluated here over
- * `AtomicComponent` so the search scores candidates by the height they will ACTUALLY render
- * at. It exists because a pinned block has no aspect ratio: its AR is `W / pinnedHeight`, a
- * function of the width it is given, so the scalar `numericAR` the rest of this file reasons
- * in is simply a lie for it — and a consequential one. A stack of two 600×1100 panels scores
- * as AR 0.273, which drops the row below {@link ROW_AR_FLOOR} and gets it rejected before
- * anything else is considered. That is why "put Roles under Messages" was unreachable.
+ * The same model `computeHeightCoeffs` gives the sizer — both are adapters onto the shared
+ * core in `affineHeight.ts`, so the formulas can no longer drift; this walk owns only the
+ * `AtomicComponent` traversal and the leaf accessors (`getPinnedHeight`, `numericAR` — the
+ * scoring-time AR chain). It exists because a pinned block has no aspect ratio: its AR is
+ * `W / pinnedHeight`, a function of the width it is given, so the scalar `numericAR` the
+ * rest of this file reasons in is simply a lie for it — and a consequential one. A stack of
+ * two 600×1100 panels scores as AR 0.273, which drops the row below {@link ROW_AR_FLOOR}
+ * and gets it rejected before anything else is considered. That is why "put Roles under
+ * Messages" was unreachable.
  *
  * Both combine rules degenerate to the pure-AR forms when nothing is pinned and `gap` is 0:
- * `1/a` for an hPair is `ARleft + ARright`, and for a vStack the harmonic form. So this is the
- * same function the file already used, with the `b` term no longer forced to zero.
+ * `1/a` for an hPair is `ARleft + ARright`, and for a vStack the harmonic form. So this is
+ * the same function the file already used, with the `b` term no longer forced to zero.
+ *
+ * Exported for `tests/utils/affineHeight.mirror.test.ts`; production callers are all here.
  */
-interface HeightModel {
-  a: number;
-  b: number;
-}
-
-function heightModel(component: AtomicComponent, gap: number): HeightModel {
+export function heightModel(component: AtomicComponent, gap: number): AffineHeight {
   if (component.type === 'single') {
     const pinned = getPinnedHeight(component.img.source);
-    if (pinned !== undefined) return { a: 0, b: pinned };
-    const ar = component.img.numericAR;
-    return { a: ar > 0 ? 1 / ar : 1, b: 0 };
+    if (pinned !== undefined) return pinnedLeaf(pinned);
+    return flexibleLeaf(component.img.numericAR);
   }
 
   const left = heightModel(component.children[0], gap);
   const right = heightModel(component.children[1], gap);
-  const sumA = left.a + right.a;
-
-  if (component.direction === 'H') {
-    // Two pinned children cannot trade width to equalise, and `sumA` is that trade's divisor.
-    if (sumA === 0) return { a: 0, b: Math.max(left.b, right.b) };
-    return {
-      a: (left.a * right.a) / sumA,
-      b: (-left.a * right.a * gap + left.a * right.b + right.a * left.b) / sumA,
-    };
-  }
-
-  // A stack's gap is absorbed by whichever member can flex; when neither can, it is real height.
-  return { a: sumA, b: left.b + right.b + (left.a === 0 && right.a === 0 ? gap : 0) };
+  return component.direction === 'H'
+    ? combineHorizontal(left, right, gap)
+    : combineVertical(left, right, gap);
 }
-
-const modelHeight = (model: HeightModel, width: number): number => model.a * width + model.b;
 
 /** Aspect ratio a composition actually renders at a given row width. */
 function renderedAR(component: AtomicComponent, width: number, gap: number): number {
-  const height = modelHeight(heightModel(component, gap), width);
+  const height = heightAt(heightModel(component, gap), width);
   return height > 0 ? width / height : 1;
 }
 
@@ -1357,7 +1356,9 @@ function declaredComponentAR(component: AtomicComponent): number {
   if (component.type === 'single') return component.img.numericAR;
   const left = declaredComponentAR(component.children[0]);
   const right = declaredComponentAR(component.children[1]);
-  return component.direction === 'H' ? left + right : (left * right) / (left + right);
+  return component.direction === 'H'
+    ? combineDeclaredARHorizontal(left, right)
+    : combineDeclaredARVertical(left, right);
 }
 
 /** Mirror of the sizer's `subtreeMinWidth`: side-by-side needs both, a stack shares one. */
@@ -1365,7 +1366,9 @@ function subtreeMinWidthAC(component: AtomicComponent): number {
   if (component.type === 'single') return getMinWidth(component.img.source) ?? 0;
   const left = subtreeMinWidthAC(component.children[0]);
   const right = subtreeMinWidthAC(component.children[1]);
-  return component.direction === 'H' ? left + right : Math.max(left, right);
+  return component.direction === 'H'
+    ? combineMinWidthHorizontal(left, right)
+    : combineMinWidthVertical(left, right);
 }
 
 /**
@@ -1375,24 +1378,25 @@ function subtreeMinWidthAC(component: AtomicComponent): number {
  * is how compositions are scored, that solve is how the winner renders, and any divergence
  * makes the search reject arrangements the renderer would have handled (a flat row of three
  * pinned bars once scored as starved at width/2 splits while the renderer's min-width band
- * rendered it legally — so a pocketed stack won by forfeit).
+ * rendered it legally — so a pocketed stack won by forfeit). Both now delegate to the one
+ * {@link solveEqualHeightSplit}; what each adapter still owns is its tree walk and its leaf
+ * accessors, and `tests/utils/affineHeight.mirror.test.ts` pins that residual agreement.
+ *
+ * Takes the FULL parent width and spends the dividing gap itself (the sizer's takes
+ * width-minus-gap; the conventions are normalized here, inside the adapters). Exported for
+ * the mirror test; production callers are all in this file.
  */
-function splitLeftWidth(component: AtomicComponent, width: number, gap: number): number {
+export function splitLeftWidth(component: AtomicComponent, width: number, gap: number): number {
   if (component.type === 'single') return width;
-  const left = heightModel(component.children[0], gap);
-  const right = heightModel(component.children[1], gap);
-  const available = width - gap;
-  const sumA = left.a + right.a;
-  const leftDeclaredAR = declaredComponentAR(component.children[0]);
-  const declaredSum = leftDeclaredAR + declaredComponentAR(component.children[1]);
-  const raw =
-    sumA === 0
-      ? available * (declaredSum > 0 ? leftDeclaredAR / declaredSum : 0.5)
-      : (right.a * available + right.b - left.b) / sumA;
-  if (left.a !== 0 && right.a !== 0) return Math.max(0, Math.min(available, raw));
-  const floor = Math.min(subtreeMinWidthAC(component.children[0]), available);
-  const ceiling = Math.max(floor, available - subtreeMinWidthAC(component.children[1]));
-  return Math.max(0, Math.min(available, Math.min(ceiling, Math.max(floor, raw))));
+  return solveEqualHeightSplit({
+    left: heightModel(component.children[0], gap),
+    right: heightModel(component.children[1], gap),
+    availableWidth: width - gap,
+    leftDeclaredAR: declaredComponentAR(component.children[0]),
+    rightDeclaredAR: declaredComponentAR(component.children[1]),
+    leftMinWidth: subtreeMinWidthAC(component.children[0]),
+    rightMinWidth: subtreeMinWidthAC(component.children[1]),
+  });
 }
 
 /**
@@ -1427,8 +1431,8 @@ function slackArea(component: AtomicComponent, width: number, gap: number): numb
   const available = width - gap;
   const leftWidth = splitLeftWidth(component, width, gap);
   const rightWidth = available - leftWidth;
-  const leftHeight = modelHeight(heightModel(component.children[0], gap), leftWidth);
-  const rightHeight = modelHeight(heightModel(component.children[1], gap), rightWidth);
+  const leftHeight = heightAt(heightModel(component.children[0], gap), leftWidth);
+  const rightHeight = heightAt(heightModel(component.children[1], gap), rightWidth);
   const rowHeight = Math.max(leftHeight, rightHeight);
 
   return (
@@ -1441,7 +1445,7 @@ function slackArea(component: AtomicComponent, width: number, gap: number): numb
 
 /** {@link slackArea} as a fraction of the row's bounding box, so it is scale-free. */
 function slackFraction(component: AtomicComponent, width: number, gap: number): number {
-  const boundingArea = modelHeight(heightModel(component, gap), width) * width;
+  const boundingArea = heightAt(heightModel(component, gap), width) * width;
   if (!(boundingArea > 0)) return 0;
   return slackArea(component, width, gap) / boundingArea;
 }
