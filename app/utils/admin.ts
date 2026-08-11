@@ -39,11 +39,22 @@ import { isLocalEnvironment } from '@/app/utils/environment';
  * served anonymously anyway. That inconsistency is what made `/admin` unreachable to anything
  * without a hand-driven browser login, agents included.
  *
- * The bypass cannot reach a deployed environment. `isLocalEnvironment()` is
- * `NEXT_PUBLIC_ENV === 'local' || NODE_ENV === 'development'`; a production build sets
- * `NODE_ENV=production`, and `NEXT_PUBLIC_ENV` is inlined at build time from the deploy's own
- * env. Under `next build` this branch is dead and the `meServer()` gate below is the only path.
- * It is also invisible to the test suite, which runs at `NODE_ENV=test` — the redirect
+ * What scopes the bypass is the BUILD's env, not the host it runs on. `isLocalEnvironment()` is
+ * `NEXT_PUBLIC_ENV === 'local' || NODE_ENV === 'development'`; `next build` sets
+ * `NODE_ENV=production`, so the first half is the whole question — and `NEXT_PUBLIC_ENV` is
+ * inlined at build time from the deploy's own env. A deploy that does not set it to `local` gets
+ * a dead branch and the `meServer()` gate below as its only path, which is the intended and the
+ * normal case. A deploy that DOES set it ships this bypass with it, so treat `NEXT_PUBLIC_ENV` in
+ * a deploy's build env as a security-relevant setting rather than a label.
+ *
+ * What that misconfiguration would cost is bounded, because no other layer takes its word for it.
+ * `proxy.ts` reads the same predicate, so the admin SHELL would render for an anonymous visitor —
+ * but the DATA behind it would not follow: the BFF's anonymous-admin reject keys off
+ * `NODE_ENV === 'production'` (unaffected by `NEXT_PUBLIC_ENV`), and the backend enforces
+ * `hasRole('ADMIN')` on `/api/admin/**` regardless of what the frontend believes. An empty console,
+ * not an open one.
+ *
+ * The bypass is invisible to the test suite, which runs at `NODE_ENV=test` — the redirect
  * behaviour stays pinned there, and is pinned explicitly for production in `admin.test.ts`.
  */
 export async function requireAdmin(): Promise<void> {
