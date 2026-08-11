@@ -7,6 +7,10 @@
  * items, and if the two disagree it used to substitute a 0×0 leaf and carry on — reporting a row
  * NARROWER and SHORTER than it renders, which is the direction that makes a span-the-body
  * assertion pass and a pocket assertion pass. So the mismatch paths are pinned here first.
+ *
+ * Three ways the two can disagree, and all three are covered: too many leaves, too many items, and
+ * — the one no count check can see — the right number of items in the wrong ORDER, which measures
+ * every box under a leaf it does not belong to while leaving every total plausible.
  */
 import { LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
@@ -109,6 +113,41 @@ describe('measureRow', () => {
     expect(() =>
       measureRow({ boxTree: leaf(one), items: [sized(one, 400, 200), sized(two, 200, 200)] })
     ).toThrow(/1 leaves but the row carries 2 sized items/);
+  });
+
+  /**
+   * The path the count checks leave open. Same length, same objects, wrong order — every number is
+   * a real number and every total is plausible, so nothing is out of range to notice. What is
+   * wrong is which leaf each number is attributed to: `two`'s 200×150 box gets measured as the
+   * hbox's left child and `one`'s 400×200 as the right, and because the structure string is built
+   * from the paired ITEM, the printed tree reports the permuted order as if it were the tree's.
+   * The row still measures 612.8 across, which is why only identity catches it.
+   */
+  it('refuses to measure a row whose items are in a different order from its tree', () => {
+    expect(() =>
+      measureRow({
+        boxTree: hbox(leaf(one), leaf(two)),
+        items: [sized(two, 200, 150), sized(one, 400, 200)],
+      })
+    ).toThrow(
+      /leaf 1 of the BoxTree is image:Image 1 but the sized item in that position is image:Image 2/
+    );
+  });
+
+  /**
+   * Permutation deeper in the tree, where the swapped pair sits under a nested node and the two
+   * leaves are the same SHAPE — identical widths and heights, so span, height and pocket are all
+   * bit-identical to the correct pack and the only surviving evidence is the identity.
+   */
+  it('refuses to measure a row whose nested leaves are swapped, even at identical sizes', () => {
+    expect(() =>
+      measureRow({
+        boxTree: hbox(leaf(one), vbox(leaf(two), leaf(three))),
+        items: [sized(one, 400, 200), sized(three, 200, 100), sized(two, 200, 87.2)],
+      })
+    ).toThrow(
+      /leaf 2 of the BoxTree is image:Image 2 but the sized item in that position is image:Image 3/
+    );
   });
 });
 

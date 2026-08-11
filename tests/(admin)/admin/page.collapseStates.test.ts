@@ -252,6 +252,9 @@ describe('admin hub panel legibility', () => {
 const pageHeight = (collapsed: Record<PanelType, boolean>, width = DESKTOP.contentWidth) =>
   rowsFor(collapsed, width).reduce((sum, row) => sum + measureRow(row).heightPx, 0);
 
+/** The one state where collapsing makes the page longer. See the regression block below. */
+const MESSAGES_ROLES: Record<PanelType, boolean> = { users: false, messages: true, roles: true };
+
 /**
  * Collapsing panels must not make the page LONGER — the one height property that survived the
  * 2026-08-10 review rounds, since filling the body width, uniform column widths and grouping the
@@ -274,23 +277,56 @@ describe('admin hub page height against the all-open baseline', () => {
   );
 
   /**
-   * KNOWN VIOLATION, recorded rather than tolerated. `it.failing` passes only while the body fails,
-   * so fixing the engine turns this red and asks for the marker to come off — and the name is
-   * written as the defect rather than as the property, because a green tick beside "runs shorter
-   * than the all-open page" would read as the opposite of what this records.
+   * REGRESSION, pinned at its measured size. Introduced by `e2328f6` — not a pre-existing property
+   * of the composer, which is what a bisect of the branch establishes: the pre-Task-1 engine
+   * (`6c001f2`) packed this exact case at 1174.4px into `H(users, V(V(messages, roles),
+   * AllCollections))` + `H(AllImages, ClientGalleries)` for a total of **1491.2px**. The six
+   * commits after `e2328f6` change nothing here.
    *
-   * Collapsing Messages and Roles at the 1274.4px max desktop body takes the page from 1567.7px to
-   * 1607.0px. Nothing about the panels got taller: the panel column narrows 700 → 423px, the two
-   * nav tiles take the freed width (540 → 838px), and the portrait Client Galleries cover grows
-   * with its width — 670px tall beside the panels, 1040px in the wider column. The packer's
-   * objective is fill and pocket, and neither one can see page height, so it trades a shorter page
-   * for a tighter row every time.
+   * The cause is `e2328f6`'s `pinnedWidthSpread` membership predicate, added to fix a real defect
+   * in this same state — a row spanning the body and pocketing nothing while putting one panel at
+   * its 400px floor beside two collapsed bars at 762px, which is Zac's third fill rule ("the width
+   * should be the SAME for all of them") broken outright. The predicate rejects the old
+   * composition, and the re-pack strands Client Galleries alone in a row where the portrait cover
+   * renders 1174×1468.
    *
-   * Worse one width down, and worth fixing together: at 1174.4px the same collapse pushes Client
-   * Galleries onto a row of its own where it renders 1174×1468, taking the page 1567.7 → 2683.6px,
-   * a 71% increase from collapsing two panels.
+   * The trade looks intrinsic rather than fixable by tuning: in that composition equal panel
+   * columns force unequal column heights, unequal heights are a pocket, so shared-width and
+   * no-pocket cannot both hold there. Membership rejection was the only lever available, and the
+   * page height is what it costs. Which of the two rules should yield is a design question for
+   * Zac, not something to settle by loosening a tolerance here.
+   *
+   * Reproducible in one edit, which is the cheapest way to see the trade whole: set
+   * `PINNED_WIDTH_SPREAD_GAPS` in `rowCombination.ts` from 1 to a large number (turning the
+   * predicate off) and re-run this file. The 1174.4px case below drops to **1491.17px** — the
+   * pre-`e2328f6` figure, recovered — and 'renders every panel in a row at one shared width' fails
+   * in the same run with two distinct panel widths. The short page and the shared width are
+   * available one at a time.
+   *
+   * The values below are asserted EXACTLY, not as "taller than the baseline", so that any
+   * worsening goes red on its own and any improvement forces a deliberate edit to this block —
+   * the same discipline as {@link LONE_PANEL_ROWS_TODAY}.
+   *
+   * Not confined to these two widths. Collapsing a short panel while a tall one stands runs the
+   * page longer across the whole narrow-desktop band, on both fixtures — default dims @742.4
+   * messages +314.4 / roles +490.9, @900 messages +419.5, @1000 messages +148.5; live dims @742.4
+   * messages +333.3 / roles +292.1, @1000 users +365.9. Recorded here because the sweep above
+   * asserts fill, not height, and this is the only place the evidence lives in the repo.
    */
-  it.failing('does NOT yet run shorter than the all-open page in the messages+roles state', () => {
-    expect(pageHeight({ users: false, messages: true, roles: true })).toBeLessThan(openHeight);
+  it('runs 39.3px TALLER than the all-open page in the messages+roles state', () => {
+    expect(openHeight).toBeCloseTo(1567.7, 1);
+    expect(pageHeight(MESSAGES_ROLES)).toBeCloseTo(1607.0, 1);
+  });
+
+  /**
+   * The worst case, one width down from the max desktop body. Here the rejected composition does
+   * not merely re-balance the row — it pushes Client Galleries out of it entirely, and a
+   * 1728×2500 cover alone in a 1174.4px row renders 1468px tall. 1567.7 → 2683.6px, a 71% longer
+   * page than leaving the panels open and 80% longer than the same collapse produced before
+   * `e2328f6`.
+   */
+  it('runs 1115.9px taller in the messages+roles state at 1174.4px, stranding the cover', () => {
+    expect(pageHeight(STATES[0]![1], 1174.4)).toBeCloseTo(1567.7, 1);
+    expect(pageHeight(MESSAGES_ROLES, 1174.4)).toBeCloseTo(2683.6, 1);
   });
 });

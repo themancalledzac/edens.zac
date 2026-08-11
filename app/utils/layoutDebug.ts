@@ -51,12 +51,20 @@ function leafLabel(content: AnyContentModel): string {
  * Measure one packed row. Rows without a tree (header rails) measure as their items alone.
  *
  * A row's `items` are what `calculateSizesFromBoxTree` returned for its `boxTree`, in tree order,
- * so the leaf count and the item count cannot legitimately disagree — a mismatch means the two
- * came from different packs. This used to walk on regardless, substituting a 0×0 leaf for the
- * missing item and ignoring any item the tree did not reach, which silently understates `spanPx`
- * and `heightPx`. That matters more here than in most utilities: this function is the RULER three
- * suites measure the fill invariants with, and a ruler that quietly reports a short row turns
- * every assertion built on it into a test that cannot fail. So it throws instead.
+ * carrying the very `content` objects the tree's leaves hold — so neither the COUNT nor the ORDER
+ * can legitimately disagree, and a disagreement means the two came from different packs. This used
+ * to walk on regardless, substituting a 0×0 leaf for a missing item and ignoring any item the tree
+ * did not reach, which silently understates `spanPx` and `heightPx`. That matters more here than
+ * in most utilities: this function is the RULER three suites measure the fill invariants with, and
+ * a ruler that quietly reports a short row turns every assertion built on it into a test that
+ * cannot fail. So it throws instead.
+ *
+ * The order check is the same argument one step in. Pairing is POSITIONAL, but the structure
+ * string is built from the paired ITEM's content, so a same-length, differently-ordered array
+ * measures the right count of the wrong boxes: every width and height lands under a leaf it does
+ * not belong to, the totals stay plausible, and the printed structure names the permuted order as
+ * if it were the tree's. Identity is free to check because the sizer hands back the same object
+ * reference the leaf holds.
  */
 export function measureRow(row: RowLike, gap: number = LAYOUT.gridGap): RowMeasurements {
   if (!row.boxTree) {
@@ -74,6 +82,13 @@ export function measureRow(row: RowLike, gap: number = LAYOUT.gridGap): RowMeasu
           `measureRow: the BoxTree has more leaves than the row's ${row.items.length} sized ` +
             `item(s) — ran out at leaf ${cursor} (${leafLabel(tree.content)}). The tree and the ` +
             `sizes belong to different packs.`
+        );
+      }
+      if (item.content !== tree.content) {
+        throw new Error(
+          `measureRow: leaf ${cursor} of the BoxTree is ${leafLabel(tree.content)} but the sized ` +
+            `item in that position is ${leafLabel(item.content)}. The walk pairs tree leaves to ` +
+            `items BY POSITION, so a reordered array measures the right count of the wrong boxes.`
         );
       }
       return { w: item.width, h: item.height, pocket: 0, label: leafLabel(item.content) };
