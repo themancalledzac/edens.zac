@@ -266,21 +266,24 @@ export function isSoloHero(item: AnyContentModel, rowWidth: number): boolean {
 // =============================================================================
 
 /**
- * Additive score penalty for a composition that starves a declared minimum, mirroring
- * {@link rowARCost}'s sub-floor penalty in both magnitude and intent.
+ * The hard constraints a composition can break: starving a declared {@link Content.minWidth}, and
+ * failing to span the row within {@link FILL_TOLERANCE_GAPS}. Counted, and compared BEFORE the
+ * score — a candidate breaking fewer of them wins outright, whatever the two scores are.
  *
- * Dominance is EMPIRICAL, not structural. `equitySpread` is an unbounded ratio — in-band
- * candidates with a spread above 2e7 exist — so 1000 cannot be proven to outrank every
- * legitimate score. It holds in practice because the winning candidate is always at or
- * near minimal spread, where scores sit in the low single digits: 0 failures over 6000+
- * generated constrained rows. If a future change lets a wildly inequitable arrangement
- * win a row, revisit this constant rather than assuming it still dominates.
+ * Structural, because the numeric alternative could not be proven. This was a `+1000` penalty
+ * added into the score, and 1000 cannot outrank `equitySpread`, an unbounded ratio with in-band
+ * candidates above 2e7. It held empirically (0 failures over 6000+ generated constrained rows)
+ * only because the winner always sits near minimal spread. A lexicographic compare needs no such
+ * argument: no score can ever buy a violation.
  *
- * Deliberately a penalty and not an early return in `consider`: rejecting outright would
- * leave `best` null and hand the row to the `arClosest ?? hChain` fallback, which knows
- * nothing about minimums and would return a starving composition in silence.
+ * Deliberately not an early return in `consider`: rejecting outright would leave `best` null and
+ * hand the row to the `arClosest ?? hChain` fallback, which knows nothing about minimums and would
+ * return a starving composition in silence. The graded remainders stay in the score, so when every
+ * candidate violates, the one that violates LEAST still wins.
  */
-const MIN_WIDTH_PENALTY = 1000;
+function violationCount(starvation: number, unconsumed: number, fillTolerance: number): number {
+  return (starvation > 0 ? 1 : 0) + (unconsumed > fillTolerance ? 1 : 0);
+}
 
 /** A leaf's pixel width in a composed row: `share × rowPixels − gapCoeff × gap`. */
 interface LeafWidthShare {
@@ -748,14 +751,17 @@ export function buildRows(
 
   const effectiveMinFill = MIN_FILL_RATIO;
 
+  // Pixel-aware membership needs usable pixels, and "usable" means finite: a NaN width would
+  // make every deficit and every clean-extension test NaN, and NaN fails every comparison, so
+  // the guards would quietly wave through the rows they exist to close. Falling back to the
+  // unitless fill loop is the same code every collection page runs.
+  const hasPixels = Number.isFinite(componentWidth) && Number.isFinite(gap);
+  const rowPixels = hasPixels ? componentWidth! : 0;
+  const rowGap = hasPixels ? gap! : 0;
+
   // One O(n) precheck, hoisted above every loop below. False for every collection page —
   // no photograph declares a minimum — and then the fill loops are the pre-feature code.
-  const constrained =
-    componentWidth !== undefined &&
-    gap !== undefined &&
-    items.some(item => getMinWidth(item) !== undefined);
-  const rowPixels = componentWidth ?? 0;
-  const rowGap = gap ?? 0;
+  const constrained = hasPixels && items.some(item => getMinWidth(item) !== undefined);
 
   /**
    * Third O(n) precheck, same discipline as `constrained`: false for every photo collection, and
@@ -1441,10 +1447,11 @@ function slackFraction(component: AtomicComponent, width: number, gap: number): 
 }
 
 /**
- * Weight on {@link slackFraction}. The fraction is bounded in [0, 1), so this can never
- * outrank {@link MIN_WIDTH_PENALTY} (1000) — a composition that fills its box beautifully but
- * squeezes a panel below its legible width still loses. Above `equitySpread`'s usual low
- * single digits, though, so filling the row is what decides among arrangements that all fit.
+ * Weight on {@link slackFraction}. It never has to outrank a hard constraint — {@link
+ * violationCount} is compared ahead of the whole score, so a composition that fills its box
+ * beautifully but squeezes a panel below its legible width loses no matter what this is. It only
+ * has to beat `equitySpread`'s usual low single digits, so that filling the row is what decides
+ * among arrangements that all fit.
  */
 const SLACK_WEIGHT = 10;
 
@@ -1483,11 +1490,26 @@ function consumedWidth(component: AtomicComponent, width: number, gap: number): 
 }
 
 /**
- * Fill tolerance, in px, on {@link consumedWidth}: a composition leaving no more than 2.5 grid
- * gaps (32px) of unconsumed row width still counts as filling the body. The all-open admin hub —
- * Zac-approved as the known-good layout — leaves 21.4px rendered (≈29px by this model's
- * estimate) at the true tile ARs, so the tolerance must clear that with margin; anything
- * materially past it reads as the row failing to span the page.
+ * Fill tolerance, in gaps, on {@link consumedWidth}: a composition leaving no more than 2.5 grid
+ * gaps (32px) of unconsumed row width still counts as filling the body. Past it, the row reads as
+ * failing to span the page.
+ *
+ * Measured over the admin hub's 8 collapse states × 9 desktop widths (742.4 → 1274.4) × 7 cover
+ * shapes — 787 rows, covers being the one input that comes from live data and moves the geometry:
+ *
+ * - 778 of 787 rows consume their width **exactly**; slack is not a gradient the tolerance sits
+ *   somewhere along, it is a rare artifact of a capped column that cannot use what it is handed.
+ * - The worst row we accept leaves **23.31px (1.82 gaps)** — three portrait covers at 1100px with
+ *   Roles collapsed. The approved live-cover layout (all-open at 1274.4) leaves 21.42px.
+ * - 2.5 gaps clears that worst case by 8.7px, ~37%, which is the margin covering cover shapes
+ *   this sweep did not enumerate.
+ *
+ * The number is unchanged from when it was first set; its BASIS is not. It used to be calibrated
+ * against this model's 29px estimate of a 21.4px rendered gap — a 35% modeling error sitting
+ * inside the very constant that defines "fills the body". `subtreeMaxWidth` in
+ * `rowStructureAlgorithm.ts` was dropping the gap between capped hbox siblings that this function
+ * charges; with the two reconciled, model slack and rendered slack now agree to the pixel on all
+ * 787 rows, and the tolerance is calibrated against a measurement rather than an estimate.
  */
 const FILL_TOLERANCE_GAPS = 2.5;
 
@@ -1654,13 +1676,14 @@ function pickRootAssignment(tree: AbstractNode, targetAR: number): AtomicCompone
 /**
  * Equity-primary composition across every candidate shape and every root-hPair
  * direction assignment. Rejects rows below the AR floor (1.0) or above the ceiling
- * (CEILING_MULT × target); among survivors, minimizes
- * equitySpread + LAMBDA · arPenalty(rowAR, target), tiebroken by closeness to target.
+ * (CEILING_MULT × target); among survivors, candidates are ordered lexicographically by
+ * `(violations, score, arDist)` — {@link violationCount} first, then
+ * equitySpread + LAMBDA · arPenalty(rowAR, target) and friends, then closeness to target.
  * Falls back to the AR-closest candidate (then a flat hChain) only if nothing lands in
  * band. `counters`, when passed, records shapes/candidates for the perf-guard test.
  *
  * When — and only when — a member declares a {@link Content.minWidth} and the caller
- * threaded `componentWidth`/`gap`, {@link MIN_WIDTH_PENALTY} joins that score, which
+ * threaded finite `componentWidth`/`gap` pixels, starvation can be measured at all, which
  * makes the choice of arrangement width-dependent for this row. Rearrangement alone
  * cannot always satisfy a minimum (the root is a forced hPair, so n leaves always split
  * one width n ways); {@link buildRows}' membership guard is what frees up the width, and
@@ -1678,33 +1701,32 @@ function pickBestComposition(
   const target = Math.max(targetAR, ROW_AR_FLOOR);
   const ceiling = CEILING_MULT * target;
 
+  // Every pixel-aware term below is gated on this. Finite, not merely present: a NaN or Infinity
+  // width poisons every arithmetic term it touches, and NaN comparisons are all false, so a
+  // single bad pixel would silently hand the row to whichever candidate happened to be scored
+  // first. Unitless scoring is the honest fallback when the caller has no usable pixels — it is
+  // what every collection page runs anyway.
+  const hasPixels = Number.isFinite(componentWidth) && Number.isFinite(gap);
+  const rowPixels = hasPixels ? componentWidth! : 0;
+  const rowGap = hasPixels ? gap! : 0;
+
   // One O(n) precheck, hoisted above the candidate loops: false for every collection
   // page, and then `consider` below scores exactly what it scored pre-feature.
-  const constrained =
-    componentWidth !== undefined &&
-    gap !== undefined &&
-    items.some(img => getMinWidth(img.source) !== undefined);
-  const rowPixels = componentWidth ?? 0;
-  const rowGap = gap ?? 0;
+  const constrained = hasPixels && items.some(img => getMinWidth(img.source) !== undefined);
 
   // Second O(n) precheck, same shape as `constrained`. A pinned member makes the enumeration's
   // scalar AR wrong (its real AR is width/pinnedHeight), so the two terms below switch to the
   // rendered-height model. No photograph declares a pin, so this is false for every collection
   // page and `consider` scores exactly what it scored pre-feature.
-  const pinned =
-    componentWidth !== undefined &&
-    gap !== undefined &&
-    items.some(img => getPinnedHeight(img.source) !== undefined);
+  const pinned = hasPixels && items.some(img => getPinnedHeight(img.source) !== undefined);
 
   // Third precheck, same discipline: no photograph declares a maxWidth, so the fill term below
   // is identically 0 for every collection page.
-  const capped =
-    componentWidth !== undefined &&
-    gap !== undefined &&
-    items.some(img => getMaxWidth(img.source) !== undefined);
+  const capped = hasPixels && items.some(img => getMaxWidth(img.source) !== undefined);
   const fillTolerance = FILL_TOLERANCE_GAPS * rowGap;
 
   let best: AtomicComponent | null = null;
+  let bestViolations = Infinity;
   let bestScore = Infinity;
   let bestArDist = Infinity;
   let arClosest: AtomicComponent | null = null;
@@ -1731,15 +1753,23 @@ function pickBestComposition(
     // every alternative is too, and then the graded term prefers the least unconsumed width.
     const unconsumed = capped ? rowPixels - consumedWidth(component, rowPixels, rowGap) : 0;
     const scatter = pinned ? Math.max(0, pinnedClusterCount(component) - 1) : 0;
+    const violations = violationCount(starvation, unconsumed, fillTolerance);
     const score =
       equitySpread(component) +
       LAMBDA * arPenalty(rowAR, target) +
       SLACK_WEIGHT * slack +
       PINNED_SCATTER_WEIGHT * scatter +
-      (starvation > 0 ? MIN_WIDTH_PENALTY + starvation : 0) +
-      (unconsumed > fillTolerance ? MIN_WIDTH_PENALTY + unconsumed / rowPixels : 0);
+      starvation +
+      (unconsumed > fillTolerance ? unconsumed / rowPixels : 0);
     const arDist = Math.abs(rowAR - target);
-    if (score < bestScore || (score === bestScore && arDist < bestArDist)) {
+    const better =
+      violations !== bestViolations
+        ? violations < bestViolations
+        : score !== bestScore
+          ? score < bestScore
+          : arDist < bestArDist;
+    if (better) {
+      bestViolations = violations;
       bestScore = score;
       bestArDist = arDist;
       best = component;

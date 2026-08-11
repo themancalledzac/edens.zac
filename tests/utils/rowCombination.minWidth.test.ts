@@ -254,3 +254,77 @@ describe('minWidth — (e) three 400px panels on a 390px phone', () => {
     }
   });
 });
+
+// ===================== (f) unusable pixels =====================
+
+/**
+ * Pixel-aware membership and scoring are gated on FINITE pixels, not merely present ones. A
+ * measured width can arrive NaN (a `getBoundingClientRect` on a display:none ancestor) or
+ * Infinity, and NaN poisons everything downstream of it: every deficit and every fill test
+ * becomes NaN, and since NaN fails every comparison the guards silently wave through the rows
+ * they exist to close. The honest fallback is the unitless layout — which is the code every
+ * photo collection runs anyway.
+ */
+describe('minWidth — (f) non-finite componentWidth or gap', () => {
+  const content: AnyContentModel[] = [
+    panel(1001, { minWidth: PANEL_MIN }),
+    panel(1002, { minWidth: PANEL_MIN }),
+    panel(1003, { minWidth: PANEL_MIN }),
+    tile(1),
+    tile(2),
+    tile(3),
+  ];
+  const unitless = describeRows(buildRows(content, DESKTOP_ROW_WIDTH, 1.5));
+
+  it.each([
+    ['NaN width', Number.NaN, LAYOUT.gridGap],
+    ['Infinite width', Number.POSITIVE_INFINITY, LAYOUT.gridGap],
+    ['NaN gap', DESKTOP_WIDTH, Number.NaN],
+    ['Infinite gap', DESKTOP_WIDTH, Number.POSITIVE_INFINITY],
+  ])('falls back to the unitless layout on a %s', (_label, width, gap) => {
+    expect(describeRows(buildRows(content, DESKTOP_ROW_WIDTH, 1.5, width, gap))).toEqual(unitless);
+  });
+
+  it('never emits a NaN width or height', () => {
+    for (const row of buildRows(content, DESKTOP_ROW_WIDTH, 1.5, Number.NaN, LAYOUT.gridGap)) {
+      for (const size of calculateSizesFromBoxTree(
+        row.boxTree,
+        DESKTOP_WIDTH,
+        LAYOUT.gridGap,
+        DESKTOP_ROW_WIDTH
+      )) {
+        expect(Number.isFinite(size.width)).toBe(true);
+        expect(Number.isFinite(size.height)).toBe(true);
+      }
+    }
+  });
+});
+
+// ===================== (g) violations outrank the score =====================
+
+/**
+ * A composition that starves a declared minimum loses to one that does not, whatever the two
+ * scores are. This was an additive `+1000` penalty, and 1000 is not a bound on anything:
+ * `equitySpread` is an unbounded ratio, so a sufficiently inequitable non-starving arrangement
+ * could in principle be outscored by a starving one. The comparison is now lexicographic on
+ * `(violations, score)`, which needs no argument about magnitudes.
+ *
+ * The fixture pairs a 400px panel with a panorama and a low-rated square — the widest spread of
+ * prominence and aspect ratio the site produces — so the winning row is one where equity and the
+ * minimum genuinely pull against each other.
+ */
+describe('minWidth — (g) a starving arrangement never outscores a satisfiable one', () => {
+  it('keeps the panel at its minimum against a panorama and a low-rated square', () => {
+    const content: AnyContentModel[] = [
+      panel(1001, { minWidth: PANEL_MIN }),
+      createPanorama(2, 5),
+      createSquareImage(3, 1),
+    ];
+    const rows = buildRows(content, DESKTOP_ROW_WIDTH, 1.5, DESKTOP_WIDTH, LAYOUT.gridGap);
+    const row = rows.find(candidate => candidate.components.some(item => item.id === 1001))!;
+
+    expect(
+      widthsById(row, DESKTOP_WIDTH, LAYOUT.gridGap, DESKTOP_ROW_WIDTH).get(1001)
+    ).toBeGreaterThanOrEqual(PANEL_MIN);
+  });
+});
