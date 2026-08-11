@@ -371,26 +371,19 @@ function sizeLeaf(tree: Extract<BoxTree, { type: 'leaf' }>, width: number): Calc
  * @param tree - BoxTree encoding how the row's items are combined
  * @param targetWidth - The row's available width
  * @param gap - Gap between adjacent items (default: LAYOUT.gridGap = 12.8px)
- * @param chunkSize - Number of normal-width items per row (for slot width scaling)
  * @returns Array of sizes in tree traversal order (left-to-right, top-to-bottom)
  */
 export function calculateSizesFromBoxTree(
   tree: BoxTree,
   targetWidth: number,
-  gap: number = LAYOUT.gridGap,
-  chunkSize: number = 4
+  gap: number = LAYOUT.gridGap
 ): CalculatedContentSize[] {
   if (tree.type === 'leaf') return [sizeLeaf(tree, targetWidth)];
-  return sizeSubtree(tree, targetWidth, gap, chunkSize);
+  return sizeSubtree(tree, targetWidth, gap);
 }
 
 /** {@link calculateSizesFromBoxTree}'s recursion, below the row root, where caps bind. */
-function sizeSubtree(
-  tree: BoxTree,
-  targetWidth: number,
-  gap: number,
-  chunkSize: number
-): CalculatedContentSize[] {
+function sizeSubtree(tree: BoxTree, targetWidth: number, gap: number): CalculatedContentSize[] {
   if (tree.type === 'leaf') {
     const maxWidth = getMaxWidth(tree.content);
     return [sizeLeaf(tree, maxWidth === undefined ? targetWidth : Math.min(targetWidth, maxWidth))];
@@ -406,14 +399,12 @@ function sizeSubtree(
     const leftSizes = sizeSubtree(
       tree.children[0],
       Math.min(leftWidth, subtreeMaxWidth(tree.children[0], gap)),
-      gap,
-      chunkSize
+      gap
     );
     const rightSizes = sizeSubtree(
       tree.children[1],
       Math.min(rightWidth, subtreeMaxWidth(tree.children[1], gap)),
-      gap,
-      chunkSize
+      gap
     );
 
     return [...leftSizes, ...rightSizes];
@@ -427,8 +418,8 @@ function sizeSubtree(
     const { a: aL, b: bL } = computeHeightCoeffs(tree.children[0], gap);
     const { a: aR, b: bR } = computeHeightCoeffs(tree.children[1], gap);
 
-    const leftSizes = sizeSubtree(tree.children[0], columnWidth, gap, chunkSize);
-    const rightSizes = sizeSubtree(tree.children[1], columnWidth, gap, chunkSize);
+    const leftSizes = sizeSubtree(tree.children[0], columnWidth, gap);
+    const rightSizes = sizeSubtree(tree.children[1], columnWidth, gap);
 
     // Visual height each child would render at. Coefficients are exact for pure-AR
     // subtrees; a subtree carrying shape bounds needs the clamp-aware prediction, or a

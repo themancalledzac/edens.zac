@@ -362,7 +362,7 @@ describe('buildAtomic — AR fitness', () => {
       createImageContent(685, { imageWidth: 666, imageHeight: 1000, rating: 2 }),
     ].map(it => toImageType(it));
     const result = buildAtomic(items, 1.0);
-    const sizes = calculateSizesFromBoxTree(acToBoxTree(result), 1215, LAYOUT.gridGap, 10);
+    const sizes = calculateSizesFromBoxTree(acToBoxTree(result), 1215, LAYOUT.gridGap);
     const areaById = new Map<number, number>();
     for (const s of sizes) {
       const id = (s.content as { id?: number }).id;
@@ -497,7 +497,7 @@ describe('buildAtomic — equitable sizing', () => {
       createImageContent(761, { imageWidth: 1501, imageHeight: 1000, rating: 4 }),
     ].map(it => toImageType(it));
     const result = buildAtomic(items, 1.457);
-    const sizes = calculateSizesFromBoxTree(acToBoxTree(result), 1215, LAYOUT.gridGap, 20);
+    const sizes = calculateSizesFromBoxTree(acToBoxTree(result), 1215, LAYOUT.gridGap);
 
     // The five horizontal 4★ images should render at comparable sizes; pre-fix
     // the biggest was ~25× the smallest.

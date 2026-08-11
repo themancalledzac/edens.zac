@@ -66,7 +66,7 @@ describe('buildRows blank padding', () => {
     const rows = buildRows([item], DESKTOP);
 
     // gap=0 isolates the padding math from CSS gap subtraction
-    const sizes = calculateSizesFromBoxTree(rows[0]!.boxTree, 1000, 0, DESKTOP);
+    const sizes = calculateSizesFromBoxTree(rows[0]!.boxTree, 1000, 0);
     const realWidth = sizes.find(s => s.content.id === 1)!.width;
 
     const expectedShare = getWidthCost(item) / DESKTOP; // 1.3333 / 8 = 0.1667
@@ -83,7 +83,7 @@ describe('buildRows blank padding', () => {
     const rows = buildRows([item], DESKTOP);
 
     const W = 1000;
-    const sizes = calculateSizesFromBoxTree(rows[0]!.boxTree, W, LAYOUT.gridGap, DESKTOP);
+    const sizes = calculateSizesFromBoxTree(rows[0]!.boxTree, W, LAYOUT.gridGap);
     const realWidth = sizes.find(s => s.content.id === 1)!.width;
 
     const expectedShare = ((W - LAYOUT.gridGap) / W) * (getWidthCost(item) / DESKTOP);
@@ -96,7 +96,7 @@ describe('buildRows blank padding', () => {
     const item = createHorizontalImage(1, 0);
     const rows = buildRows([item], DESKTOP);
 
-    const sizes = calculateSizesFromBoxTree(rows[0]!.boxTree, 1000, 0, DESKTOP);
+    const sizes = calculateSizesFromBoxTree(rows[0]!.boxTree, 1000, 0);
     const real = sizes.find(s => s.content.id === 1)!;
     const blank = sizes.find(s => isBlankContent(s.content))!;
 
@@ -174,7 +174,7 @@ describe('buildRows blank padding', () => {
     const blanks = collectBlanks(rows[0]!.boxTree);
     expect(blanks).toHaveLength(1);
 
-    const sizes = calculateSizesFromBoxTree(rows[0]!.boxTree, 1000, 0, DESKTOP);
+    const sizes = calculateSizesFromBoxTree(rows[0]!.boxTree, 1000, 0);
     const realTotal = sizes
       .filter(s => !isBlankContent(s.content))
       .reduce((sum, s) => sum + s.width, 0);

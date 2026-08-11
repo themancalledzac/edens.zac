@@ -67,14 +67,9 @@ const tile = (id: number): AnyContentModel =>
     height: 1920,
   });
 
-const widthsById = (
-  row: RowResult,
-  componentWidth: number,
-  gap: number,
-  rowWidth: number
-): Map<number, number> =>
+const widthsById = (row: RowResult, componentWidth: number, gap: number): Map<number, number> =>
   new Map(
-    calculateSizesFromBoxTree(row.boxTree, componentWidth, gap, rowWidth).map(size => [
+    calculateSizesFromBoxTree(row.boxTree, componentWidth, gap).map(size => [
       size.content.id,
       size.width,
     ])
@@ -150,7 +145,7 @@ describe('minWidth — (b) three 400px panels at a 1274.4px content width', () =
       tile(3),
     ];
     const rows = buildRows(plain, DESKTOP_ROW_WIDTH, 1.5, DESKTOP_WIDTH, LAYOUT.gridGap);
-    const widths = widthsById(rows[0]!, DESKTOP_WIDTH, LAYOUT.gridGap, DESKTOP_ROW_WIDTH);
+    const widths = widthsById(rows[0]!, DESKTOP_WIDTH, LAYOUT.gridGap);
 
     expect(rows[0]!.components.map(item => item.id)).toEqual([1001, 1002, 1003, 1, 2]);
     expect(widths.get(1001)!).toBeLessThan(PANEL_MIN);
@@ -164,7 +159,7 @@ describe('minWidth — (b) three 400px panels at a 1274.4px content width', () =
 
   it('renders every panel at or above its minimum', () => {
     const rows = buildRows(content, DESKTOP_ROW_WIDTH, 1.5, DESKTOP_WIDTH, LAYOUT.gridGap);
-    const widths = widthsById(rows[0]!, DESKTOP_WIDTH, LAYOUT.gridGap, DESKTOP_ROW_WIDTH);
+    const widths = widthsById(rows[0]!, DESKTOP_WIDTH, LAYOUT.gridGap);
 
     for (const id of [1001, 1002, 1003]) {
       expect(widths.get(id)!).toBeGreaterThanOrEqual(PANEL_MIN);
@@ -173,7 +168,7 @@ describe('minWidth — (b) three 400px panels at a 1274.4px content width', () =
 
   it('does not overflow the content width', () => {
     const rows = buildRows(content, DESKTOP_ROW_WIDTH, 1.5, DESKTOP_WIDTH, LAYOUT.gridGap);
-    const widths = widthsById(rows[0]!, DESKTOP_WIDTH, LAYOUT.gridGap, DESKTOP_ROW_WIDTH);
+    const widths = widthsById(rows[0]!, DESKTOP_WIDTH, LAYOUT.gridGap);
     const total = [...widths.values()].reduce((sum, w) => sum + w, 0) + 2 * LAYOUT.gridGap;
 
     expect(total).toBeLessThanOrEqual(DESKTOP_WIDTH + 0.01);
@@ -200,7 +195,7 @@ describe('minWidth — (c) a lone panel narrower than its own minimum', () => {
     );
 
     expect(rows).toHaveLength(1);
-    const widths = widthsById(rows[0]!, PHONE_WIDTH, LAYOUT.mobileGridGap, PHONE_ROW_WIDTH);
+    const widths = widthsById(rows[0]!, PHONE_WIDTH, LAYOUT.mobileGridGap);
     expect(widths.get(1001)).toBe(PHONE_WIDTH);
   });
 });
@@ -212,7 +207,7 @@ describe('minWidth — (d) blank padding', () => {
 
   it('pads an unconstrained panel row, shrinking the panel well below 400px', () => {
     const rows = buildRows([panel(1001)], PHONE_ROW_WIDTH, 1.5, PAD_WIDTH, LAYOUT.gridGap);
-    const widths = widthsById(rows[0]!, PAD_WIDTH, LAYOUT.gridGap, PHONE_ROW_WIDTH);
+    const widths = widthsById(rows[0]!, PAD_WIDTH, LAYOUT.gridGap);
 
     expect(collectBlanks(rows[0]!.boxTree)).toHaveLength(1);
     expect(widths.get(1001)!).toBeLessThan(PANEL_MIN);
@@ -226,7 +221,7 @@ describe('minWidth — (d) blank padding', () => {
       PAD_WIDTH,
       LAYOUT.gridGap
     );
-    const widths = widthsById(rows[0]!, PAD_WIDTH, LAYOUT.gridGap, PHONE_ROW_WIDTH);
+    const widths = widthsById(rows[0]!, PAD_WIDTH, LAYOUT.gridGap);
 
     expect(collectBlanks(rows[0]!.boxTree)).toHaveLength(0);
     expect(widths.get(1001)).toBe(PAD_WIDTH);
@@ -248,9 +243,7 @@ describe('minWidth — (e) three 400px panels on a 390px phone', () => {
     for (const id of [1001, 1002, 1003]) {
       const row = rows.find(candidate => candidate.components.some(item => item.id === id))!;
       expect(row.components).toHaveLength(1);
-      expect(widthsById(row, PHONE_WIDTH, LAYOUT.mobileGridGap, PHONE_ROW_WIDTH).get(id)).toBe(
-        PHONE_WIDTH
-      );
+      expect(widthsById(row, PHONE_WIDTH, LAYOUT.mobileGridGap).get(id)).toBe(PHONE_WIDTH);
     }
   });
 });
@@ -287,12 +280,7 @@ describe('minWidth — (f) non-finite componentWidth or gap', () => {
 
   it('never emits a NaN width or height', () => {
     for (const row of buildRows(content, DESKTOP_ROW_WIDTH, 1.5, Number.NaN, LAYOUT.gridGap)) {
-      for (const size of calculateSizesFromBoxTree(
-        row.boxTree,
-        DESKTOP_WIDTH,
-        LAYOUT.gridGap,
-        DESKTOP_ROW_WIDTH
-      )) {
+      for (const size of calculateSizesFromBoxTree(row.boxTree, DESKTOP_WIDTH, LAYOUT.gridGap)) {
         expect(Number.isFinite(size.width)).toBe(true);
         expect(Number.isFinite(size.height)).toBe(true);
       }
@@ -323,8 +311,8 @@ describe('minWidth — (g) a starving arrangement never outscores a satisfiable 
     const rows = buildRows(content, DESKTOP_ROW_WIDTH, 1.5, DESKTOP_WIDTH, LAYOUT.gridGap);
     const row = rows.find(candidate => candidate.components.some(item => item.id === 1001))!;
 
-    expect(
-      widthsById(row, DESKTOP_WIDTH, LAYOUT.gridGap, DESKTOP_ROW_WIDTH).get(1001)
-    ).toBeGreaterThanOrEqual(PANEL_MIN);
+    expect(widthsById(row, DESKTOP_WIDTH, LAYOUT.gridGap).get(1001)).toBeGreaterThanOrEqual(
+      PANEL_MIN
+    );
   });
 });

@@ -179,7 +179,7 @@ export function processContentForDisplay(
   const rows = buildRows(content, rowWidth, targetAR, componentWidth, effectiveGap);
 
   const contentRows = rows.map(row => {
-    const items = calculateSizesFromBoxTree(row.boxTree, componentWidth, effectiveGap, rowWidth);
+    const items = calculateSizesFromBoxTree(row.boxTree, componentWidth, effectiveGap);
 
     return {
       rowType: 'content' as const,
@@ -660,12 +660,7 @@ export function createHeaderRow(
 
     // Cover image row — sized exactly like a single-item content row
     const coverTree: BoxTree = { type: 'leaf', content: coverBlock };
-    const coverItems = calculateSizesFromBoxTree(
-      coverTree,
-      componentWidth,
-      LAYOUT.mobileGridGap,
-      LAYOUT.mobileSlotWidth
-    );
+    const coverItems = calculateSizesFromBoxTree(coverTree, componentWidth, LAYOUT.mobileGridGap);
     rows.push({ rowType: 'header' as const, items: coverItems, boxTree: coverTree });
 
     // Metadata row — full width, auto height (rendered via text block)
