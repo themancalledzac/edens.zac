@@ -147,6 +147,24 @@ describe('calculateSizesFromBoxTree — pinned-height blocks', () => {
     expect(image?.height).toBeCloseTo(225 - GAP, 6);
   });
 
+  it('absorbs a whole gap around a pin buried two levels down, not a fraction of one', () => {
+    // V(pin300, V(pin200, photo)). The outer vbox sees a right child whose coefficient is
+    // non-zero — the photo flexes — and used to hand the whole subtree one scale factor sized
+    // against its FULL 425px visual height. `applyScale` then re-asserted the buried 200px pin,
+    // so only the photo's 225px actually moved and the stack rendered ~6.4px taller than the
+    // `a·W + b` model every consumer (the composer's fill and pocket rules included) scored it by.
+    const tree = vbox(leaf(pinned(1, 300)), vbox(leaf(pinned(2, 200)), leaf(photo(3))));
+    const sizes = calculateSizesFromBoxTree(tree, 400, GAP);
+    const [outerPin, innerPin, image] = sizes;
+
+    expect(outerPin?.height).toBe(300);
+    expect(innerPin?.height).toBe(200);
+
+    const { a, b } = computeHeightCoeffs(tree, GAP);
+    const rendered = outerPin!.height + GAP + innerPin!.height + GAP + image!.height;
+    expect(Math.abs(rendered - (a * 400 + b))).toBeLessThan(1);
+  });
+
   it('keeps a tall pinned panel visible beside a short photo instead of collapsing it to zero', () => {
     // 991px of panel beside a photo that can only reach 0.5625 × 800 = 450px at full width.
     // The height equation has no solution, so the old code drove the panel's width negative.

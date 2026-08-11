@@ -49,15 +49,77 @@ function subtreeMinWidth(tree: BoxTree): number {
  * behind the atomic-design default that vertically-joined blocks render at one shared width
  * (Zac's 0246 round-3 review: a collapsed bar must not span 848px above a 700px-capped
  * panel) — the whole column narrows to what every member can honour.
+ *
+ * "Plus their gap" is load-bearing and used to be missing here. `consumedWidth` in
+ * `rowCombination.ts` — the composer's model of the same quantity — has always charged an hbox
+ * `left + gap + right`, so omitting the gap made the two halves of the engine disagree by 12.8px
+ * per horizontal node: the composer scored an arrangement as spanning the body, then the sizer
+ * handed that subtree a gap less width than the composer had promised it and the row came up
+ * short at the right edge. The models are the same statement and must return the same number.
  */
-function subtreeMaxWidth(tree: BoxTree): number {
+function subtreeMaxWidth(tree: BoxTree, gap: number): number {
   if (tree.type === 'leaf') return getMaxWidth(tree.content) ?? Infinity;
-  const left = subtreeMaxWidth(tree.children[0]);
-  const right = subtreeMaxWidth(tree.children[1]);
+  const left = subtreeMaxWidth(tree.children[0], gap);
+  const right = subtreeMaxWidth(tree.children[1], gap);
   if (tree.direction === 'horizontal') {
-    return left === Infinity || right === Infinity ? Infinity : left + right;
+    return left === Infinity || right === Infinity ? Infinity : left + gap + right;
   }
   return Math.min(left, right);
+}
+
+/** Whether any leaf under this tree declares a pinned (width-independent) height. */
+function treeHasPin(tree: BoxTree): boolean {
+  if (tree.type === 'leaf') return getPinnedHeight(tree.content) !== undefined;
+  return treeHasPin(tree.children[0]) || treeHasPin(tree.children[1]);
+}
+
+/**
+ * How much of an already-sized subtree's height a vbox's scale factor can actually move.
+ *
+ * The scale exists to make a stack swallow the CSS gap between its members, and it is chosen so
+ * that `scale × basis = basis − gap`. That only absorbs a whole gap if the basis is the part of
+ * the subtree that MOVES. Two things do not move: a pinned leaf, which {@link sizeSubtree}'s
+ * `applyScale` re-asserts at its declared height, and the CSS gaps inside the subtree, which are
+ * fixed pixels the sizer never touches. So the basis is the sum of the FLEXIBLE leaves' current
+ * heights — for an hbox, the taller side's, since a row of siblings is as tall as its tallest.
+ *
+ * Scaling against the whole visual height instead is what the admin hub's pockets were made of: a
+ * pin two levels down inside a flexible stack left `gap × pinShare` of the gap unabsorbed (4–7px
+ * per nesting level, worst measured 20.6px), so the column rendered taller than the `a·W + b`
+ * model — and `computeHeightCoeffs` hands that same model to the composer, which then scored the
+ * row as filling its box exactly.
+ *
+ * A subtree with NO pin short-circuits to its visual height, which is the pre-pin code verbatim:
+ * no photograph declares a pin, so every photo collection sizes through the identical arithmetic
+ * it always has — and the caller skips this walk entirely on the unshaped path, so a photo page
+ * does not even pay for the question. That basis over-counts the gaps a nested stack already
+ * absorbed, leaving a `gap²/height` residual per nesting level (< 0.2px at real column heights) —
+ * small enough that closing it is not worth re-rendering every photo page.
+ */
+function absorbableHeight(
+  tree: BoxTree,
+  sizes: CalculatedContentSize[],
+  visualHeight: number,
+  gap: number
+): number {
+  if (!treeHasPin(tree)) return visualHeight;
+
+  let cursor = 0;
+  const walk = (node: BoxTree): { height: number; flexible: number } => {
+    if (node.type === 'leaf') {
+      const height = sizes[cursor++]?.height ?? 0;
+      return { height, flexible: getPinnedHeight(node.content) === undefined ? height : 0 };
+    }
+    const left = walk(node.children[0]);
+    const right = walk(node.children[1]);
+    if (node.direction === 'vertical') {
+      return { height: left.height + gap + right.height, flexible: left.flexible + right.flexible };
+    }
+    const taller = left.height >= right.height ? left : right;
+    return { height: Math.max(left.height, right.height), flexible: taller.flexible };
+  };
+
+  return walk(tree).flexible;
 }
 
 /**
@@ -313,13 +375,13 @@ function sizeSubtree(
     // column (uniform stacked widths) instead of one member clamping alone mid-stack.
     const leftSizes = sizeSubtree(
       tree.children[0],
-      Math.min(leftWidth, subtreeMaxWidth(tree.children[0])),
+      Math.min(leftWidth, subtreeMaxWidth(tree.children[0], gap)),
       gap,
       chunkSize
     );
     const rightSizes = sizeSubtree(
       tree.children[1],
-      Math.min(rightWidth, subtreeMaxWidth(tree.children[1])),
+      Math.min(rightWidth, subtreeMaxWidth(tree.children[1], gap)),
       gap,
       chunkSize
     );
@@ -331,7 +393,7 @@ function sizeSubtree(
     // no member ever clamps alone mid-stack. Heights scaled to account for CSS gap.
     // Use coefficient-predicted visual heights (not sum of returned sizes) because
     // summing returned sizes overcounts hbox children (side-by-side, not stacked).
-    const columnWidth = Math.min(targetWidth, subtreeMaxWidth(tree));
+    const columnWidth = Math.min(targetWidth, subtreeMaxWidth(tree, gap));
     const { a: aL, b: bL } = computeHeightCoeffs(tree.children[0], gap);
     const { a: aR, b: bR } = computeHeightCoeffs(tree.children[1], gap);
 
@@ -353,19 +415,26 @@ function sizeSubtree(
     // shrinking it by a share of the gap is simply rendering it wrong. So the flexible member
     // absorbs the whole gap, and when both are pinned nobody does — the stack is genuinely
     // `sum + gap` tall, which `computeHeightCoeffs` declares so the parent solve agrees.
+    //
+    // The scale is sized against what can MOVE, not against the whole height — see
+    // {@link absorbableHeight}. A remainder no larger than the gap absorbs nothing rather than
+    // inverting the stack.
     const leftPinned = aL === 0;
     const rightPinned = aR === 0;
-    const absorb = (visualH: number) => (visualH > gap ? (visualH - gap) / visualH : 1);
+    const absorb = (basis: number) => (basis > gap ? (basis - gap) / basis : 1);
+    const absorbable = (child: BoxTree, sizes: CalculatedContentSize[], visualH: number) =>
+      shaped ? absorbableHeight(child, sizes, visualH, gap) : visualH;
+    const leftAbsorbable = absorbable(tree.children[0], leftSizes, leftVisualH);
+    const rightAbsorbable = absorbable(tree.children[1], rightSizes, rightVisualH);
 
     let leftScale = 1;
     let rightScale = 1;
     if (leftPinned && !rightPinned) {
-      rightScale = absorb(rightVisualH);
+      rightScale = absorb(rightAbsorbable);
     } else if (rightPinned && !leftPinned) {
-      leftScale = absorb(leftVisualH);
+      leftScale = absorb(leftAbsorbable);
     } else if (!leftPinned && !rightPinned) {
-      const rawVisualTotal = leftVisualH + rightVisualH;
-      leftScale = rawVisualTotal > 0 ? (rawVisualTotal - gap) / rawVisualTotal : 1;
+      leftScale = absorb(leftAbsorbable + rightAbsorbable);
       rightScale = leftScale;
     }
 

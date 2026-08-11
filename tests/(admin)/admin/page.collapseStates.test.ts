@@ -6,6 +6,8 @@ import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
 import type { PanelType } from '@/app/types/Content';
 import { isPanelContent } from '@/app/utils/contentTypeGuards';
 import { measureRow } from '@/app/utils/layoutDebug';
+import type { BoxTree } from '@/app/utils/rowCombination';
+import { computeHeightCoeffs } from '@/app/utils/rowStructureAlgorithm';
 
 /**
  * The fill rules, enforced across EVERY collapse state — the invariants of Zac's 2026-08-10
@@ -73,6 +75,65 @@ const rowsFor = (collapsed: Record<PanelType, boolean>, contentWidth = DESKTOP.c
     { ...DESKTOP, contentWidth },
     LAYOUT.defaultChunkSize
   ).rows;
+
+/**
+ * Every OUTERMOST stacked column in a row, as `{ width, renderedHeight, tree }` — the rendered
+ * height being what CSS produces (child heights plus the gap between them), walked exactly as
+ * {@link measureRow} walks it.
+ *
+ * Outermost only, because only an outermost column renders at its own model height. A nested
+ * stack is deliberately shorter than its model: its parent's gap comes out of it, which is the
+ * whole mechanism of vbox gap absorption.
+ */
+function stackedColumns(
+  row: { items: Array<{ width: number; height: number }>; boxTree?: BoxTree },
+  gap: number
+): Array<{ width: number; renderedHeight: number; tree: BoxTree }> {
+  const columns: Array<{ width: number; renderedHeight: number; tree: BoxTree }> = [];
+  if (!row.boxTree) return columns;
+
+  let cursor = 0;
+  const walk = (tree: BoxTree, insideStack: boolean): { w: number; h: number } => {
+    if (tree.type === 'leaf') {
+      const item = row.items[cursor++];
+      return { w: item?.width ?? 0, h: item?.height ?? 0 };
+    }
+    const stacked = tree.direction === 'vertical';
+    const first = walk(tree.children[0], stacked);
+    const second = walk(tree.children[1], stacked);
+    if (!stacked) return { w: first.w + gap + second.w, h: Math.max(first.h, second.h) };
+
+    const node = { w: Math.max(first.w, second.w), h: first.h + gap + second.h };
+    if (!insideStack) columns.push({ width: node.w, renderedHeight: node.h, tree });
+    return node;
+  };
+
+  walk(row.boxTree, false);
+  return columns;
+}
+
+/**
+ * The renderer and the composer must describe the same column. A stacked column's rendered
+ * height is `a·W + b` — the model `computeHeightCoeffs` hands the packer, and the basis for every
+ * fill and pocket rule it applies. The sizer keeps that true by scaling the column's flexible
+ * members down to swallow the CSS gap, and a pin is exempt from that scaling; when a pin sat two
+ * levels down inside an otherwise-flexible stack the scale factor could not see it, so only part of
+ * the gap was absorbed and the column rendered several px taller than the model it was chosen by
+ * (~4-7px per nesting level, a multi-thousand px² pocket on the hub).
+ *
+ * A pixel of tolerance covers the model's own second-order residual — the gap a nested stack has
+ * already absorbed is not available to absorb its parent's, worth `gap²/height` (< 0.8px here).
+ */
+describe('rendered columns agree with the height model', () => {
+  it.each(STATES)('at width 900, collapse state: %s', (_name, collapsed) => {
+    for (const row of rowsFor(collapsed, 900)) {
+      for (const column of stackedColumns(row, LAYOUT.gridGap)) {
+        const { a, b } = computeHeightCoeffs(column.tree, LAYOUT.gridGap);
+        expect(Math.abs(column.renderedHeight - (a * column.width + b))).toBeLessThan(1);
+      }
+    }
+  });
+});
 
 describe('admin hub all-open baseline', () => {
   /**

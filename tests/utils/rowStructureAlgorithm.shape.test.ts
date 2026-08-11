@@ -100,6 +100,26 @@ describe('calculateSizesFromBoxTree — shaped blocks', () => {
     expect(sizes[0]?.height).toBe(56);
   });
 
+  /**
+   * A nested hbox of capped leaves may use both caps AND the gap between them. The sizer hands a
+   * subtree `min(solvedWidth, subtreeMaxWidth)`, and that ceiling used to be `left + right` while
+   * the composer's `consumedWidth` charged the same subtree `left + gap + right`. One gap of
+   * disagreement per horizontal node: the composer scored the arrangement as spanning the body,
+   * the sizer then squeezed the pair into a gap less width, and every leaf under it rendered
+   * short of a cap it had been promised.
+   */
+  it('lets a nested pair of capped leaves use both caps plus the gap between them', () => {
+    const capped = (id: number) => panelBlock(id, { maxWidth: 400, minHeight: 56, maxHeight: 56 });
+    const sizes = calculateSizesFromBoxTree(
+      hbox(hbox(leaf(capped(1)), leaf(capped(2))), leaf(panelBlock(3))),
+      1600,
+      GAP
+    );
+
+    expect(sizes[0]?.width).toBe(400);
+    expect(sizes[1]?.width).toBe(400);
+  });
+
   it('clamps do not change width allocation between hbox siblings', () => {
     const unclamped = calculateSizesFromBoxTree(
       hbox(leaf(panelBlock(1)), leaf(panelBlock(2))),
