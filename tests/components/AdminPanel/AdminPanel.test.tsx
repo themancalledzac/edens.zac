@@ -96,6 +96,16 @@ describe('AdminPanel — collapsible', () => {
     expect(onCollapsedChange).not.toHaveBeenCalled();
   });
 
+  // The strip of empty body surface a closed panel keeps showing is an `::after`, not markup. It
+  // used to be two nested divs held out of the accessibility tree by an `aria-hidden` — a guard a
+  // later edit could drop. Nothing but the header may survive a collapse.
+  it('adds no element for the collapsed body strip', () => {
+    renderPanel(true);
+    const section = screen.getByRole('region', { name: 'User management' });
+    expect(section.children).toHaveLength(1);
+    expect(section.children[0]).toContainElement(toggle());
+  });
+
   it('points aria-controls at the body it hides', () => {
     renderPanel(false);
     const id = toggle().getAttribute('aria-controls');

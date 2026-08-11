@@ -30,6 +30,11 @@ interface AdminPanelProps {
  * panel keeps only what is its own: the boxed chrome, and the `.isCollapsed` hook that lets the
  * shell size to its header instead of filling the box the packer gave it.
  *
+ * `.isCollapsed` also paints the strip of empty body surface a closed panel keeps showing, through
+ * an `::after`. That is presentation with no content, so it belongs to the stylesheet and not to
+ * this component: as markup it was two nested divs whose only job was to be seen and not read,
+ * held out of the accessibility tree by an `aria-hidden` that any later edit could drop.
+ *
  * `collapsed` is inverted into the disclosure's `open` rather than renamed, because the panel's
  * callers and the renderer that owns the state both speak in terms of collapsing.
  */
@@ -74,11 +79,6 @@ export function AdminPanel({
           <div className={styles.body}>{children}</div>
         </>
       )}
-      {isCollapsed ? (
-        <div className={styles.collapsedBody} aria-hidden="true">
-          <div className={styles.collapsedList} />
-        </div>
-      ) : null}
     </section>
   );
 }

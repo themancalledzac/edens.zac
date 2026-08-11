@@ -31,17 +31,23 @@
 
 /* Collapsed keeps a strip of the body visible below the header — a closed panel reads as the
    same molecule minimized, not a bare title bar (Zac's 2026-08-10 review: the empty body shows
-   "as tall as the padding around it, maybe twice as tall"). Body padding wraps an empty run of
-   the list surface at least one --space-4 tall: 32 + 16 = 48px, the COLLAPSED_BODY_SLIVER
-   arithmetic in adminHubContent.ts — change the two together. */
-.collapsedBody {
-  flex: 1;
-  padding: var(--space-4);
-}
+   "as tall as the padding around it, maybe twice as tall"). The margin is the body padding it
+   stands in for, wrapping an empty run of the list surface at least one --space-4 tall:
+   32 + 16 = 48px, the COLLAPSED_BODY_SLIVER arithmetic in adminHubContent.ts — change the two
+   together.
 
-.collapsedList {
-  height: 100%;
+   A pseudo-element rather than the pair of divs this replaces. The strip is a painted surface with
+   nothing in it, so it has no business in the accessibility tree; as markup it needed an
+   `aria-hidden="true"` to stay out, which is a thing a future edit can drop. `::after` cannot be
+   reached by assistive tech at all, so the guard is structural instead of remembered. It is the
+   panel's last flex item — the Disclosure unmounts its body while closed — so `flex: 1` grows it
+   into the space below the header exactly as the outer div did, with the margin playing the
+   padding's part. */
+.isCollapsed::after {
+  content: '';
+  flex: 1;
   min-height: var(--space-4);
+  margin: var(--space-4);
   background: var(--content-frame);
   border-radius: var(--radius-1);
 }
