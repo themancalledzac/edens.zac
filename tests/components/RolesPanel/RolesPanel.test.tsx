@@ -9,6 +9,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
+import { AdminPanelSeedProvider } from '@/app/components/AdminPanel/AdminPanelSeedContext';
 import { RolesPanel } from '@/app/components/RolesPanel/RolesPanel';
 import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { ApiError } from '@/app/lib/api/core';
@@ -130,6 +131,28 @@ describe('RolesPanel', () => {
 
     await waitFor(() => expect(screen.getByText(/showing cached data/i)).toBeInTheDocument());
     expect(screen.getByText('alpha')).toBeInTheDocument();
+  });
+
+  /**
+   * The hub fetches this list server-side to size the panel, and passes it down as the cache seed.
+   * "Painted on the first commit" is the assertion that distinguishes a seed from a fast fetch:
+   * nothing awaited here, so a list on screen cannot have come from `listRoles`. The revalidation
+   * behind it still runs — a seed is a warm start, not a replacement for reconciling.
+   */
+  it('paints the server seed synchronously and revalidates behind it', async () => {
+    mockListRoles.mockResolvedValue([...ROLES, { id: 4, name: 'delta' }]);
+    render(
+      <AdminPanelSeedProvider value={{ roles: ROLES }}>
+        <RolesPanel />
+      </AdminPanelSeedProvider>
+    );
+
+    expect(screen.getByText('alpha')).toBeInTheDocument();
+    expect(screen.queryByText('Loading roles…')).not.toBeInTheDocument();
+    expect(screen.queryByText('delta')).not.toBeInTheDocument();
+
+    await waitFor(() => expect(screen.getByText('delta')).toBeInTheDocument());
+    expect(mockListRoles).toHaveBeenCalledTimes(1);
   });
 
   it('renders roles alphabetically, case-insensitively', async () => {

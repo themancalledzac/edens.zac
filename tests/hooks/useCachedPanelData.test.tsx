@@ -141,6 +141,95 @@ describe('useCachedPanelData', () => {
     expect(result.current.loading).toBe(false);
   });
 
+  /**
+   * The server-seed layer. `/admin` fetches the users and roles lists to size the panels, so the
+   * data is already in hand when the panel mounts — a foreground fetch there is a "Loading…" paint
+   * over a list the page was holding, plus a duplicate request. The seed must therefore reach the
+   * FIRST render (not an effect), and must not suppress the background reconcile.
+   */
+  it('server seed: paints on the first render with no loading state, then revalidates quietly', async () => {
+    const seed: RoleSummary[] = [{ id: 1, name: 'seeded' }];
+    const fetcher = jest.fn(async (): Promise<RoleSummary[]> => [{ id: 1, name: 'seeded' }]);
+    const { result } = renderHook(() => useCachedPanelData('roles', fetcher, 'failed', seed));
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data).toBe(seed);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+
+    await act(async () => {});
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.loadError).toBeNull();
+    // Promoted to the cache on mount, so an unchanged fetch compares equal and never re-sets state.
+    expect(result.current.data).toBe(seed);
+    expect(window.localStorage.getItem(ROLES_KEY)).toBe(JSON.stringify(seed));
+  });
+
+  /**
+   * `refresh` decides whether to blank the list by asking the cache what is on screen. A seed that
+   * painted but was never promoted would read as "nothing to show" and flash "Loading…" over a
+   * correct list on the next plain refresh — which is what every Cancel button fires.
+   */
+  it('server seed: a plain refresh reconciles underneath instead of blanking', async () => {
+    const seed: RoleSummary[] = [{ id: 1, name: 'seeded' }];
+    const inFlight = deferred<RoleSummary[]>();
+    const fetcher = jest.fn(() => inFlight.promise);
+    const { result } = renderHook(() => useCachedPanelData('roles', fetcher, 'failed', seed));
+
+    act(() => {
+      void result.current.refresh();
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data).toBe(seed);
+
+    await act(async () => {
+      inFlight.resolve(seed);
+    });
+  });
+
+  it('server seed: a local mutation still wins on the next remount', async () => {
+    const seed: RoleSummary[] = [
+      { id: 1, name: 'a' },
+      { id: 2, name: 'b' },
+    ];
+    const fetcher = jest.fn(async () => seed);
+    const first = renderHook(() => useCachedPanelData('roles', fetcher, 'failed', seed));
+    await act(async () => {});
+
+    act(() => {
+      first.result.current.setData(previous => (previous ?? []).filter(r => r.id !== 1));
+    });
+    first.unmount();
+
+    const second = renderHook(() => useCachedPanelData('roles', fetcher, 'failed', seed));
+    expect(second.result.current.data).toEqual([{ id: 2, name: 'b' }]);
+    await act(async () => {});
+  });
+
+  it('server seed: a request-time list beats a stored one from a past session', async () => {
+    window.localStorage.setItem(ROLES_KEY, JSON.stringify([{ id: 7, name: 'stale' }]));
+    const seed: RoleSummary[] = [{ id: 1, name: 'fresh' }];
+    const fetcher = jest.fn(async () => seed);
+    const { result } = renderHook(() => useCachedPanelData('roles', fetcher, 'failed', seed));
+
+    expect(result.current.data).toBe(seed);
+    await act(async () => {});
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(window.localStorage.getItem(ROLES_KEY)).toBe(JSON.stringify(seed));
+  });
+
+  /** A `null` seed is the server saying its own fetch failed — no data, so no warm start. */
+  it('a null seed loads in the foreground, exactly like no seed at all', async () => {
+    const fetcher = jest.fn(async (): Promise<RoleSummary[]> => [{ id: 1, name: 'a' }]);
+    const { result } = renderHook(() => useCachedPanelData('roles', fetcher, 'failed', null));
+
+    expect(result.current.loading).toBe(true);
+    expect(result.current.data).toBeNull();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.data).toEqual([{ id: 1, name: 'a' }]);
+  });
+
   it('unchanged revalidation keeps reference identity (no re-render churn)', async () => {
     const fetcher = jest.fn(async (): Promise<RoleSummary[]> => [{ id: 1, name: 'a' }]);
     const { result } = renderHook(() => useCachedPanelData('roles', fetcher, 'failed'));

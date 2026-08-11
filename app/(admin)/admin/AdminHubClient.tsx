@@ -3,6 +3,10 @@
 import { useMemo, useState } from 'react';
 
 import { AdminPanelCollapseProvider } from '@/app/components/AdminPanel/AdminPanelCollapseContext';
+import {
+  type AdminPanelSeed,
+  AdminPanelSeedProvider,
+} from '@/app/components/AdminPanel/AdminPanelSeedContext';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { type AnyContentModel, type PanelType } from '@/app/types/Content';
 
@@ -11,10 +15,14 @@ import { withPanelFootprints } from './adminHubContent';
 interface AdminHubClientProps {
   content: AnyContentModel[];
   mobileChunkSize: number;
+  /** Lists the server already fetched, so a panel paints instead of loading. Omit to seed nothing. */
+  seed?: AdminPanelSeed;
   serverContentWidth?: number;
   serverViewportHeight?: number;
   serverIsMobile?: boolean;
 }
+
+const NO_SEED: AdminPanelSeed = {};
 
 /**
  * Owns which hub panels are collapsed, and re-derives the content array from it.
@@ -35,10 +43,16 @@ interface AdminHubClientProps {
  *
  * Initial state is all-expanded on both server and client, so there is no hydration mismatch, and
  * collapsing is not persisted across navigations.
+ *
+ * It is also where the server's own fetches cross into client land: `seed` carries the users and
+ * roles lists the page already loaded to size the panels, so those panels start warm instead of
+ * re-requesting them (see {@link AdminPanelSeedProvider}). Same reason it is a context and not a
+ * prop — `BoxRenderer` sits between this and every panel.
  */
 export function AdminHubClient({
   content,
   mobileChunkSize,
+  seed,
   serverContentWidth,
   serverViewportHeight,
   serverIsMobile,
@@ -65,17 +79,19 @@ export function AdminHubClient({
   );
 
   return (
-    <AdminPanelCollapseProvider value={collapse}>
-      <ContentBlockWithFullScreen
-        content={laidOutContent}
-        priorityBlockIndex={0}
-        enableFullScreenView={false}
-        mobileChunkSize={mobileChunkSize}
-        serverContentWidth={serverContentWidth}
-        serverViewportHeight={serverViewportHeight}
-        serverIsMobile={serverIsMobile}
-      />
-    </AdminPanelCollapseProvider>
+    <AdminPanelSeedProvider value={seed ?? NO_SEED}>
+      <AdminPanelCollapseProvider value={collapse}>
+        <ContentBlockWithFullScreen
+          content={laidOutContent}
+          priorityBlockIndex={0}
+          enableFullScreenView={false}
+          mobileChunkSize={mobileChunkSize}
+          serverContentWidth={serverContentWidth}
+          serverViewportHeight={serverViewportHeight}
+          serverIsMobile={serverIsMobile}
+        />
+      </AdminPanelCollapseProvider>
+    </AdminPanelSeedProvider>
   );
 }
 

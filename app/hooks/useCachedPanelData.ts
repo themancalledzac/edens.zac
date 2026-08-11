@@ -262,17 +262,32 @@ export interface CachedPanelData<T> {
  * is dropped when it resolves after its key was switched away, and equally when a local write or
  * another fetch has moved that key on since it started.
  *
+ * `initialData` is a third, colder layer beneath those two: the list the SERVER already fetched for
+ * this render (see `app/(admin)/admin/page.tsx`, which needs the row counts to lay the hub out and
+ * so has the lists in hand). Without it a panel's first paint is "Loading…" over data that crossed
+ * the wire moments earlier, and the client repeats a request the server just made. It is consumed
+ * in the `useState` initializer rather than an effect because that is the only place a value can
+ * reach the FIRST render — server and client run the same initializer over the same prop, so the
+ * two agree and hydration is quiet, which an effect (client-only, one commit late) could not
+ * manage. A seed does not suppress revalidation: a seeded mount reconciles in the background
+ * exactly like a mount seeded from cache, so the panel is still self-correcting.
+ *
+ * Precedence is newest-first: the memory cache (which may hold an optimistic local mutation) beats
+ * the seed, and the seed beats localStorage (a request-time list beats one from a past session).
+ *
  * @param key - Cache identity for this payload, including any fetch-shaping variant
  * @param fetcher - Loads the payload; may close over props (kept fresh via ref, never re-triggers)
  * @param errorMessage - User-facing message for a foreground load failure
+ * @param initialData - Server-fetched payload for `key`; `null`/omitted when the server has none
  */
 export function useCachedPanelData<K extends PanelCacheKey>(
   key: K,
   fetcher: () => Promise<PanelCacheSchema[K]>,
-  errorMessage: string
+  errorMessage: string,
+  initialData?: PanelCacheSchema[K] | null
 ): CachedPanelData<PanelCacheSchema[K]> {
   const [data, setDataState] = useState<PanelCacheSchema[K] | null>(
-    () => memoryCache[key]?.value ?? null
+    () => memoryCache[key]?.value ?? initialData ?? null
   );
   const [loading, setLoading] = useState(data === null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -282,6 +297,8 @@ export function useCachedPanelData<K extends PanelCacheKey>(
   fetcherRef.current = fetcher;
   const keyRef = useRef(key);
   keyRef.current = key;
+  const initialDataRef = useRef(initialData);
+  initialDataRef.current = initialData;
 
   /**
    * The generation of the newest fetch THIS hook instance started. `loading` is instance state, so
@@ -303,7 +320,7 @@ export function useCachedPanelData<K extends PanelCacheKey>(
   const [seededKey, setSeededKey] = useState<PanelCacheKey>(key);
   if (key !== seededKey) {
     setSeededKey(key);
-    const cached = memoryCache[key]?.value ?? null;
+    const cached = memoryCache[key]?.value ?? initialData ?? null;
     setDataState(cached);
     setLoading(cached === null);
     setLoadError(null);
@@ -343,8 +360,30 @@ export function useCachedPanelData<K extends PanelCacheKey>(
     [commit, errorMessage]
   );
 
+  /**
+   * Mount (and key switch): make sure the cache holds whatever is already on screen, then
+   * revalidate — in the foreground only when there is nothing to show.
+   *
+   * The seed is promoted into the cache here rather than in the initializer, because a module-level
+   * write during render would run on the SERVER too, where the cache is a per-process singleton
+   * shared by every request. The initializer only reads it; this effect is client-only, so the seed
+   * becomes cache exactly where a fetched payload would. Promoting it matters beyond tidiness:
+   * `refresh` reads the cache to decide whether a list is on screen (an unpromoted seed would make
+   * a plain refresh blank a correct list), and `revalidate` compares against the cached string to
+   * leave `data`'s reference identity alone when nothing changed.
+   *
+   * No state is set in the seed branch: the initializer above already painted the seed and left
+   * `loading` false, so there is nothing to correct.
+   */
   useEffect(() => {
     let seeded = memoryCache[key] !== undefined;
+    const seed = initialDataRef.current;
+    if (!seeded && seed !== undefined && seed !== null) {
+      const serialized = JSON.stringify(seed);
+      writeMemory(key, { value: seed, serialized });
+      writeStorage(key, serialized);
+      seeded = true;
+    }
     if (!seeded) {
       const stored = readStorage(key);
       if (stored !== null) {

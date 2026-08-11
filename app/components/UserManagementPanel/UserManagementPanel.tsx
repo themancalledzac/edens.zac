@@ -5,6 +5,7 @@ import { type ReactNode, useCallback, useMemo, useState } from 'react';
 
 import { GenerateInviteButton } from '@/app/(admin)/admin/users/GenerateInviteButton';
 import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
+import { useAdminPanelSeed } from '@/app/components/AdminPanel/AdminPanelSeedContext';
 import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIdentityModal';
 import { Button } from '@/app/components/ui/Button/Button';
@@ -50,6 +51,11 @@ interface UserManagementPanelProps {
  * collapses) and across page loads, so it paints instantly and only re-renders when a fetch
  * actually changes it.
  *
+ * On the hub it starts warmer still: the page fetched the user list server-side to size this panel,
+ * and hands it over as the cache seed, so the very first paint is the list rather than "Loading…".
+ * The seed belongs to the unfiltered fetch only — turning on "show tag-only people" is a different
+ * request under its own cache key, so that variant loads on demand as it always has.
+ *
  * Anything that changed the underlying users — a create, an edit, a merge, an upgrade — refreshes
  * with errors reported, so a mutation that succeeded but whose list refresh then failed surfaces
  * as `loadError` (which carries a Retry) rather than as a list that quietly did not update. It
@@ -64,6 +70,7 @@ interface UserManagementPanelProps {
  */
 export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManagementPanelProps) {
   const router = useRouter();
+  const seed = useAdminPanelSeed();
   const [view, setView] = useState<View>({ mode: 'list' });
   const [showPeople, setShowPeople] = useState(false);
   const [mergeFor, setMergeFor] = useState<AdminUserSummary | null>(null);
@@ -78,7 +85,8 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
   } = useCachedPanelData(
     showPeople ? 'users:people' : 'users:base',
     () => listUsers({ includePeople: showPeople }),
-    'Could not load users. Retry, or check that the backend is running.'
+    'Could not load users. Retry, or check that the backend is running.',
+    showPeople ? null : seed.users
   );
 
   const returnToList = useCallback(

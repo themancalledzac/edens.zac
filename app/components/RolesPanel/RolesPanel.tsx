@@ -14,6 +14,7 @@ import {
 } from 'react';
 
 import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
+import { useAdminPanelSeed } from '@/app/components/AdminPanel/AdminPanelSeedContext';
 import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
@@ -72,6 +73,10 @@ interface RolesPanelProps {
  * resurrect from stale cache on the next remount, nor from a fetch that was already in the air
  * when it was deleted.
  *
+ * On the hub the first paint is warmer than that: the page fetched the role list server-side to
+ * size this panel, and hands it over as the cache seed, so the list is on screen before any client
+ * fetch — which then reconciles underneath it.
+ *
  * Returning to the list after a change (`backToListAfterChange`) reconciles underneath the list
  * rather than blanking it, but announces a failure; a plain Cancel changed nothing, so it
  * reconciles silently. A create that succeeded and then failed to refresh has to say so, and it
@@ -90,10 +95,13 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
   const [createError, setCreateError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const seed = useAdminPanelSeed();
+
   const { data, loading, loadError, revalidationFailed, refresh, setData } = useCachedPanelData(
     'roles',
     listRoles,
-    'Could not load roles. Retry, or check that the backend is running.'
+    'Could not load roles. Retry, or check that the backend is running.',
+    seed.roles
   );
   const roles = useMemo(() => data ?? [], [data]);
 

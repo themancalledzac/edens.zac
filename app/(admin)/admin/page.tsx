@@ -39,20 +39,27 @@ export const dynamic = 'force-dynamic';
  * requests share one wall-clock round-trip. Each falls back independently, matching the tiles'
  * existing posture — a backend blip degrades a panel to its minimum reserved height instead of
  * failing the hub.
+ *
+ * Those two full lists are then handed to the panels as `seed`, so a list the server already holds
+ * is painted rather than re-requested — the single-fetch rule, which keeping only `.length` broke.
+ * `listUsers()` takes no options, which is exactly the `users:base` variant the panel opens on; its
+ * "show tag-only people" variant is a different fetch and is left to load on demand. A failed
+ * server fetch seeds `null`, not `[]`, so the panel loads for itself instead of announcing an empty
+ * account list, and the count falls back to the layout floor as before.
  */
 export default async function AdminHubPage() {
   const [tiles, ssrViewport, users, messages, roles] = await Promise.all([
     getAdminHomeTiles().catch(() => []),
     resolveSsrViewport(),
-    listUsers().catch(() => []),
+    listUsers().catch(() => null),
     getAdminMessages(1, 0).catch(() => null),
-    listRoles().catch(() => []),
+    listRoles().catch(() => null),
   ]);
 
   const content = buildAdminHubContent(tiles, {
-    users: users.length,
+    users: users?.length ?? 0,
     messages: messages?.total ?? 0,
-    roles: roles.length,
+    roles: roles?.length ?? 0,
   });
 
   return (
@@ -64,6 +71,7 @@ export default async function AdminHubPage() {
       <AdminHubClient
         content={content}
         mobileChunkSize={1}
+        seed={{ users, roles }}
         serverContentWidth={ssrViewport?.contentWidth}
         serverViewportHeight={ssrViewport?.viewportHeight}
         serverIsMobile={ssrViewport?.isMobile}
