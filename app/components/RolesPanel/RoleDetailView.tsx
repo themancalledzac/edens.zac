@@ -204,6 +204,7 @@ export function RoleDetailView({ role, onDeleted }: RoleDetailViewProps) {
                 >
                   <option value="GENERAL">General (view)</option>
                   <option value="CLIENT">Client (download/tag/star)</option>
+                  <option value="COLLABORATOR">Collaborator (edit collection)</option>
                 </select>
                 <Button
                   variant="ghost"
@@ -238,6 +239,7 @@ export function RoleDetailView({ role, onDeleted }: RoleDetailViewProps) {
                 >
                   <option value="GENERAL">General</option>
                   <option value="CLIENT">Client</option>
+                  <option value="COLLABORATOR">Collaborator</option>
                 </select>
                 <Button variant="ghost" size="sm" onClick={onAddGrant} disabled={!addCollectionId}>
                   Add

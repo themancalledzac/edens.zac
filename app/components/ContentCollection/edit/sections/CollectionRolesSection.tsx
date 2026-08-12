@@ -149,6 +149,7 @@ export function CollectionRolesSection({
               >
                 <option value="GENERAL">General (view)</option>
                 <option value="CLIENT">Client (download/tag/star)</option>
+                <option value="COLLABORATOR">Collaborator (edit collection)</option>
               </select>
               <Button
                 variant="ghost"
@@ -193,6 +194,7 @@ export function CollectionRolesSection({
           >
             <option value="GENERAL">General</option>
             <option value="CLIENT">Client</option>
+            <option value="COLLABORATOR">Collaborator</option>
           </select>
           <Button variant="ghost" size="sm" onClick={onAddRole} disabled={!addRoleId}>
             Add
@@ -219,6 +221,7 @@ export function CollectionRolesSection({
         >
           <option value="GENERAL">General</option>
           <option value="CLIENT">Client</option>
+          <option value="COLLABORATOR">Collaborator</option>
         </select>
         <Button
           variant="ghost"
