@@ -204,7 +204,6 @@ describe('calculateBoxTreeAspectRatio', () => {
 // =============================================================================
 
 describe('calculateSizesFromBoxTree', () => {
-  const chunkSize = 4;
   const targetWidth = 1000;
 
   // ---------------------------------------------------------------------------
@@ -215,7 +214,7 @@ describe('calculateSizesFromBoxTree', () => {
     it('returns one size entry with width equal to targetWidth', () => {
       const img = createHorizontalImage(1, 3);
       const tree = leaf(img);
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       expect(sizes).toHaveLength(1);
       expect(sizes[0]!.width).toBeCloseTo(targetWidth, 5);
     });
@@ -223,7 +222,7 @@ describe('calculateSizesFromBoxTree', () => {
     it('height = targetWidth / AR for a 1920x1080 image at targetWidth=1000', () => {
       const img = createHorizontalImage(1, 3);
       const tree = leaf(img);
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       const expectedHeight = targetWidth / (1920 / 1080); // ≈ 562.5
       expect(sizes[0]!.height).toBeCloseTo(expectedHeight, 3);
     });
@@ -231,14 +230,14 @@ describe('calculateSizesFromBoxTree', () => {
     it('height ≈ 562.5 for a 1920x1080 image at targetWidth=1000', () => {
       const img = createHorizontalImage(1, 3);
       const tree = leaf(img);
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       expect(sizes[0]!.height).toBeCloseTo(562.5, 1);
     });
 
     it('content reference is the original content item', () => {
       const img = createHorizontalImage(1, 3);
       const tree = leaf(img);
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       expect(sizes[0]!.content).toBe(img);
     });
   });
@@ -252,7 +251,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img1 = createHorizontalImage(1, 3);
       const img2 = createHorizontalImage(2, 3);
       const tree = hNode(leaf(img1), leaf(img2));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       expect(sizes).toHaveLength(2);
     });
 
@@ -260,7 +259,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img1 = H(1, 3);
       const img2 = H(2, 3);
       const tree = hNode(leaf(img1), leaf(img2));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       const expectedWidth = (targetWidth - gridGap) / 2;
       expect(sizes[0]!.width).toBeCloseTo(expectedWidth, 3);
       expect(sizes[1]!.width).toBeCloseTo(expectedWidth, 3);
@@ -270,7 +269,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img1 = H(1, 3);
       const img2 = H(2, 3);
       const tree = hNode(leaf(img1), leaf(img2));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       expect(sizes[0]!.height).toBeCloseTo(sizes[1]!.height, 3);
     });
 
@@ -278,7 +277,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img1 = H(1, 3);
       const img2 = V(2, 3);
       const tree = hNode(leaf(img1), leaf(img2));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       const totalWidth = sizes.reduce((sum, s) => sum + s.width, 0);
       expect(totalWidth).toBeCloseTo(targetWidth - gridGap, 3);
     });
@@ -287,7 +286,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img1 = createHorizontalImage(1, 3);
       const img2 = createHorizontalImage(2, 3);
       const tree = hNode(leaf(img1), leaf(img2));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       expect(sizes[0]!.content).toBe(img1);
       expect(sizes[1]!.content).toBe(img2);
     });
@@ -302,7 +301,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img1 = H(1, 3);
       const img2 = H(2, 3);
       const tree = vNode(leaf(img1), leaf(img2));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       expect(sizes).toHaveLength(2);
     });
 
@@ -310,7 +309,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img1 = H(1, 3);
       const img2 = H(2, 3);
       const tree = vNode(leaf(img1), leaf(img2));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       expect(sizes[0]!.width).toBeCloseTo(targetWidth, 3);
       expect(sizes[1]!.width).toBeCloseTo(targetWidth, 3);
     });
@@ -319,7 +318,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img1 = H(1, 3);
       const img2 = H(2, 3);
       const tree = vNode(leaf(img1), leaf(img2));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
 
       // Raw height if no scaling: each = targetWidth / AR
       const singleAR = 1920 / 1080;
@@ -336,7 +335,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img1 = H(1, 3);
       const img2 = V(2, 3);
       const tree = vNode(leaf(img1), leaf(img2));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
 
       const arH = 1920 / 1080;
       const arV = 1080 / 1920;
@@ -353,7 +352,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img1 = createHorizontalImage(1, 3);
       const img2 = createVerticalImage(2, 3);
       const tree = vNode(leaf(img1), leaf(img2));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       expect(sizes[0]!.content).toBe(img1);
       expect(sizes[1]!.content).toBe(img2);
     });
@@ -368,7 +367,7 @@ describe('calculateSizesFromBoxTree', () => {
       const imgH = H(1, 3); // AR ≈ 1.7778
       const imgV = V(2, 3); // AR ≈ 0.5625
       const tree = hNode(leaf(imgH), leaf(imgV));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       expect(sizes[0]!.width).toBeGreaterThan(sizes[1]!.width);
     });
 
@@ -376,7 +375,7 @@ describe('calculateSizesFromBoxTree', () => {
       const imgH = H(1, 3); // AR ≈ 1.7778
       const imgV = V(2, 3); // AR ≈ 0.5625
       const tree = hNode(leaf(imgH), leaf(imgV));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
 
       const arH = 1920 / 1080;
       const arV = 1080 / 1920;
@@ -389,7 +388,7 @@ describe('calculateSizesFromBoxTree', () => {
       const imgH = H(1, 3);
       const imgV = V(2, 3);
       const tree = hNode(leaf(imgH), leaf(imgV));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       const availableWidth = targetWidth - gridGap;
       expect(sizes[0]!.width + sizes[1]!.width).toBeCloseTo(availableWidth, 3);
     });
@@ -406,7 +405,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img3 = H(3, 3);
       // H( H(img1, img2), img3 )
       const tree = hNode(hNode(leaf(img1), leaf(img2)), leaf(img3));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       expect(sizes).toHaveLength(3);
       expect(sizes[0]!.content).toBe(img1);
       expect(sizes[1]!.content).toBe(img2);
@@ -419,7 +418,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img3 = H(3, 3);
       // V( V(img1, img2), img3 )
       const tree = vNode(vNode(leaf(img1), leaf(img2)), leaf(img3));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       expect(sizes).toHaveLength(3);
       expect(sizes[0]!.content).toBe(img1);
       expect(sizes[1]!.content).toBe(img2);
@@ -431,7 +430,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img2 = V(2, 3);
       const img3 = H(3, 3);
       const tree = hNode(vNode(leaf(img1), leaf(img2)), leaf(img3));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
       expect(sizes).toHaveLength(3);
       expect(sizes[0]!.content).toBe(img1);
       expect(sizes[1]!.content).toBe(img2);
@@ -448,8 +447,8 @@ describe('calculateSizesFromBoxTree', () => {
       const img1 = H(1, 3);
       const img2 = H(2, 3);
       const tree = hNode(leaf(img1), leaf(img2));
-      const sizesDefault = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
-      const sizesExplicit = calculateSizesFromBoxTree(tree, targetWidth, 12.8, chunkSize);
+      const sizesDefault = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
+      const sizesExplicit = calculateSizesFromBoxTree(tree, targetWidth, 12.8);
       expect(sizesDefault[0]!.width).toBeCloseTo(sizesExplicit[0]!.width, 5);
       expect(sizesDefault[1]!.width).toBeCloseTo(sizesExplicit[1]!.width, 5);
     });
@@ -458,8 +457,8 @@ describe('calculateSizesFromBoxTree', () => {
       const img1 = H(1, 3);
       const img2 = H(2, 3);
       const tree = hNode(leaf(img1), leaf(img2));
-      const sizesSmallGap = calculateSizesFromBoxTree(tree, targetWidth, 10, chunkSize);
-      const sizesLargeGap = calculateSizesFromBoxTree(tree, targetWidth, 40, chunkSize);
+      const sizesSmallGap = calculateSizesFromBoxTree(tree, targetWidth, 10);
+      const sizesLargeGap = calculateSizesFromBoxTree(tree, targetWidth, 40);
       // Each child gets (targetWidth - gap) / 2 for equal AR
       expect(sizesSmallGap[0]!.width).toBeGreaterThan(sizesLargeGap[0]!.width);
     });
@@ -476,7 +475,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img3 = H(3, 3);
       // H( H(A, B), C ) — left subtree has an inner gap, right does not
       const tree = hNode(hNode(leaf(img1), leaf(img2)), leaf(img3));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
 
       expect(sizes[0]!.height).toBeCloseTo(sizes[2]!.height, 1);
       expect(sizes[1]!.height).toBeCloseTo(sizes[2]!.height, 1);
@@ -487,7 +486,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img2 = H(2, 3);
       const img3 = H(3, 3);
       const tree = hNode(leaf(img1), hNode(leaf(img2), leaf(img3)));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
 
       expect(sizes[0]!.height).toBeCloseTo(sizes[1]!.height, 1);
       expect(sizes[0]!.height).toBeCloseTo(sizes[2]!.height, 1);
@@ -495,7 +494,7 @@ describe('calculateSizesFromBoxTree', () => {
 
     it('hbox(hbox(A, B), hbox(C, D)): symmetric nesting has equal heights', () => {
       const tree = hNode(hNode(leaf(H(1, 3)), leaf(H(2, 3))), hNode(leaf(H(3, 3)), leaf(H(4, 3))));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
 
       // All four should have the same height
       for (let i = 1; i < sizes.length; i++) {
@@ -508,7 +507,7 @@ describe('calculateSizesFromBoxTree', () => {
       const img2 = H(2, 3);
       const img3 = H(3, 3);
       const tree = hNode(vNode(leaf(img1), leaf(img2)), leaf(img3));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
 
       // vbox total height = sum of scaled heights + gap
       const vboxTotalHeight = sizes[0]!.height + sizes[1]!.height + gridGap;
@@ -518,7 +517,7 @@ describe('calculateSizesFromBoxTree', () => {
 
     it('deep nesting: hbox(hbox(hbox(A, B), C), D) — 3 levels, heights match', () => {
       const tree = hNode(hNode(hNode(leaf(H(1, 3)), leaf(H(2, 3))), leaf(H(3, 3))), leaf(H(4, 3)));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
 
       // All four images should have the same height
       for (let i = 1; i < sizes.length; i++) {
@@ -528,7 +527,7 @@ describe('calculateSizesFromBoxTree', () => {
 
     it('nested trees still sum widths correctly at each level', () => {
       const tree = hNode(hNode(leaf(H(1, 3)), leaf(H(2, 3))), leaf(H(3, 3)));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
 
       // Total content width = targetWidth - 2*gap (outer gap + inner gap)
       const totalContentWidth = sizes.reduce((sum, s) => sum + s.width, 0);
@@ -539,7 +538,7 @@ describe('calculateSizesFromBoxTree', () => {
       const imgH = H(1, 3); // AR ≈ 1.7778
       const imgV = V(2, 3); // AR ≈ 0.5625
       const tree = hNode(leaf(imgH), leaf(imgV));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
 
       // For leaves, coefficients reduce to AR-proportional distribution
       const arH = 1920 / 1080;
@@ -557,7 +556,7 @@ describe('calculateSizesFromBoxTree', () => {
         hNode(vNode(leaf(H(1, 3)), hNode(leaf(V(2, 3)), leaf(V(3, 3)))), leaf(V(4, 3))),
         leaf(createImageContent(5, { imageWidth: 2500, imageHeight: 2500 }))
       );
-      const sizes = calculateSizesFromBoxTree(tree, 1200, gridGap, 4);
+      const sizes = calculateSizesFromBoxTree(tree, 1200, gridGap);
 
       // The vbox visual height should match its horizontal sibling (V leaf)
       const vboxVisual = sizes[0]!.height + gridGap + sizes[1]!.height; // top + gap + bottom
@@ -568,7 +567,7 @@ describe('calculateSizesFromBoxTree', () => {
 
     it('mixed H/V images in nested tree: hbox(hbox(H, V), H)', () => {
       const tree = hNode(hNode(leaf(H(1, 5)), leaf(V(2, 3))), leaf(H(3, 4)));
-      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap);
 
       // Left subtree images should have equal height (inner hbox)
       expect(sizes[0]!.height).toBeCloseTo(sizes[1]!.height, 1);
@@ -620,7 +619,7 @@ describe('computeHeightCoeffs', () => {
     const { a, b } = computeHeightCoeffs(tree, gap);
     const predictedHeight = a * W + b;
 
-    const sizes = calculateSizesFromBoxTree(tree, W, gap, 4);
+    const sizes = calculateSizesFromBoxTree(tree, W, gap);
     // For a top-level horizontal node, rendered height = max height of either side
     // (they should be equal after the fix)
     const leftHeight = sizes[0]!.height; // first leaf in left subtree

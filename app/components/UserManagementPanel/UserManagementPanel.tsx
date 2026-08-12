@@ -1,20 +1,22 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 
 import { GenerateInviteButton } from '@/app/(admin)/admin/users/GenerateInviteButton';
 import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
+import { useAdminPanelSeed } from '@/app/components/AdminPanel/AdminPanelSeedContext';
 import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIdentityModal';
 import { Button } from '@/app/components/ui/Button/Button';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
+import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
 import { UpgradeUserModal } from '@/app/components/UpgradeUserModal/UpgradeUserModal';
 import { UserForm } from '@/app/components/UserForm/UserForm';
+import { useCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { listUsers } from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
-import { logger } from '@/app/utils/logger';
 import { compareNames } from '@/app/utils/sortByName';
 
 import styles from './UserManagementPanel.module.scss';
@@ -39,10 +41,26 @@ interface UserManagementPanelProps {
  * something the user must see: the create and edit forms both live in the body, so opening one
  * while collapsed would otherwise look like the "+ New User" button did nothing.
  *
- * A failed load gets its own body branch, checked ahead of the empty state. `listUsers` throws
- * `ApiError` out of `fetchAdminGetApi` on any non-OK response, so a `catch`-less `refresh` would
- * leave `users` at `[]` and tell an admin whose backend is down that there are no users — an
- * invitation to create a duplicate account. Failed and empty must never look alike here.
+ * A failed load gets its own body branch, checked ahead of the empty state — an admin whose
+ * backend is down must never be told there are no users, an invitation to create a duplicate
+ * account. `useCachedPanelData` owns that distinction now: `loadError` is set only when a load
+ * fails with nothing cached to show, while a failed background revalidation keeps the cached
+ * list on screen and raises `revalidationFailed` instead — which the {@link StaleNotice} above
+ * the list reports, so accounts served from a dead backend are never presented as current. The
+ * list itself is cached across remounts (the hub re-packs — and remounts panels — whenever one
+ * collapses) and across page loads, so it paints instantly and only re-renders when a fetch
+ * actually changes it.
+ *
+ * On the hub it starts warmer still: the page fetched the user list server-side to size this panel,
+ * and hands it over as the cache seed, so the very first paint is the list rather than "Loading…".
+ * The seed belongs to the unfiltered fetch only — turning on "show tag-only people" is a different
+ * request under its own cache key, so that variant loads on demand as it always has.
+ *
+ * Anything that changed the underlying users — a create, an edit, a merge, an upgrade — refreshes
+ * with errors reported, so a mutation that succeeded but whose list refresh then failed surfaces
+ * as `loadError` (which carries a Retry) rather than as a list that quietly did not update. It
+ * still reconciles underneath the list rather than blanking a correct one. Cancel refreshes
+ * silently, having changed nothing.
  *
  * The {@link LoadingText} region sits outside the `view.mode === 'list'` guard, not inside it. It
  * has to outlive the branches it reports on (see its docblock), and `backToList` flips the view and
@@ -52,36 +70,35 @@ interface UserManagementPanelProps {
  */
 export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManagementPanelProps) {
   const router = useRouter();
-  const [users, setUsers] = useState<AdminUserSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const seed = useAdminPanelSeed();
   const [view, setView] = useState<View>({ mode: 'list' });
   const [showPeople, setShowPeople] = useState(false);
   const [mergeFor, setMergeFor] = useState<AdminUserSummary | null>(null);
   const [upgradeFor, setUpgradeFor] = useState<AdminUserSummary | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      setUsers(await listUsers({ includePeople: showPeople }));
-    } catch (error) {
-      logger.error('UserManagementPanel', 'Failed to load users', error);
-      setUsers([]);
-      setLoadError('Could not load users. Retry, or check that the backend is running.');
-    } finally {
-      setLoading(false);
-    }
-  }, [showPeople]);
+  const {
+    data: users,
+    loading,
+    loadError,
+    revalidationFailed,
+    refresh,
+  } = useCachedPanelData(
+    showPeople ? 'users:people' : 'users:base',
+    () => listUsers({ includePeople: showPeople }),
+    'Could not load users. Retry, or check that the backend is running.',
+    showPeople ? null : seed.users
+  );
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const returnToList = useCallback(
+    (reportErrors: boolean) => {
+      setView({ mode: 'list' });
+      void refresh({ reportErrors });
+    },
+    [refresh]
+  );
 
-  const backToList = useCallback(() => {
-    setView({ mode: 'list' });
-    void refresh();
-  }, [refresh]);
+  const backToList = useCallback(() => returnToList(false), [returnToList]);
+  const backToListAfterChange = useCallback(() => returnToList(true), [returnToList]);
 
   // Both forms render in the panel body, so entering one has to open the panel — otherwise the
   // header swaps to "New User" / "Edit User" with nothing beneath it.
@@ -96,7 +113,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
   // Alphabetical by display name (falling back to email), case-insensitive.
   const sortedUsers = useMemo(
     () =>
-      [...users].sort((a, b) =>
+      [...(users ?? [])].sort((a, b) =>
         compareNames(a.displayName ?? a.email ?? '', b.displayName ?? b.email ?? '')
       ),
     [users]
@@ -219,25 +236,32 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
       <LoadingText isLoading={loading}>Loading users…</LoadingText>
 
       {view.mode === 'create' && (
-        <UserForm mode="create" onSuccess={backToList} onCancel={backToList} />
+        <UserForm mode="create" onSuccess={backToListAfterChange} onCancel={backToList} />
       )}
 
       {view.mode === 'edit' && (
-        <UserForm mode="edit" user={view.user} onSuccess={backToList} onCancel={backToList} />
+        <UserForm
+          mode="edit"
+          user={view.user}
+          onSuccess={backToListAfterChange}
+          onCancel={backToList}
+        />
       )}
+
+      {view.mode === 'list' && !loading && !loadError && revalidationFailed && <StaleNotice />}
 
       {view.mode === 'list' && listBody}
 
       {view.mode === 'list' && mergeFor && (
         <MergeIdentityModal
           source={mergeFor}
-          candidates={users.filter(u => u.id !== mergeFor.id)}
+          candidates={sortedUsers.filter(u => u.id !== mergeFor.id)}
           open
           onClose={() => setMergeFor(null)}
           onMerged={async () => {
             setMergeFor(null);
             await revalidateMetadataCache();
-            void refresh();
+            void refresh({ reportErrors: true });
           }}
         />
       )}
@@ -248,7 +272,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
           onClose={() => setUpgradeFor(null)}
           onUpgraded={async () => {
             await revalidateMetadataCache();
-            void refresh();
+            void refresh({ reportErrors: true });
           }}
         />
       )}

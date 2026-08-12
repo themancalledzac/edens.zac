@@ -69,6 +69,43 @@ describe('MenuDropdown — auth actions', () => {
     expect(mockRefresh).toHaveBeenCalled();
   });
 
+  /**
+   * The admin panels cache every user's email address and the full text of every contact message
+   * in localStorage. None of that may outlive the session that fetched it, least of all on a
+   * shared browser — and the clear has to sweep the whole `adminPanel:v1:` prefix, since a logout
+   * from a page load that never opened /admin has nothing in the in-memory cache to drive it.
+   */
+  it('clears cached admin panel data on logout', async () => {
+    mockMe.mockResolvedValue(adminPrincipal);
+    mockLogout.mockResolvedValue();
+    window.localStorage.setItem('adminPanel:v1:users:base', '[{"id":1}]');
+    window.localStorage.setItem('adminPanel:v1:messages', '{"messages":[],"total":0}');
+    window.localStorage.setItem('unrelated', 'keep me');
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: /log out/i }));
+
+    await waitFor(() => expect(window.localStorage.getItem('adminPanel:v1:users:base')).toBeNull());
+    expect(window.localStorage.getItem('adminPanel:v1:messages')).toBeNull();
+    expect(window.localStorage.getItem('unrelated')).toBe('keep me');
+  });
+
+  /**
+   * Logout is best-effort — the component navigates away whether or not the call succeeded, since
+   * the cookie may already be gone. The cache clear has to follow that same rule: a failed logout
+   * that left the data sitting there would be the worst of both.
+   */
+  it('clears cached admin panel data even when logout fails', async () => {
+    mockMe.mockResolvedValue(adminPrincipal);
+    mockLogout.mockRejectedValue(new Error('network down'));
+    window.localStorage.setItem('adminPanel:v1:roles', '[{"id":1,"name":"a"}]');
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: /log out/i }));
+
+    await waitFor(() => expect(window.localStorage.getItem('adminPanel:v1:roles')).toBeNull());
+  });
+
   it('swaps "Log out" for "Log in" after logout without a remount', async () => {
     mockMe.mockResolvedValueOnce(principal).mockResolvedValue(null);
     // Mirror the real logout() contract: dispatch auth-changed on success.

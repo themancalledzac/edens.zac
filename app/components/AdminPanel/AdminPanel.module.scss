@@ -1,10 +1,12 @@
 /* AdminPanel — shared shell for admin hub panels (header + scrollable body) */
 
-/* Height is deliberately absent: the panel is a flex item of AdminPanelRenderer's .box, which
-   carries the packer's height as a max-height, so the panel is as tall as its contents up to that
-   cap. `overflow: hidden` is what lets it shrink past its content size when the cap binds (it
-   zeroes the flex automatic minimum size) and hand the overflow to .body's scroll — an explicit
-   `min-height: 0` here would be a second mechanism for the same job. */
+/* Height is deliberately absent HERE: the panel is a flex item of AdminPanelRenderer's .box, which
+   carries the packer's number as a real `height` (not a max-height — the packed number IS the
+   panel's content height, `chrome + rowCount * rowHeight`). As a non-growing flex item the panel is
+   then as tall as its own contents, bounded by that box. `overflow: hidden` is what lets it shrink
+   past its content size when the box binds (it zeroes the flex automatic minimum size) and hand the
+   overflow to .body's scroll — an explicit `min-height: 0` here would be a second mechanism for the
+   same job. `.isCollapsed` below is the one state that opts out and fills the box instead. */
 .panel {
   display: flex;
   flex-direction: column;
@@ -23,9 +25,33 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-/* Collapsed there is no body below, so the rule under the header would be a trailing edge. */
-.isCollapsed .header {
-  border-bottom: none;
+/* Collapsed the panel fills the packer's uniform bar box, so a text-only header stretches its
+   body strip to the same height as a button-carrying one. */
+.isCollapsed {
+  height: 100%;
+}
+
+/* Collapsed keeps a strip of the body visible below the header — a closed panel reads as the
+   same molecule minimized, not a bare title bar (Zac's 2026-08-10 review: the empty body shows
+   "as tall as the padding around it, maybe twice as tall"). The margin is the body padding it
+   stands in for, wrapping an empty run of the list surface at least one --space-4 tall:
+   32 + 16 = 48px, the COLLAPSED_BODY_SLIVER arithmetic in adminHubContent.ts — change the two
+   together.
+
+   A pseudo-element rather than the pair of divs this replaces. The strip is a painted surface with
+   nothing in it, so it has no business in the accessibility tree; as markup it needed an
+   `aria-hidden="true"` to stay out, which is a thing a future edit can drop. `::after` cannot be
+   reached by assistive tech at all, so the guard is structural instead of remembered. It is the
+   panel's last flex item — the Disclosure unmounts its body while closed — so `flex: 1` grows it
+   into the space below the header exactly as the outer div did, with the margin playing the
+   padding's part. */
+.isCollapsed::after {
+  content: '';
+  flex: 1;
+  min-height: var(--space-4);
+  margin: var(--space-4);
+  background: var(--content-frame);
+  border-radius: var(--radius-1);
 }
 
 .title {

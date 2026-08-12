@@ -122,6 +122,12 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
  * If collectionData is provided, creates a header row (cover image + metadata)
  * as the first row, before processing regular content.
  *
+ * `componentWidth` and the resolved gap are handed to {@link buildRows} as well as to the
+ * sizer. Row composition is otherwise unitless, and stays so for photographs; the pixels
+ * matter only to content that declares a {@link Content.minWidth} (admin panels), where
+ * membership has to be decided against a real width. This is the one production call site
+ * that supplies them.
+ *
  * @param content - Array of content blocks to process (should NOT include header items)
  * @param componentWidth - Total available width for display
  * @param chunkSize - Number of normal-width items per row (default: 2)
@@ -170,10 +176,10 @@ export function processContentForDisplay(
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;
 
-  const rows = buildRows(content, rowWidth, targetAR);
+  const rows = buildRows(content, rowWidth, targetAR, { componentWidth, gap: effectiveGap });
 
   const contentRows = rows.map(row => {
-    const items = calculateSizesFromBoxTree(row.boxTree, componentWidth, effectiveGap, rowWidth);
+    const items = calculateSizesFromBoxTree(row.boxTree, componentWidth, effectiveGap);
 
     return {
       rowType: 'content' as const,
@@ -654,12 +660,7 @@ export function createHeaderRow(
 
     // Cover image row — sized exactly like a single-item content row
     const coverTree: BoxTree = { type: 'leaf', content: coverBlock };
-    const coverItems = calculateSizesFromBoxTree(
-      coverTree,
-      componentWidth,
-      LAYOUT.mobileGridGap,
-      LAYOUT.mobileSlotWidth
-    );
+    const coverItems = calculateSizesFromBoxTree(coverTree, componentWidth, LAYOUT.mobileGridGap);
     rows.push({ rowType: 'header' as const, items: coverItems, boxTree: coverTree });
 
     // Metadata row — full width, auto height (rendered via text block)

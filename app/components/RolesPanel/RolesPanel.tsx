@@ -2,8 +2,10 @@
 
 import { useSearchParams } from 'next/navigation';
 import {
+  type Dispatch,
   type FormEvent,
   type ReactNode,
+  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -12,12 +14,15 @@ import {
 } from 'react';
 
 import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
+import { useAdminPanelSeed } from '@/app/components/AdminPanel/AdminPanelSeedContext';
 import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
+import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
+import { useCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { ApiError } from '@/app/lib/api/core';
 import { createRole, deleteRole, listRoles } from '@/app/lib/api/roles';
 import { type RoleSummary } from '@/app/types/Role';
@@ -58,10 +63,24 @@ interface RolesPanelProps {
  * the user must see: the create form and the detail editor both live in the body, so opening one
  * while collapsed would otherwise look like the control did nothing.
  *
- * A failed load gets its own body branch, checked ahead of the empty state. `listRoles` throws
- * `ApiError` out of `fetchAdminGetApi` on any non-OK response, so a `catch`-less `refresh` would
- * leave `roles` at `[]` and tell an admin whose backend is down that there are no roles — an
- * invitation to create a duplicate. Failed and empty must never look alike here.
+ * A failed load gets its own body branch, checked ahead of the empty state — an admin whose
+ * backend is down must never be told there are no roles, an invitation to create a duplicate.
+ * `useCachedPanelData` owns that distinction: `loadError` is set only when a load fails with
+ * nothing cached to show, while a failed background revalidation keeps the cached list up and
+ * raises `revalidationFailed` instead — which is what the {@link StaleNotice} above the list
+ * reports, so a list served from a dead backend is never presented as current. The optimistic
+ * delete's `setRoles` wraps the hook's write-through `setData`, so a deleted role cannot
+ * resurrect from stale cache on the next remount, nor from a fetch that was already in the air
+ * when it was deleted.
+ *
+ * On the hub the first paint is warmer than that: the page fetched the role list server-side to
+ * size this panel, and hands it over as the cache seed, so the list is on screen before any client
+ * fetch — which then reconciles underneath it.
+ *
+ * Returning to the list after a change (`backToListAfterChange`) reconciles underneath the list
+ * rather than blanking it, but announces a failure; a plain Cancel changed nothing, so it
+ * reconciles silently. A create that succeeded and then failed to refresh has to say so, and it
+ * lands in `loadError`, which carries a Retry.
  *
  * The {@link LoadingText} region sits outside the `view.mode === 'list'` guard, not inside it. It
  * has to outlive the branches it reports on (see its docblock), and `backToList` flips the view and
@@ -69,9 +88,6 @@ interface RolesPanelProps {
  */
 export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
   const searchParams = useSearchParams();
-  const [roles, setRoles] = useState<RoleSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [view, setView] = useState<View>({ mode: 'list' });
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -79,30 +95,37 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
   const [createError, setCreateError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      setRoles(await listRoles());
-    } catch (error) {
-      logger.error('RolesPanel', 'Failed to load roles', error);
-      setRoles([]);
-      setLoadError('Could not load roles. Retry, or check that the backend is running.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const seed = useAdminPanelSeed();
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const { data, loading, loadError, revalidationFailed, refresh, setData } = useCachedPanelData(
+    'roles',
+    listRoles,
+    'Could not load roles. Retry, or check that the backend is running.',
+    seed.roles
+  );
+  const roles = useMemo(() => data ?? [], [data]);
 
-  const backToList = useCallback(() => {
-    setView({ mode: 'list' });
-    setCreateError(null);
-    setName('');
-    void refresh();
-  }, [refresh]);
+  const setRoles = useCallback<Dispatch<SetStateAction<RoleSummary[]>>>(
+    action =>
+      setData(previous => {
+        const base = previous ?? [];
+        return typeof action === 'function' ? action(base) : action;
+      }),
+    [setData]
+  );
+
+  const returnToList = useCallback(
+    (reportErrors: boolean) => {
+      setView({ mode: 'list' });
+      setCreateError(null);
+      setName('');
+      void refresh({ reportErrors });
+    },
+    [refresh]
+  );
+
+  const backToList = useCallback(() => returnToList(false), [returnToList]);
+  const backToListAfterChange = useCallback(() => returnToList(true), [returnToList]);
 
   // The create form and the detail editor both render in the panel body, so entering one has to
   // open the panel — otherwise the header swaps to "New Role" with nothing beneath it.
@@ -142,7 +165,7 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
     try {
       setSubmitting(true);
       await createRole({ name: name.trim() });
-      backToList();
+      backToListAfterChange();
     } catch (error) {
       setCreateError(
         error instanceof ApiError && error.status === 409
@@ -265,7 +288,11 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
         </form>
       )}
 
-      {view.mode === 'detail' && <RoleDetailView role={view.role} onDeleted={backToList} />}
+      {view.mode === 'detail' && (
+        <RoleDetailView role={view.role} onDeleted={backToListAfterChange} />
+      )}
+
+      {view.mode === 'list' && !loading && !loadError && revalidationFailed && <StaleNotice />}
 
       {view.mode === 'list' && listBody}
     </AdminPanel>

@@ -89,7 +89,14 @@ export function BoxRenderer({
     }
 
     if (isPanelContent(tree.content)) {
-      return <AdminPanelRenderer content={tree.content} width={size.width} height={size.height} />;
+      return (
+        <AdminPanelRenderer
+          content={tree.content}
+          width={size.width}
+          height={size.height}
+          positionClassName={cbStyles.imageSingle || ''}
+        />
+      );
     }
 
     const rendererProps = determineContentRendererProps(

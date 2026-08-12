@@ -1,10 +1,13 @@
 // Admin = authenticated admin principal: the backend enforces hasRole('ADMIN') on
 // /api/admin/** (see docs 009). Gating centralized in app/(admin)/layout.tsx via requireAdmin().
-import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { getAdminHomeTiles } from '@/app/lib/api/adminHome';
+import { getAdminMessages } from '@/app/lib/api/messages';
+import { listRoles } from '@/app/lib/api/roles';
+import { listUsers } from '@/app/lib/api/users';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
+import { AdminHubClient } from './AdminHubClient';
 import { buildAdminHubContent } from './adminHubContent';
 import styles from './page.module.scss';
 
@@ -19,14 +22,45 @@ export const dynamic = 'force-dynamic';
  * a user list (the header controls collapse and every row ellipsizes), and portrait-covered tiles
  * pair up as well. The pre-pipeline `AdminHubGrid` was explicitly `grid-template-columns: 1fr` on
  * mobile; this restores that. Desktop is unaffected — the option is read only on the mobile branch.
+ *
+ * Panels render through `AdminHubClient`, which owns their collapsed state: collapsing one swaps
+ * its content model for a bar-shaped footprint, so the packer re-runs and the panels and tiles
+ * still standing widen into the reclaimed space.
+ *
+ * The three row COUNTS are resolved here, alongside the tiles, because a panel reserves
+ * `chrome + rowCount × rowHeight` of layout height and the packer needs that before it can place
+ * anything. Fetching them server-side is what makes the first pack the only pack: a count supplied
+ * after paint would rewrite the panels' footprints, re-pack the page, change row membership and so
+ * remount all three panels — the loop that ended in `ERR_INSUFFICIENT_RESOURCES` on 2026-08-10.
+ * Here there is no second pack to converge, rather than a second pack argued to be harmless.
+ *
+ * Messages exposes a real count (`total`), so it is fetched one row deep. Users and roles have no
+ * count endpoint and return their full lists; both are small admin collections and all four
+ * requests share one wall-clock round-trip. Each falls back independently, matching the tiles'
+ * existing posture — a backend blip degrades a panel to its minimum reserved height instead of
+ * failing the hub.
+ *
+ * Those two full lists are then handed to the panels as `seed`, so a list the server already holds
+ * is painted rather than re-requested — the single-fetch rule, which keeping only `.length` broke.
+ * `listUsers()` takes no options, which is exactly the `users:base` variant the panel opens on; its
+ * "show tag-only people" variant is a different fetch and is left to load on demand. A failed
+ * server fetch seeds `null`, not `[]`, so the panel loads for itself instead of announcing an empty
+ * account list, and the count falls back to the layout floor as before.
  */
 export default async function AdminHubPage() {
-  const [tiles, ssrViewport] = await Promise.all([
+  const [tiles, ssrViewport, users, messages, roles] = await Promise.all([
     getAdminHomeTiles().catch(() => []),
     resolveSsrViewport(),
+    listUsers().catch(() => null),
+    getAdminMessages(1, 0).catch(() => null),
+    listRoles().catch(() => null),
   ]);
 
-  const content = buildAdminHubContent(tiles);
+  const content = buildAdminHubContent(tiles, {
+    users: users?.length ?? 0,
+    messages: messages?.total ?? 0,
+    roles: roles?.length ?? 0,
+  });
 
   return (
     <PageShell pageType="collectionsCollection">
@@ -34,11 +68,10 @@ export default async function AdminHubPage() {
         <h1 className={styles.pageTitle}>Admin</h1>
         <span className={styles.subtitle}>local dev console</span>
       </div>
-      <ContentBlockWithFullScreen
+      <AdminHubClient
         content={content}
-        priorityBlockIndex={0}
-        enableFullScreenView={false}
         mobileChunkSize={1}
+        seed={{ users, roles }}
         serverContentWidth={ssrViewport?.contentWidth}
         serverViewportHeight={ssrViewport?.viewportHeight}
         serverIsMobile={ssrViewport?.isMobile}

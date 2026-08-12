@@ -11,6 +11,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { UserManagementPanel } from '@/app/components/UserManagementPanel/UserManagementPanel';
+import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { getMergePreview, listUsers, mergeUser } from '@/app/lib/api/users';
 
 const mockPush = jest.fn();
@@ -30,6 +31,8 @@ const person = { id: 2, email: null, displayName: 'Danny Nieves', status: 'PERSO
 
 beforeEach(() => {
   jest.clearAllMocks();
+  clearCachedPanelData();
+  window.localStorage.clear();
   (listUsers as jest.Mock).mockImplementation(async (opts?: { includePeople?: boolean }) =>
     opts?.includePeople ? [account, person] : [account]
   );

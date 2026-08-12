@@ -1,7 +1,13 @@
-import { buildAdminHubContent } from '@/app/(admin)/admin/adminHubContent';
+import {
+  buildAdminHubContent,
+  COLLAPSED_PANEL_SIZE,
+  withPanelFootprints,
+} from '@/app/(admin)/admin/adminHubContent';
 import { ADMIN_TILES } from '@/app/(admin)/admin/adminTiles';
+import { LAYOUT } from '@/app/constants';
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
 import type { ContentPanelModel, ContentParallaxImageModel } from '@/app/types/Content';
+import { isSoloHero } from '@/app/utils/rowCombination';
 
 function makeTile(tileKey: string, overrides: Partial<AdminHomeTileApi> = {}): AdminHomeTileApi {
   return {
@@ -136,5 +142,130 @@ describe('buildAdminHubContent', () => {
     for (const tile of tiles) {
       expect(tile.imageUrl).toBe('');
     }
+  });
+});
+
+describe('withPanelFootprints', () => {
+  const content = buildAdminHubContent([]);
+  const NONE = { users: false, messages: false, roles: false } as const;
+
+  it('returns the content unchanged when nothing is collapsed', () => {
+    expect(withPanelFootprints(content, NONE)).toEqual(content);
+  });
+
+  it('gives a collapsed panel the bar footprint and leaves its siblings alone', () => {
+    const [users, messages, roles] = withPanelFootprints(content, {
+      ...NONE,
+      users: true,
+    }) as ContentPanelModel[];
+
+    expect(users?.width).toBe(COLLAPSED_PANEL_SIZE.width);
+    expect(users?.height).toBe(COLLAPSED_PANEL_SIZE.height);
+    expect(users?.rating).toBe(COLLAPSED_PANEL_SIZE.rating);
+    expect(users?.minWidth).toBe(COLLAPSED_PANEL_SIZE.minWidth);
+    expect(users?.maxWidth).toBe(COLLAPSED_PANEL_SIZE.maxWidth);
+    expect(users?.minHeight).toBe(COLLAPSED_PANEL_SIZE.minHeight);
+    expect(users?.maxHeight).toBe(COLLAPSED_PANEL_SIZE.maxHeight);
+    expect(messages?.height).toBe(1100);
+    expect(roles?.height).toBe(1100);
+  });
+
+  it('collapses every panel type, not just the first', () => {
+    const panels = withPanelFootprints(content, {
+      users: true,
+      messages: true,
+      roles: true,
+    }).slice(0, PANEL_COUNT) as ContentPanelModel[];
+
+    for (const panel of panels) {
+      expect(panel.height).toBe(COLLAPSED_PANEL_SIZE.height);
+    }
+  });
+
+  it('leaves non-panel blocks untouched', () => {
+    const collapsed = withPanelFootprints(content, {
+      users: true,
+      messages: true,
+      roles: true,
+    });
+    expect(collapsed.slice(PANEL_COUNT)).toEqual(content.slice(PANEL_COUNT));
+  });
+
+  /**
+   * The reversal of this feature's first design, which declared 1200×56 precisely so the bar WOULD
+   * clear both gates and claim its own row — leaving ~874px of dead space beside a 400px-capped
+   * bar (Zac's 2026-08-10 review). A collapsed panel is an ordinary small block now: its declared
+   * AR sits under the extremeness ramp, so `isSoloHero` can never fire and the bar goes through
+   * row composition like any other item.
+   */
+  it('a collapsed panel stays under the solo-hero gates, so it composes like any block', () => {
+    const [users] = withPanelFootprints(content, { ...NONE, users: true });
+    expect(isSoloHero(users!, LAYOUT.defaultChunkSize)).toBe(false);
+  });
+
+  it('an expanded panel does NOT solo — it shares its row', () => {
+    const [users] = withPanelFootprints(content, NONE);
+    expect(isSoloHero(users!, LAYOUT.defaultChunkSize)).toBe(false);
+  });
+
+  /**
+   * Collapse is still the only footprint rewrite `withPanelFootprints` performs — it must hand an
+   * expanded panel back exactly as `buildAdminHubContent` declared it. What that declaration
+   * CONTAINS changed: a panel now carries a content-derived height pin. The pin is set once, on the
+   * server, from a row count; it is not a measurement and nothing downstream of layout may rewrite
+   * it. That distinction is what separates this from the measured-size path that shipped briefly on
+   * 2026-08-10 and was reverted the same day (oscillating re-pack → remount → refetch storm).
+   */
+  it('hands an expanded panel back exactly as declared, pin included', () => {
+    const [users, messages, roles] = withPanelFootprints(content, NONE) as ContentPanelModel[];
+    const [declaredUsers, declaredMessages, declaredRoles] = content as ContentPanelModel[];
+
+    for (const [panel, declared] of [
+      [users, declaredUsers],
+      [messages, declaredMessages],
+      [roles, declaredRoles],
+    ] as const) {
+      expect(panel?.width).toBe(600);
+      expect(panel?.height).toBe(1100);
+      expect(panel?.minWidth).toBe(400);
+      expect(panel?.minHeight).toBe(declared?.minHeight);
+      expect(panel?.maxHeight).toBe(declared?.maxHeight);
+    }
+  });
+
+  /**
+   * The pin is what makes a panel's reserved box track its contents, so it has to be equal on both
+   * ends (that equality is how the sizer recognises a width-independent height) and it has to
+   * MOVE with the count. A panel that reserved the same height for two messages as for forty is
+   * the bug this feature exists to remove.
+   */
+  it('pins a panel to a height that grows with its row count', () => {
+    const small = buildAdminHubContent([], { users: 2, messages: 2, roles: 2 });
+    const large = buildAdminHubContent([], { users: 12, messages: 9, roles: 9 });
+
+    for (const index of [0, 1, 2]) {
+      const lean = small[index] as ContentPanelModel;
+      const full = large[index] as ContentPanelModel;
+
+      expect(lean.minHeight).toBe(lean.maxHeight);
+      expect(full.minHeight).toBe(full.maxHeight);
+      expect(full.minHeight!).toBeGreaterThan(lean.minHeight!);
+    }
+  });
+
+  it('floors an empty panel and caps a runaway one, so neither breaks the row', () => {
+    const [emptyUsers] = buildAdminHubContent([], {
+      users: 0,
+      messages: 0,
+      roles: 0,
+    }) as ContentPanelModel[];
+    const [hugeUsers] = buildAdminHubContent([], {
+      users: 500,
+      messages: 0,
+      roles: 0,
+    }) as ContentPanelModel[];
+
+    expect(emptyUsers?.minHeight).toBe(192);
+    expect(hugeUsers?.minHeight).toBe(1000);
   });
 });

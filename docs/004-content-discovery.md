@@ -25,7 +25,7 @@ Switching it off drops **both `UNLISTED` and `HIDDEN`**, mirroring the backend's
 ## Remaining work (deduped)
 
 - Build ONE reusable filter-bar/chip component shared across Search / Location / Person / Tag / Collection — don't rebuild per page.
-- ✅ **Backend visibility on collection blocks — done** (`0243-collection-block-visibility`), which activates the admin Hide-hidden chip. Still open: verify `locations` enrichment on collection-ref blocks — `convertCollectionContentToParallax` hard-codes `locations: []` on the card, though filtering runs pre-conversion so it works today.
+- ✅ **Backend visibility on collection blocks — done** (`0243-collection-block-visibility`, backend PR #143), which activates the admin Hide-hidden chip. Still open (verified 2026-08-10): **backend never enriches `locations` on collection blocks** — `SyntheticCollectionResolver` batch-loads tags only, so the location dimension is inert on `/collections` (frontend matching via `collectionRefMatchesCriteria` is ready; needs a BE enrichment mirroring the tags batch-load). `convertCollectionContentToParallax` also hard-codes `locations: []` on the card, though filtering runs pre-conversion so that alone doesn't block it.
 - `/search` public route: `SearchPage` server component + `SearchFilters` client component + `searchImages()` API fn + `SearchParams` type + nav link + error/loading/empty states. ⛔ Blocked on backend `GET /content/images/search` (and `GET /content/locations` for the location dropdown).
 - Location filter bar Phase 2/3: tag/people/camera chip rows, dynamic option counts (`Canon R5 (47)`), removable active-filter badges + Clear-all, focal-length range.
 - Collection tags: ✅ **frontend Phase 1 merged ([PR #167](https://github.com/themancalledzac/edens.zac/pull/167), `0165`)** — a shared `TagsSelector` (extracted from the image editor's `TagsPeopleSection`, reused on the manage page) + `tagUtils` (`convertTagsToModels`/`createTagsUpdate`) + `buildUpdatePayload` wiring; backend `TagUpdate` persistence confirmed. Remaining: the auto-tag endpoint + "Auto-populate from images" button (Phase 2, backend), and optional tag-chip display on the public collection page.
@@ -45,7 +45,7 @@ Switching it off drops **both `UNLISTED` and `HIDDEN`**, mirroring the backend's
 | [Collection IA & user-flow (living spec)](superpowers/specs/2026-06-29-collection-ia-and-user-flow-design.md) | spec | 📘 (A1/A3 shipped; A2/Track D deferred; D7/D8 superseded → collections-as-tags)           |
 | [Collections-as-tags (design)](superpowers/specs/2026-07-06-collections-as-tags-design.md)                    | spec | 📘 (D1–D12 awaiting review)                                                               |
 | [Menu-dropdown nav & discovery](superpowers/specs/2026-06-10-menu-dropdown-nav-design.md)                     | spec | ✅ Option A shipped · Option C open                                                       |
-| [Collections page filter bar](superpowers/specs/2026-08-05-collections-page-filter-bar-design.md)             | spec | ✅ Shipped 0243 (rating sort cut) · Hide-hidden needs BE 0243-collection-block-visibility |
+| [Collections page filter bar](superpowers/specs/2026-08-05-collections-page-filter-bar-design.md)             | spec | ✅ Shipped 0243 (rating sort cut) · BE visibility shipped (backend #143); chip is live    |
 
 ## Blocked on / open
 

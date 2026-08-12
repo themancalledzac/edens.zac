@@ -55,4 +55,44 @@ describe('requireAdmin', () => {
     await expect(requireAdmin()).rejects.toThrow('NEXT_REDIRECT:/login');
     expect(mockRedirect).toHaveBeenCalledWith('/login');
   });
+
+  /**
+   * The local bypass and the production gate, pinned as a pair — the bypass is only defensible
+   * while the second test below keeps passing.
+   *
+   * These set `NEXT_PUBLIC_ENV` rather than `NODE_ENV` because Jest fixes `NODE_ENV` to `test`
+   * for the whole run; `isLocalEnvironment()` reads either, so this exercises the same branch.
+   * That `NODE_ENV=test` default is also why every assertion above still describes the real gate.
+   */
+  describe('local environment', () => {
+    const originalEnv = process.env.NEXT_PUBLIC_ENV;
+
+    afterEach(() => {
+      process.env.NEXT_PUBLIC_ENV = originalEnv;
+    });
+
+    it('resolves without consulting the session at all when local', async () => {
+      process.env.NEXT_PUBLIC_ENV = 'local';
+
+      await expect(requireAdmin()).resolves.toBeUndefined();
+      expect(mockRedirect).not.toHaveBeenCalled();
+      // The point is reachability without a login, so it must not even ask.
+      expect(mockMeServer).not.toHaveBeenCalled();
+    });
+
+    it('still redirects an anonymous request when NOT local', async () => {
+      process.env.NEXT_PUBLIC_ENV = 'production';
+      mockMeServer.mockResolvedValue(null);
+
+      await expect(requireAdmin()).rejects.toThrow('NEXT_REDIRECT:/login');
+      expect(mockMeServer).toHaveBeenCalled();
+    });
+
+    it('still redirects a logged-in non-admin when NOT local', async () => {
+      process.env.NEXT_PUBLIC_ENV = 'production';
+      mockMeServer.mockResolvedValue(principal({ isAdmin: false }));
+
+      await expect(requireAdmin()).rejects.toThrow('NEXT_REDIRECT:/login');
+    });
+  });
 });

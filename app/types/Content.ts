@@ -50,10 +50,100 @@ export interface Content {
   width?: number;
   height?: number;
 
+  /**
+   * Minimum rendered width in CSS px, honoured by the row packer at composition time.
+   *
+   * A photograph is scale-free — it reads at any width — so image content leaves this
+   * undefined and width-cost math alone decides its size. A UI block is not: an admin
+   * panel carries irreducible chrome (a header row of controls, per-row action buttons)
+   * that wraps and then clips below a certain width. Declaring `minWidth` tells
+   * `buildRows` to close a row rather than admit a row-mate that would starve this item,
+   * so the constraint costs width from its NEIGHBOURS, never from the page.
+   *
+   * It is a strong preference, not a hard guarantee, in two distinct ways:
+   *
+   * 1. **Unsatisfiable minimums degrade.** An item alone in a row narrower than its own
+   *    minimum takes the full width available, because overflowing a phone would be worse
+   *    than rendering cramped. A 400px panel on a 390px phone gets 390px.
+   * 2. **Satisfiable minimums are honoured to within a few pixels.** The packer decides
+   *    membership from a gap-aware estimate of each leaf's width, not from the sizer's
+   *    exact equal-height solve (see `leafWidthShares` in rowCombination.ts), so a leaf
+   *    can render marginally under its declared minimum. Measured over ~8000 multi-member
+   *    rows: 21 leaves landed short, worst case 3.54px (1.63%). Size the value with that
+   *    tolerance in mind — declare the width below which the block genuinely breaks, not
+   *    the width at which it starts looking tight.
+   *
+   * Leave it undefined (not 0) for anything that scales: `undefined` is what keeps the
+   * entire min-width path out of the layout engine's hot loops.
+   */
+  minWidth?: number;
+
+  /**
+   * Maximum rendered width in CSS px, applied by the sizer as a cap on the leaf's allocated
+   * width. Unlike {@link minWidth} it does not participate in row membership — it binds at
+   * render time, and row-mates are NOT re-solved around it, so a capped block can leave its
+   * column a little narrower than the solve intended.
+   *
+   * It binds only where a block HAS a row-mate. A block alone in its row spans the full row
+   * width regardless: the cap is a statement about sharing ("leave the rest to my neighbours"),
+   * and with no neighbour the width it gives up becomes a dead strip beside the content rather
+   * than going anywhere. That is the same degradation {@link minWidth} makes for a lone item,
+   * from the same premise — a bound that costs a neighbour nothing is not worth honouring
+   * against the page.
+   *
+   * So declare it on any block that reads badly stretched, not only on blocks that claim solo
+   * rows: the case it exists for is a block sharing a wide row with something that can use the
+   * width better.
+   */
+  maxWidth?: number;
+
+  /**
+   * Height clamp in CSS px, applied by the sizer AFTER width allocation:
+   * `H(W) = clamp(a·W + b, minHeight, maxHeight)`. What lets a short or collapsed block sit
+   * top-aligned in a row without stretching to its tallest sibling.
+   *
+   * How much of the engine sees it depends on whether the two ends are EQUAL:
+   *
+   * - An unequal band is invisible to the packer. `heightModel` (composer) and
+   *   `computeHeightCoeffs` (sizer) both model the leaf as `flexibleLeaf(declaredAR)`, so width
+   *   distribution and row membership run on the declared `width`/`height` ratio and only the
+   *   rendered height is clamped.
+   * - Equal ends are a PIN, and a pin changes both. The composer models the block as `a = 0` and
+   *   scores its row by RENDERED height rather than by declared AR (`renderedAR`, gated on the
+   *   `pinned` precheck in `pickBestComposition`), and `buildRows` puts any row that could carry
+   *   a pinned member through the stricter clean-extension membership rules instead of the
+   *   width-cost fill budget. Do not read the first bullet as covering pins.
+   *
+   * Declare a pin with {@link pinnedHeight} rather than by hand — that is what makes the
+   * equality true by construction (a collapsed admin panel's bar, 102px: see
+   * `COLLAPSED_PANEL_HEIGHT`, summed from the panel's own chrome tokens). `minHeight` wins if
+   * the two ever conflict. Undefined skips the entire clamp path — photographs never enter it.
+   */
+  minHeight?: number;
+  maxHeight?: number;
+
   // UI enhancements for cover images and display
   overlayText?: string;
   cardTypeBadge?: string;
   dateBadge?: string;
+}
+
+/**
+ * Declare a block's height as PINNED at `px` — independent of the width it is given.
+ *
+ * The layout engine models every block as `H(W) = a·W + b` and reads a pin as `a = 0`, which is
+ * a different code path from an ordinary clamp in both halves of the engine: the composer scores
+ * a pinned block by its rendered height instead of its aspect ratio, and the sizer re-asserts the
+ * pin instead of scaling it to absorb a CSS gap. What marks a block as pinned is `minHeight ===
+ * maxHeight`, tested by `getPinnedHeight`.
+ *
+ * That equality is an invariant two hand-written fields cannot hold on their own. Spreading this
+ * helper makes it true by construction, so a pin can never drift into a 2px-tall clamp band that
+ * looks pinned, reads as flexible, and sends the two halves of the engine down different paths
+ * for the same block.
+ */
+export function pinnedHeight(px: number): { minHeight: number; maxHeight: number } {
+  return { minHeight: px, maxHeight: px };
 }
 
 /**
@@ -294,12 +384,15 @@ export interface ContentCollectionModel extends Content {
   visibility?: CollectionVisibility;
 }
 
+/** The admin hub panels that can appear as a PANEL content block. */
+export type PanelType = 'users' | 'messages' | 'roles';
+
 /**
  * Panel content model - displays a UI panel (e.g. users or messages) as a rated content block
  */
 export interface ContentPanelModel extends Content {
   contentType: 'PANEL';
-  panelType: 'users' | 'messages' | 'roles';
+  panelType: PanelType;
   rating: number;
 }
 

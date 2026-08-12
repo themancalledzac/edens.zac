@@ -1338,7 +1338,7 @@ describe('Mixed content types through buildRows', () => {
     const rows = buildRows(items, 5);
 
     for (const row of rows) {
-      const sizes = calculateSizesFromBoxTree(row.boxTree, 1000, 12.8, 5);
+      const sizes = calculateSizesFromBoxTree(row.boxTree, 1000, 12.8);
       for (const size of sizes) {
         expect(size.width).toBeGreaterThan(0);
         expect(size.height).toBeGreaterThan(0);

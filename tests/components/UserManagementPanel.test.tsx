@@ -9,6 +9,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import { UserManagementPanel } from '@/app/components/UserManagementPanel/UserManagementPanel';
+import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import * as usersApi from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
 
@@ -52,7 +53,27 @@ const USERS: AdminUserSummary[] = [
 describe('UserManagementPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearCachedPanelData();
+    window.localStorage.clear();
     mockListUsers.mockResolvedValue(USERS);
+  });
+
+  /**
+   * A warm cache turns a dead backend into a silent one: the list paints from localStorage, the
+   * background revalidation fails, and nothing on screen says the accounts are last session's.
+   * The notice is the only thing standing between "cached" and "current".
+   */
+  it('says the list is cached when a background refresh fails', async () => {
+    const warm = render(<UserManagementPanel />);
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument());
+    warm.unmount();
+
+    mockListUsers.mockRejectedValueOnce(new Error('Backend unreachable'));
+    render(<UserManagementPanel />);
+
+    await waitFor(() => expect(screen.getByText(/showing cached data/i)).toBeInTheDocument());
+    expect(screen.getByText('Alice')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('lists users with name, email, and status', async () => {
