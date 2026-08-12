@@ -10,6 +10,8 @@ import {
   fetchAdminPatchJsonApi,
   fetchAdminPostJsonApi,
   fetchAdminPutJsonApi,
+  fetchEditPatchJsonApi,
+  fetchEditPostJsonApi,
   fetchPatchJsonApi,
   fetchPostJsonApi,
   fetchPutJsonApi,
@@ -255,6 +257,44 @@ describe('fetchBase (tested via public API functions)', () => {
     });
   });
 
+  describe('edit endpoint functions', () => {
+    it('should use edit endpoint for fetchEditPostJsonApi', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue({ success: true }),
+      };
+      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+      await fetchEditPostJsonApi('/test', { data: 'test' });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/edit'),
+        expect.objectContaining({
+          method: 'POST',
+        })
+      );
+    });
+
+    it('should use edit endpoint for fetchEditPatchJsonApi', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue({ success: true }),
+      };
+      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+      await fetchEditPatchJsonApi('/test', { data: 'test' });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/edit'),
+        expect.objectContaining({
+          method: 'PATCH',
+        })
+      );
+    });
+  });
+
   describe('response handling', () => {
     it('should return parsed JSON for successful responses', async () => {
       const mockData = { id: 1, name: 'Test' };
@@ -383,6 +423,28 @@ describe('getApiBaseUrl — dev routes browser calls through the same-origin pro
 
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringMatching(/^\/api\/proxy\/api\/read\//),
+      expect.any(Object)
+    );
+  });
+
+  it('routes browser edit calls through the relative /api/proxy path', async () => {
+    Object.defineProperty(global, 'window', {
+      value: { location: { hostname: '192.168.68.60' } },
+      writable: true,
+    });
+
+    const mockResponse = {
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: 'ok' }),
+    };
+    (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+    const { fetchEditPostJsonApi: fetchEditPost } = await import('@/app/lib/api/core');
+    await fetchEditPost('/collections/5/reorder', {});
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/api\/proxy\/api\/edit\//),
       expect.any(Object)
     );
   });

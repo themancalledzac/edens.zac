@@ -69,6 +69,22 @@ describe('CollectionRolesSection', () => {
     expect(screen.getByLabelText('Access level for ken@x.com')).toHaveValue('CLIENT');
   });
 
+  it('offers COLLABORATOR as a level option on the per-grant, add-grant, and create-grant selects', async () => {
+    await renderSection();
+
+    const grantSelect = await screen.findByLabelText('Access level for pnwer');
+    expect(within(grantSelect).getByRole('option', { name: 'Collaborator (edit collection)' }))
+      .toBeInTheDocument();
+
+    await screen.findByLabelText('Add a role');
+    const addLevelSelect = screen.getByLabelText('Access level for added role');
+    expect(within(addLevelSelect).getByRole('option', { name: 'Collaborator' })).toBeInTheDocument();
+
+    const createLevelSelect = screen.getByLabelText('Access level for created role');
+    expect(within(createLevelSelect).getByRole('option', { name: 'Collaborator' }))
+      .toBeInTheDocument();
+  });
+
   it('shows the empty state when no roles grant the collection', async () => {
     mockListCollectionRoles.mockResolvedValue([]);
     await renderSection();

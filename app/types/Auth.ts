@@ -3,8 +3,11 @@
  * Source of truth: edens.zac.backend MeResponse / GalleryMembership.
  */
 
-/** Per-collection membership role. GENERAL = view-only; CLIENT = download + tag + star. */
-export type CollectionRole = 'GENERAL' | 'CLIENT';
+/**
+ * Per-collection membership role. GENERAL = view-only; CLIENT = download + tag + star;
+ * COLLABORATOR = client powers + curation edits.
+ */
+export type CollectionRole = 'GENERAL' | 'CLIENT' | 'COLLABORATOR';
 
 export interface GalleryMembership {
   collectionId: number;

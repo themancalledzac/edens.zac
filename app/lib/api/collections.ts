@@ -12,9 +12,10 @@ import {
   ApiError,
   fetchAdminDeleteApi,
   fetchAdminGetApi,
-  fetchAdminPatchJsonApi,
   fetchAdminPostJsonApi,
   fetchAdminPutJsonApi,
+  fetchEditPatchJsonApi,
+  fetchEditPostJsonApi,
   fetchReadApi,
 } from '@/app/lib/api/core';
 import {
@@ -329,22 +330,22 @@ export async function getMetadata(): Promise<GeneralMetadataDTO | null> {
 }
 
 /**
- * PATCH /api/admin/collections/{id}/rating
+ * PATCH /api/edit/collections/{id}/rating
  * Set the rating for a collection. Pass `null` to clear.
  */
 export async function updateCollectionRating(id: number, rating: number | null): Promise<void> {
-  await fetchAdminPatchJsonApi<void>(`/collections/${id}/rating`, { rating });
+  await fetchEditPatchJsonApi<void>(`/collections/${id}/rating`, { rating });
 }
 
 /**
- * POST /api/admin/collections/{collectionId}/reorder
+ * POST /api/edit/collections/{collectionId}/reorder
  * Reorder content in a collection (supports all content types: IMAGE, COLLECTION, TEXT, GIF)
  */
 export async function reorderCollectionContent(
   collectionId: number,
   reorders: Array<{ contentId: number; newOrderIndex: number }>
 ): Promise<CollectionModel | null> {
-  return fetchAdminPostJsonApi<CollectionModel>(`/collections/${collectionId}/reorder`, {
+  return fetchEditPostJsonApi<CollectionModel>(`/collections/${collectionId}/reorder`, {
     reorders,
   });
 }

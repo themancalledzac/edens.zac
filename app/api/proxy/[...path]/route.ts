@@ -77,18 +77,19 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
   const pathParts = params.path || [];
   const targetUrl = buildTargetUrl(pathParts, req.nextUrl.search);
 
-  // Belt & suspenders: refuse anonymous admin API in production before forwarding.
-  // The backend `hasRole('ADMIN')` on the `ezac_session` cookie stays authoritative;
-  // this is a cheap early reject + defense in depth. `api/dev/**` is exempt (dev-only,
-  // @Profile-gated on the backend) and dev is unaffected (localhost admin has no login).
-  // The `startsWith('api/admin/')` match below is intentionally exact/case-sensitive
-  // (an odd-cased or bare `api/admin` path is not caught here) — that's acceptable
-  // because this check is NOT the real gate; the backend's `hasRole('ADMIN')`
-  // authorizes every request regardless of what this early check catches.
+  // Belt & suspenders: refuse anonymous admin/edit API in production before forwarding.
+  // The backend's own authorization (`hasRole('ADMIN')`, per-collection role checks on
+  // the `edit` surface) stays authoritative; this is a cheap early reject + defense in
+  // depth for both privileged surfaces. `api/dev/**` is exempt (dev-only, @Profile-gated
+  // on the backend) and dev is unaffected (localhost admin has no login).
+  // The `startsWith(...)` match below is intentionally exact/case-sensitive (an odd-cased
+  // or bare `api/admin`/`api/edit` path is not caught here) — that's acceptable because
+  // this check is NOT the real gate; the backend's own authorization authorizes every
+  // request regardless of what this early check catches.
   const resolvedPath = pathParts.join('/').replace(/^\/+/, '');
   if (
     process.env.NODE_ENV === 'production' &&
-    resolvedPath.startsWith('api/admin/') &&
+    (resolvedPath.startsWith('api/admin/') || resolvedPath.startsWith('api/edit/')) &&
     !req.cookies.get('ezac_session')?.value
   ) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

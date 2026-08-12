@@ -360,6 +360,49 @@ describe('Vercel BFF proxy /api/proxy/[...path] — anonymous admin API refusal 
     expect(res.status).toBe(200);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('rejects an anonymous edit POST with 401 and does NOT forward', async () => {
+    setProd();
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+
+    const req = new NextRequest('https://example.com/api/proxy/api/edit/collections/5/reorder', {
+      method: 'POST',
+    });
+    const res = await POST(req, {
+      params: Promise.resolve({ path: ['api', 'edit', 'collections', '5', 'reorder'] }),
+    } as never);
+
+    expect(res.status).toBe(401);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('forwards an edit POST when the ezac_session cookie is present', async () => {
+    setProd();
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+
+    const req = new NextRequest('https://example.com/api/proxy/api/edit/collections/5/reorder', {
+      method: 'POST',
+      headers: {
+        cookie: 'ezac_session=abc123',
+        'content-type': 'application/json',
+        origin: 'https://example.com',
+      },
+      body: JSON.stringify({ reorders: [] }),
+    });
+    const res = await POST(req, {
+      params: Promise.resolve({ path: ['api', 'edit', 'collections', '5', 'reorder'] }),
+    } as never);
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    // The forwarded request carries the session cookie through to the backend.
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Headers).get('cookie')).toBe('ezac_session=abc123');
+  });
 });
 
 describe('Vercel BFF proxy /api/proxy/[...path] — real-IP header sanitization', () => {

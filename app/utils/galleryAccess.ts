@@ -4,8 +4,20 @@
  * logged-in user is never admin. A CLIENT's per-collection powers come from `me.galleries`
  * (the role_collection grants surfaced by /api/auth/me).
  */
-import { type GalleryMembership, type MeResponse } from '@/app/types/Auth';
+import { type CollectionRole, type GalleryMembership, type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel } from '@/app/types/Collection';
+
+/** Ladder order for per-collection roles; mirrors the backend AccessLevel ranks. */
+const ROLE_RANK: Record<CollectionRole, number> = {
+  GENERAL: 0,
+  CLIENT: 1,
+  COLLABORATOR: 2,
+};
+
+/** True when `role` grants at least `minimum`'s capabilities (rank comparison, not equality). */
+export function hasRoleAtLeast(role: CollectionRole | undefined, minimum: CollectionRole): boolean {
+  return role !== undefined && ROLE_RANK[role] >= ROLE_RANK[minimum];
+}
 
 /** The membership for a specific collection, or undefined. */
 export function findMembership(
@@ -17,7 +29,7 @@ export function findMembership(
 
 /**
  * True when the viewer may act as a client of this collection: admin (editMode) anywhere, or a
- * non-admin holding a CLIENT membership for the collection.
+ * non-admin holding a CLIENT-or-above membership for the collection.
  */
 export function isClientOfCollection(
   me: MeResponse | null,
@@ -25,7 +37,7 @@ export function isClientOfCollection(
   editMode: boolean
 ): boolean {
   if (editMode) return true;
-  return findMembership(me, collectionId)?.role === 'CLIENT';
+  return hasRoleAtLeast(findMembership(me, collectionId)?.role, 'CLIENT');
 }
 
 /**

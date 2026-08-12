@@ -177,6 +177,25 @@ describe('RoleDetailView', () => {
     expect(within(select).queryByRole('option', { name: 'apple orchard' })).not.toBeInTheDocument();
   });
 
+  it('offers COLLABORATOR as a level option on both the per-grant and add-grant selects', async () => {
+    mockGetRole.mockResolvedValue({
+      ...BASE_DETAIL,
+      collections: [{ collectionId: 1, title: 'apple orchard', level: 'GENERAL' }],
+    });
+    mockGetCollections.mockResolvedValue([
+      makeCollection(1, 'apple orchard'),
+      makeCollection(2, 'Banff'),
+    ]);
+    await renderDetail();
+
+    const grantSelect = await screen.findByLabelText('Access level for apple orchard');
+    expect(within(grantSelect).getByRole('option', { name: 'Collaborator (edit collection)' }))
+      .toBeInTheDocument();
+
+    const addLevelSelect = screen.getByLabelText('Access level for the collection being added');
+    expect(within(addLevelSelect).getByRole('option', { name: 'Collaborator' })).toBeInTheDocument();
+  });
+
   it('confirms "Delete role", then calls onDeleted once the delete resolves', async () => {
     await renderDetail();
 

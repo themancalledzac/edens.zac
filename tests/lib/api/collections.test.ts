@@ -8,12 +8,15 @@ import {
   createCollection as createCollectionApi,
   getCollectionsByLocation,
   parseCollectionArrayResponse,
+  reorderCollectionContent as reorderCollectionContentApi,
   saveCollectionFromTag,
   saveGalleryAccess,
   updateCollection as updateCollectionApi,
+  updateCollectionRating as updateCollectionRatingApi,
   validateClientGalleryAccess,
 } from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
+import * as core from '@/app/lib/api/core';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
@@ -23,6 +26,15 @@ global.fetch = jest.fn();
 // Mock environment
 jest.mock('@/app/utils/environment', () => ({
   isLocalEnvironment: jest.fn(() => false),
+}));
+
+// Spy on the edit-channel wrappers while leaving every other core export (including
+// fetchAdminPostJsonApi/fetchAdminPatchJsonApi, used by the other functions under test in this
+// file) as the real implementation backed by the mocked global.fetch above.
+jest.mock('@/app/lib/api/core', () => ({
+  ...jest.requireActual('@/app/lib/api/core'),
+  fetchEditPostJsonApi: jest.fn(),
+  fetchEditPatchJsonApi: jest.fn(),
 }));
 
 const mockSuccessResponse = (data: unknown) => ({
@@ -687,5 +699,32 @@ describe('admin kind writes — boolean-only wire contract', () => {
         body: JSON.stringify({ title: 'Smith Wedding', isClient: true }),
       })
     );
+  });
+});
+
+describe('reorderCollectionContent / updateCollectionRating — edit tier contract', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Fallback for the pre-fix code path, which still calls the real (unmocked)
+    // fetchAdminPostJsonApi/fetchAdminPatchJsonApi backed by this mocked fetch.
+    (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse({}));
+  });
+
+  it('reorderCollectionContent calls fetchEditPostJsonApi with /collections/{id}/reorder', async () => {
+    const reorders = [{ contentId: 1, newOrderIndex: 0 }];
+
+    await reorderCollectionContentApi(5, reorders);
+
+    expect(core.fetchEditPostJsonApi).toHaveBeenCalledWith('/collections/5/reorder', {
+      reorders,
+    });
+  });
+
+  it('updateCollectionRating calls fetchEditPatchJsonApi with /collections/{id}/rating', async () => {
+    await updateCollectionRatingApi(5, 3);
+
+    expect(core.fetchEditPatchJsonApi).toHaveBeenCalledWith('/collections/5/rating', {
+      rating: 3,
+    });
   });
 });

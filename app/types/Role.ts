@@ -1,13 +1,16 @@
 /**
  * Role-based access types — mirror the backend RBAC contract (AdminRoleController + the
  * reshaped `/api/admin/users/{id}/roles` membership endpoints). A user joins roles; a role holds
- * per-collection grants; effective access is the union across a user's roles, CLIENT beating
- * GENERAL.
+ * per-collection grants; effective access is the union across a user's roles, the highest rank
+ * winning (GENERAL < CLIENT < COLLABORATOR).
  */
 
 import { type CollectionRole } from '@/app/types/Auth';
 
-/** Access a role grants on a collection. GENERAL = view-only; CLIENT = download + tag + star. */
+/**
+ * Access a role grants on a collection. GENERAL = view-only; CLIENT = download + tag + star;
+ * COLLABORATOR = client powers + curation edits.
+ */
 export type AccessLevel = CollectionRole;
 
 /** A role in the admin list (`GET /api/admin/roles`). */
