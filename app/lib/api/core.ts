@@ -4,6 +4,7 @@ import { logger } from '@/app/utils/logger';
 const READ = 'read';
 const WRITE = 'write';
 const ADMIN = 'admin';
+const EDIT = 'edit';
 
 /**
  * On the server, forward incoming browser cookies on outgoing fetches so that the backend
@@ -172,23 +173,30 @@ export async function fetchReadApi<T>(
   }
 }
 
+/** Maps a `fetchBase` endpoint type to its channel path segment. */
+const ENDPOINT_TYPE_TO_CHANNEL: Record<'write' | 'admin' | 'edit', string> = {
+  write: WRITE,
+  admin: ADMIN,
+  edit: EDIT,
+};
+
 /**
- * Base function for making API requests to write or admin endpoints
+ * Base function for making API requests to write, admin, or edit endpoints
  * Handles URL building, error handling, and response parsing
  *
- * @param endpointType - Type of endpoint ('write' or 'admin')
+ * @param endpointType - Type of endpoint ('write', 'admin', or 'edit')
  * @param endpoint - API endpoint path (without the base URL)
  * @param options - Fetch options
  * @returns The parsed response data
  * @throws ApiError if the request fails
  */
 const fetchBase = async <T>(
-  endpointType: 'write' | 'admin',
+  endpointType: 'write' | 'admin' | 'edit',
   endpoint: string,
   options: RequestInit
 ): Promise<T | null> => {
   try {
-    const url = buildSimpleApiUrl(endpointType === 'write' ? WRITE : ADMIN, endpoint);
+    const url = buildSimpleApiUrl(ENDPOINT_TYPE_TO_CHANNEL[endpointType], endpoint);
 
     // On the server, forward the inbound `ezac_session` cookie so the backend's
     // admin authorization (hasRole('ADMIN')) sees the acting admin's session on
@@ -308,6 +316,27 @@ export async function fetchAdminDeleteJsonApi<T>(
 ): Promise<T | null> {
   return await fetchBase<T>('admin', endpoint, {
     method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+/** POST JSON to the edit endpoint */
+export async function fetchEditPostJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
+  return await fetchBase<T>('edit', endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+/** PATCH JSON to the edit endpoint */
+export async function fetchEditPatchJsonApi<T>(
+  endpoint: string,
+  body: unknown
+): Promise<T | null> {
+  return await fetchBase<T>('edit', endpoint, {
+    method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
