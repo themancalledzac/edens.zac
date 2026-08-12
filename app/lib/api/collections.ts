@@ -12,7 +12,6 @@ import {
   ApiError,
   fetchAdminDeleteApi,
   fetchAdminGetApi,
-  fetchAdminPatchJsonApi,
   fetchAdminPostJsonApi,
   fetchAdminPutJsonApi,
   fetchEditPatchJsonApi,
