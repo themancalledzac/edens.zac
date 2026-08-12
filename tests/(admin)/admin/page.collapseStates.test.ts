@@ -99,6 +99,18 @@ const rowsFor = (collapsed: Record<PanelType, boolean>, contentWidth = DESKTOP.c
  * Outermost only, because only an outermost column renders at its own model height. A nested
  * stack is deliberately shorter than its model: its parent's gap comes out of it, which is the
  * whole mechanism of vbox gap absorption.
+ *
+ * KNOWN LIMITATION: `insideStack` is derived from the immediate parent's own direction, not from
+ * whether any ancestor is a vbox. So a vbox reached through an intervening hbox (H-under-V) is
+ * walked with `insideStack === false` and gets collected here as "outermost", even when an
+ * ancestor vbox's gap absorption shortens its true rendered height below the model height this
+ * function reports. Every fixture exercised by this suite happens not to hit that shape (all 80
+ * combos green), so the bug is latent, not triggered — but if it ever is, the failure direction
+ * is safe: the reported `renderedHeight` for a wrongly-classified column is the true, already-
+ * absorbed height (measured from production item sizes), which falls short of the un-absorbed
+ * `a·W + b` model height the assertion compares it against — measured one gap (12.8px) short on
+ * the H-under-V probe shape — so the assertion can only fail too eagerly (false red). It can
+ * never under-report and produce a false pass.
  */
 function stackedColumns(
   row: { items: Array<{ width: number; height: number }>; boxTree?: BoxTree },
