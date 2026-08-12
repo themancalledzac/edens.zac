@@ -7,7 +7,10 @@
 
 import { type CollectionRole } from '@/app/types/Auth';
 
-/** Access a role grants on a collection. GENERAL = view-only; CLIENT = download + tag + star. */
+/**
+ * Access a role grants on a collection. GENERAL = view-only; CLIENT = download + tag + star;
+ * COLLABORATOR = client powers + curation edits.
+ */
 export type AccessLevel = CollectionRole;
 
 /** A role in the admin list (`GET /api/admin/roles`). */
