@@ -3,10 +3,11 @@
  * "what can this viewer do here" consumed by the Selects and Rating features.
  */
 
-import { type MeResponse } from '@/app/types/Auth';
+import { type CollectionRole, type MeResponse } from '@/app/types/Auth';
 import {
   canDownloadCollection,
   findMembership,
+  hasRoleAtLeast,
   isClientOfCollection,
 } from '@/app/utils/galleryAccess';
 
@@ -24,6 +25,13 @@ const generalMe: MeResponse = {
   isAdmin: false,
   mfaSatisfied: false,
   galleries: [{ collectionId: 7, role: 'GENERAL' }],
+};
+
+const collaboratorMe: MeResponse = {
+  email: 'collaborator@example.com',
+  isAdmin: false,
+  mfaSatisfied: false,
+  galleries: [{ collectionId: 7, role: 'COLLABORATOR' }],
 };
 
 describe('findMembership', () => {
@@ -50,6 +58,10 @@ describe('isClientOfCollection', () => {
     expect(isClientOfCollection(clientMe, 7, false)).toBe(true);
   });
 
+  it('is true for a user with a COLLABORATOR membership for that collection (outranks CLIENT)', () => {
+    expect(isClientOfCollection(collaboratorMe, 7, false)).toBe(true);
+  });
+
   it('is false for a user with only a GENERAL membership', () => {
     expect(isClientOfCollection(generalMe, 7, false)).toBe(false);
   });
@@ -66,6 +78,10 @@ describe('isClientOfCollection', () => {
 describe('canDownloadCollection', () => {
   it('is true for a logged-in CLIENT of the collection (role grant, any collection kind)', () => {
     expect(canDownloadCollection(clientMe, { id: 7 })).toBe(true);
+  });
+
+  it('is true for a logged-in COLLABORATOR of the collection (outranks CLIENT)', () => {
+    expect(canDownloadCollection(collaboratorMe, { id: 7 })).toBe(true);
   });
 
   it('is false for an anonymous viewer with no role grant and no cookie proof', () => {
@@ -126,5 +142,27 @@ describe('canDownloadCollection', () => {
     expect(canDownloadCollection(clientMe, null)).toBe(false);
     // eslint-disable-next-line unicorn/no-useless-undefined -- explicitly testing undefined input
     expect(canDownloadCollection(clientMe, undefined)).toBe(false);
+  });
+});
+
+describe('hasRoleAtLeast', () => {
+  it.each<[CollectionRole, CollectionRole, boolean]>([
+    // Ladder order: GENERAL < CLIENT < COLLABORATOR.
+    ['GENERAL', 'CLIENT', false],
+    ['CLIENT', 'COLLABORATOR', false],
+    ['GENERAL', 'COLLABORATOR', false],
+    ['CLIENT', 'GENERAL', true],
+    ['COLLABORATOR', 'GENERAL', true],
+    ['COLLABORATOR', 'CLIENT', true],
+    // Reflexive: a role always satisfies itself as the minimum.
+    ['GENERAL', 'GENERAL', true],
+    ['CLIENT', 'CLIENT', true],
+    ['COLLABORATOR', 'COLLABORATOR', true],
+  ])('hasRoleAtLeast(%s, %s) === %s', (role, minimum, expected) => {
+    expect(hasRoleAtLeast(role, minimum)).toBe(expected);
+  });
+
+  it('is false for an undefined role', () => {
+    expect(hasRoleAtLeast(undefined, 'GENERAL')).toBe(false);
   });
 });
