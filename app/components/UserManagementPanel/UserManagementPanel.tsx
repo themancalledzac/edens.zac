@@ -4,9 +4,9 @@ import { useRouter } from 'next/navigation';
 import { type ReactNode, useCallback, useMemo, useState } from 'react';
 
 import { GenerateInviteButton } from '@/app/(admin)/admin/users/GenerateInviteButton';
-import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
 import { useAdminPanelSeed } from '@/app/components/AdminPanel/AdminPanelSeedContext';
 import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
+import { ListPanel, ListRow, ListRows } from '@/app/components/ListPanel/ListPanel';
 import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIdentityModal';
 import { Button } from '@/app/components/ui/Button/Button';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
@@ -37,7 +37,7 @@ interface UserManagementPanelProps {
  * account) and "Upgrade" (promote in place).
  *
  * Collapsed state is owned by `AdminPanelRenderer` (it sizes the box) and passed straight through
- * to {@link AdminPanel}. This panel only intervenes to force itself open when the body gains
+ * to {@link ListPanel}. This panel only intervenes to force itself open when the body gains
  * something the user must see: the create and edit forms both live in the body, so opening one
  * while collapsed would otherwise look like the "+ New User" button did nothing.
  *
@@ -137,38 +137,31 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
       listBody = <EmptyState>No users yet. Use “+ New User” to create one.</EmptyState>;
     } else {
       listBody = (
-        <ul className={styles.list}>
+        <ListRows>
           {sortedUsers.map(user => (
-            <li key={user.id} className={styles.row}>
-              {user.status === 'PERSON' ? (
-                <div className={styles.rowStatic}>
-                  <span className={styles.identity}>
-                    <span className={styles.nameLine}>
-                      <span className={styles.dot} data-status={user.status} aria-hidden="true" />
-                      <span className={styles.name}>{user.displayName ?? '—'}</span>
-                      <span className={styles.srOnly}>{user.status}</span>
-                    </span>
-                    <span className={styles.email}>{user.email ?? ''}</span>
+            <ListRow
+              key={user.id}
+              // A tag-only PERSON has no account page to reach, so it gets no `onActivate` and
+              // ListRow renders its identity as a static section rather than a button. That is the
+              // whole of the old .rowStatic / .rowMain fork — the identity markup itself was
+              // duplicated across both arms and is written once here.
+              onActivate={
+                user.status === 'PERSON'
+                  ? undefined
+                  : () => router.push(`/admin/users/${user.id}`)
+              }
+              left={
+                <span className={styles.identity}>
+                  <span className={styles.nameLine}>
+                    <span className={styles.dot} data-status={user.status} aria-hidden="true" />
+                    <span className={styles.name}>{user.displayName ?? '—'}</span>
+                    <span className={styles.srOnly}>{user.status}</span>
                   </span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className={styles.rowMain}
-                  onClick={() => router.push(`/admin/users/${user.id}`)}
-                >
-                  <span className={styles.identity}>
-                    <span className={styles.nameLine}>
-                      <span className={styles.dot} data-status={user.status} aria-hidden="true" />
-                      <span className={styles.name}>{user.displayName ?? '—'}</span>
-                      <span className={styles.srOnly}>{user.status}</span>
-                    </span>
-                    <span className={styles.email}>{user.email ?? ''}</span>
-                  </span>
-                </button>
-              )}
-              <div className={styles.rowActions}>
-                {user.status === 'PERSON' ? (
+                  <span className={styles.email}>{user.email ?? ''}</span>
+                </span>
+              }
+              right={
+                user.status === 'PERSON' ? (
                   <>
                     <Button variant="secondary" size="sm" onClick={() => setMergeFor(user)}>
                       Merge…
@@ -192,44 +185,50 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
                       status={user.status}
                     />
                   </>
-                )}
-              </div>
-            </li>
+                )
+              }
+            />
           ))}
-        </ul>
+        </ListRows>
       );
     }
   }
 
-  const headerAction = (
-    <>
-      {view.mode === 'list' && (
-        <label className={styles.toggle}>
-          <input
-            type="checkbox"
-            checked={showPeople}
-            onChange={e => setShowPeople(e.target.checked)}
-          />
-          Show tag-only people
-        </label>
-      )}
-      {view.mode === 'list' ? (
-        <Button variant="secondary" size="sm" onClick={() => openView({ mode: 'create' })}>
-          + New User
-        </Button>
-      ) : (
-        <Button variant="ghost" size="sm" onClick={backToList}>
-          ← Back
-        </Button>
-      )}
-    </>
-  );
+  // The CONTROL is conditional, its SLOT is not: ListPanel always renders the middle wrapper, so
+  // the header keeps three grid columns and the right rail holds still when a form view hides the
+  // filter. Guarding the slot itself would slide the action into the middle column on every mode
+  // change.
+  const headerMiddle =
+    view.mode === 'list' ? (
+      <label className={styles.toggle}>
+        <input
+          type="checkbox"
+          checked={showPeople}
+          onChange={e => setShowPeople(e.target.checked)}
+        />
+        Show tag-only people
+      </label>
+    ) : null;
+
+  // `ghost`, not `secondary`: this is a panel-scope action and should not read with the same weight
+  // as the row-level controls beneath it.
+  const headerRight =
+    view.mode === 'list' ? (
+      <Button variant="ghost" size="sm" onClick={() => openView({ mode: 'create' })}>
+        + New User
+      </Button>
+    ) : (
+      <Button variant="ghost" size="sm" onClick={backToList}>
+        ← Back
+      </Button>
+    );
 
   return (
-    <AdminPanel
+    <ListPanel
       title={headerTitle}
       ariaLabel="User management"
-      action={headerAction}
+      headerMiddle={headerMiddle}
+      headerRight={headerRight}
       collapsed={collapsed}
       onCollapsedChange={onCollapsedChange}
     >
@@ -276,7 +275,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
           }}
         />
       )}
-    </AdminPanel>
+    </ListPanel>
   );
 }
 
