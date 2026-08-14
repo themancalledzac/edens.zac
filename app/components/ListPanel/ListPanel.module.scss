@@ -1,0 +1,218 @@
+/* ListPanel — shared shell for list panels (header + scrollable body + the rows' list surface) */
+
+/* Height is deliberately absent HERE: the panel is a flex item of AdminPanelRenderer's .box, which
+   carries the packer's number as a real `height` (not a max-height — the packed number IS the
+   panel's content height, `chrome + rowCount * rowHeight`). As a non-growing flex item the panel is
+   then as tall as its own contents, bounded by that box. `overflow: hidden` is what lets it shrink
+   past its content size when the box binds (it zeroes the flex automatic minimum size) and hand the
+   overflow to .body's scroll — an explicit `min-height: 0` here would be a second mechanism for the
+   same job. `.isCollapsed` below is the one state that opts out and fills the box instead. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+}
+
+/* The header is the SAME grid as .row below, which is the whole point of this component: the two
+   share one right rail, so a header action cannot drift out of line with the row actions under it.
+   `justify-content: space-between` used to live here and was a no-op — `.title { flex: 1 }` left no
+   free space to distribute — and it is superseded rather than repaired, because the grid places
+   all three sections by track instead of by leftover space.
+
+   Left column is `1fr` so the title takes the slack; the middle and right columns are `auto` so
+   each is exactly as wide as its content and the last one ends flush with the header's content
+   edge. Both of those wrappers are rendered unconditionally by ListPanel — see the note there. */
+.header {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.headerMiddle {
+  justify-self: end;
+}
+
+.headerRight {
+  display: flex;
+  justify-self: end;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Collapsed the panel fills the packer's uniform bar box, so a text-only header stretches its
+   body strip to the same height as a button-carrying one. */
+.isCollapsed {
+  height: 100%;
+}
+
+/* Collapsed keeps a strip of the body visible below the header — a closed panel reads as the
+   same molecule minimized, not a bare title bar (Zac's 2026-08-10 review: the empty body shows
+   "as tall as the padding around it, maybe twice as tall"). The BLOCK margin is the body padding
+   it stands in for, wrapping an empty run of the list surface at least one --space-4 tall:
+   32 + 16 = 48px, the COLLAPSED_BODY_SLIVER arithmetic in adminHubContent.ts — change the two
+   together. The inline margin is 0 because the list surface it stands in for is now full-bleed:
+   .body no longer insets horizontally (see the rail note on .list), so an inset sliver would make
+   a panel visibly narrow its own content as it closed.
+
+   A pseudo-element rather than the pair of divs this replaces. The strip is a painted surface with
+   nothing in it, so it has no business in the accessibility tree; as markup it needed an
+   `aria-hidden="true"` to stay out, which is a thing a future edit can drop. `::after` cannot be
+   reached by assistive tech at all, so the guard is structural instead of remembered. It is the
+   panel's last flex item — the Disclosure unmounts its body while closed — so `flex: 1` grows it
+   into the space below the header exactly as the outer div did, with the margin playing the
+   padding's part. */
+.isCollapsed::after {
+  content: '';
+  flex: 1;
+  min-height: var(--space-4);
+  margin: var(--space-4) 0;
+  background: var(--content-frame);
+  border-radius: var(--radius-1);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--color-on-surface);
+
+  /* `flex: 1` is gone with the flex header — it was what stretched the disclosure button across
+     everything between "Users" and the action controls, making that whole span a clickable but
+     visually unmarked surface. `min-width: 0` stays, and is layout correctness rather than a
+     leftover: a grid item's automatic minimum is its min-content width, so without this a long
+     title would grow the `1fr` track past its share and push the right rail off the panel — the
+     same protection .rowLeft carries for the same reason. */
+  min-width: 0;
+}
+
+/* Layout and the button reset live in Disclosure; this is the panel's own skin on top of it.
+   `width: auto` overrides Disclosure's `width: 100%` for THIS adopter only — the toggle must be
+   the title and chevron and nothing more. It is not fixed in Disclosure because the other adopter,
+   CollectionListSelector's bucket accordion, is a flush full-width row and wants that stretch. */
+.toggle {
+  width: auto;
+  padding: 0;
+  background: none;
+  border: none;
+
+  &:hover .chevron {
+    color: var(--color-on-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-1);
+  }
+}
+
+.chevron {
+  color: var(--color-on-surface-muted);
+  transition: color var(--duration-base) var(--ease-standard);
+}
+
+/* Vertical padding only. The horizontal inset moved down to .list so that the list SURFACE runs
+   full-bleed and only its CONTENT is inset — see .list. */
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) 0;
+}
+
+/* The list surface, declared once here instead of once per panel: all three carried a
+   byte-identical copy of this rule under a "keep the three in step" comment.
+
+   This level owns the horizontal rail. The inset used to be split three ways — 16px on .body, 8px
+   on .list, 8px on .row — which put row content at 33px from the panel edge against the header's
+   17px, the arithmetic behind the misalignment complaint. Collapsing all of it into one --space-4
+   here lands row content at `1px border + 16px` exactly, the header's own inset, and hands ~32px
+   of width per panel back to the content.
+
+   Vertical padding stays out of this rule: ROW_PADDING_Y in listPanelShape.ts is the row's own
+   --space-2 block padding plus its separator, and a list-level block padding would be height the
+   packer never reserved. */
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0 var(--space-4);
+  list-style: none;
+  background: var(--content-frame);
+  border-radius: var(--radius-1);
+}
+
+/* Same three columns as .header, resolved against the same rails. `grid` rather than the old
+   wrapping flex row on purpose: `flex-wrap` let a narrow panel move the actions onto a second
+   line, which would make the row's height depend on its width and desync the packer's pin.
+   A grid row cannot wrap, so the height stays width-independent by construction. */
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+/* Lets the `1fr` track shrink below its content's min-content width, so the text slots inside it
+   can ellipsise instead of pushing the right rail out. */
+.rowLeft {
+  min-width: 0;
+}
+
+.rowMiddle {
+  justify-self: end;
+}
+
+/* Row actions stack, which is why the Users row is 75px and not 58: `rowHeight` takes the tallest
+   section, and two stacked sm buttons beat the two-line identity block beside them. `nowrap` is
+   load-bearing — nothing else stops "Reset pw" breaking across two lines at a narrow panel width
+   and changing the row's height with it. */
+.rowRight {
+  display: flex;
+  flex-direction: column;
+  justify-self: end;
+  align-items: flex-end;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+/* The left section when the row is activatable. Carries .rowLeft's min-width itself rather than
+   pairing the two classes, so the button is one complete declaration. Padding is deliberately 0:
+   .row owns the row's block padding now, and the inverted arrangement the roles panel used — a
+   bare row with the padding pushed into its inner button — is what made that panel's height
+   disagree with the derived model. */
+.rowActivate {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-1);
+  }
+}
