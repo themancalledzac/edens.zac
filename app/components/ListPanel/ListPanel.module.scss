@@ -8,12 +8,56 @@
    overflow to .body's scroll — an explicit `min-height: 0` here would be a second mechanism for the
    same job. `.isCollapsed` below is the one state that opts out and fills the box instead. */
 .panel {
+  /* The --lp-* ramp: shell -> list -> row, plus a hover surface and a row separator. Scoped to
+     this component rather than added to globals.css, following the --sel-* precedent in
+     CollectionListSelector, because the global scale cannot express it. The semantic surface
+     tokens are not an elevation ladder on light — --color-surface-raised (#f8f9fa) is DARKER than
+     the --color-bg (#fff) it is supposed to sit above, so raised/sunken tint in two directions
+     around the page colour and only read as a ladder under [data-surface='dark']. Straightening
+     that out touches tokens the photo grid and collection pages also read; filed as a follow-up
+     rather than put in this branch's path.
+
+     Literal hex, not var() indirection, so the contrast gate in listPanelSurfaces.test.ts can
+     measure what actually ships — a var() only resolves in a browser.
+
+     Shape of the ramp, and why it is not monotonic: the list is a SUNKEN well and each row is a
+     RAISED card inside it. Nesting one step darker every level would end with the densest, most
+     read part of the panel as the darkest block on the page. Every ADJACENT pair still steps
+     clearly (shell/list 1.23:1, list/row 1.41:1, row/hover 1.20:1 on light), which is what the
+     eye actually compares. What this replaces measured 1.054:1 at every boundary, with the list
+     resolving to the same #fff as the page behind the whole panel.
+
+     The list no longer paints --content-frame. That token is pinned to #fff on BOTH surfaces on
+     purpose — it is the gallery-wall mat behind photographs — which is right for a photograph and
+     wrong for a list background, where it gave 1.05:1 on light and a 15.67:1 glare on dark. */
+  --lp-surface-shell: #eef0f2;
+  --lp-surface-list: #d5dae0;
+  --lp-surface-row: #fff;
+  --lp-surface-row-hover: #e8ebef;
+  --lp-border-row: var(--color-border-strong);
+
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--color-surface-raised);
+  background: var(--lp-surface-shell);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-1);
+
+  /* The same three steps re-derived around the charcoal page surface, where "raised" means
+     lighter: shell/list 1.27:1, list/row 1.36:1, row/hover 1.19:1. /admin does not currently set
+     this scope (app/(admin)/layout.tsx dropped it), so this block is unreachable today — declared
+     anyway because the ramp is the component's own contract, and a surface-scoped component that
+     only works on one surface is a trap for the next adopter.
+
+     --lp-border-row is absent here on purpose, not forgotten: --color-border-strong already flips
+     to a low-alpha white hairline under this scope, so the separator adapts without a second
+     declaration to keep in step. */
+  [data-surface='dark'] & {
+    --lp-surface-shell: #26262a;
+    --lp-surface-list: #0f0f11;
+    --lp-surface-row: #2b2b2f;
+    --lp-surface-row-hover: #37373c;
+  }
 }
 
 /* The header is the SAME grid as .row below, which is the whole point of this component: the two
@@ -72,7 +116,7 @@
   flex: 1;
   min-height: var(--space-4);
   margin: var(--space-4) 0;
-  background: var(--content-frame);
+  background: var(--lp-surface-list);
   border-radius: var(--radius-1);
 }
 
@@ -144,7 +188,7 @@
   margin: 0;
   padding: 0 var(--space-4);
   list-style: none;
-  background: var(--content-frame);
+  background: var(--lp-surface-list);
   border-radius: var(--radius-1);
 }
 
@@ -158,10 +202,18 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--color-border);
+  background: var(--lp-surface-row);
+  border-bottom: 1px solid var(--lp-border-row);
 
   &:last-child {
     border-bottom: none;
+  }
+
+  /* Hover paints only where there is something to activate. `:has()` rather than a modifier class
+     because the activation is already declared by ListRow's markup — a parallel flag would be a
+     second source of truth for the same fact, and the one that goes stale. */
+  &:has(.rowActivate):hover {
+    background: var(--lp-surface-row-hover);
   }
 }
 
