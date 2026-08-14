@@ -338,17 +338,17 @@ export function FilterToolbar({
             </div>
           );
         })}
-
-        <button
-          type="button"
-          className={`${styles.reset} ${hasActiveFilters ? '' : styles.resetInactive}`}
-          onClick={resetAll}
-          disabled={!hasActiveFilters}
-          aria-label="Reset all filters"
-        >
-          ×
-        </button>
       </div>
+
+      <button
+        type="button"
+        className={`${styles.reset} ${hasActiveFilters ? '' : styles.resetInactive}`}
+        onClick={resetAll}
+        disabled={!hasActiveFilters}
+        aria-label="Reset all filters"
+      >
+        ×
+      </button>
 
       {onDensityChange && density !== undefined && (
         <div className={styles.densitySlot}>

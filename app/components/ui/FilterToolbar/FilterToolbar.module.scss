@@ -4,8 +4,11 @@
 .toolbar {
   display: flex;
   flex-wrap: nowrap;
-  /* Pins the size control to the FIRST row rather than centring it against a tall wrapped stack. */
-  align-items: flex-start;
+  /* The bar is BOTTOM-anchored: its last row is the one that sits against the content below, and
+     extra rows stack upward from there (see .controls). So the trailing controls pin to the bottom
+     — `flex-start` pinned them to whichever row happened to end up on top, which floated them clear
+     of the row they belong to and left the gap under them that the bar's own padding should own. */
+  align-items: flex-end;
   /* Same token as the Download row's .buttonRow, so the two stacked rows space their
      controls identically. Was a hardcoded 4px, which is what --space-1 resolves to. */
   gap: var(--space-1);
@@ -18,10 +21,18 @@
 }
 
 /* The wrapping half: every filter control. `min-width: 0` lets it shrink and wrap internally
-   instead of forcing the non-wrapping outer row to overflow. */
+   instead of forcing the non-wrapping outer row to overflow.
+
+   `wrap-reverse`, not `wrap`: this cluster is built bottom-up, left-to-right. Its LAST row is the
+   one that sits against the content below and is the row a reader starts from, so that row fills
+   first and losing width pushes chips UP onto rows above it. Plain `wrap` fills top-down, which
+   inverts that — the bottom row ended up holding whatever single chip spilled over while the row
+   above it stayed full, so shrinking the bar moved one chip DOWN instead of moving several up.
+   Reversing the cross axis costs nothing else: lines still run left-to-right internally, and
+   `align-items: center` is symmetric so it is unaffected by the flip. */
 .controls {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: wrap-reverse;
   align-items: center;
 
   /* INVARIANT: keep this at >= --space-2 (8px) for as long as FilterChip paints the 44px
@@ -125,20 +136,34 @@
   box-shadow: 0 4px 12px var(--color-overlay-soft);
 }
 
-/* Deliberately NO `margin-left: auto`: that resolves per flex LINE, so once the controls wrapped
-   the × was flung to the right edge of an arbitrary row, landing beside the photo-size control and
-   reading as though it reset that. It flows inline after the last chip instead. */
+/* A pinned trailing control, like .densitySlot — NOT a member of the wrapping .controls.
+
+   It used to flow inline after the last chip, which put it inside a wrapping container: once the
+   chips filled the row (engaging Order widens its chip by the direction glyph, which is enough on
+   its own) the × wrapped onto a line of its own away from the photo-size control, reading as a
+   stray glyph rather than one of the bar's controls. Living in the non-wrapping outer row instead
+   holds it on the bar's anchored bottom row whatever the chips do.
+
+   Never `margin-left: auto`: .controls already grows into the free space, so an auto margin would
+   resolve to zero here and mislead the next reader. `--space-2` of clearance before the photo-size
+   group keeps a reset control from reading as part of it — that ambiguity is why this was kept
+   inline for so long, and the gap is what makes the pinned position safe.
+
+   Vertical padding and the transparent hairline are the chip's own box metrics, so this sits level
+   with the chips it resets on the row the toolbar aligns to `flex-end`. */
 .reset {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  padding: 2px 8px;
+  padding: var(--space-1) var(--space-2);
+  margin-right: var(--space-2);
   font: inherit;
   font-size: var(--text-sm);
   line-height: 1.4;
   color: var(--color-fg);
   background-color: transparent;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius-1);
   cursor: pointer;
   opacity: 0.35;
