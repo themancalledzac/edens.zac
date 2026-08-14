@@ -12,6 +12,7 @@
 import { getAllCollections } from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
 import { listFollowedCollectionIdsServer, listSavedImagesServer } from '@/app/lib/api/personal';
+import { getCurrentShareView, getShareView, type ShareView } from '@/app/lib/api/share';
 import { getUserPage } from '@/app/lib/api/user';
 import {
   getUserPageById,
@@ -20,6 +21,7 @@ import {
 } from '@/app/lib/api/users';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type AnyContentModel, type ContentCollectionModel } from '@/app/types/Content';
+import { type FailSoftRead } from '@/app/types/FailSoftRead';
 import { isContentCollection, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
 
 export const TAB_KEYS = ['collections', 'images', 'saved', 'following'] as const;
@@ -29,13 +31,29 @@ export type TabKey = (typeof TAB_KEYS)[number];
 const DEFAULT_TAB: TabKey = 'collections';
 
 /**
+ * The sections a share-link recipient is offered. Saved and Following are the owner's private
+ * bookmarks and are absent from the backend's recipient view by design.
+ */
+export const SHARE_TAB_KEYS = ['collections', 'images'] as const satisfies readonly [
+  TabKey,
+  ...TabKey[],
+];
+
+/**
  * Whose space is being rendered.
  *
  * `self` is the signed-in user viewing their own space; `admin` is an admin observing another
- * user's. The distinction is not cosmetic — it decides which reads run AND whether the personal
- * action controls are armed. See {@link UserSpace} for why admin mode renders them off.
+ * user's; `share` is a link recipient looking at the owner's work. The distinction is not
+ * cosmetic — it decides which reads run AND whether the personal action controls are armed. See
+ * {@link UserSpace} for why the other two modes render them off.
+ *
+ * `share` carries the raw token on the first landing (the URL is the only place it exists) and
+ * omits it afterwards, when the cookie identifies the link instead.
  */
-export type UserSpaceMode = 'self' | { mode: 'admin'; userId: number };
+export type UserSpaceMode =
+  | 'self'
+  | { mode: 'admin'; userId: number }
+  | { mode: 'share'; token?: string };
 
 /** Narrow an untrusted `?tab=` value to a known key, falling back to the default section. */
 export function resolveTabKey(raw: string | string[] | undefined): TabKey {
@@ -123,6 +141,20 @@ export interface UserSpaceData {
   followedCollectionIds: number[];
   /** Ids the save toggle seeds from. Empty in admin mode, for the same reason. */
   savedImageIds: number[];
+  /**
+   * Which section chips to offer, in order.
+   *
+   * All four for the owner and for an admin. A share recipient gets Collections and Images only:
+   * Saved and Following are the owner's private bookmarks, which the backend deliberately keeps
+   * out of the recipient view. Rendering them empty would be worse than omitting them — an empty
+   * "Saved" tab reads as a claim that the owner has saved nothing, which is not what we know.
+   */
+  visibleKeys: readonly [TabKey, ...TabKey[]];
+  /**
+   * Whose work a recipient is looking at, for the share banner. Null outside share mode, and also
+   * null for an owner who has never set a display name.
+   */
+  ownerName: string | null;
 }
 
 /**
@@ -141,6 +173,16 @@ async function loadAdminUserPage(userId: number): Promise<CollectionModel | null
     if (error instanceof ApiError && error.status === 404) return null;
     throw error;
   }
+}
+
+/**
+ * The recipient view behind a share link: the token on first landing, the cookie thereafter.
+ *
+ * Both arms already map a missing or reset link to null, so the caller's `null` -> 404 path
+ * covers a dead link without this needing to distinguish the two.
+ */
+async function loadShareView(target: { mode: 'share'; token?: string }): Promise<ShareView | null> {
+  return target.token ? await getShareView(target.token) : await getCurrentShareView();
 }
 
 /**
@@ -181,19 +223,45 @@ export async function loadUserSpace(
   activeKey: TabKey = DEFAULT_TAB
 ): Promise<UserSpaceData | null> {
   const isSelf = target === 'self';
+  const isShare = target !== 'self' && target.mode === 'share';
+
+  // A recipient owns no bookmarks here, so both fail-soft reads are a genuine empty rather than a
+  // skipped read reported as a failure. Saved/Following are not offered as sections at all in this
+  // mode (see `visibleKeys`); this only keeps the shape uniform for the code below.
+  const noBookmarks = Promise.resolve<FailSoftRead<never>>({ ok: true, items: [] });
 
   // The catalog read stays INSIDE the Promise.all rather than being awaited after it: on the
   // Following tab it is needed, and awaiting it downstream would serialize it behind the page read
   // instead of overlapping with it — trading a wasted read on three tabs for a slower fourth.
-  const [collection, saved, followed, catalog] = await Promise.all([
-    isSelf ? getUserPage() : loadAdminUserPage(target.userId),
-    isSelf ? listSavedImagesServer() : listSavedImagesByUserServer(target.userId),
+  const [pageRead, saved, followed, catalog] = await Promise.all([
+    isSelf
+      ? getUserPage()
+      : isShare
+        ? loadShareView(target as { mode: 'share'; token?: string })
+        : loadAdminUserPage((target as { mode: 'admin'; userId: number }).userId),
+    isSelf
+      ? listSavedImagesServer()
+      : isShare
+        ? noBookmarks
+        : listSavedImagesByUserServer((target as { mode: 'admin'; userId: number }).userId),
     isSelf
       ? listFollowedCollectionIdsServer()
-      : listFollowedCollectionIdsByUserServer(target.userId),
-    activeKey === 'following' ? getAllCollections(0, 500) : Promise.resolve<CollectionModel[]>([]),
+      : isShare
+        ? noBookmarks
+        : listFollowedCollectionIdsByUserServer(
+            (target as { mode: 'admin'; userId: number }).userId
+          ),
+    // Never fetched in share mode: the Following section is not offered, so the catalog it exists
+    // to hydrate would be a ~0.5s read serving a tab the recipient cannot reach.
+    activeKey === 'following' && !isShare
+      ? getAllCollections(0, 500)
+      : Promise.resolve<CollectionModel[]>([]),
   ]);
 
+  // Share mode's read carries the owner's name alongside the page; the other two return the page
+  // alone. Unwrapped here so the rest of the function sees one shape.
+  const shareView = isShare ? (pageRead as ShareView | null) : null;
+  const collection = isShare ? (shareView?.page ?? null) : (pageRead as CollectionModel | null);
   if (!collection) return null;
 
   // A failed read has no `items` to take — see {@link FailSoftRead}. `[]` here is only ever the
@@ -273,5 +341,7 @@ export async function loadUserSpace(
     // `/user/saves/images` already returns the full saved set, so derive the ids from it rather
     // than issuing a second `/user/saves` ids-only read (single-fetch rule).
     savedImageIds: isSelf ? savedImages.map(i => i.id) : [],
+    visibleKeys: isShare ? SHARE_TAB_KEYS : TAB_KEYS,
+    ownerName: shareView?.ownerName ?? null,
   };
 }

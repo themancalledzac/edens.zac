@@ -22,6 +22,7 @@ import { render, screen } from '@testing-library/react';
 
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import {
+  TAB_KEYS,
   type TabKey,
   type UserSpaceData,
   type UserSpaceSection,
@@ -104,6 +105,8 @@ function makeData(): UserSpaceData {
     },
     followedCollectionIds: [7],
     savedImageIds: [3],
+    visibleKeys: TAB_KEYS,
+    ownerName: null,
   };
 }
 

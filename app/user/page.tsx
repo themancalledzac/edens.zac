@@ -3,11 +3,13 @@ import { notFound } from 'next/navigation';
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import { AccountCard } from '@/app/components/Personal/AccountCard';
 import { AdminCard } from '@/app/components/Personal/AdminCard';
+import { ShareCard } from '@/app/components/Personal/ShareCard';
 import { SendMessageButton } from '@/app/components/SendMessageButton/SendMessageButton';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { loadUserSpace, resolveTabKey } from '@/app/components/UserSpace/userSpaceData';
 import { meServer } from '@/app/lib/api/auth';
+import { readShareSettings } from '@/app/lib/api/share';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import styles from './page.module.scss';
@@ -48,9 +50,10 @@ export default async function UserPage({ searchParams }: UserPageProps) {
   const { tab } = await searchParams;
   const activeKey = resolveTabKey(tab);
 
-  const [data, ssrViewport] = await Promise.all([
+  const [data, ssrViewport, share] = await Promise.all([
     loadUserSpace('self', activeKey),
     resolveSsrViewport(),
+    readShareSettings(),
   ]);
   if (!data) notFound();
 
@@ -73,6 +76,7 @@ export default async function UserPage({ searchParams }: UserPageProps) {
             railExtras={
               <>
                 <AccountCard email={principal.email} />
+                <ShareCard read={share} />
                 {principal.isAdmin && <AdminCard />}
               </>
             }
