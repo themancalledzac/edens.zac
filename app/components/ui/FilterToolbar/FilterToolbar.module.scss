@@ -47,14 +47,30 @@
   min-width: 0;
 }
 
-/* The pinned half. Never shrinks and never wraps, so overflowing filters wrap BELOW it. Carries no
-   height of its own: the control inside is built from the same tokens as a chip, so the row height
-   stays governed by the chips rather than by whatever sits in this slot. */
-.densitySlot {
+/* The pinned half: ONE right-hand group holding the reset × and the photo-size control as its two
+   children, rather than the two of them sitting beside .controls as separate top-level slots. As
+   siblings of the chip block they read as a left/middle/right trio of peers, which they are not —
+   they are the bar's trailing controls, and grouping them says so once instead of relying on two
+   independent pins to keep them together.
+
+   Never shrinks and never wraps, so overflowing chips wrap within .controls rather than pushing
+   this off the row. `flex-end` on .toolbar keeps it on the bar's anchored bottom row. */
+.trailing {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
+
+  /* Same step the chips use, so the × sits in the bar's rhythm rather than crowding the
+     photo-size control it does NOT reset. */
+  gap: var(--space-2);
   margin-left: auto;
+}
+
+/* Carries no height of its own: the control inside is built from the same tokens as a chip, so the
+   row height stays governed by the chips rather than by whatever sits in this slot. */
+.densitySlot {
+  display: flex;
+  align-items: center;
 }
 
 /* Divides the mutually-exclusive section chips from the facet controls that filter WITHIN the
@@ -136,18 +152,16 @@
   box-shadow: 0 4px 12px var(--color-overlay-soft);
 }
 
-/* A pinned trailing control, like .densitySlot — NOT a member of the wrapping .controls.
+/* Leads .trailing — NOT a member of the wrapping .controls.
 
    It used to flow inline after the last chip, which put it inside a wrapping container: once the
    chips filled the row (engaging Order widens its chip by the direction glyph, which is enough on
    its own) the × wrapped onto a line of its own away from the photo-size control, reading as a
-   stray glyph rather than one of the bar's controls. Living in the non-wrapping outer row instead
-   holds it on the bar's anchored bottom row whatever the chips do.
+   stray glyph rather than one of the bar's controls. Riding in the trailing group instead holds it
+   on the bar's anchored bottom row whatever the chips do.
 
-   Never `margin-left: auto`: .controls already grows into the free space, so an auto margin would
-   resolve to zero here and mislead the next reader. `--space-2` of clearance before the photo-size
-   group keeps a reset control from reading as part of it — that ambiguity is why this was kept
-   inline for so long, and the gap is what makes the pinned position safe.
+   Never `margin-left: auto`: .trailing already carries the pin for the whole group, and a second
+   one here would be inert and mislead the next reader.
 
    Vertical padding and the transparent hairline are the chip's own box metrics, so this sits level
    with the chips it resets on the row the toolbar aligns to `flex-end`. */
@@ -157,7 +171,6 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-1) var(--space-2);
-  margin-right: var(--space-2);
   font: inherit;
   font-size: var(--text-sm);
   line-height: 1.4;
