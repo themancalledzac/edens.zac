@@ -33,14 +33,26 @@
 }
 
 /* The bare × matches the chip remove in ui/Dropdown — the accessible name comes from an
-   aria-label carrying the role name, since the glyph alone names nothing. */
+   aria-label carrying the role name, since the glyph alone names nothing.
+
+   Sized to ListPanel's `button` slot rather than to --space-6. At 32px square it was the tallest
+   thing in the row and made it render 49px against a 36.5px reservation — a control that was
+   never a Button but sat where the shape model says a button goes. Reading its size off
+   --lp-slot-button is what stops the row and its reservation drifting apart again, and it lines
+   the glyph up with the `+ New Role` control in the header directly above it.
+
+   The 27px box is LAYOUT only. `::after` extends the pressable area to 33px square without adding
+   height, keeping this above the 28px minimum target the rest of the codebase holds to — a
+   smaller box would have been the cheap way to hit 27 and the wrong one. Absolutely positioned so
+   it contributes nothing to the row's height, which is the whole point. */
 .deleteButton {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: none;
-  width: var(--space-6);
-  height: var(--space-6);
+  width: var(--lp-slot-button);
+  height: var(--lp-slot-button);
   padding: 0;
   border: none;
   border-radius: var(--radius-1);
@@ -49,6 +61,12 @@
   font-size: var(--text-lg);
   line-height: 1;
   cursor: pointer;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+  }
 
   &:hover:not(:disabled) {
     color: var(--color-danger);

@@ -7,15 +7,27 @@
  * height from a declared shape makes a new panel's height a consequence of what it renders.
  *
  * The three existing panels are the calibration fixtures. If a change here stops reproducing
- * 75 / 86 / 36.5, the model is wrong -- do not adjust the fixtures to match.
+ * 71 / 58.5 / 40, the model is wrong -- do not adjust the fixtures to match.
  *
  * Height is `max(section stacks) + ROW_PADDING_Y`, never a sum across sections: a row's height
  * comes from whichever of its side-by-side sections is tallest. The Users row proves the max --
- * its two stacked `sm` buttons (58px) beat its two-line identity block (41px), so 58 + 17 = 75.
+ * its two stacked `sm` buttons (58px) beat its two-line identity block (41px), so 58 + 13 = 71.
+ *
+ * All three panels now render through `ListPanel`, so every declared shape describes a row that
+ * exists. The model reproduces each one to the pixel, measured in Chrome against the live Inter
+ * font at panel widths 400 / 430 / 520 / 610px: Users 71, Messages 58.5, Roles 40, identical at
+ * every width. There is no per-shape residual left; the escape hatch that carried the two
+ * un-migrated panels through Tasks 1-7 is gone with them.
  */
 
-/** What a single slot holds. Determines its contribution to its section's stack height. */
-export type SlotKind = 'header' | 'subheader' | 'button';
+/**
+ * What a single slot holds. Determines its contribution to its section's stack height.
+ *
+ * The three text kinds are the type ramp's three steps, not free-form sizes -- `header` is
+ * `--text-md`, `subheader` is `--text-sm`, `meta` is `--text-xs`. A row that wants a size outside
+ * them is asking for a ramp step this codebase does not have.
+ */
+export type SlotKind = 'header' | 'subheader' | 'meta' | 'button';
 
 /** A section holds zero, one or two stacked slots, top first. */
 export type SectionShape = SlotKind[];
@@ -29,52 +41,54 @@ export interface RowShape {
   left: SectionShape;
   middle?: SectionShape;
   right?: SectionShape;
-  /**
-   * Residual, in CSS px, between the height this shape derives and the height the panel actually
-   * reserves today. Non-zero only where a panel has not yet been migrated onto `ListPanel`, so
-   * the shape describes the row it is BECOMING while the pinned height is what it measures NOW.
-   *
-   * This exists because the two cannot be reconciled by tuning {@link SLOT_HEIGHT}. With five
-   * unknowns (header, subheader, button, gap, padding) and the three pinned heights as equations,
-   * every solution that satisfies all three forces degenerate values -- an 8.5px header line with
-   * a 19px gap, or a subheader 13px TALLER than a header. The obstruction is structural, not a
-   * search failure: 86 is nearly double the ~48px a two-section `max()` can yield, because the
-   * Messages row today stacks three blocks in ONE column. No `max()` model reproduces a 3-high
-   * stack. Rather than corrupt the vocabulary to fit one un-migrated panel, the shape stays honest
-   * and the gap is carried here, named, and retired when the panel migrates.
-   *
-   * Each use MUST name what it accounts for. Both current uses go to zero in Task 8.
-   */
-  heightAdjustment?: number;
 }
 
 /**
  * Rendered height of one slot, in CSS px, against the live Inter font.
  *
- * Each is grounded in the stylesheet rather than fitted to the pinned totals:
- * - `header` 20 -- the 16px title line box. Carried over from `PANEL_CHROME.headerTextOnly`,
- *   which is the number the Messages panel's text-only header already reserved.
- * - `subheader` 17 -- a 14px (`--text-sm`) line box.
- * - `button` 27 -- a `Button sm`: `--space-1` block padding (4 + 4), its 1px border top and
- *   bottom, and a 14px line box (16.94), so 26.94. Carried over from `PANEL_CHROME.headerControl`.
+ * Every value below is a Chrome measurement of the real component, not a number fitted to a total:
+ * - `header` 20 -- a `--text-md` (16px) line box, which measures 19.5. Held at 20 because that is
+ *   what `PANEL_CHROME.headerTextOnly` reserved before this model existed, and it is the number the
+ *   Messages panel's text-only header still reserves. The 0.5 is an over-reservation, and the only
+ *   place it can be observed is that header: in all three ROWS the right section is taller, so the
+ *   `max()` discards it. Dropping it to 19.5 would be more exact and would move
+ *   `panelChromeHeight` and `COLLAPSED_PANEL_HEIGHT` for no visible gain.
+ * - `subheader` 17 -- a `--text-sm` (14px) line box. Measured 17.0 exactly.
+ * - `meta` 14.5 -- a `--text-xs` (12px) line box. Measured 14.5 exactly. This is the timestamp
+ *   step: the Messages row stacks its relative `<time>` above its actions, and reading that line
+ *   as a `subheader` is what made the row derive 2.5px more than it rendered.
+ * - `button` 27 -- a `Button sm`: `--space-1` block padding (4 + 4), its 1px border top and bottom,
+ *   and a 14px line box. Measured 27.0 exactly. Carried over from `PANEL_CHROME.headerControl`.
  *
- * Corroboration that `subheader` and `button` are measurements and not fudge factors: they
- * reconstruct the live Messages row exactly. That row stacks meta (17) over body (17) over its
- * actions (27) with two `--space-1` gaps (8) inside {@link ROW_PADDING_Y} (17) -- 86.0, the pinned
- * value to the tenth. A third action button on a Users row would likewise change that panel's
- * height, which is the property this model exists to make visible instead of silent.
+ * A slot is a RESERVATION, so a section may hold something shorter without breaking the model --
+ * the Messages reply chip is a 22.8px outline anchor sitting in a `button` slot beside a real 27px
+ * `Button sm`, and the taller of the two governs. What the model cannot absorb is something
+ * TALLER than its declared slot: that is exactly what the Roles `x` glyph was at 32px, and it is
+ * why the glyph is now pinned to the button slot's height in CSS (`--lp-slot-button`).
  */
 export const SLOT_HEIGHT: Record<SlotKind, number> = {
   header: 20,
   subheader: 17,
+  meta: 14.5,
   button: 27,
 };
 
 /** Vertical gap between two stacked slots in the same section (`--space-1`). */
 export const SLOT_GAP = 4;
 
-/** Block padding inside a row (`--space-2` top + bottom), plus its 1px separator. */
-export const ROW_PADDING_Y = 17;
+/**
+ * Block padding inside a row (`--space-2` top + `--space-1` bottom), plus its 1px separator.
+ *
+ * Asymmetric on purpose, and the asymmetry is the density pass: the separator already performs the
+ * separation that a row's bottom padding was also performing, so the bottom half was paying twice
+ * for one job. Top padding still has to hold the row off the line above it, which nothing else
+ * does. 8 + 4 + 1 rather than the 8 + 8 + 1 this replaces -- 4px off every row in every panel.
+ *
+ * Must stay in step with `.row`'s `padding` in `ListPanel.module.scss`. This number is the
+ * packer's contract: it is reserved before the panel renders, so a change on one side alone
+ * reopens the blank-well/clipped-row class of bug the derivation exists to close.
+ */
+export const ROW_PADDING_Y = 13;
 
 /**
  * Fixed height around a panel's list, mirroring `AdminPanel.module.scss`. Written as its parts
@@ -108,15 +122,16 @@ export function rowHeight(shape: RowShape): number {
     stackHeight(shape.middle),
     stackHeight(shape.right)
   );
-  return tallest + ROW_PADDING_Y + (shape.heightAdjustment ?? 0);
+  return tallest + ROW_PADDING_Y;
 }
 
 /**
  * Fixed height a panel spends on chrome, given the shape of its header row.
  *
- * Needs no {@link RowShape.heightAdjustment}: all three panels' header totals come out exact --
- * Users and Roles at 86 (their `+ New` / create button governs at 27) and Messages at 79 (text
- * link only, so the 20px title line governs).
+ * All three panels' header totals fall straight out of the shape -- Users and Roles at 86 (their
+ * `+ New` / create button governs at 27) and Messages at 79 (text link only, so the title line
+ * governs). Messages is the one place `header`'s 0.5px over-reservation shows: that header
+ * measures 78.5 and reserves 79. Unchanged by the density pass, which touches rows only.
  */
 export function panelChromeHeight(header: RowShape): number {
   const headerContent = Math.max(

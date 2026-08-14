@@ -154,13 +154,11 @@ const TILE_MIN_WIDTH = 300;
  * now a declaration rather than a measurement -- which matters because the measurement was the one
  * registration step that failed silently (see the {@link panelContentHeight} docblock).
  *
- * The heights this produces are unchanged from the constants it replaces: 75 / 86 / 36.5 per row
- * and 86 / 79 / 86 of chrome. The row heights stay width-independent, as probed against the live
- * Inter font at panel widths 400, 430, 520 and 609.6px -- identical at all four, which is the
- * property {@link PANEL_MIN_WIDTH} exists to protect.
- *
- * Two row shapes carry a documented `heightAdjustment`; see `listPanelShape.ts` for why, and note
- * that both retire once those panels render through `ListPanel`.
+ * Every shape below now describes a row that actually renders, and each derives its rendered
+ * height to the pixel: 71 / 58.5 / 40 per row, on 86 / 79 / 86 of chrome. Measured in Chrome
+ * against the live Inter font at panel widths 400, 430, 520 and 610px -- identical at all four,
+ * which is the property {@link PANEL_MIN_WIDTH} exists to protect. No shape carries a residual;
+ * the `heightAdjustment` escape hatch that covered the two un-migrated panels is gone with them.
  */
 const PANEL_SHAPE: Record<PanelType, { header: RowShape; row: RowShape }> = {
   users: {
@@ -169,17 +167,14 @@ const PANEL_SHAPE: Record<PanelType, { header: RowShape; row: RowShape }> = {
   },
   messages: {
     header: { left: ['header'], right: ['subheader'] },
-    // +21: three blocks still stack in one column instead of splitting into two sections.
-    row: {
-      left: ['header', 'subheader'],
-      right: ['subheader', 'button'],
-      heightAdjustment: 21,
-    },
+    // Both left slots are `--text-sm`: the sender is a link, not a title, and reads at the same
+    // size as the excerpt under it. The right stack is the relative <time> (`--text-xs`, so
+    // `meta`) over the reply/delete actions, and it is the taller of the two -- 45.5 to 38.
+    row: { left: ['subheader', 'subheader'], right: ['meta', 'button'] },
   },
   roles: {
     header: { left: ['header'], right: ['button'] },
-    // -7.5: padding lives in `.rowMain`, so the 32px `x` glyph loses to the padded name block.
-    row: { left: ['header'], right: ['button'], heightAdjustment: -7.5 },
+    row: { left: ['header'], right: ['button'] },
   },
 };
 

@@ -1,57 +1,69 @@
 import { panelContentHeight } from '@/app/(admin)/admin/adminHubContent';
 import {
   panelChromeHeight,
+  ROW_PADDING_Y,
   rowHeight,
   type RowShape,
+  SLOT_HEIGHT,
 } from '@/app/components/ListPanel/listPanelShape';
 
 /**
  * The three live panels, as the shapes they declare. These are the calibration fixtures for
- * `listPanelShape` -- 75 / 86 / 36.5 are the packer's current contract, so a model that stops
- * reproducing them is wrong. Fix the model, never these numbers.
+ * `listPanelShape`: 71 / 58.5 / 40 is what each row MEASURES in Chrome against the live Inter
+ * font, so a model that stops reproducing them is wrong. Fix the model, never these numbers.
  *
- * Users needs no residual: its shape and its rendered row already agree. The other two carry one
- * because they have not been migrated onto `ListPanel` yet, so their declared shape describes the
- * row they are becoming while the pinned height is what they measure today. Both residuals are
- * retired in Task 8.
+ * All three are now exact -- derived and rendered agree to the pixel, at panel widths 400, 430,
+ * 520 and 610. No shape carries a residual any more: `RowShape.heightAdjustment` existed only to
+ * carry the two un-migrated panels through the migration and was deleted with the last of them.
+ *
+ * What retired each one:
+ * - Messages (+21) -- the row stacked meta, body and actions in ONE column, which no `max()` of
+ *   two sections can produce. It is two sections now, and the taller (`meta` over `button`, 45.5)
+ *   governs. Its left slots also read `--text-sm`, not a `header`: the sender is a link, not a
+ *   title.
+ * - Roles (-7.5) -- the row had no padding of its own and pushed it into `.rowMain`, so the 32px
+ *   `x` glyph competed against a PADDED name block. `ListPanel.row` owns the padding now, and the
+ *   glyph is sized to the `button` slot it sits in (`--lp-slot-button`) instead of --space-6.
  */
 const USERS_ROW: RowShape = {
   left: ['header', 'subheader'],
   right: ['button', 'button'],
 };
 
-/**
- * +21: the Messages row does not split into two sections yet. Its three blocks -- meta, body and
- * actions -- still stack in ONE column, so the row is the whole stack (17 + 17 + 27 plus two
- * `--space-1` gaps = 69) rather than the taller of two sections (48). 69 - 48 = 21.
- */
 const MESSAGES_ROW: RowShape = {
-  left: ['header', 'subheader'],
-  right: ['subheader', 'button'],
-  heightAdjustment: 21,
+  left: ['subheader', 'subheader'],
+  right: ['meta', 'button'],
 };
 
-/**
- * -7.5: the Roles row inverts its padding. `.row` has none and `.rowMain` carries `--space-2`, so
- * the row's 16px of block padding wraps only the name. That makes its bare `x` delete glyph --
- * a `--space-6` (32px) square with `line-height: 1`, no padding and no border, not a `Button sm`
- * -- compete against the PADDED 35.5px name block and lose: max(35.5, 32) + 1px rule = 36.5. The
- * declared shape instead pads outside both sections and reads the glyph as a 27px `button`,
- * giving 44. `ListPanel.row` takes ownership of the padding in Task 7.
- */
-const ROLES_ROW: RowShape = { left: ['header'], right: ['button'], heightAdjustment: -7.5 };
+const ROLES_ROW: RowShape = { left: ['header'], right: ['button'] };
 
 describe('rowHeight', () => {
   it('reproduces the measured Users row height', () => {
-    expect(rowHeight(USERS_ROW)).toBeCloseTo(75, 1);
+    expect(rowHeight(USERS_ROW)).toBeCloseTo(71, 1);
   });
 
   it('reproduces the measured Messages row height', () => {
-    expect(rowHeight(MESSAGES_ROW)).toBeCloseTo(86, 1);
+    expect(rowHeight(MESSAGES_ROW)).toBeCloseTo(58.5, 1);
   });
 
   it('reproduces the measured Roles row height', () => {
-    expect(rowHeight(ROLES_ROW)).toBeCloseTo(36.5, 1);
+    expect(rowHeight(ROLES_ROW)).toBeCloseTo(40, 1);
+  });
+
+  // The density pass is only honest if the row actually got shorter. Pinning the direction as
+  // well as the values means a later "tidy-up" that restores symmetric padding fails here rather
+  // than silently handing the packer back the 4px it just reclaimed.
+  it('derives a shorter row than the symmetric padding it replaced', () => {
+    const SYMMETRIC_ROW_PADDING_Y = 17;
+    expect(rowHeight(USERS_ROW)).toBe(58 + ROW_PADDING_Y);
+    expect(ROW_PADDING_Y).toBeLessThan(SYMMETRIC_ROW_PADDING_Y);
+  });
+
+  // `meta` is the slot the Messages timestamp needed and the vocabulary lacked. Reading that
+  // `--text-xs` line as a `subheader` is what made the row derive 2.5px more than it rendered.
+  it('gives a meta slot less height than a subheader', () => {
+    expect(SLOT_HEIGHT.meta).toBeLessThan(SLOT_HEIGHT.subheader);
+    expect(rowHeight({ left: ['meta'] })).toBeLessThan(rowHeight({ left: ['subheader'] }));
   });
 
   it('takes the tallest section, not the first', () => {
@@ -60,8 +72,7 @@ describe('rowHeight', () => {
     );
   });
 
-  // Spread rather than re-declared so the two sides differ ONLY by the empty middle -- otherwise
-  // this passes or fails on whether the literal happens to carry the same residual.
+  // Spread rather than re-declared so the two sides differ ONLY by the empty middle.
   it('ignores an absent middle section', () => {
     expect(rowHeight({ ...ROLES_ROW, middle: [] })).toBe(rowHeight(ROLES_ROW));
   });

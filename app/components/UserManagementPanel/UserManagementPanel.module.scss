@@ -20,10 +20,17 @@
    .rowMain, .rowStatic and .rowActions all lived here and are gone. What stays is the content
    INSIDE the identity slot, which is this panel's own and nobody else's. */
 
+/* The row's left section: who they are, over how to reach them. The `gap` is SLOT_GAP — this
+   section declares two stacked slots (`header` over `subheader`) and the model puts --space-1
+   between any two, so without it the declared 41px stack rendered 36.5. It never changed the row's
+   height, because the two stacked buttons opposite are taller either way; it made the shape
+   describe a row slightly unlike the one on screen. The same block in MessagesPanel already had
+   it, so this also stops the two identity blocks reading differently side by side on /admin. */
 .identity {
   display: flex;
   flex: 1;
   flex-direction: column;
+  gap: var(--space-1);
   min-width: 0;
 }
 

@@ -36,6 +36,14 @@
   --lp-surface-row-hover: #e8ebef;
   --lp-border-row: var(--color-border-strong);
 
+  /* The `button` slot height from listPanelShape.ts, published so a panel's own stylesheet can
+     size a control TO the slot instead of guessing at it. A section may hold something shorter
+     than its slot -- the taller sibling governs -- but anything TALLER silently makes the row
+     outgrow the height the packer reserved, with no compile error and no failing test. That is
+     what the Roles `x` glyph was: a --space-6 (32px) square in a 27px slot, rendering a 49px row
+     against a 36.5px reservation. Sizing it from this variable is what keeps the two in step. */
+  --lp-slot-button: 27px;
+
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -195,13 +203,20 @@
 /* Same three columns as .header, resolved against the same rails. `grid` rather than the old
    wrapping flex row on purpose: `flex-wrap` let a narrow panel move the actions onto a second
    line, which would make the row's height depend on its width and desync the packer's pin.
-   A grid row cannot wrap, so the height stays width-independent by construction. */
+   A grid row cannot wrap, so the height stays width-independent by construction.
+
+   The block padding is ASYMMETRIC, and deliberately so: the bottom separator already holds this
+   row off the next one, so an equal bottom padding was buying that separation a second time. The
+   top padding has no such partner -- it is the only thing between this row's content and the line
+   above it -- so it keeps its --space-2. 8 + 4 + a 1px rule is ROW_PADDING_Y (13) in
+   listPanelShape.ts, which the packer reserves BEFORE this renders. Change one and you must change
+   the other; they are one number written in two languages. */
 .row {
   display: grid;
   grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) 0;
+  padding: var(--space-2) 0 var(--space-1);
   background: var(--lp-surface-row);
   border-bottom: 1px solid var(--lp-border-row);
 
