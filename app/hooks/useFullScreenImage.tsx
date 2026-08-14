@@ -169,13 +169,22 @@ export function useFullScreenImage(): {
   // pops exactly one entry and popstate (Back) is distinguished from our own pop.
   const pushedHistoryRef = useRef<boolean>(false);
 
+  /**
+   * Open the viewer on `image`, with `allImages` as the sequence prev/next walks.
+   *
+   * `image` is not always a member of `allImages`: the collection cover is synthesized at layout
+   * time with id {@link COVER_IMAGE_CONTENT_ID} and never reaches the content array behind that
+   * list. A non-member opens as a single-image list, so the viewer always shows the image that was
+   * clicked and always has one to render — a state carrying no renderable image blacks out the page
+   * (see `FullScreenModal`).
+   */
   const showImage = useCallback((image: ImageBlock, allImages?: ImageBlock[]) => {
-    const images = allImages || [image];
-    const currentIndex = allImages?.findIndex(img => img.id === image.id) ?? 0;
+    const index = allImages?.findIndex(img => img.id === image.id) ?? -1;
+    const images = index === -1 ? [image] : allImages!;
 
     setFullScreenState({
       images,
-      currentIndex: currentIndex !== -1 ? currentIndex : 0,
+      currentIndex: index === -1 ? 0 : index,
     });
 
     // Sync ?image=<id> onto the URL so the open viewer is deep-linkable.
