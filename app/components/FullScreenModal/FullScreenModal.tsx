@@ -77,6 +77,11 @@ interface FullScreenModalProps {
  * ARIA: `aria-controls` on the metadata toggle is emitted only while the panel is mounted —
  * a reference to an absent id is invalid (same convention as EditBar and MenuDropdown).
  *
+ * `isOpen` tracks a resolvable `currentImage`, not merely a non-null `fullScreenState`, because the
+ * effect below adds `body.fullscreen-open` — which globals.css paints solid #000 to keep the page
+ * canvas from leaking through the overlay on iOS. A state whose index resolves to nothing renders
+ * null, so gating the class on anything looser blacks out the page with no viewer on it.
+ *
  * The dialog's name and the photo's `alt` both come from `humanLabel`, the same filter the grid
  * tiles use: the backend seeds `title` from the uploaded filename, so naming the dialog straight
  * off `title` announced "Fullscreen image: DSC_4364.webp". A filename-shaped value is dropped in
@@ -100,11 +105,6 @@ export function FullScreenModal({
   navigateToNext,
   navigateToPrevious,
 }: FullScreenModalProps) {
-  // Resolved BEFORE the effect, because the body class below paints the page black and must track
-  // what this component actually puts on screen — not merely that a state object exists. The render
-  // bails on an unresolvable index (see the early returns), and when the two disagreed the class
-  // went on with no overlay under it: a black page wearing its own text colors, no viewer, no way
-  // out. Keeping one derivation for both means they cannot drift apart again.
   const currentImage = fullScreenState?.images[fullScreenState.currentIndex];
   const isOpen = currentImage != null;
 

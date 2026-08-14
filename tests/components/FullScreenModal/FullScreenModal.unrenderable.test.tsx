@@ -1,12 +1,10 @@
 /**
- * The `fullscreen-open` body class must track what the viewer actually PAINTS, not merely that
- * `fullScreenState` is non-null.
+ * The `fullscreen-open` body class must track what the viewer actually paints.
  *
- * `globals.css` paints both `html:has(body.fullscreen-open)` and `body.fullscreen-open` solid #000
- * so no page canvas shows through the 90%-opaque overlay on iOS. That is only safe while the
- * overlay is really on screen. When the state resolves to no current image the component returns
- * null — and if the class went on anyway, the page kept its own text colors and images over a black
- * canvas with no viewer and no close button: the "inverted colors" report on /admin/users/[id].
+ * globals.css paints both `html:has(body.fullscreen-open)` and `body.fullscreen-open` solid #000 so
+ * no page canvas shows through the 90%-opaque overlay on iOS. That is only safe while the overlay
+ * is on screen: a state whose index resolves to no image renders null, and the class over a null
+ * render is a black page with no viewer and no close button on it.
  */
 import { render, screen } from '@testing-library/react';
 

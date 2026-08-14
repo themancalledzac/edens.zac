@@ -169,22 +169,16 @@ export function useFullScreenImage(): {
   // pops exactly one entry and popstate (Back) is distinguished from our own pop.
   const pushedHistoryRef = useRef<boolean>(false);
 
+  /**
+   * Open the viewer on `image`, with `allImages` as the sequence prev/next walks.
+   *
+   * `image` is not always a member of `allImages`: the collection cover is synthesized at layout
+   * time with id {@link COVER_IMAGE_CONTENT_ID} and never reaches the content array behind that
+   * list. A non-member opens as a single-image list, so the viewer always shows the image that was
+   * clicked and always has one to render — a state carrying no renderable image blacks out the page
+   * (see `FullScreenModal`).
+   */
   const showImage = useCallback((image: ImageBlock, allImages?: ImageBlock[]) => {
-    // The clicked image is the intent, so the viewer opens on IT — never on whatever happens to sit
-    // at index 0. `allImages` is the surrounding list only to give prev/next something to walk, and
-    // the image is not always a member of it: the collection COVER is synthesized at layout time
-    // (id COVER_IMAGE_CONTENT_ID) and never reaches the content array `viewableBlocks` filters, so
-    // `findIndex` answers -1 for it on every page that has one.
-    //
-    // Coercing that -1 to 0 was wrong twice over. On a grid of photographs it opened the first photo
-    // instead of the cover. On a grid holding no viewable photographs at all — a user space's
-    // Collections tab, a PARENT collection, where every tile is a collection card and so excluded —
-    // it produced `{ images: [], currentIndex: 0 }`, which the modal cannot render: it returned null
-    // while its own effect had already painted `body.fullscreen-open` black, leaving a blacked-out
-    // page with no viewer on it and no close button to escape by.
-    //
-    // A non-member falls back to a single-image list. Prev/next are correctly absent — there is no
-    // sequence a cover belongs to.
     const index = allImages?.findIndex(img => img.id === image.id) ?? -1;
     const images = index === -1 ? [image] : allImages!;
 

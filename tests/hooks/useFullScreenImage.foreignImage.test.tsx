@@ -1,18 +1,13 @@
 /**
- * Opening the viewer on an image that is NOT a member of the surrounding list.
+ * Opening the viewer on an image that is not a member of the surrounding list.
  *
- * The collection COVER is the real case: it is synthesized by `createCoverImageBlock` from
- * `collection.coverImage` at layout time with id `COVER_IMAGE_CONTENT_ID` (-1), so it never appears
- * in the content array that `ContentBlockWithFullScreen` filters into `viewableBlocks`. Clicking it
- * therefore calls `showImage(cover, viewableBlocks)` with a cover that no index in the list matches.
+ * The collection cover is the real case: `createCoverImageBlock` synthesizes it at layout time with
+ * id COVER_IMAGE_CONTENT_ID (-1), so it never appears in the content array that
+ * `ContentBlockWithFullScreen` filters into `viewableBlocks`. Clicking it calls
+ * `showImage(cover, viewableBlocks)` with a cover no index in that list matches.
  *
- * `findIndex` answers -1 there, and coercing that to 0 was wrong in both directions: on a grid of
- * photographs it opened the FIRST photo instead of the cover, and on a grid with no viewable
- * photographs at all (a user space's Collections tab, a PARENT collection — every tile is a
- * collection card, which `viewableBlocks` excludes) it produced `{ images: [], currentIndex: 0 }`,
- * a state the modal cannot render.
- *
- * The clicked image is the intent, so it is what the viewer must show.
+ * The viewer must open on the clicked image, and must always resolve to something renderable — a
+ * state carrying no image blacks out the page (see FullScreenModal.unrenderable).
  */
 import { act, renderHook } from '@testing-library/react';
 
