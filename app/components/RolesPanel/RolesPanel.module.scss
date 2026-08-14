@@ -1,4 +1,6 @@
-/* RolesPanel — list, create, and role-detail styles for the roles admin panel */
+/* RolesPanel — the content inside this panel's ListPanel slots, plus the create form and the
+   role-detail editor that share the panel body. The shell, the list surface and the row grid are
+   ListPanel's. */
 
 /* Load failure — deliberately unlike the shared <EmptyState> the empty branch renders, so a dead
    backend never reads as an empty list. */
@@ -17,52 +19,10 @@
 
 /* ---- list ---- */
 
-/* White content-frame surface + inward row padding, in step with the UserManagementPanel and
-   MessagesPanel lists — see the .list docblock there. Rows here pad via .rowMain already. */
-.list {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0 var(--space-2);
-  list-style: none;
-  background: var(--content-frame);
-  border-radius: var(--radius-1);
-}
-
-.row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-
-  &:last-child {
-    border-bottom: none;
-  }
-}
-
-.rowMain {
-  display: flex;
-  align-items: center;
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: var(--space-2);
-  border: none;
-  background: none;
-  text-align: left;
-  cursor: pointer;
-  color: inherit;
-  font: inherit;
-
-  &:hover {
-    opacity: 0.85;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-    border-radius: var(--radius-1);
-  }
-}
+/* .list, .row and .rowMain are gone — all three are ListPanel's now. .rowMain took the padding
+   inversion with it: this row used to be a bare <li> with the block padding pushed down into its
+   inner button, which is the arrangement that made this panel's height disagree with the derived
+   model. ListPanel.row owns that padding for all three panels. */
 
 .name {
   font-weight: 600;
