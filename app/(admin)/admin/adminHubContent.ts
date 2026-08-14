@@ -206,17 +206,44 @@ export interface AdminPanelCounts {
 }
 
 /**
+ * Fraction of the viewport a panel may occupy. Below 1 so the page keeps a strip to scroll by --
+ * a panel filling the whole viewport reads as the page rather than as one block on it, and leaves
+ * no visual handle telling the reader there is more hub below.
+ */
+const VIEWPORT_HEIGHT_FRACTION = 0.9;
+
+/**
  * The height a panel reserves for `rowCount` rows, bounded by {@link PANEL_HEIGHT_BOUNDS}.
  *
  * Declared to the layout engine through {@link pinnedHeight}, whose equal `minHeight`/`maxHeight`
  * pair is what marks a block's height as independent of its width. Anything that makes a row's
  * height depend on the panel's width invalidates this: see the load-bearing CSS listed in
  * `AdminPanelRenderer`.
+ *
+ * `viewportHeight` tightens the ceiling to {@link VIEWPORT_HEIGHT_FRACTION} of the viewport, so a
+ * long list scrolls inside its own `.body` instead of reserving more than the screen. It must come
+ * from the SSR viewport resolved in `page.tsx` -- a value measured on the client after paint would
+ * rewrite footprints and force the re-pack this whole design exists to avoid. Omitting it is
+ * exactly the pre-existing behaviour, which is what keeps the hub fixtures valid.
+ *
+ * Order matters: the floor is applied to the content, then the ceiling, but the ceiling is itself
+ * floored first. A viewport shorter than {@link PANEL_HEIGHT_BOUNDS}.min would otherwise reserve a
+ * panel less height than its own chrome occupies -- the blank-well bug inverted, with the header
+ * clipped instead of a gap left under it.
  */
-export function panelContentHeight(panelType: PanelType, rowCount: number): number {
+export function panelContentHeight(
+  panelType: PanelType,
+  rowCount: number,
+  viewportHeight?: number
+): number {
   const shape = PANEL_SHAPE[panelType];
   const raw = panelChromeHeight(shape.header) + Math.max(0, rowCount) * rowHeight(shape.row);
-  return Math.min(PANEL_HEIGHT_BOUNDS.max, Math.max(PANEL_HEIGHT_BOUNDS.min, raw));
+  const viewportCeiling =
+    viewportHeight && viewportHeight > 0
+      ? Math.min(PANEL_HEIGHT_BOUNDS.max, viewportHeight * VIEWPORT_HEIGHT_FRACTION)
+      : PANEL_HEIGHT_BOUNDS.max;
+  const ceiling = Math.max(PANEL_HEIGHT_BOUNDS.min, viewportCeiling);
+  return Math.min(ceiling, Math.max(PANEL_HEIGHT_BOUNDS.min, raw));
 }
 
 /**
@@ -226,9 +253,15 @@ export function panelContentHeight(panelType: PanelType, rowCount: number): numb
  */
 const FALLBACK_COUNTS: AdminPanelCounts = { users: 0, messages: 0, roles: 0 };
 
+/**
+ * @param viewportHeight SSR-resolved viewport height, forwarded to {@link panelContentHeight} so a
+ *   long list is capped rather than reserving more than the screen. Optional: omitted, every panel
+ *   sizes exactly as it did before the cap existed.
+ */
 export function buildAdminHubContent(
   tiles: AdminHomeTileApi[],
-  counts: AdminPanelCounts = FALLBACK_COUNTS
+  counts: AdminPanelCounts = FALLBACK_COUNTS,
+  viewportHeight?: number
 ): AnyContentModel[] {
   const apiByKey = new Map(tiles.map(t => [t.tileKey, t]));
 
@@ -259,9 +292,9 @@ export function buildAdminHubContent(
     };
   });
 
-  const usersHeight = panelContentHeight('users', counts.users);
-  const messagesHeight = panelContentHeight('messages', counts.messages);
-  const rolesHeight = panelContentHeight('roles', counts.roles);
+  const usersHeight = panelContentHeight('users', counts.users, viewportHeight);
+  const messagesHeight = panelContentHeight('messages', counts.messages, viewportHeight);
+  const rolesHeight = panelContentHeight('roles', counts.roles, viewportHeight);
 
   const usersPanel: ContentPanelModel = {
     contentType: 'PANEL',

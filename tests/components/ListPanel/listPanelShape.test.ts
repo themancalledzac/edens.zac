@@ -1,3 +1,4 @@
+import { panelContentHeight } from '@/app/(admin)/admin/adminHubContent';
 import {
   panelChromeHeight,
   rowHeight,
@@ -71,5 +72,34 @@ describe('panelChromeHeight', () => {
     expect(panelChromeHeight({ left: ['header'], right: ['button'] })).toBeGreaterThan(
       panelChromeHeight({ left: ['header'] })
     );
+  });
+});
+
+describe('panelContentHeight viewport cap', () => {
+  it('caps at 90% of a phone viewport', () => {
+    expect(panelContentHeight('users', 40, 812)).toBeCloseTo(730.8, 1);
+  });
+
+  it('does not cap below the floor', () => {
+    expect(panelContentHeight('users', 0, 812)).toBe(192);
+  });
+
+  it('falls back to the absolute ceiling on a tall viewport', () => {
+    expect(panelContentHeight('users', 400, 4000)).toBe(1000);
+  });
+
+  // The explicit `undefined` is the assertion, not noise: omitting the argument and passing it
+  // undefined must agree, which is what lets every existing hub fixture keep calling the two-arg
+  // form. Autofixing it away would leave `x === x`.
+  it('is unchanged when no viewport is supplied', () => {
+    // eslint-disable-next-line unicorn/no-useless-undefined
+    expect(panelContentHeight('users', 40)).toBe(panelContentHeight('users', 40, undefined));
+  });
+
+  // The floor outranks the viewport cap, not the other way round. Without this the ceiling on a
+  // very short viewport lands under PANEL_HEIGHT_BOUNDS.min and a panel reserves less than its
+  // own chrome -- the blank-well bug inverted.
+  it('keeps the floor on a viewport too short to hold it', () => {
+    expect(panelContentHeight('users', 40, 100)).toBe(192);
   });
 });

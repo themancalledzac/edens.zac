@@ -56,11 +56,17 @@ export default async function AdminHubPage() {
     listRoles().catch(() => null),
   ]);
 
-  const content = buildAdminHubContent(tiles, {
-    users: users?.length ?? 0,
-    messages: messages?.total ?? 0,
-    roles: roles?.length ?? 0,
-  });
+  // The viewport height comes from the same `Promise.all` as the counts, so the panel-height cap
+  // is known before the first pack -- the same single-pack rule the counts follow.
+  const content = buildAdminHubContent(
+    tiles,
+    {
+      users: users?.length ?? 0,
+      messages: messages?.total ?? 0,
+      roles: roles?.length ?? 0,
+    },
+    ssrViewport?.viewportHeight
+  );
 
   return (
     <PageShell pageType="collectionsCollection">
