@@ -100,7 +100,13 @@ export function FullScreenModal({
   navigateToNext,
   navigateToPrevious,
 }: FullScreenModalProps) {
-  const isOpen = fullScreenState != null;
+  // Resolved BEFORE the effect, because the body class below paints the page black and must track
+  // what this component actually puts on screen — not merely that a state object exists. The render
+  // bails on an unresolvable index (see the early returns), and when the two disagreed the class
+  // went on with no overlay under it: a black page wearing its own text colors, no viewer, no way
+  // out. Keeping one derivation for both means they cannot drift apart again.
+  const currentImage = fullScreenState?.images[fullScreenState.currentIndex];
+  const isOpen = currentImage != null;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -137,10 +143,7 @@ export function FullScreenModal({
   // Target of the toggle's aria-controls. Only emitted while the panel is mounted (see below).
   const metadataPanelId = useId();
 
-  if (!fullScreenState) return null;
-
-  const currentImage = fullScreenState.images[fullScreenState.currentIndex];
-  if (!currentImage) return null;
+  if (!fullScreenState || !currentImage) return null;
 
   const isGif = isGifBlock(currentImage);
 

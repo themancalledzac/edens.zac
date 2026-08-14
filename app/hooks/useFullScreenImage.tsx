@@ -170,12 +170,27 @@ export function useFullScreenImage(): {
   const pushedHistoryRef = useRef<boolean>(false);
 
   const showImage = useCallback((image: ImageBlock, allImages?: ImageBlock[]) => {
-    const images = allImages || [image];
-    const currentIndex = allImages?.findIndex(img => img.id === image.id) ?? 0;
+    // The clicked image is the intent, so the viewer opens on IT — never on whatever happens to sit
+    // at index 0. `allImages` is the surrounding list only to give prev/next something to walk, and
+    // the image is not always a member of it: the collection COVER is synthesized at layout time
+    // (id COVER_IMAGE_CONTENT_ID) and never reaches the content array `viewableBlocks` filters, so
+    // `findIndex` answers -1 for it on every page that has one.
+    //
+    // Coercing that -1 to 0 was wrong twice over. On a grid of photographs it opened the first photo
+    // instead of the cover. On a grid holding no viewable photographs at all — a user space's
+    // Collections tab, a PARENT collection, where every tile is a collection card and so excluded —
+    // it produced `{ images: [], currentIndex: 0 }`, which the modal cannot render: it returned null
+    // while its own effect had already painted `body.fullscreen-open` black, leaving a blacked-out
+    // page with no viewer on it and no close button to escape by.
+    //
+    // A non-member falls back to a single-image list. Prev/next are correctly absent — there is no
+    // sequence a cover belongs to.
+    const index = allImages?.findIndex(img => img.id === image.id) ?? -1;
+    const images = index === -1 ? [image] : allImages!;
 
     setFullScreenState({
       images,
-      currentIndex: currentIndex !== -1 ? currentIndex : 0,
+      currentIndex: index === -1 ? 0 : index,
     });
 
     // Sync ?image=<id> onto the URL so the open viewer is deep-linkable.
