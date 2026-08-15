@@ -67,11 +67,29 @@ const PANEL_COMPONENTS: Record<
  * when the packer changes a panel's width.
  *
  * That severance rests on CSS, so these rules are layout correctness and not styling — a panel row
- * must never become width-dependent. Load-bearing: `white-space: nowrap` on
- * `UserManagementPanel`'s `.rowActions` (nothing else stops "Reset pw" breaking); `flex: 1 1 220px`
- * on its `.rowMain`, whose 220px basis IS the wrap threshold; the `nowrap`/`ellipsis` triple on
- * every `.name`, `.email` and message `.body`; and the ABSENCE of `flex-wrap` on `AdminPanel`'s
- * `.header` and on the Roles row. No `@media` or `@container` may enter this subtree.
+ * must never become width-dependent. What guarantees it is now structural: `ListPanel`'s `.row` is
+ * a CSS GRID with fixed tracks (`1fr auto auto`), and a grid row cannot wrap. Its three sections
+ * are placed in three columns whatever the width, so the row is always exactly one line of
+ * sections tall. That replaced a wrapping flex row whose safety depended on the ABSENCE of a
+ * `flex-wrap` declaration and on a `flex: 1 1 220px` basis acting as the wrap threshold — a
+ * guarantee made of two things nobody had written down, either of which a plausible edit restores.
+ *
+ * Within that frame three rules still carry weight, because a grid track cannot stop its own
+ * CONTENTS from growing taller:
+ * - Every text slot is `nowrap` + `text-overflow: ellipsis` (`.name`, `.email`, the message
+ *   `.body`), so a long value ellipsises instead of becoming a second line. `white-space: nowrap`
+ *   on `.rowRight` does the same for "Reset pw".
+ * - `min-width: 0` on `.rowLeft` and `.rowActivate`. A grid item's automatic minimum is its
+ *   min-content width, so without it the `1fr` track refuses to shrink and pushes the right rail
+ *   out of the panel rather than letting its text ellipsise.
+ * - No control may exceed the slot height its shape declares in `listPanelShape.ts`. Nothing
+ *   enforces this at compile time: the Roles `x` glyph was a 32px square in a 27px `button` slot
+ *   and rendered a 49px row against a 36.5px reservation, in silence. It reads `--lp-slot-button`
+ *   now, which is that slot published as a custom property.
+ *
+ * No `@media` or `@container` may enter this subtree — a breakpoint reintroduces exactly the
+ * width-dependence the grid removes. That rule and the rail definitions are pinned by
+ * `tests/components/ListPanel/subtreeRules.test.ts` rather than left to this comment.
  *
  * Those rules bind the LIST view, which is the only view the height model describes. A panel that
  * is loading, errored, or showing a role's detail has no row count, reserves the model's floor, and
@@ -85,7 +103,7 @@ const PANEL_COMPONENTS: Record<
  * models, so a flag held at this depth can shrink one panel's own box and nothing else. Owning it
  * above `Component` is what lets the rest of the hub re-pack.
  *
- * With no provider the collapse props are omitted entirely, and `AdminPanel` renders its plain
+ * With no provider the collapse props are omitted entirely, and `ListPanel` renders its plain
  * non-collapsible header — the same opt-in gate it already applies to `onCollapsedChange`.
  */
 export function AdminPanelRenderer({

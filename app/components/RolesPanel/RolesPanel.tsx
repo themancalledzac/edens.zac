@@ -13,8 +13,8 @@ import {
   useState,
 } from 'react';
 
-import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
 import { useAdminPanelSeed } from '@/app/components/AdminPanel/AdminPanelSeedContext';
+import { ListPanel, ListRow, ListRows } from '@/app/components/ListPanel/ListPanel';
 import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
@@ -59,7 +59,7 @@ interface RolesPanelProps {
  * before removing it. Both confirm first, matching the rest of the admin surface.
  *
  * Collapsed state is owned by `AdminPanelRenderer` (it sizes the box) and passed straight through to
- * {@link AdminPanel}. This panel only intervenes to force itself open when the body gains something
+ * {@link ListPanel}. This panel only intervenes to force itself open when the body gains something
  * the user must see: the create form and the detail editor both live in the body, so opening one
  * while collapsed would otherwise look like the control did nothing.
  *
@@ -215,35 +215,35 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
     } else {
       listBody = (
         <>
-          <ul className={styles.list}>
+          <ListRows>
             {sortedRoles.map(role => (
-              <li key={role.id} className={styles.row}>
-                <button
-                  type="button"
-                  className={styles.rowMain}
-                  onClick={() => openView({ mode: 'detail', role })}
-                >
-                  <span className={styles.name}>{role.name}</span>
-                </button>
-                <button
-                  type="button"
-                  className={styles.deleteButton}
-                  aria-label={`Delete role ${role.name}`}
-                  disabled={deletingId === role.id}
-                  onClick={() => void handleDelete(role)}
-                >
-                  ×
-                </button>
-              </li>
+              <ListRow
+                key={role.id}
+                // No `ariaLabel`: the activation button names itself from the role name it
+                // contains, which is what it did as `.rowMain` and what the tests read.
+                onActivate={() => openView({ mode: 'detail', role })}
+                left={<span className={styles.name}>{role.name}</span>}
+                right={
+                  <button
+                    type="button"
+                    className={styles.deleteButton}
+                    aria-label={`Delete role ${role.name}`}
+                    disabled={deletingId === role.id}
+                    onClick={() => void handleDelete(role)}
+                  >
+                    ×
+                  </button>
+                }
+              />
             ))}
-          </ul>
+          </ListRows>
           {deleteError && <p className={styles.error}>{deleteError}</p>}
         </>
       );
     }
   }
 
-  const headerAction =
+  const headerRight =
     view.mode === 'list' ? (
       <Button variant="secondary" size="sm" onClick={() => openView({ mode: 'create' })}>
         + New Role
@@ -255,10 +255,10 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
     );
 
   return (
-    <AdminPanel
+    <ListPanel
       title={headerTitle}
       ariaLabel="Role management"
-      action={headerAction}
+      headerRight={headerRight}
       collapsed={collapsed}
       onCollapsedChange={onCollapsedChange}
     >
@@ -295,7 +295,7 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
       {view.mode === 'list' && !loading && !loadError && revalidationFailed && <StaleNotice />}
 
       {view.mode === 'list' && listBody}
-    </AdminPanel>
+    </ListPanel>
   );
 }
 

@@ -302,14 +302,20 @@ describe('admin hub collapsed layout', () => {
 
   /**
    * The reserved box has to be the box the panel actually needs — the reason the row can stop
-   * padding it. 2 messages at 86px plus 79px of chrome is 251px; anything materially above that is
-   * the blank well coming back.
+   * padding it. 2 messages at 58.5px plus 79px of chrome is 196px; anything materially above that
+   * is the blank well coming back.
+   *
+   * Was `79 + 2 × 86 = 251`. The row lost 27.5px in the ListPanel migration and the density pass:
+   * 21px of it because the row stopped stacking meta/body/actions in ONE column and split into two
+   * sections (the taller now governs instead of the sum), 2.5px because the timestamp reads as a
+   * `--text-xs` `meta` slot rather than a `--text-sm` `subheader`, and 4px from the row's
+   * asymmetric padding. The chrome is untouched, which is why the 79 is unchanged.
    */
   it('reserves the true two-message box for Messages, not a column', () => {
     const messages = panelRows(NONE)[0]!.items.find(
       item => isPanelContent(item.content) && item.content.panelType === 'messages'
     )!;
 
-    expect(messages.height).toBeCloseTo(79 + 2 * 86, 5);
+    expect(messages.height).toBeCloseTo(79 + 2 * 58.5, 5);
   });
 });

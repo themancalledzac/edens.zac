@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { type Dispatch, type ReactNode, type SetStateAction, useCallback } from 'react';
 
-import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
-import { MessageRow } from '@/app/components/messages/MessageRow';
+import { ListPanel, ListRow, ListRows } from '@/app/components/ListPanel/ListPanel';
+import { MessageRowLeft, MessageRowRight } from '@/app/components/messages/MessageRow';
 import { Button } from '@/app/components/ui/Button/Button';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
@@ -24,7 +24,7 @@ interface MessagesPanelProps {
  * Self-fetching admin panel that lists messages newest-first in a compact column.
  *
  * Collapsed state is owned by `AdminPanelRenderer` (it sizes the box) and passed through to
- * {@link AdminPanel}. Unlike the users panel this one has no body-only modes to guard, so it
+ * {@link ListPanel}. Unlike the users panel this one has no body-only modes to guard, so it
  * simply forwards both props.
  *
  * `getAdminMessages` resolves `null` only for an empty (204) body — any non-OK response throws
@@ -88,7 +88,7 @@ export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelPro
   );
   const { deletingId, error, handleDelete } = useMessageDelete(messages, setMessages, setTotal);
 
-  const action = (
+  const headerRight = (
     <Link href="/comments" className={styles.viewAll}>
       {total} · View all
     </Link>
@@ -110,19 +110,22 @@ export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelPro
     } else {
       body = (
         <>
-          <ul className={styles.list}>
+          <ListRows>
             {messages.map(m => (
-              <li key={m.id} className={styles.row}>
-                <MessageRow
-                  message={m}
-                  onDelete={handleDelete}
-                  deleting={deletingId === m.id}
-                  styles={styles}
-                  excerptWords={10}
-                />
-              </li>
+              <ListRow
+                key={m.id}
+                left={<MessageRowLeft message={m} styles={styles} excerptWords={10} />}
+                right={
+                  <MessageRowRight
+                    message={m}
+                    styles={styles}
+                    onDelete={handleDelete}
+                    deleting={deletingId === m.id}
+                  />
+                }
+              />
             ))}
-          </ul>
+          </ListRows>
           {error && <p className={styles.error}>{error}</p>}
         </>
       );
@@ -130,17 +133,17 @@ export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelPro
   }
 
   return (
-    <AdminPanel
+    <ListPanel
       title="Messages"
       ariaLabel="Comments"
-      action={action}
+      headerRight={headerRight}
       collapsed={collapsed}
       onCollapsedChange={onCollapsedChange}
     >
       <LoadingText isLoading={loading}>Loading…</LoadingText>
       {!loading && !loadError && revalidationFailed && <StaleNotice />}
       {body}
-    </AdminPanel>
+    </ListPanel>
   );
 }
 

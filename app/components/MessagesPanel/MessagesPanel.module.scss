@@ -1,4 +1,5 @@
-/* MessagesPanel — compact message rows for a narrow admin column */
+/* MessagesPanel — the content inside this panel's ListPanel slots, in the compact arrangement a
+   narrow admin column wants. The shell, the list surface and the row grid are ListPanel's. */
 
 .viewAll {
   font-size: var(--text-sm);
@@ -11,35 +12,18 @@
   }
 }
 
-/* White content-frame surface + inward row padding, in step with the UserManagementPanel and
-   RolesPanel lists — see the .list docblock there. */
-.list {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0 var(--space-2);
-  list-style: none;
-  background: var(--content-frame);
-  border-radius: var(--radius-1);
-}
-
-.row {
+/* The row's left section: the sender over an excerpt of what they sent. Flex rather than a plain
+   block because it has to blockify the `<a>` inside it — an inline `<a>` ignores the
+   `overflow: hidden` on .email below, and a long address would then push the right rail off the
+   panel instead of ellipsising. Same job .identity does in UserManagementPanel.
+   The timestamp is no longer beside the email: it moved to the row's right section, above the
+   actions, which is what turns this row from three stacked blocks into two side-by-side sections
+   with a height the slot model can derive. .meta went with it; only /comments still has that line.
+   .list and .row are gone from here — both belong to ListPanel now. */
+.identity {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-
-  &:last-child {
-    border-bottom: none;
-  }
-}
-
-.meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--space-2);
   min-width: 0;
 }
 

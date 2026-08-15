@@ -72,6 +72,11 @@
  * the composer picks at any of the transitions above.
  */
 
+import {
+  panelChromeHeight,
+  rowHeight,
+  type RowShape,
+} from '@/app/components/ListPanel/listPanelShape';
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
 import {
   type AnyContentModel,
@@ -140,47 +145,37 @@ export const PANEL_MAX_WIDTH = 700;
 const TILE_MIN_WIDTH = 300;
 
 /**
- * Height of one list row, per panel, in CSS px.
+ * What each panel's header and list rows are made of, as {@link RowShape} slot stacks.
  *
- * Measured, not derived — each row's height comes from whichever of its children is tallest, and
- * that is not always the obvious one. A Users row is 75px because `.rowActions` stacks two `sm`
- * buttons in a COLUMN (57.4px), which beats the two-line identity block (43.8px); adding a third
- * action button would change this number. Probed against the live Inter font at panel widths 400,
- * 430, 520 and 609.6px — identical at all four, which is the property {@link PANEL_MIN_WIDTH}
- * exists to protect.
- */
-const PANEL_ROW_HEIGHT: Record<PanelType, number> = {
-  users: 75,
-  messages: 86,
-  roles: 36.5,
-};
-
-/**
- * Fixed height around a panel's list, mirroring `AdminPanel.module.scss`. Written as its parts
- * rather than one measured total so a token change is traceable: `.panel` border (1px × 2),
- * `.header` block padding (`--space-3` × 2) plus its bottom rule, and `.body` padding
- * (`--space-4` × 2).
+ * Replaces the measured `PANEL_ROW_HEIGHT` / `PANEL_CHROME.headerControl` /
+ * `PANEL_HAS_HEADER_BUTTON` trio. Those encoded a panel's height as three numbers a human had to
+ * keep in agreement with the stylesheet; this encodes what the panel RENDERS and lets
+ * {@link rowHeight} and {@link panelChromeHeight} do the arithmetic. Registering a new panel is
+ * now a declaration rather than a measurement -- which matters because the measurement was the one
+ * registration step that failed silently (see the {@link panelContentHeight} docblock).
  *
- * `headerControl` is the tallest thing the header can carry. A `Button sm` (27px) sets it on the
- * Users and Roles panels; Messages carries only a text link, so its header is the shorter 20px
- * title line box. This reproduces the two panel heights observed in the browser to within 2.4px —
- * a reservation error of that size is invisible, and being explicable matters more here than
- * being exact.
+ * Every shape below now describes a row that actually renders, and each derives its rendered
+ * height to the pixel: 71 / 58.5 / 40 per row, on 86 / 79 / 86 of chrome. Measured in Chrome
+ * against the live Inter font at panel widths 400, 430, 520 and 610px -- identical at all four,
+ * which is the property {@link PANEL_MIN_WIDTH} exists to protect. No shape carries a residual;
+ * the `heightAdjustment` escape hatch that covered the two un-migrated panels is gone with them.
  */
-const PANEL_CHROME = {
-  border: 2,
-  headerPadding: 24,
-  headerRule: 1,
-  bodyPadding: 32,
-  headerControl: 27,
-  headerTextOnly: 20,
-} as const;
-
-/** Panels whose header carries a button rather than only text. */
-const PANEL_HAS_HEADER_BUTTON: Record<PanelType, boolean> = {
-  users: true,
-  messages: false,
-  roles: true,
+const PANEL_SHAPE: Record<PanelType, { header: RowShape; row: RowShape }> = {
+  users: {
+    header: { left: ['header'], right: ['button'] },
+    row: { left: ['header', 'subheader'], right: ['button', 'button'] },
+  },
+  messages: {
+    header: { left: ['header'], right: ['subheader'] },
+    // Both left slots are `--text-sm`: the sender is a link, not a title, and reads at the same
+    // size as the excerpt under it. The right stack is the relative <time> (`--text-xs`, so
+    // `meta`) over the reply/delete actions, and it is the taller of the two -- 45.5 to 38.
+    row: { left: ['subheader', 'subheader'], right: ['meta', 'button'] },
+  },
+  roles: {
+    header: { left: ['header'], right: ['button'] },
+    row: { left: ['header'], right: ['button'] },
+  },
 };
 
 /**
@@ -206,23 +201,44 @@ export interface AdminPanelCounts {
 }
 
 /**
+ * Fraction of the viewport a panel may occupy. Below 1 so the page keeps a strip to scroll by --
+ * a panel filling the whole viewport reads as the page rather than as one block on it, and leaves
+ * no visual handle telling the reader there is more hub below.
+ */
+const VIEWPORT_HEIGHT_FRACTION = 0.9;
+
+/**
  * The height a panel reserves for `rowCount` rows, bounded by {@link PANEL_HEIGHT_BOUNDS}.
  *
  * Declared to the layout engine through {@link pinnedHeight}, whose equal `minHeight`/`maxHeight`
  * pair is what marks a block's height as independent of its width. Anything that makes a row's
  * height depend on the panel's width invalidates this: see the load-bearing CSS listed in
  * `AdminPanelRenderer`.
+ *
+ * `viewportHeight` tightens the ceiling to {@link VIEWPORT_HEIGHT_FRACTION} of the viewport, so a
+ * long list scrolls inside its own `.body` instead of reserving more than the screen. It must come
+ * from the SSR viewport resolved in `page.tsx` -- a value measured on the client after paint would
+ * rewrite footprints and force the re-pack this whole design exists to avoid. Omitting it is
+ * exactly the pre-existing behaviour, which is what keeps the hub fixtures valid.
+ *
+ * Order matters: the floor is applied to the content, then the ceiling, but the ceiling is itself
+ * floored first. A viewport shorter than {@link PANEL_HEIGHT_BOUNDS}.min would otherwise reserve a
+ * panel less height than its own chrome occupies -- the blank-well bug inverted, with the header
+ * clipped instead of a gap left under it.
  */
-export function panelContentHeight(panelType: PanelType, rowCount: number): number {
-  const chrome =
-    PANEL_CHROME.border +
-    PANEL_CHROME.headerPadding +
-    PANEL_CHROME.headerRule +
-    PANEL_CHROME.bodyPadding +
-    (PANEL_HAS_HEADER_BUTTON[panelType] ? PANEL_CHROME.headerControl : PANEL_CHROME.headerTextOnly);
-
-  const raw = chrome + Math.max(0, rowCount) * PANEL_ROW_HEIGHT[panelType];
-  return Math.min(PANEL_HEIGHT_BOUNDS.max, Math.max(PANEL_HEIGHT_BOUNDS.min, raw));
+export function panelContentHeight(
+  panelType: PanelType,
+  rowCount: number,
+  viewportHeight?: number
+): number {
+  const shape = PANEL_SHAPE[panelType];
+  const raw = panelChromeHeight(shape.header) + Math.max(0, rowCount) * rowHeight(shape.row);
+  const viewportCeiling =
+    viewportHeight && viewportHeight > 0
+      ? Math.min(PANEL_HEIGHT_BOUNDS.max, viewportHeight * VIEWPORT_HEIGHT_FRACTION)
+      : PANEL_HEIGHT_BOUNDS.max;
+  const ceiling = Math.max(PANEL_HEIGHT_BOUNDS.min, viewportCeiling);
+  return Math.min(ceiling, Math.max(PANEL_HEIGHT_BOUNDS.min, raw));
 }
 
 /**
@@ -232,9 +248,15 @@ export function panelContentHeight(panelType: PanelType, rowCount: number): numb
  */
 const FALLBACK_COUNTS: AdminPanelCounts = { users: 0, messages: 0, roles: 0 };
 
+/**
+ * @param viewportHeight SSR-resolved viewport height, forwarded to {@link panelContentHeight} so a
+ *   long list is capped rather than reserving more than the screen. Optional: omitted, every panel
+ *   sizes exactly as it did before the cap existed.
+ */
 export function buildAdminHubContent(
   tiles: AdminHomeTileApi[],
-  counts: AdminPanelCounts = FALLBACK_COUNTS
+  counts: AdminPanelCounts = FALLBACK_COUNTS,
+  viewportHeight?: number
 ): AnyContentModel[] {
   const apiByKey = new Map(tiles.map(t => [t.tileKey, t]));
 
@@ -265,9 +287,9 @@ export function buildAdminHubContent(
     };
   });
 
-  const usersHeight = panelContentHeight('users', counts.users);
-  const messagesHeight = panelContentHeight('messages', counts.messages);
-  const rolesHeight = panelContentHeight('roles', counts.roles);
+  const usersHeight = panelContentHeight('users', counts.users, viewportHeight);
+  const messagesHeight = panelContentHeight('messages', counts.messages, viewportHeight);
+  const rolesHeight = panelContentHeight('roles', counts.roles, viewportHeight);
 
   const usersPanel: ContentPanelModel = {
     contentType: 'PANEL',
@@ -322,27 +344,22 @@ export function buildAdminHubContent(
  *
  * Zac's round-3 review: a closed panel is not only its header — it shows a small strip of the
  * (empty) body surface, "as tall as the padding around it, maybe twice as tall". Body padding is
- * 32px total ({@link PANEL_CHROME}.bodyPadding), so the visible body lands at 48px — inside his
- * stated band. Mirrored in `AdminPanel.module.scss` by the `.isCollapsed::after` strip, whose
- * `min-height: var(--space-4)` (16px) inside `margin: var(--space-4)` (32px in total) is the same
- * 32 + 16 arithmetic; change the two together.
+ * 32px total (the `bodyPadding` term inside {@link panelChromeHeight}), so the visible body lands
+ * at 48px — inside his stated band. Mirrored in `AdminPanel.module.scss` by the `.isCollapsed::after`
+ * strip, whose `min-height: var(--space-4)` (16px) inside `margin: var(--space-4)` (32px in total)
+ * is the same 32 + 16 arithmetic; change the two together.
  */
 const COLLAPSED_BODY_SLIVER = 16;
 
 /**
  * The height a collapsed panel reserves and renders: full header chrome over the padded empty
- * body sliver. Derived from the same {@link PANEL_CHROME} parts as the expanded model so a token
+ * body sliver. Derived through the same {@link panelChromeHeight} as the expanded model so a token
  * change moves both. Uses the with-button header for every panel — bars sit side by side, and a
  * uniform height is what keeps them reading as one system; the CSS stretches a text-only header's
- * panel to the same box.
+ * panel to the same box. Hence the Users header shape rather than each panel's own.
  */
 export const COLLAPSED_PANEL_HEIGHT =
-  PANEL_CHROME.border +
-  PANEL_CHROME.headerPadding +
-  PANEL_CHROME.headerRule +
-  PANEL_CHROME.headerControl +
-  PANEL_CHROME.bodyPadding +
-  COLLAPSED_BODY_SLIVER;
+  panelChromeHeight(PANEL_SHAPE.users.header) + COLLAPSED_BODY_SLIVER;
 
 /**
  * Footprint a COLLAPSED panel reports to the layout packer: an ordinary small block.
