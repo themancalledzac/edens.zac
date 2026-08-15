@@ -176,6 +176,16 @@ const PANEL_SHAPE: Record<PanelType, { header: RowShape; row: RowShape }> = {
     header: { left: ['header'], right: ['button'] },
     row: { left: ['header'], right: ['button'] },
   },
+  // The first shape declared before its panel existed rather than measured off one that already
+  // did. The row is a collection name over its date, and nothing on the right. The 32px cover
+  // thumbnail beside that text is not a slot: it is shorter than the 41px stack, so the stack
+  // governs and the thumbnail adds no height. That is why the thumbnail is a fixed square in CSS
+  // -- sized to its own image proportions it would grow with the panel's width, and a row whose
+  // height moves with width is the one thing this pin cannot survive.
+  collections: {
+    header: { left: ['header'], right: ['subheader'] },
+    row: { left: ['header', 'subheader'], right: [] },
+  },
 };
 
 /**
@@ -198,6 +208,7 @@ export interface AdminPanelCounts {
   users: number;
   messages: number;
   roles: number;
+  collections: number;
 }
 
 /**
@@ -246,7 +257,7 @@ export function panelContentHeight(
  * typical list: an under-reservation is corrected by the panel's own scroll, while an
  * over-reservation reintroduces exactly the blank well this feature exists to remove.
  */
-const FALLBACK_COUNTS: AdminPanelCounts = { users: 0, messages: 0, roles: 0 };
+const FALLBACK_COUNTS: AdminPanelCounts = { users: 0, messages: 0, roles: 0, collections: 0 };
 
 /**
  * @param viewportHeight SSR-resolved viewport height, forwarded to {@link panelContentHeight} so a
@@ -290,6 +301,7 @@ export function buildAdminHubContent(
   const usersHeight = panelContentHeight('users', counts.users, viewportHeight);
   const messagesHeight = panelContentHeight('messages', counts.messages, viewportHeight);
   const rolesHeight = panelContentHeight('roles', counts.roles, viewportHeight);
+  const collectionsHeight = panelContentHeight('collections', counts.collections, viewportHeight);
 
   const usersPanel: ContentPanelModel = {
     contentType: 'PANEL',
@@ -336,7 +348,22 @@ export function buildAdminHubContent(
     visible: true,
   };
 
-  return [usersPanel, messagesPanel, rolesPanel, ...tileModels];
+  const collectionsPanel: ContentPanelModel = {
+    contentType: 'PANEL',
+    panelType: 'collections',
+    id: 1004,
+    rating: 5,
+    title: 'Collections',
+    width: 600,
+    height: 1100,
+    minWidth: PANEL_MIN_WIDTH,
+    maxWidth: PANEL_MAX_WIDTH,
+    ...pinnedHeight(collectionsHeight),
+    orderIndex: 103,
+    visible: true,
+  };
+
+  return [usersPanel, messagesPanel, rolesPanel, collectionsPanel, ...tileModels];
 }
 
 /**

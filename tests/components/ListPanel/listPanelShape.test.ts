@@ -37,6 +37,18 @@ const MESSAGES_ROW: RowShape = {
 
 const ROLES_ROW: RowShape = { left: ['header'], right: ['button'] };
 
+/**
+ * The Collections row, which is the first shape declared BEFORE the panel it describes was built
+ * rather than measured off one that already existed. Its left section is the collection name over
+ * its date; nothing sits on the right.
+ *
+ * The 32px cover thumbnail beside that text is not a slot. It is shorter than the 41px stack it
+ * sits next to, so the stack governs the row and the thumbnail contributes no height. That is the
+ * reason the thumbnail is pinned at 32px in CSS: at anything over 41px it would govern instead,
+ * and this shape would understate the row.
+ */
+const COLLECTIONS_ROW: RowShape = { left: ['header', 'subheader'], right: [] };
+
 describe('rowHeight', () => {
   it('reproduces the measured Users row height', () => {
     expect(rowHeight(USERS_ROW)).toBeCloseTo(71, 1);
@@ -48,6 +60,18 @@ describe('rowHeight', () => {
 
   it('reproduces the measured Roles row height', () => {
     expect(rowHeight(ROLES_ROW)).toBeCloseTo(40, 1);
+  });
+
+  it('derives the Collections row height', () => {
+    expect(rowHeight(COLLECTIONS_ROW)).toBeCloseTo(54, 1);
+  });
+
+  // The rule the 32px thumbnail exists to satisfy, written as an assertion rather than a comment
+  // in the stylesheet. The left stack is 41px; a thumbnail taller than that becomes the tallest
+  // thing in the row and the shape above stops describing what renders.
+  it('leaves the Collections thumbnail under the text stack it sits beside', () => {
+    const COLLECTIONS_THUMBNAIL = 32;
+    expect(COLLECTIONS_THUMBNAIL).toBeLessThan(rowHeight(COLLECTIONS_ROW) - ROW_PADDING_Y);
   });
 
   // The density pass is only honest if the row actually got shorter. Pinning the direction as

@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import { type AdminMessageView } from '@/app/lib/api/messages';
+import { type CollectionListModel } from '@/app/types/Collection';
 import { type RoleSummary } from '@/app/types/Role';
 import { type AdminUserSummary } from '@/app/types/User';
 import { logger } from '@/app/utils/logger';
@@ -44,6 +45,7 @@ export interface PanelCacheSchema {
   'users:people': AdminUserSummary[];
   messages: AdminMessagesPayload;
   roles: RoleSummary[];
+  collections: CollectionListModel[];
 }
 
 /** A key of {@link PanelCacheSchema} — the only thing this cache accepts as an identity. */
