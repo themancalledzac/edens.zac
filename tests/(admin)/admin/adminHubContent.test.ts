@@ -20,8 +20,8 @@ function makeTile(tileKey: string, overrides: Partial<AdminHomeTileApi> = {}): A
   };
 }
 
-/** Users, Messages, Roles — the panels the hub puts ahead of the nav tiles. */
-const PANEL_COUNT = 3;
+/** Users, Messages, Roles, Collections — the panels the hub puts ahead of the nav tiles. */
+const PANEL_COUNT = 4;
 
 describe('buildAdminHubContent', () => {
   const apiTiles: AdminHomeTileApi[] = ADMIN_TILES.map(c => makeTile(c.tileKey));
@@ -105,7 +105,7 @@ describe('buildAdminHubContent', () => {
 
   it('carries every panel type, in order, all rated 5', () => {
     const panels = result.slice(0, PANEL_COUNT) as ContentPanelModel[];
-    expect(panels.map(p => p.panelType)).toEqual(['users', 'messages', 'roles']);
+    expect(panels.map(p => p.panelType)).toEqual(['users', 'messages', 'roles', 'collections']);
     for (const panel of panels) {
       expect(panel.rating).toBe(5);
     }
@@ -147,14 +147,14 @@ describe('buildAdminHubContent', () => {
 
 describe('withPanelFootprints', () => {
   const content = buildAdminHubContent([]);
-  const NONE = { users: false, messages: false, roles: false } as const;
+  const NONE = { users: false, messages: false, roles: false, collections: false } as const;
 
   it('returns the content unchanged when nothing is collapsed', () => {
     expect(withPanelFootprints(content, NONE)).toEqual(content);
   });
 
   it('gives a collapsed panel the bar footprint and leaves its siblings alone', () => {
-    const [users, messages, roles] = withPanelFootprints(content, {
+    const [users, messages, roles, collections] = withPanelFootprints(content, {
       ...NONE,
       users: true,
     }) as ContentPanelModel[];
@@ -168,6 +168,7 @@ describe('withPanelFootprints', () => {
     expect(users?.maxHeight).toBe(COLLAPSED_PANEL_SIZE.maxHeight);
     expect(messages?.height).toBe(1100);
     expect(roles?.height).toBe(1100);
+    expect(collections?.height).toBe(1100);
   });
 
   it('collapses every panel type, not just the first', () => {
@@ -175,6 +176,7 @@ describe('withPanelFootprints', () => {
       users: true,
       messages: true,
       roles: true,
+      collections: true,
     }).slice(0, PANEL_COUNT) as ContentPanelModel[];
 
     for (const panel of panels) {
@@ -187,6 +189,7 @@ describe('withPanelFootprints', () => {
       users: true,
       messages: true,
       roles: true,
+      collections: true,
     });
     expect(collapsed.slice(PANEL_COUNT)).toEqual(content.slice(PANEL_COUNT));
   });
@@ -217,13 +220,18 @@ describe('withPanelFootprints', () => {
    * 2026-08-10 and was reverted the same day (oscillating re-pack → remount → refetch storm).
    */
   it('hands an expanded panel back exactly as declared, pin included', () => {
-    const [users, messages, roles] = withPanelFootprints(content, NONE) as ContentPanelModel[];
-    const [declaredUsers, declaredMessages, declaredRoles] = content as ContentPanelModel[];
+    const [users, messages, roles, collections] = withPanelFootprints(
+      content,
+      NONE
+    ) as ContentPanelModel[];
+    const [declaredUsers, declaredMessages, declaredRoles, declaredCollections] =
+      content as ContentPanelModel[];
 
     for (const [panel, declared] of [
       [users, declaredUsers],
       [messages, declaredMessages],
       [roles, declaredRoles],
+      [collections, declaredCollections],
     ] as const) {
       expect(panel?.width).toBe(600);
       expect(panel?.height).toBe(1100);
@@ -240,10 +248,10 @@ describe('withPanelFootprints', () => {
    * the bug this feature exists to remove.
    */
   it('pins a panel to a height that grows with its row count', () => {
-    const small = buildAdminHubContent([], { users: 2, messages: 2, roles: 2 });
-    const large = buildAdminHubContent([], { users: 12, messages: 9, roles: 9 });
+    const small = buildAdminHubContent([], { users: 2, messages: 2, roles: 2, collections: 2 });
+    const large = buildAdminHubContent([], { users: 12, messages: 9, roles: 9, collections: 9 });
 
-    for (const index of [0, 1, 2]) {
+    for (const index of [0, 1, 2, 3]) {
       const lean = small[index] as ContentPanelModel;
       const full = large[index] as ContentPanelModel;
 
@@ -258,11 +266,13 @@ describe('withPanelFootprints', () => {
       users: 0,
       messages: 0,
       roles: 0,
+      collections: 0,
     }) as ContentPanelModel[];
     const [hugeUsers] = buildAdminHubContent([], {
       users: 500,
       messages: 0,
       roles: 0,
+      collections: 0,
     }) as ContentPanelModel[];
 
     expect(emptyUsers?.minHeight).toBe(192);

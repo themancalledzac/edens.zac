@@ -13,7 +13,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import CollectionsPanel from '@/app/components/CollectionsPanel/CollectionsPanel';
 import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import * as collectionsApi from '@/app/lib/api/collections';
-import { type CollectionListModel } from '@/app/types/Collection';
+import { type CollectionListModel, type GeneralMetadataDTO } from '@/app/types/Collection';
 
 jest.mock('@/app/lib/api/collections', () => ({
   getMetadata: jest.fn(),
@@ -47,6 +47,22 @@ const COLLECTIONS: CollectionListModel[] = [
   },
 ];
 
+/**
+ * A metadata payload carrying nothing but the collection list. The endpoint returns tags, people,
+ * cameras and the rest too; this panel reads none of them, so they stay empty rather than being
+ * filled with fixtures no assertion looks at.
+ */
+const metadataWith = (collections: CollectionListModel[]): GeneralMetadataDTO => ({
+  tags: [],
+  people: [],
+  locations: [],
+  cameras: [],
+  lenses: [],
+  filmTypes: [],
+  filmFormats: [],
+  collections,
+});
+
 const rowNames = () =>
   screen.getAllByRole('listitem').map(row => row.querySelector('.name')?.textContent);
 
@@ -55,9 +71,7 @@ describe('CollectionsPanel', () => {
     jest.clearAllMocks();
     clearCachedPanelData();
     window.localStorage.clear();
-    mockGetMetadata.mockResolvedValue({ collections: COLLECTIONS } as Awaited<
-      ReturnType<typeof collectionsApi.getMetadata>
-    >);
+    mockGetMetadata.mockResolvedValue(metadataWith(COLLECTIONS));
   });
 
   it('renders a row per collection', async () => {
@@ -108,9 +122,7 @@ describe('CollectionsPanel', () => {
   });
 
   it('shows the empty state when there are no collections', async () => {
-    mockGetMetadata.mockResolvedValue({ collections: [] } as Awaited<
-      ReturnType<typeof collectionsApi.getMetadata>
-    >);
+    mockGetMetadata.mockResolvedValue(metadataWith([]));
     render(<CollectionsPanel />);
 
     expect(await screen.findByText('No collections yet.')).toBeInTheDocument();

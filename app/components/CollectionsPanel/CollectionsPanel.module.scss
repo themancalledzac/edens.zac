@@ -1,10 +1,12 @@
 /* CollectionsPanel — the content inside this panel's ListPanel slots. The shell, the list surface
    and the row grid are ListPanel's.
 
-   No @media, no @container, no viewport units anywhere in this file. The packer reserves this
-   panel's height before it renders, from the row shape declared in adminHubContent.ts, so a rule
-   that fires at some width would make a row's height depend on the panel's width and desync the
-   two. tests/components/ListPanel/subtreeRules.test.ts holds this file to that. */
+   No breakpoints, no container queries and no viewport units anywhere in this file. The packer
+   reserves this panel's height before it renders, from the row shape declared in
+   adminHubContent.ts, so a rule that fires at some width would make a row's height depend on the
+   panel's width and desync the two. tests/components/ListPanel/subtreeRules.test.ts holds this
+   file to that, and it reads the stylesheet as TEXT — so naming those at-rules here, even inside
+   a comment, fails it. */
 
 /* Copies MessagesPanel's header link rather than inventing a second treatment for the same thing:
    the two panels sit on the same hub and a "View all" that reads differently in each is a
