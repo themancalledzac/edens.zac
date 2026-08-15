@@ -3,6 +3,7 @@
 import { type ComponentType } from 'react';
 
 import { useAdminPanelCollapse } from '@/app/components/AdminPanel/AdminPanelCollapseContext';
+import { CollectionsPanel } from '@/app/components/CollectionsPanel/CollectionsPanel';
 import { MessagesPanel } from '@/app/components/MessagesPanel/MessagesPanel';
 import { RolesPanel } from '@/app/components/RolesPanel/RolesPanel';
 import UserManagementPanel from '@/app/components/UserManagementPanel/UserManagementPanel';
@@ -24,8 +25,8 @@ interface AdminPanelChildProps {
 }
 
 /**
- * A lookup rather than a ternary chain: with three panel types an `else` branch silently renders
- * the wrong panel for anything it does not name, while a missing key here is a type error.
+ * A lookup rather than a ternary chain: an `else` branch silently renders the wrong panel for
+ * anything it does not name, while a missing key here is a type error.
  */
 const PANEL_COMPONENTS: Record<
   ContentPanelModel['panelType'],
@@ -34,6 +35,7 @@ const PANEL_COMPONENTS: Record<
   users: UserManagementPanel,
   messages: MessagesPanel,
   roles: RolesPanel,
+  collections: CollectionsPanel,
 };
 
 /**
