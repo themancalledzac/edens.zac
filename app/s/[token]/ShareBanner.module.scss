@@ -1,0 +1,25 @@
+/* ShareBanner — standing "you are viewing X's work" context for a share recipient. */
+
+.banner {
+  margin-bottom: var(--space-3);
+
+  /* Inset while the content grids below run full-bleed on mobile, released at the desktop
+     breakpoint where .sections regains its own side padding. Mirrors /user's .topBar and the
+     shared FilterToolbar, which bracket the same grids. */
+  padding-inline: var(--page-padding-mobile);
+
+  @media (width >= 768px) {
+    padding-inline: 0;
+  }
+}
+
+.text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+}
+
+.name {
+  font-weight: 600;
+  color: var(--color-on-surface);
+}

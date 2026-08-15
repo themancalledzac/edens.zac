@@ -1,0 +1,9 @@
+/* The page scaffold (container/main, max-width, centering, responsive side padding) and the
+   SiteHeader come from the shared <PageShell>, exactly as on /user. This module only owns the
+   share-view-specific bits. */
+
+.sections {
+  /* Same vertical rhythm as /user's own sections block — this is the same view, rendered for a
+     guest rather than its owner, so it should not sit differently on the page. */
+  padding: var(--space-3) 0 var(--space-5);
+}

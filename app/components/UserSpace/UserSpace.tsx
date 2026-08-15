@@ -5,11 +5,7 @@ import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
-import {
-  TAB_KEYS,
-  type TabKey,
-  type UserSpaceData,
-} from '@/app/components/UserSpace/userSpaceData';
+import { type TabKey, type UserSpaceData } from '@/app/components/UserSpace/userSpaceData';
 import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type SsrViewport } from '@/app/utils/ssrViewport';
@@ -104,10 +100,12 @@ export function UserSpace({
   ssrViewport,
   railExtras = null,
 }: UserSpaceProps) {
-  const { collection, sections, followedCollectionIds, savedImageIds } = data;
+  const { collection, sections, followedCollectionIds, savedImageIds, visibleKeys } = data;
   const active = sections[activeKey];
 
-  const toolbarSections: ToolbarSection[] = TAB_KEYS.map(key => {
+  // From the data, not TAB_KEYS: a share recipient is offered Collections and Images only, since
+  // Saved and Following are the owner's private bookmarks and are absent from their view.
+  const toolbarSections: ToolbarSection[] = visibleKeys.map(key => {
     const section = sections[key];
     return {
       key,

@@ -4,8 +4,11 @@
 .toolbar {
   display: flex;
   flex-wrap: nowrap;
-  /* Pins the size control to the FIRST row rather than centring it against a tall wrapped stack. */
-  align-items: flex-start;
+  /* The bar is BOTTOM-anchored: its last row is the one that sits against the content below, and
+     extra rows stack upward from there (see .controls). So the trailing controls pin to the bottom
+     — `flex-start` pinned them to whichever row happened to end up on top, which floated them clear
+     of the row they belong to and left the gap under them that the bar's own padding should own. */
+  align-items: flex-end;
   /* Same token as the Download row's .buttonRow, so the two stacked rows space their
      controls identically. Was a hardcoded 4px, which is what --space-1 resolves to. */
   gap: var(--space-1);
@@ -18,10 +21,18 @@
 }
 
 /* The wrapping half: every filter control. `min-width: 0` lets it shrink and wrap internally
-   instead of forcing the non-wrapping outer row to overflow. */
+   instead of forcing the non-wrapping outer row to overflow.
+
+   `wrap-reverse`, not `wrap`: this cluster is built bottom-up, left-to-right. Its LAST row is the
+   one that sits against the content below and is the row a reader starts from, so that row fills
+   first and losing width pushes chips UP onto rows above it. Plain `wrap` fills top-down, which
+   inverts that — the bottom row ended up holding whatever single chip spilled over while the row
+   above it stayed full, so shrinking the bar moved one chip DOWN instead of moving several up.
+   Reversing the cross axis costs nothing else: lines still run left-to-right internally, and
+   `align-items: center` is symmetric so it is unaffected by the flip. */
 .controls {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: wrap-reverse;
   align-items: center;
 
   /* INVARIANT: keep this at >= --space-2 (8px) for as long as FilterChip paints the 44px
@@ -36,14 +47,30 @@
   min-width: 0;
 }
 
-/* The pinned half. Never shrinks and never wraps, so overflowing filters wrap BELOW it. Carries no
-   height of its own: the control inside is built from the same tokens as a chip, so the row height
-   stays governed by the chips rather than by whatever sits in this slot. */
-.densitySlot {
+/* The pinned half: ONE right-hand group holding the reset × and the photo-size control as its two
+   children, rather than the two of them sitting beside .controls as separate top-level slots. As
+   siblings of the chip block they read as a left/middle/right trio of peers, which they are not —
+   they are the bar's trailing controls, and grouping them says so once instead of relying on two
+   independent pins to keep them together.
+
+   Never shrinks and never wraps, so overflowing chips wrap within .controls rather than pushing
+   this off the row. `flex-end` on .toolbar keeps it on the bar's anchored bottom row. */
+.trailing {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
+
+  /* Same step the chips use, so the × sits in the bar's rhythm rather than crowding the
+     photo-size control it does NOT reset. */
+  gap: var(--space-2);
   margin-left: auto;
+}
+
+/* Carries no height of its own: the control inside is built from the same tokens as a chip, so the
+   row height stays governed by the chips rather than by whatever sits in this slot. */
+.densitySlot {
+  display: flex;
+  align-items: center;
 }
 
 /* Divides the mutually-exclusive section chips from the facet controls that filter WITHIN the
@@ -125,20 +152,31 @@
   box-shadow: 0 4px 12px var(--color-overlay-soft);
 }
 
-/* Deliberately NO `margin-left: auto`: that resolves per flex LINE, so once the controls wrapped
-   the × was flung to the right edge of an arbitrary row, landing beside the photo-size control and
-   reading as though it reset that. It flows inline after the last chip instead. */
+/* Leads .trailing — NOT a member of the wrapping .controls.
+
+   It used to flow inline after the last chip, which put it inside a wrapping container: once the
+   chips filled the row (engaging Order widens its chip by the direction glyph, which is enough on
+   its own) the × wrapped onto a line of its own away from the photo-size control, reading as a
+   stray glyph rather than one of the bar's controls. Riding in the trailing group instead holds it
+   on the bar's anchored bottom row whatever the chips do.
+
+   Never `margin-left: auto`: .trailing already carries the pin for the whole group, and a second
+   one here would be inert and mislead the next reader.
+
+   Vertical padding and the transparent hairline are the chip's own box metrics, so this sits level
+   with the chips it resets on the row the toolbar aligns to `flex-end`. */
 .reset {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  padding: 2px 8px;
+  padding: var(--space-1) var(--space-2);
   font: inherit;
   font-size: var(--text-sm);
   line-height: 1.4;
   color: var(--color-fg);
   background-color: transparent;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius-1);
   cursor: pointer;
   opacity: 0.35;

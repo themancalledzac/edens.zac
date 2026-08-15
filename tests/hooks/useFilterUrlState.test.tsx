@@ -65,11 +65,24 @@ describe('useFilterUrlState', () => {
   });
 
   it('replaces with the bare pathname when criteria are empty', () => {
+    setLocationSearch('?rating=5');
     const { result } = renderHook(() => useFilterUrlState());
     act(() => {
       result.current.syncToUrl({});
     });
     expect(replaceMock).toHaveBeenCalledWith('/some-collection', { scroll: false });
+  });
+
+  it('does not navigate when the serialized URL is unchanged', () => {
+    // What the Order chip does: it is not a URL-serialized filter, so a toggle arrives here with
+    // criteria that serialize to the URL already showing. Replacing a URL with itself still
+    // refetches the RSC payload and re-renders the page from the server.
+    setLocationSearch('?rating=5');
+    const { result } = renderHook(() => useFilterUrlState());
+    act(() => {
+      result.current.syncToUrl({ minRating: 5 });
+    });
+    expect(replaceMock).not.toHaveBeenCalled();
   });
 
   it('preserves a non-filter param (image) while writing and clearing filter keys', () => {

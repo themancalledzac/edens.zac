@@ -65,7 +65,19 @@ export function useFilterUrlState(): {
       for (const k of FILTER_PARAM_KEYS) params.delete(k);
       for (const [k, v] of serializeFilterToParams(criteria)) params.append(k, v);
       const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      const next = qs ? `${pathname}?${qs}` : pathname;
+
+      // Not every filter is serialized to the URL — `dateSortDirection` (the Order chip) is purely
+      // local state, so toggling it lands here with `next` identical to the current URL. Replacing
+      // a URL with itself is not free: the App Router still refetches the RSC payload, re-running
+      // the server component and swapping in a fresh server render. On a page whose server read
+      // does not return a byte-identical payload each time — the synthetic `/user` and
+      // `/admin/users/[id]` collections, whose cover is chosen per request — that showed up as the
+      // header cover changing, and the header row visibly collapsing and regrowing to the new
+      // cover's aspect ratio, on every press of a chip that only reorders what is already loaded.
+      if (next === `${window.location.pathname}${window.location.search}`) return;
+
+      router.replace(next, { scroll: false });
     },
     [router, pathname]
   );

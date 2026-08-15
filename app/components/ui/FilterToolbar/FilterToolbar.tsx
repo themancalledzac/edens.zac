@@ -338,7 +338,9 @@ export function FilterToolbar({
             </div>
           );
         })}
+      </div>
 
+      <div className={styles.trailing}>
         <button
           type="button"
           className={`${styles.reset} ${hasActiveFilters ? '' : styles.resetInactive}`}
@@ -348,35 +350,35 @@ export function FilterToolbar({
         >
           ×
         </button>
-      </div>
 
-      {onDensityChange && density !== undefined && (
-        <div className={styles.densitySlot}>
-          {densityVariant === 'tiers' && densityTiers ? (
-            <DensityTierControl
-              tiers={densityTiers}
-              activeKey={activeDensityTier ?? ''}
-              onSelect={onDensityTierSelect ?? onDensityChange}
-            />
-          ) : (
-            <label className={styles.slider}>
-              {/* aria-hidden: the range input already announces its value natively. */}
-              <span className={styles.sliderLabel} aria-hidden="true">
-                Density {density}
-              </span>
-              <input
-                type="range"
-                min={1}
-                max={densityMax}
-                step={1}
-                value={density}
-                onChange={e => onDensityChange(Number(e.target.value))}
-                aria-label="Row density"
+        {onDensityChange && density !== undefined && (
+          <div className={styles.densitySlot}>
+            {densityVariant === 'tiers' && densityTiers ? (
+              <DensityTierControl
+                tiers={densityTiers}
+                activeKey={activeDensityTier ?? ''}
+                onSelect={onDensityTierSelect ?? onDensityChange}
               />
-            </label>
-          )}
-        </div>
-      )}
+            ) : (
+              <label className={styles.slider}>
+                {/* aria-hidden: the range input already announces its value natively. */}
+                <span className={styles.sliderLabel} aria-hidden="true">
+                  Density {density}
+                </span>
+                <input
+                  type="range"
+                  min={1}
+                  max={densityMax}
+                  step={1}
+                  value={density}
+                  onChange={e => onDensityChange(Number(e.target.value))}
+                  aria-label="Row density"
+                />
+              </label>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
