@@ -13,7 +13,8 @@ import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
-import { type TabKey, type UserSpaceData } from '@/app/components/UserSpace/userSpaceData';
+import { TAB_KEYS,
+type TabKey,   type UserSpaceData } from '@/app/components/UserSpace/userSpaceData';
 import { type MeResponse } from '@/app/types/Auth';
 
 const principal: MeResponse = {
@@ -66,6 +67,8 @@ function makeData(overrides: Partial<UserSpaceData> = {}): UserSpaceData {
     },
     followedCollectionIds: [7, 9],
     savedImageIds: [3],
+    visibleKeys: TAB_KEYS,
+    ownerName: null,
     ...overrides,
   };
 }

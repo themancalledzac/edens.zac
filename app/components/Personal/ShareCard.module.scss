@@ -1,0 +1,75 @@
+/* ShareCard — the share link, its send controls, and the reset, on /user.
+
+   The section shell (heading, rule, body, and the `flex: 0 0 auto` the header rail depends on)
+   comes from <Card>. Only the content inside it is styled here, mirroring AccountCard. */
+
+.hint {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+}
+
+.link {
+  /* Selectable as a fallback whenever the clipboard API is refused, so the link is never
+     unreachable — hence the wrap rather than an ellipsis. */
+  margin: 0 0 var(--space-2);
+  overflow-wrap: anywhere;
+  font-size: var(--text-sm);
+  color: var(--color-on-surface);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.input {
+  flex: 1 1 12rem;
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-on-surface);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+}
+
+.note {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-on-surface);
+}
+
+.optIns {
+  margin-top: var(--space-3);
+}
+
+.optInList {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.optInItem + .optInItem {
+  margin-top: var(--space-1);
+}
+
+.optInLabel {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-sm);
+  color: var(--color-on-surface);
+  cursor: pointer;
+}
+
+.danger {
+  /* Separated by a rule, not just spacing: reset is the one control here that takes access away
+     from someone, and it should not read as a sibling of "copy" and "send". */
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
