@@ -47,7 +47,7 @@ interface ListPanelProps {
  * `.isCollapsed` makes the shell FILL the box the packer gave it (`height: 100%`) rather than size
  * to its header. The packer's box for a collapsed panel is the uniform `COLLAPSED_PANEL_HEIGHT`
  * bar, and filling it is what keeps a text-only header's bar exactly as tall as a
- * button-carrying one — three closed panels read as one row of bars, not three heights.
+ * button-carrying one — closed panels read as one row of bars, not one height each.
  *
  * `.isCollapsed` also paints the strip of empty body surface a closed panel keeps showing, through
  * an `::after` that takes the space below the header. That is presentation with no content, so it
@@ -134,7 +134,7 @@ export function ListRows({ children }: ListRowsProps) {
 interface ListRowProps {
   /** The row's identity — a name over an email, a subject over a body. Hugs the left rail. */
   left: ReactNode;
-  /** Optional middle section. Absent in all three of today's panels; the column stays reserved. */
+  /** Optional middle section. Absent in every panel today; the column stays reserved. */
   middle?: ReactNode;
   /** Actions and trailing stats. Hugs the right rail, the same one the header's action hugs. */
   right?: ReactNode;

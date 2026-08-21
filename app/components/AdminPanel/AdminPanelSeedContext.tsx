@@ -2,6 +2,7 @@
 
 import { createContext, type ReactNode, useContext } from 'react';
 
+import { type CollectionListModel } from '@/app/types/Collection';
 import { type RoleSummary } from '@/app/types/Role';
 import { type AdminUserSummary } from '@/app/types/User';
 
@@ -27,6 +28,7 @@ import { type AdminUserSummary } from '@/app/types/User';
 export interface AdminPanelSeed {
   users?: AdminUserSummary[] | null;
   roles?: RoleSummary[] | null;
+  collections?: CollectionListModel[] | null;
 }
 
 const EMPTY_SEED: AdminPanelSeed = {};

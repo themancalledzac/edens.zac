@@ -13,11 +13,15 @@
  * comes from whichever of its side-by-side sections is tallest. The Users row proves the max --
  * its two stacked `sm` buttons (58px) beat its two-line identity block (41px), so 58 + 13 = 71.
  *
- * All three panels now render through `ListPanel`, so every declared shape describes a row that
- * exists. The model reproduces each one to the pixel, measured in Chrome against the live Inter
- * font at panel widths 400 / 430 / 520 / 610px: Users 71, Messages 58.5, Roles 40, identical at
- * every width. There is no per-shape residual left; the escape hatch that carried the two
- * un-migrated panels through Tasks 1-7 is gone with them.
+ * Every panel renders through `ListPanel`, so every declared shape describes a row that exists.
+ * The model reproduces the three calibration panels to the pixel, measured in Chrome against the
+ * live Inter font at panel widths 400 / 430 / 520 / 610px: Users 71, Messages 58.5, Roles 40,
+ * identical at every width. There is no per-shape residual left; the escape hatch that carried the
+ * two un-migrated panels through the migration is gone with them.
+ *
+ * Collections came the other way round -- its shape was declared first and the panel built to it,
+ * deriving 54. That is the point of the model, but it means that one shape rests on the vocabulary
+ * being right rather than on its own browser measurement.
  */
 
 /**

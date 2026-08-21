@@ -61,6 +61,7 @@ export function AdminHubClient({
     users: false,
     messages: false,
     roles: false,
+    collections: false,
   });
   const collapse = useMemo(
     () => ({

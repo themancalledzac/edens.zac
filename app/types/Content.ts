@@ -385,7 +385,7 @@ export interface ContentCollectionModel extends Content {
 }
 
 /** The admin hub panels that can appear as a PANEL content block. */
-export type PanelType = 'users' | 'messages' | 'roles';
+export type PanelType = 'users' | 'messages' | 'roles' | 'collections';
 
 /**
  * Panel content model - displays a UI panel (e.g. users or messages) as a rated content block

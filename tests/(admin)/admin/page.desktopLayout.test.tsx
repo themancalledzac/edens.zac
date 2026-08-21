@@ -18,6 +18,11 @@ const DESKTOP_VIEWPORT = { contentWidth: 1274, viewportHeight: 900, isMobile: fa
  * ellipsizing — the same failure the mobile pinning exists to prevent, at a different budget.
  */
 const MIN_READABLE_PANEL_WIDTH = 280;
+/**
+ * Users, Messages, Roles, Collections. Named rather than written as a literal at each call site,
+ * because a fourth panel is exactly the change that made these assertions fail.
+ */
+const PANEL_COUNT = 4;
 
 const tilesWithCovers = (width: number, height: number): AdminHomeTileApi[] =>
   ADMIN_TILES.map(({ tileKey }, i) => ({
@@ -44,11 +49,11 @@ const coverCases: [string, AdminHomeTileApi[]][] = [
 ];
 
 describe('admin hub desktop layout', () => {
-  it.each(coverCases)('keeps all three panels in the first row — %s', (_label, tiles) => {
+  it.each(coverCases)('keeps all four panels in the first row — %s', (_label, tiles) => {
     const [firstRow] = layout(tiles);
     const panels = (firstRow?.items ?? []).filter(item => item.content.contentType === 'PANEL');
 
-    expect(panels).toHaveLength(3);
+    expect(panels).toHaveLength(PANEL_COUNT);
   });
 
   it.each(coverCases)('leaves every panel wide enough to read — %s', (_label, tiles) => {
