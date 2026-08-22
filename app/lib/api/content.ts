@@ -45,16 +45,6 @@ export async function getAllTags(): Promise<ContentTagModel[] | null> {
 }
 
 /**
- * GET /api/read/content/cameras
- * Get all cameras (ordered alphabetically)
- */
-export async function getAllCameras(): Promise<Array<{ id: number; cameraName: string }> | null> {
-  return fetchReadApi('/content/cameras', {
-    next: { revalidate: TIMING.revalidateCache, tags: ['content-cameras'] },
-  });
-}
-
-/**
  * GET /api/read/content/locations
  * Get all locations with image counts (ordered alphabetically)
  */
@@ -66,16 +56,6 @@ export async function getAllLocations(): Promise<Array<{
 }> | null> {
   return fetchReadApi('/content/locations', {
     next: { revalidate: TIMING.revalidateCache, tags: ['content-locations'] },
-  });
-}
-
-/**
- * GET /api/read/content/lenses
- * Get all lenses (ordered alphabetically)
- */
-export async function getAllLenses(): Promise<Array<{ id: number; lensName: string }> | null> {
-  return fetchReadApi('/content/lenses', {
-    next: { revalidate: TIMING.revalidateCache, tags: ['content-lenses'] },
   });
 }
 
@@ -135,19 +115,6 @@ export async function searchImages(params: SearchImagesParams): Promise<ContentI
   throw new Error(
     `[searchImages] Unexpected response shape: expected array or { content: [] }, got ${typeof result}`
   );
-}
-
-/**
- * GET /api/read/content/film-metadata
- * Get film metadata (film types and formats)
- */
-export async function getFilmMetadata(): Promise<{
-  filmTypes: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
-  filmFormats: Array<{ name: string; displayName: string }>;
-} | null> {
-  return fetchReadApi('/content/film-metadata', {
-    next: { revalidate: TIMING.revalidateCache, tags: ['content-film-metadata'] },
-  });
 }
 
 // ============================================================================
@@ -376,26 +343,6 @@ export async function getAllImages(params: GetAllImagesParams = {}): Promise<Pag
  */
 export async function deleteImages(imageIds: number[]): Promise<{ deletedIds: number[] } | null> {
   return fetchAdminDeleteJsonApi('/content/images', { imageIds });
-}
-
-/**
- * POST /api/admin/content/tags
- * Create a new tag
- */
-export async function createTag(request: {
-  tagName: string;
-}): Promise<{ id: number; tagName: string } | null> {
-  return fetchAdminPostJsonApi('/content/tags', request);
-}
-
-/**
- * POST /api/admin/content/people
- * Create a new person
- */
-export async function createPerson(request: {
-  personName: string;
-}): Promise<{ id: number; personName: string } | null> {
-  return fetchAdminPostJsonApi('/content/people', request);
 }
 
 /**

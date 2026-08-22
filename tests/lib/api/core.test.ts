@@ -12,9 +12,6 @@ import {
   fetchAdminPutJsonApi,
   fetchEditPatchJsonApi,
   fetchEditPostJsonApi,
-  fetchPatchJsonApi,
-  fetchPostJsonApi,
-  fetchPutJsonApi,
   getServerCookieHeader,
 } from '@/app/lib/api/core';
 import { logger } from '@/app/utils/logger';
@@ -48,8 +45,8 @@ describe('handleApiError (tested via public API functions)', () => {
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow(ApiError);
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow('Custom error message');
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow(ApiError);
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow('Custom error message');
     });
 
     it('should use default error message when response JSON has no message', async () => {
@@ -61,8 +58,8 @@ describe('handleApiError (tested via public API functions)', () => {
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow(ApiError);
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow('API error: 404 Not Found');
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow(ApiError);
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow('API error: 404 Not Found');
     });
 
     it('should handle response with invalid JSON', async () => {
@@ -74,8 +71,8 @@ describe('handleApiError (tested via public API functions)', () => {
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow(ApiError);
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow(
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow(ApiError);
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow(
         'API error: 500 Internal Server Error'
       );
     });
@@ -89,8 +86,8 @@ describe('handleApiError (tested via public API functions)', () => {
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-      await expect(fetchPostJsonApi('/test', {})).rejects.toBeInstanceOf(ApiError);
-      await expect(fetchPostJsonApi('/test', {})).rejects.toHaveProperty('status', 403);
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toBeInstanceOf(ApiError);
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toHaveProperty('status', 403);
     });
   });
 
@@ -98,25 +95,25 @@ describe('handleApiError (tested via public API functions)', () => {
     it('should convert Error to ApiError with status 500', async () => {
       (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow(ApiError);
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow('Network error');
-      await expect(fetchPostJsonApi('/test', {})).rejects.toHaveProperty('status', 500);
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow(ApiError);
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow('Network error');
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toHaveProperty('status', 500);
     });
 
     it('should re-throw ApiError without modification', async () => {
       const apiError = new ApiError('Already an ApiError', 400);
       (global.fetch as jest.Mock).mockRejectedValue(apiError);
 
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow(apiError);
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow('Already an ApiError');
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow(apiError);
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow('Already an ApiError');
     });
 
     it('should handle unknown error types', async () => {
       (global.fetch as jest.Mock).mockRejectedValue('String error');
 
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow(ApiError);
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow('Unknown error occurred');
-      await expect(fetchPostJsonApi('/test', {})).rejects.toHaveProperty('status', 500);
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow(ApiError);
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow('Unknown error occurred');
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toHaveProperty('status', 500);
     });
   });
 });
@@ -124,63 +121,6 @@ describe('handleApiError (tested via public API functions)', () => {
 describe('fetchBase (tested via public API functions)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  describe('write endpoint functions', () => {
-    it('should use write endpoint for fetchPutJsonApi', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: jest.fn().mockResolvedValue({ success: true }),
-      };
-      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
-
-      await fetchPutJsonApi('/test', { data: 'test' });
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/write'),
-        expect.objectContaining({
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-        })
-      );
-    });
-
-    it('should use write endpoint for fetchPatchJsonApi', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: jest.fn().mockResolvedValue({ success: true }),
-      };
-      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
-
-      await fetchPatchJsonApi('/test', { data: 'test' });
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/write'),
-        expect.objectContaining({
-          method: 'PATCH',
-        })
-      );
-    });
-
-    it('should use write endpoint for fetchPostJsonApi', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 200,
-        json: jest.fn().mockResolvedValue({ success: true }),
-      };
-      (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
-
-      await fetchPostJsonApi('/test', { data: 'test' });
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/write'),
-        expect.objectContaining({
-          method: 'POST',
-        })
-      );
-    });
   });
 
   describe('admin endpoint functions', () => {
@@ -305,7 +245,7 @@ describe('fetchBase (tested via public API functions)', () => {
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await fetchPostJsonApi('/test', {});
+      const result = await fetchAdminPostJsonApi('/test', {});
       expect(result).toEqual(mockData);
     });
 
@@ -317,7 +257,7 @@ describe('fetchBase (tested via public API functions)', () => {
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await fetchPostJsonApi('/test', {});
+      const result = await fetchAdminPostJsonApi('/test', {});
       expect(result).toBeNull();
       expect(mockResponse.json).not.toHaveBeenCalled();
     });
@@ -325,8 +265,8 @@ describe('fetchBase (tested via public API functions)', () => {
     it('should handle network errors', async () => {
       (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow(ApiError);
-      await expect(fetchPostJsonApi('/test', {})).rejects.toThrow('Network error');
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow(ApiError);
+      await expect(fetchAdminPostJsonApi('/test', {})).rejects.toThrow('Network error');
     });
   });
 
