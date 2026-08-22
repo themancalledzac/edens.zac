@@ -1,9 +1,4 @@
-import {
-  formatDateRange,
-  formatDisplayDateRange,
-  formatLongDate,
-  parseIsoDateParts,
-} from '@/app/utils/formatDateRange';
+import { formatDateRange, formatLongDate, parseIsoDateParts } from '@/app/utils/formatDateRange';
 
 const EN_DASH = '–';
 
@@ -93,28 +88,6 @@ describe('formatDateRange', () => {
     it('renders a reversed same-month range backwards, as-is', () => {
       expect(formatDateRange('2026-03-07', '2026-03-01')).toBe(`Mar 7${EN_DASH}1, 2026`);
     });
-  });
-});
-
-describe('formatDisplayDateRange', () => {
-  it('formats a single date instead of echoing the raw ISO string', () => {
-    expect(formatDisplayDateRange('2026-03-03')).toBe('Mar 3, 2026');
-  });
-
-  it('formats a same-day start/end pair as one formatted date', () => {
-    expect(formatDisplayDateRange('2026-03-03', '2026-03-03')).toBe('Mar 3, 2026');
-  });
-
-  it('delegates a real range to formatDateRange unchanged', () => {
-    expect(formatDisplayDateRange('2026-03-03', '2026-03-07')).toBe(`Mar 3${EN_DASH}7, 2026`);
-  });
-
-  it('returns an empty string when there is no start', () => {
-    expect(formatDisplayDateRange(null, '2026-03-07')).toBe('');
-  });
-
-  it('falls through verbatim when the start is unparseable', () => {
-    expect(formatDisplayDateRange('not-a-date')).toBe('not-a-date');
   });
 });
 

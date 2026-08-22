@@ -6,12 +6,7 @@
  */
 import type { ContentTagModel } from '@/app/types/Metadata';
 import { slugify } from '@/app/utils/locationUtils';
-import {
-  buildTagsDiff,
-  convertTagsToModels,
-  createTagsUpdate,
-  tagNameToSlug,
-} from '@/app/utils/tagUtils';
+import { buildTagsDiff, convertTagsToModels, tagNameToSlug } from '@/app/utils/tagUtils';
 
 const availableTags: ContentTagModel[] = [
   { id: 1, name: 'landscape', slug: 'landscape' },
@@ -98,46 +93,6 @@ describe('convertTagsToModels', () => {
         { id: 0, name: 'sunset', slug: '' },
       ]);
     });
-  });
-});
-
-describe('createTagsUpdate', () => {
-  it('should return empty object for empty array', () => {
-    expect(createTagsUpdate([])).toEqual({});
-  });
-
-  it('should return { prev } for array of existing tags', () => {
-    const tags: ContentTagModel[] = [
-      { id: 5, name: 'mountains', slug: 'mountains' },
-      { id: 1, name: 'landscape', slug: 'landscape' },
-    ];
-    expect(createTagsUpdate(tags)).toEqual({ prev: [5, 1] });
-  });
-
-  it('should return { newValue } for array of new tags (id: 0)', () => {
-    const tags: ContentTagModel[] = [
-      { id: 0, name: 'sunset', slug: '' },
-      { id: 0, name: 'golden hour', slug: '' },
-    ];
-    expect(createTagsUpdate(tags)).toEqual({ newValue: ['sunset', 'golden hour'] });
-  });
-
-  it('should return both prev and newValue for mixed array', () => {
-    const tags: ContentTagModel[] = [
-      { id: 5, name: 'mountains', slug: 'mountains' },
-      { id: 0, name: 'sunset', slug: '' },
-    ];
-    expect(createTagsUpdate(tags)).toEqual({ prev: [5], newValue: ['sunset'] });
-  });
-
-  it('should omit prev when there are no existing tags', () => {
-    expect(createTagsUpdate([{ id: 0, name: 'sunset', slug: '' }])).not.toHaveProperty('prev');
-  });
-
-  it('should omit newValue when there are no new tags', () => {
-    expect(createTagsUpdate([{ id: 5, name: 'mountains', slug: 'mountains' }])).not.toHaveProperty(
-      'newValue'
-    );
   });
 });
 

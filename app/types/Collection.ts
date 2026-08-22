@@ -267,49 +267,6 @@ export interface CollectionModel extends CollectionBaseModel {
 }
 
 /**
- * Enhanced collection page response with detailed pagination metadata (backend: CollectionPageDTO)
- * Includes navigation helpers and content type counts
- */
-export interface CollectionPageDTO extends CollectionBaseModel {
-  id: number;
-  title: string;
-  slug: string;
-  /** Required on detail payloads — see {@link CollectionModel.isClient}. */
-  isClient: boolean;
-  isBlog: boolean;
-
-  // Enhanced pagination metadata
-  currentPage: number; // Current page number (0-indexed)
-  pageSize: number; // Items per page
-  totalElements: number; // Total number of content items across all pages
-  totalPages: number; // Total number of pages
-
-  // Boolean flags for navigation
-  hasPrevious: boolean;
-  hasNext: boolean;
-  isFirst: boolean;
-  isLast: boolean;
-
-  // Navigation helpers
-  previousPage?: number; // Previous page number, null if isFirst
-  nextPage?: number; // Next page number, null if isLast
-
-  // Content type counts
-  imageBlockCount: number;
-  textBlockCount: number;
-  gifBlockCount: number;
-
-  // Content array
-  content: AnyContentModel[];
-
-  // Additional fields
-  displayMode?: DisplayMode;
-  coverImage?: ContentImageModel | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/**
  * Re-export metadata types from Metadata for convenience
  * These are the source of truth - Collection.ts just re-exports them
  */
