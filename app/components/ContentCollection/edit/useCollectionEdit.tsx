@@ -232,9 +232,6 @@ export interface UseCollectionEditResult {
   handleSaveAccess: () => Promise<void>;
   handleClearPassword: () => Promise<void>;
 
-  originalCollectionIds: Set<number>;
-  handleCollectionToggle: (toggled: CollectionListModel) => void;
-
   /** Every collection in the system — the option list for the collection selectors. */
   allCollections: CollectionListModel[];
   /** `allCollections` plus synthetic read-only tag-view rows (derived) for the manage selector. */
@@ -1672,9 +1669,6 @@ export function useCollectionEdit({
     galleryStatus,
     handleSaveAccess,
     handleClearPassword,
-
-    originalCollectionIds,
-    handleCollectionToggle,
 
     allCollections,
     allCollectionsWithTagViews,
