@@ -246,8 +246,7 @@ export async function revalidateMetadataCache(): Promise<void> {
  * or null if there is nothing new to merge.
  */
 export function mergeNewMetadata(
-  response: ContentImageUpdateResponse,
-  _currentState: CollectionUpdateResponseDTO | null
+  response: ContentImageUpdateResponse
 ): ((prev: CollectionUpdateResponseDTO | null) => CollectionUpdateResponseDTO) | null {
   const { newMetadata } = response;
 

@@ -988,11 +988,8 @@ export function useCollectionEdit({
           await revalidateCollectionCache(stateSlug);
           void revalidateMetadataCache();
 
-          setCurrentState(prev => {
-            const base = fullResponse;
-            const metadataUpdater = mergeNewMetadata(response, prev ?? base);
-            return metadataUpdater ? metadataUpdater(base) : base;
-          });
+          const metadataUpdater = mergeNewMetadata(response);
+          setCurrentState(metadataUpdater ? metadataUpdater(fullResponse) : fullResponse);
         }
 
         setSelectedIds([]);
