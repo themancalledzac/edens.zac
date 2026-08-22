@@ -15,7 +15,6 @@ import { isGifContent } from '@/app/utils/contentTypeGuards';
 import {
   buildGifUpdatePayload,
   buildImageUpdateDiff,
-  buildImageUpdateForSingleEdit,
   buildImageUpdatesForBulkEdit,
   mapUpdateResponseToFrontend,
 } from '../metadataUtils';
@@ -114,7 +113,7 @@ export function useMetadataSubmit({
     // `Partial<ContentImageModel> & { id }` param, so no casts are needed.
     const imageUpdates: ContentImageUpdateRequest[] = isBulkEdit
       ? buildImageUpdatesForBulkEdit(updateState, imageSubset, selectedIds, availableFilmTypes)
-      : [buildImageUpdateForSingleEdit(updateState, imageSubset[0]!, availableFilmTypes)];
+      : [buildImageUpdateDiff(updateState, imageSubset[0]!, availableFilmTypes)];
 
     const response = await updateImages(imageUpdates);
     if (response !== null) {
