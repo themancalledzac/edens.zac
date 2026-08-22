@@ -96,8 +96,8 @@ export async function getCurrentShareView(): Promise<ShareView | null> {
   }
 }
 
-/** The signed-in user's own link. Null on 401, matching {@link getUserPage}. */
-export async function getShareSettings(): Promise<ShareSettings | null> {
+/** The signed-in user's own link. Null on 401, matching {@link getUserPage}. Internal to this module — {@link readShareSettings} is the exported entry point. */
+async function getShareSettings(): Promise<ShareSettings | null> {
   try {
     return await fetchReadApi<ShareSettings>('user/share', { cache: 'no-store' });
   } catch (error) {

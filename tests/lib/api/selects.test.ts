@@ -7,9 +7,7 @@
 import { ApiError, fetchReadApi } from '@/app/lib/api/core';
 import {
   addSelect,
-  listAllSelects,
   listAllSelectsServer,
-  listSelectIds,
   listSelectIdsServer,
   removeSelect,
 } from '@/app/lib/api/selects';
@@ -90,44 +88,6 @@ describe('removeSelect', () => {
         credentials: 'same-origin',
         cache: 'no-store',
       })
-    );
-  });
-});
-
-describe('listSelectIds', () => {
-  it('returns the parsed id array', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers({ 'content-type': 'application/json' }),
-      json: async () => [42, 43],
-    });
-
-    await expect(listSelectIds(3)).resolves.toEqual([42, 43]);
-    expect(global.fetch).toHaveBeenCalledWith(
-      '/api/proxy/api/read/user/selects?collectionId=3',
-      expect.objectContaining({ method: 'GET', credentials: 'same-origin', cache: 'no-store' })
-    );
-  });
-});
-
-describe('listAllSelects', () => {
-  it('returns the parsed groups', async () => {
-    const groups: SelectGroup[] = [
-      { collectionId: 3, contentIds: [42, 43] },
-      { collectionId: 5, contentIds: [99] },
-    ];
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers({ 'content-type': 'application/json' }),
-      json: async () => groups,
-    });
-
-    await expect(listAllSelects()).resolves.toEqual(groups);
-    expect(global.fetch).toHaveBeenCalledWith(
-      '/api/proxy/api/read/user/selects',
-      expect.objectContaining({ method: 'GET', credentials: 'same-origin', cache: 'no-store' })
     );
   });
 });
