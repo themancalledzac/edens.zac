@@ -20,15 +20,6 @@ interface FullscreenCapableDocument extends Document {
   webkitExitFullscreen?: () => Promise<void> | void;
 }
 
-/** True if some element-level fullscreen request is available in this browser. */
-export function isFullscreenSupported(): boolean {
-  if (typeof document === 'undefined') return false;
-  const el = document.documentElement as FullscreenCapableElement;
-  return (
-    typeof el.requestFullscreen === 'function' || typeof el.webkitRequestFullscreen === 'function'
-  );
-}
-
 /** The element currently in fullscreen (standard, then webkit), or null. */
 export function fullscreenElement(): Element | null {
   if (typeof document === 'undefined') return null;

@@ -55,36 +55,6 @@ export function convertTagsToModels(
 }
 
 /**
- * Create a TagUpdate from a ContentTagModel array for API submission.
- * Splits models into `prev` (existing, id > 0) and `newValue` (new, id === 0).
- *
- * NOTE: this sends no `remove`, so it can only ADD tags — the backend reconciler
- * never drops a tag that's merely absent from `prev`. For edit flows that must
- * support deselection/clearing, use {@link buildTagsDiff} instead. Kept for
- * add-only callers and tests.
- *
- * @param tags - Selected tags from UI
- * @returns TagUpdate with prev/newValue arrays
- */
-export function createTagsUpdate(tags: ContentTagModel[]): TagUpdate {
-  const prev: number[] = [];
-  const newValue: string[] = [];
-
-  for (const tag of tags) {
-    if (tag.id > 0) {
-      prev.push(tag.id);
-    } else {
-      newValue.push(tag.name);
-    }
-  }
-
-  return {
-    ...(prev.length > 0 ? { prev } : {}),
-    ...(newValue.length > 0 ? { newValue } : {}),
-  };
-}
-
-/**
  * Build a TagUpdate diff by comparing updated vs current tag arrays.
  * Returns undefined if nothing changed.
  *
@@ -92,11 +62,9 @@ export function createTagsUpdate(tags: ContentTagModel[]): TagUpdate {
  * - newValue: names of brand-new tags to create
  * - remove: IDs of tags in current but not in updated (to remove)
  *
- * Unlike {@link createTagsUpdate} — which only sends `prev`/`newValue` and so can
- * never DROP a tag (the backend `updateTags` reconciler treats `prev` as additive,
- * removing only what is in `remove`) — this computes the `remove` set, so
- * deselecting or clearing tags actually persists. Mirrors `buildLocationsDiff` in
- * `locationUtils.ts`.
+ * The backend `updateTags` reconciler treats `prev` as additive and drops only what
+ * is in `remove`, so computing the `remove` set is what makes deselecting or
+ * clearing tags actually persist. Mirrors `buildLocationsDiff` in `locationUtils.ts`.
  *
  * @param updated - New desired tags
  * @param current - Current (saved) tags on the entity

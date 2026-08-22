@@ -1,7 +1,3 @@
-type LogLevel = 'debug' | 'warn' | 'error';
-
-const _logLevelCheck: LogLevel = 'debug';
-
 export const logger = {
   debug(module: string, message: string, context?: Record<string, unknown>) {
     if (process.env.NODE_ENV === 'test') return;

@@ -43,10 +43,7 @@ export function useMetadataEditor() {
 
   return {
     editingContent,
-    /** @deprecated use `editingContent` — kept for back-compat until callers migrate. */
-    editingImage: editingContent,
     openEditor,
     closeEditor,
-    isOpen: !!editingContent,
   };
 }

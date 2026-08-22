@@ -1,4 +1,4 @@
-import { isLocalEnvironment, isProduction } from '@/app/utils/environment';
+import { isLocalEnvironment } from '@/app/utils/environment';
 
 describe('environment utilities', () => {
   const originalEnv = process.env;
@@ -40,32 +40,6 @@ describe('environment utilities', () => {
       delete process.env.NEXT_PUBLIC_ENV;
       delete (process.env as Record<string, string | undefined>).NODE_ENV;
       expect(isLocalEnvironment()).toBe(false);
-    });
-  });
-
-  describe('isProduction', () => {
-    it('returns true when NEXT_PUBLIC_ENV=production regardless of NODE_ENV', () => {
-      process.env.NEXT_PUBLIC_ENV = 'production';
-      delete (process.env as Record<string, string | undefined>).NODE_ENV;
-      expect(isProduction()).toBe(true);
-    });
-
-    it('returns true when NODE_ENV=production and not in local environment', () => {
-      delete process.env.NEXT_PUBLIC_ENV;
-      (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
-      expect(isProduction()).toBe(true);
-    });
-
-    it('returns false in local environment (NEXT_PUBLIC_ENV=local)', () => {
-      process.env.NEXT_PUBLIC_ENV = 'local';
-      (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
-      expect(isProduction()).toBe(false);
-    });
-
-    it('returns false when both NEXT_PUBLIC_ENV and NODE_ENV are undefined', () => {
-      delete process.env.NEXT_PUBLIC_ENV;
-      delete (process.env as Record<string, string | undefined>).NODE_ENV;
-      expect(isProduction()).toBe(false);
     });
   });
 });
