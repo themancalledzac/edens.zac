@@ -114,6 +114,60 @@ describe('isAllowedWriteOrigin', () => {
     });
   });
 
+  describe('NEXT_PUBLIC_APP_URL normalization', () => {
+    it('allows the bare origin when the env value carries a trailing slash', () => {
+      process.env = {
+        ...ORIGINAL_ENV,
+        NODE_ENV: 'production',
+        NEXT_PUBLIC_APP_URL: `${APP_ORIGIN}/`,
+      };
+
+      expect(isAllowedWriteOrigin(APP_ORIGIN)).toBe(true);
+    });
+
+    it('allows the bare origin when the env value carries a path', () => {
+      process.env = {
+        ...ORIGINAL_ENV,
+        NODE_ENV: 'production',
+        NEXT_PUBLIC_APP_URL: `${APP_ORIGIN}/admin`,
+      };
+
+      expect(isAllowedWriteOrigin(APP_ORIGIN)).toBe(true);
+    });
+
+    it('still rejects the env value as written once it is normalized away', () => {
+      process.env = {
+        ...ORIGINAL_ENV,
+        NODE_ENV: 'production',
+        NEXT_PUBLIC_APP_URL: `${APP_ORIGIN}/`,
+      };
+
+      expect(isAllowedWriteOrigin(`${APP_ORIGIN}/`)).toBe(false);
+    });
+
+    it('denies everything when the env value is unparseable', () => {
+      process.env = {
+        ...ORIGINAL_ENV,
+        NODE_ENV: 'production',
+        NEXT_PUBLIC_APP_URL: 'example.com',
+      };
+
+      expect(isAllowedWriteOrigin(APP_ORIGIN)).toBe(false);
+      expect(isAllowedWriteOrigin('example.com')).toBe(false);
+      expect(isAllowedWriteOrigin('http://localhost:3000')).toBe(false);
+    });
+
+    it('denies a null-origin caller when the env value has an opaque scheme', () => {
+      process.env = {
+        ...ORIGINAL_ENV,
+        NODE_ENV: 'production',
+        NEXT_PUBLIC_APP_URL: 'data:text/plain,hi',
+      };
+
+      expect(isAllowedWriteOrigin('null')).toBe(false);
+    });
+  });
+
   describe('env is read per call', () => {
     it('follows NEXT_PUBLIC_APP_URL when it changes between calls', () => {
       process.env = { ...ORIGINAL_ENV, NODE_ENV: 'production', NEXT_PUBLIC_APP_URL: APP_ORIGIN };
