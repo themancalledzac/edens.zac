@@ -1,4 +1,4 @@
-import { DENSITY_ROW_WIDTH_MULTIPLIER, IMAGE, LAYOUT } from '@/app/constants';
+import { DENSITY_ROW_WIDTH_MULTIPLIER, LAYOUT } from '@/app/constants';
 import { type CollectionModel } from '@/app/types/Collection';
 import {
   type AnyContentModel,
@@ -9,8 +9,13 @@ import {
   type TextBlockItem,
 } from '@/app/types/Content';
 import { getMeanWidthCost } from '@/app/utils/contentRatingUtils';
-import { isContentCollection, pickImageDimensions } from '@/app/utils/contentTypeGuards';
+import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { formatDateRange } from '@/app/utils/formatDateRange';
+import {
+  buildParallaxCard,
+  clampParallaxDimensions,
+  extractCollectionDimensions,
+} from '@/app/utils/parallaxCard';
 import {
   acToBoxTree,
   type BoxTree,
@@ -192,40 +197,7 @@ export function processContentForDisplay(
   return result;
 }
 
-/**
- * Extract image dimensions from cover image with fallback to width/height properties.
- * Returns undefined dimensions when the cover image has none — callers that need
- * a placeholder default (e.g. {@link convertCollectionContentToParallax} for
- * no-image collection cards) apply it locally.
- */
-function extractCollectionDimensions(coverImage?: ContentImageModel | null): {
-  imageWidth?: number;
-  imageHeight?: number;
-} {
-  const { width, height } = pickImageDimensions(coverImage);
-  return { imageWidth: width, imageHeight: height };
-}
-
-/**
- * Clamp dimensions so the aspect ratio stays within [minParallaxAR, maxParallaxAR].
- * Prevents excessively tall OR wide cover images on parallax collection cards.
- * Crops equally via object-fit: cover + default center positioning.
- */
-export function clampParallaxDimensions(
-  width?: number,
-  height?: number
-): { imageWidth?: number; imageHeight?: number } {
-  if (width && height) {
-    const ar = width / height;
-    if (ar < IMAGE.minParallaxAR) {
-      return { imageWidth: width, imageHeight: Math.round(width / IMAGE.minParallaxAR) };
-    }
-    if (ar > IMAGE.maxParallaxAR) {
-      return { imageWidth: width, imageHeight: Math.round(width / IMAGE.maxParallaxAR) };
-    }
-  }
-  return { imageWidth: width, imageHeight: height };
-}
+export { clampParallaxDimensions };
 
 /**
  * Convert collection to parallax image for unified rendering on public pages. Kind
@@ -239,47 +211,35 @@ export function clampParallaxDimensions(
  * because they aren't backed by content rows; the id falls back to the referenced
  * collection's ID so downstream Map lookups (sizesMap, row keys) stay unique.
  *
- * TODO: this parallax-card shape is built in four places — here, `collectionToContentModel`
- * (CollectionPage.tsx), `meContentBlock.ts` and `allCollectionsContentBlock.ts`. Collapse
- * them into one shared builder. Tracked in `docs/006-code-health.md` under "Parallax-card
- * builder consolidation"; the divergence table and task breakdown are in
- * `docs/superpowers/plans/2026-08-04-parallax-card-builder-consolidation.md` (local only).
+ * `rating` is carried so the Order control can sequence collection tiles by rating; the card
+ * is otherwise rating-agnostic (layout prominence comes from the cover image's own dimensions).
+ *
+ * `allowLayoutDimensions` is what preserves this path's historical use of
+ * `pickImageDimensions` - it accepts the layout `width`/`height` fields as a fallback, which
+ * the other three card call sites do not.
  */
 export function convertCollectionContentToParallax(
   col: ContentCollectionModel
 ): ContentParallaxImageModel {
-  const raw = extractCollectionDimensions(col.coverImage);
-  const w = raw.imageWidth ?? 1000;
-  const h = raw.imageHeight ?? 1000;
-  const { imageWidth, imageHeight } = clampParallaxDimensions(w, h);
-
-  return {
-    contentType: 'IMAGE',
-    enableParallax: true,
+  return buildParallaxCard({
     id: col.id ?? col.referencedCollectionId,
     collectionId: col.referencedCollectionId,
     title: col.title,
     slug: col.slug,
     collectionDate: col.collectionDate,
-    // Carried so the Order control can sequence collection tiles by rating; the card is otherwise
-    // rating-agnostic (layout prominence comes from the cover image's own dimensions).
     rating: col.rating ?? undefined,
     isClient: col.isClient,
     isBlog: col.isBlog,
     tags: col.tags,
     description: col.description ?? null,
-    imageUrl: col.coverImage?.imageUrl ?? '',
-    overlayText: col.title || col.slug || '',
-    imageWidth,
-    imageHeight,
-    width: imageWidth,
-    height: imageHeight,
+    coverImage: col.coverImage,
     orderIndex: col.orderIndex,
     visible: col.visible ?? true,
     createdAt: col.createdAt,
     updatedAt: col.updatedAt,
-    locations: [],
-  };
+    squareFallback: true,
+    allowLayoutDimensions: true,
+  });
 }
 
 /**
