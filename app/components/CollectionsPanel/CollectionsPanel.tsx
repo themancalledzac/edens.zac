@@ -14,7 +14,7 @@ import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
 import { useCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { getMetadata } from '@/app/lib/api/collections';
 import { type CollectionListModel } from '@/app/types/Collection';
-import { formatDisplayDateRange } from '@/app/utils/formatDateRange';
+import { formatLongDate } from '@/app/utils/formatDateRange';
 import { compareNames } from '@/app/utils/sortByName';
 
 import styles from './CollectionsPanel.module.scss';
@@ -140,9 +140,7 @@ export function CollectionsPanel({ collapsed, onCollapsedChange }: CollectionsPa
                   )}
                   <span className={styles.text}>
                     <span className={styles.name}>{collection.name}</span>
-                    <span className={styles.date}>
-                      {formatDisplayDateRange(collection.collectionDate)}
-                    </span>
+                    <span className={styles.date}>{formatLongDate(collection.collectionDate)}</span>
                   </span>
                 </span>
               }
