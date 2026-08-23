@@ -43,7 +43,7 @@ interface ContentCollectionPageProps {
  * converter carry none. The `art-gallery` -> "Gallery" badge therefore does not render
  * here; the isBlog -> "Story" badge still does.
  */
-function collectionToContentModel(
+export function collectionToContentModel(
   col: CollectionModel,
   showProtectedCovers: boolean
 ): ContentParallaxImageModel {
