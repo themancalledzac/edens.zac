@@ -94,6 +94,13 @@ export interface CollectionContentRendererProps extends ContentRendererProps {
   // Image-specific overlays (only for IMAGE type)
   selectedIds?: number[];
   currentCollectionId?: number;
+  /**
+   * True when this block is hidden in the collection being managed, which paints the gray
+   * `visibilityOverlay` tint over the tile. Computed by `BoxRenderer` from the real content block,
+   * because the renderer only receives normalized primitives and cannot derive it. Always false on
+   * public views — see the manage-view gate on `currentCollectionId` in `BoxRenderer`.
+   */
+  notVisible?: boolean;
   isSelectingCoverImage?: boolean;
   currentCoverImageId?: number;
   justClickedImageId?: number | null;

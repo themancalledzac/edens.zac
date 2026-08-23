@@ -22,10 +22,7 @@ import {
   type ViewableContent,
 } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
-import {
-  checkImageVisibility,
-  createContentClickHandler,
-} from '@/app/utils/contentComponentHandlers';
+import { createContentClickHandler } from '@/app/utils/contentComponentHandlers';
 import { COVER_IMAGE_CONTENT_ID } from '@/app/utils/contentLayout';
 import {
   buildParallaxWrapperClassName,
@@ -112,6 +109,7 @@ export default function CollectionContentRenderer({
   onFullScreenImageClick,
   selectedIds = [],
   currentCollectionId,
+  notVisible = false,
   isSelectingCoverImage = false,
   currentCoverImageId,
   justClickedImageId,
@@ -643,20 +641,7 @@ export default function CollectionContentRenderer({
       <FollowButton collectionId={followCollectionId} placement="bottom" />
     ) : null;
 
-  const isNotVisible =
-    contentType === 'IMAGE' &&
-    checkImageVisibility(
-      {
-        id: contentId,
-        contentType: 'IMAGE',
-        imageUrl: imageUrl || '',
-        orderIndex: 0,
-        collections: [],
-        locations: [],
-        visible: true,
-      } as ContentImageModel,
-      currentCollectionId
-    );
+  const isNotVisible = contentType === 'IMAGE' && notVisible;
 
   const imageProps = {
     src: imageUrl,

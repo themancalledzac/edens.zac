@@ -3,6 +3,7 @@
 import { type ReorderMove } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import type { ViewableContent } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
+import { isContentVisibleInCollection } from '@/app/utils/contentLayout';
 import { determineContentRendererProps } from '@/app/utils/contentRendererUtils';
 import { isBlankContent, isPanelContent } from '@/app/utils/contentTypeGuards';
 import { logger } from '@/app/utils/logger';
@@ -43,6 +44,20 @@ interface BoxRendererProps {
   collectionSlug?: string;
 }
 
+/**
+ * Renders a `BoxTree` node: recurses through hbox/vbox splits and hands each leaf's normalized
+ * props to {@link CollectionContentRenderer}.
+ *
+ * This is also where `notVisible` is derived, because it is the last point in the chain that still
+ * holds the real content block — `determineContentRendererProps` flattens the block down to
+ * primitives (`contentId`, `imageUrl`, `contentType`) and drops the `visible` flag and the
+ * `collections` entries the check needs.
+ *
+ * The `currentCollectionId != null` gate is the manage-view test used throughout the render path
+ * (`isPublicView` in `Component.tsx`, the early return in `computeFirstNonVisibleRowIndex`). Public
+ * views already drop hidden blocks via `filterVisibleBlocks`, so the gray tint would be both
+ * unreachable and wrong there; manage deliberately keeps hidden blocks in place and marks them.
+ */
 export function BoxRenderer({
   tree,
   sizes,
@@ -120,8 +135,13 @@ export function BoxRenderer({
       reorderDisplayOrder,
     });
 
+    const notVisible =
+      currentCollectionId != null &&
+      !isContentVisibleInCollection(tree.content, currentCollectionId);
+
     const fullProps: CollectionContentRendererProps = {
       ...rendererProps,
+      notVisible,
       onImageClick,
       enableFullScreenView,
       onFullScreenImageClick,
