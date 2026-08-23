@@ -5,8 +5,8 @@ import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
-import { clampParallaxDimensions } from '@/app/utils/contentLayout';
 import { logger } from '@/app/utils/logger';
+import { buildParallaxCard } from '@/app/utils/parallaxCard';
 import { type SsrViewport } from '@/app/utils/ssrViewport';
 
 import CollectionPageClient from './CollectionPageClient';
@@ -42,16 +42,23 @@ interface ContentCollectionPageProps {
  * backend's SyntheticCollectionResolver (list views), so real payloads reaching this
  * converter carry none. The `art-gallery` -> "Gallery" badge therefore does not render
  * here; the isBlog -> "Story" badge still does.
+ *
+ * The cover strip stays HERE rather than moving into `buildParallaxCard`: it is an
+ * access-control decision, not a shape decision, and burying it in a generic builder is how
+ * it gets bypassed later. Defense-in-depth - never render a coverImage for a
+ * password-protected collection in list views unless the caller explicitly opts in. Backend
+ * BE-H5 strips it at the API, but a stale cache or future regression could re-expose it.
+ * Keyed on `isPasswordProtected` alone so a payload missing the kind booleans (the exact
+ * stale-cache case this strip exists for) still strips.
+ *
+ * Visibility maps collection-level -> content-block: LISTED (or unknown/undefined) renders;
+ * UNLISTED/HIDDEN hides from list views. That mapping is this call site's own, which is why
+ * the builder takes an already-resolved boolean.
  */
-function collectionToContentModel(
+export function collectionToContentModel(
   col: CollectionModel,
   showProtectedCovers: boolean
 ): ContentParallaxImageModel {
-  // Defense-in-depth: never render a coverImage for a password-protected collection
-  // in list views unless the caller explicitly opts in. Backend BE-H5 strips it at
-  // the API, but a stale cache or future regression could re-expose it. Keyed on
-  // `isPasswordProtected` alone so a payload missing the kind booleans (the exact
-  // stale-cache case this strip exists for) still strips.
   const isProtected = col.isPasswordProtected === true;
   if (isProtected && col.isClient === undefined) {
     logger.warn('CollectionPage', 'Protected collection payload is missing isClient/isBlog', {
@@ -59,14 +66,8 @@ function collectionToContentModel(
     });
   }
   const safeCoverImage = isProtected && !showProtectedCovers ? null : col.coverImage;
-  const { imageWidth, imageHeight } = clampParallaxDimensions(
-    safeCoverImage?.imageWidth,
-    safeCoverImage?.imageHeight
-  );
 
-  return {
-    contentType: 'IMAGE',
-    enableParallax: true,
+  return buildParallaxCard({
     id: col.id,
     collectionId: col.id,
     title: col.title,
@@ -74,21 +75,13 @@ function collectionToContentModel(
     isClient: col.isClient,
     isBlog: col.isBlog,
     description: col.description ?? null,
-    imageUrl: safeCoverImage?.imageUrl ?? '',
-    overlayText: col.title || col.slug || '',
-    imageWidth,
-    imageHeight,
-    width: imageWidth,
-    height: imageHeight,
+    coverImage: safeCoverImage,
     orderIndex: 0,
-    // Map collection-level visibility -> content-block visible flag.
-    // LISTED (or unknown/undefined) = render; UNLISTED/HIDDEN = hide from list views.
     visible: col.visibility === undefined ? true : col.visibility === CollectionVisibility.LISTED,
     createdAt: col.createdAt,
     updatedAt: col.updatedAt,
     collectionDate: col.collectionDate,
-    locations: [],
-  };
+  });
 }
 
 /**

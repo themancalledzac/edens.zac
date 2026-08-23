@@ -1,5 +1,5 @@
 import { type ContentParallaxImageModel } from '@/app/types/Content';
-import { clampParallaxDimensions } from '@/app/utils/contentLayout';
+import { buildParallaxCard } from '@/app/utils/parallaxCard';
 
 /**
  * Sentinel id for the synthetic "All Collections" tile. Negative so it never
@@ -13,27 +13,19 @@ export const ALL_COLLECTIONS_TILE_ID = -1001;
  * after the Me tile (or as the second tile for anonymous viewers). Links to
  * /collections, which the backend permission-scopes per viewer — the tile's slug
  * IS its href (`/${slug}`), so this is the canonical browse route, not the
- * backend's `all-collections` resource slug. Empty imageUrl -> the renderer's
- * placeholder card. Mirrors buildMeContentBlock.
+ * backend's `all-collections` resource slug. No cover -> empty imageUrl and
+ * undefined dimensions, which the renderer draws as its placeholder card.
+ *
+ * No `collectionId` — that is what keeps the follow toggle from attaching to a tile
+ * that is not a real collection.
  */
 export function buildAllCollectionsContentBlock(): ContentParallaxImageModel {
-  const { imageWidth, imageHeight } = clampParallaxDimensions();
-  return {
-    contentType: 'IMAGE',
-    enableParallax: true,
+  return buildParallaxCard({
     id: ALL_COLLECTIONS_TILE_ID,
     title: 'All Collections',
     slug: 'collections',
     description: null,
-    imageUrl: '',
-    overlayText: 'All Collections',
     alt: 'Browse all collections',
-    imageWidth,
-    imageHeight,
-    width: imageWidth,
-    height: imageHeight,
     orderIndex: 1,
-    visible: true,
-    locations: [],
-  };
+  });
 }

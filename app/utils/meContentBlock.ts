@@ -1,6 +1,6 @@
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentParallaxImageModel } from '@/app/types/Content';
-import { clampParallaxDimensions } from '@/app/utils/contentLayout';
+import { buildParallaxCard } from '@/app/utils/parallaxCard';
 
 /**
  * Sentinel id for the synthetic "Me" tile. Negative so it never collides with real
@@ -13,32 +13,19 @@ export const ME_TILE_ID = -1000;
  * Build the synthetic "Me" tile shown as the second tile on the home page for a
  * logged-in user: the same parallax image card the home grid already uses, linking
  * to `/user`. Uses the user-page cover when present, else an empty `imageUrl` (the
- * renderer shows its placeholder). Mirrors the shape of `collectionToContentModel`.
+ * renderer shows its placeholder).
+ *
+ * No `collectionId` — that is what keeps the follow toggle from attaching to a tile
+ * that is not a real collection.
  */
 export function buildMeContentBlock(userPage: CollectionModel | null): ContentParallaxImageModel {
-  const cover = userPage?.coverImage ?? null;
-  const { imageWidth, imageHeight } = clampParallaxDimensions(
-    cover?.imageWidth,
-    cover?.imageHeight
-  );
-  const label = userPage?.title || 'You';
-
-  return {
-    contentType: 'IMAGE',
-    enableParallax: true,
+  return buildParallaxCard({
     id: ME_TILE_ID,
-    title: label,
+    title: userPage?.title || 'You',
     slug: 'user',
     description: null,
-    imageUrl: cover?.imageUrl ?? '',
-    overlayText: label,
+    coverImage: userPage?.coverImage ?? null,
     alt: 'Your page',
-    imageWidth,
-    imageHeight,
-    width: imageWidth,
-    height: imageHeight,
     orderIndex: 1,
-    visible: true,
-    locations: [],
-  };
+  });
 }
