@@ -4,16 +4,11 @@
  */
 import {
   createImages,
-  createPerson,
-  createTag,
   createTextContent,
   deleteImages,
-  getAllCameras,
   getAllImages,
-  getAllLenses,
   getAllLocations,
   getAllTags,
-  getFilmMetadata,
   searchImages,
   updateImages,
 } from '@/app/lib/api/content';
@@ -59,31 +54,6 @@ describe('Read Endpoints', () => {
     });
   });
 
-  describe('getAllCameras', () => {
-    it('should fetch and return cameras', async () => {
-      const cameras = [{ id: 1, cameraName: 'Sony A7R5' }];
-      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(cameras));
-
-      const result = await getAllCameras();
-      expect(result).toEqual(cameras);
-    });
-  });
-
-  describe('getFilmMetadata', () => {
-    it('should fetch and return film metadata', async () => {
-      const metadata = {
-        filmTypes: [{ id: 1, filmTypeName: 'Portra 400', defaultIso: 400 }],
-        filmFormats: [{ name: 'MM_35', displayName: '35mm' }],
-      };
-      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(metadata));
-
-      const result = await getFilmMetadata();
-      expect(result).toEqual(metadata);
-      expect(result!.filmTypes).toHaveLength(1);
-      expect(result!.filmFormats).toHaveLength(1);
-    });
-  });
-
   describe('getAllLocations', () => {
     it('should fetch and return locations', async () => {
       const locations = [
@@ -96,20 +66,6 @@ describe('Read Endpoints', () => {
       expect(result).toEqual(locations);
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/content/locations'),
-        expect.any(Object)
-      );
-    });
-  });
-
-  describe('getAllLenses', () => {
-    it('should fetch and return lenses', async () => {
-      const lenses = [{ id: 1, lensName: 'Sony 24-70mm f/2.8' }];
-      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(lenses));
-
-      const result = await getAllLenses();
-      expect(result).toEqual(lenses);
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/content/lenses'),
         expect.any(Object)
       );
     });
@@ -281,26 +237,6 @@ describe('Admin Endpoints', () => {
 
       const result = await deleteImages([1, 2]);
       expect(result!.deletedIds).toEqual([1, 2]);
-    });
-  });
-
-  describe('createTag', () => {
-    it('should create a new tag', async () => {
-      const response = { id: 5, tagName: 'nature' };
-      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(response));
-
-      const result = await createTag({ tagName: 'nature' });
-      expect(result).toEqual({ id: 5, tagName: 'nature' });
-    });
-  });
-
-  describe('createPerson', () => {
-    it('should create a new person', async () => {
-      const response = { id: 3, personName: 'Jane' };
-      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(response));
-
-      const result = await createPerson({ personName: 'Jane' });
-      expect(result).toEqual({ id: 3, personName: 'Jane' });
     });
   });
 });

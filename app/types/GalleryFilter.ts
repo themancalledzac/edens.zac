@@ -10,8 +10,6 @@ export type DateSortDirection = 'asc' | 'desc' | 'off';
 /** 'film' = film only, 'digital' = digital only, 'off' = no film/digital filter. */
 export type FilmFilter = 'film' | 'digital' | 'off';
 
-export type LensType = 'wide' | 'normal' | 'telephoto';
-
 export interface FilterState {
   /**
    * Chronological sequence: capture date for images/GIFs, collection date for collection tiles.

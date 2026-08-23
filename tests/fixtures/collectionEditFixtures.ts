@@ -140,8 +140,6 @@ export function makeEdit(
     },
     selectedIds: [],
     isMultiSelectMode: false,
-    originalCollectionIds: emptySet,
-    handleCollectionToggle: jest.fn(),
     isTextBlockModalOpen: false,
     closeTextBlockModal: jest.fn(),
     handleTextBlockSubmit: jest.fn(),

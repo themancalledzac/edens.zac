@@ -34,11 +34,6 @@ const nextConfig = {
   turbopack: {
     root: process.cwd(),
   },
-  // Add webpack configuration to handle caching
-  webpack: config => {
-    // Custom webpack config if needed
-    return config;
-  },
 };
 
 export default withBundleAnalyzer(nextConfig);

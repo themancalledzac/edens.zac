@@ -55,32 +55,6 @@ export async function removeSelect(contentId: number): Promise<void> {
   }
 }
 
-/** The current user's selected image ids in one collection. */
-export async function listSelectIds(collectionId: number): Promise<number[]> {
-  const res = await fetch(`${BASE}?collectionId=${collectionId}`, {
-    method: 'GET',
-    credentials: 'same-origin',
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
-  return (await res.json()) as number[];
-}
-
-/** Every select the current user holds, grouped by collection. Backs the `/user` page. */
-export async function listAllSelects(): Promise<SelectGroup[]> {
-  const res = await fetch(BASE, {
-    method: 'GET',
-    credentials: 'same-origin',
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
-  return (await res.json()) as SelectGroup[];
-}
-
 /**
  * Server-side seed read of the viewer's selected image ids for one collection. Uses
  * `fetchReadApi` (forwards the request cookies server-side) so a Server Component can prime the

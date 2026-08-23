@@ -17,7 +17,7 @@ const config = {
   },
   // Test files are in /tests folder mirroring app/ structure
   testMatch: ['<rootDir>/tests/**/*.test.{ts,tsx}'],
-  testPathIgnorePatterns: ['/node_modules/', '/.next/', '/__tests__/'],
+  testPathIgnorePatterns: ['/node_modules/', '/.next/'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   collectCoverageFrom: [
     'app/**/*.{ts,tsx}',

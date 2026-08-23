@@ -1154,9 +1154,7 @@ describe('revalidateCollectionCache', () => {
 describe('mergeNewMetadata', () => {
   it('should return null when newMetadata is undefined', () => {
     const response = createContentImageUpdateResponse({ newMetadata: undefined });
-    const currentState = createCollectionUpdateResponse();
-
-    const result = mergeNewMetadata(response, currentState);
+    const result = mergeNewMetadata(response);
 
     expect(result).toBeNull();
   });
@@ -1171,9 +1169,7 @@ describe('mergeNewMetadata', () => {
         filmTypes: [],
       },
     });
-    const currentState = createCollectionUpdateResponse();
-
-    const result = mergeNewMetadata(response, currentState);
+    const result = mergeNewMetadata(response);
 
     expect(result).toBeNull();
   });
@@ -1184,9 +1180,7 @@ describe('mergeNewMetadata', () => {
         tags: [{ id: 1, name: 'New Tag', slug: 'new-tag' }],
       },
     });
-    const currentState = createCollectionUpdateResponse();
-
-    const result = mergeNewMetadata(response, currentState);
+    const result = mergeNewMetadata(response);
 
     expect(result).not.toBeNull();
     expect(typeof result).toBe('function');
@@ -1200,9 +1194,7 @@ describe('mergeNewMetadata', () => {
         cameras: [{ id: 1, name: 'New Camera' }],
       },
     });
-    const currentState = createCollectionUpdateResponse();
-
-    const result = mergeNewMetadata(response, currentState);
+    const result = mergeNewMetadata(response);
 
     expect(result).not.toBeNull();
   });
@@ -1216,7 +1208,7 @@ describe('mergeNewMetadata', () => {
     const prev = createCollectionUpdateResponse({
       tags: [{ id: 1, name: 'Existing Tag', slug: 'existing-tag' }],
     });
-    const updater = mergeNewMetadata(response, null);
+    const updater = mergeNewMetadata(response);
 
     expect(updater).not.toBeNull();
     if (updater) {
@@ -1237,7 +1229,7 @@ describe('mergeNewMetadata', () => {
     const prev = createCollectionUpdateResponse({
       people: [{ id: 1, name: 'Existing Person' }],
     });
-    const updater = mergeNewMetadata(response, null);
+    const updater = mergeNewMetadata(response);
 
     expect(updater).not.toBeNull();
     if (updater) {
@@ -1255,7 +1247,7 @@ describe('mergeNewMetadata', () => {
         tags: [{ id: 1, name: 'New Tag', slug: 'new-tag' }],
       },
     });
-    const updater = mergeNewMetadata(response, null);
+    const updater = mergeNewMetadata(response);
 
     expect(updater).not.toBeNull();
     if (updater) {
@@ -1274,7 +1266,7 @@ describe('mergeNewMetadata', () => {
       tags: undefined,
       people: undefined,
     });
-    const updater = mergeNewMetadata(response, null);
+    const updater = mergeNewMetadata(response);
 
     expect(updater).not.toBeNull();
     if (updater) {
@@ -1293,7 +1285,7 @@ describe('mergeNewMetadata', () => {
       tags: [{ id: 0, name: 'Existing Tag', slug: 'existing-tag' }],
       cameras: [{ id: 1, name: 'Existing Camera' }],
     });
-    const updater = mergeNewMetadata(response, null);
+    const updater = mergeNewMetadata(response);
 
     expect(updater).not.toBeNull();
     if (updater) {
@@ -1312,7 +1304,7 @@ describe('mergeNewMetadata', () => {
     const prev = createCollectionUpdateResponse({
       tags: [{ id: 1, name: 'Tag', slug: 'tag' }],
     });
-    const updater = mergeNewMetadata(response, null);
+    const updater = mergeNewMetadata(response);
 
     expect(updater).not.toBeNull();
     if (updater) {
@@ -1349,7 +1341,7 @@ describe('mergeNewMetadata', () => {
 /**
  * Testing Strategy for mergeNewMetadata
  *
- * Function: mergeNewMetadata(response: ContentImageUpdateResponse, currentState: CollectionUpdateResponseDTO | null)
+ * Function: mergeNewMetadata(response: ContentImageUpdateResponse)
  * Returns: ((prev: CollectionUpdateResponseDTO | null) => CollectionUpdateResponseDTO) | null
  *
  * Passing test cases:

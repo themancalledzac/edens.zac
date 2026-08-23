@@ -103,45 +103,6 @@
   }
 }
 
-.blockInner {
-  padding: var(--space-4);
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: var(--text-sm);
-  line-height: 1.4;
-}
-
-.blockInnerLeft {
-  padding: var(--space-4);
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  text-align: left;
-  font-size: var(--text-sm);
-  line-height: 1.4;
-  flex-direction: column;
-}
-
-/* Left-aligned text block with date badge - extra top padding to clear the badge */
-.blockInnerLeftWithBadge {
-  padding: 47px var(--space-4) var(--space-4);
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  text-align: left;
-  font-size: var(--text-sm);
-  line-height: 1.4;
-  flex-direction: column;
-}
-
 /* Image container with overlay support */
 .overlayContainer {
   position: relative;
@@ -360,26 +321,8 @@
   position: relative;
   cursor: grab;
 
-  &.dragging {
-    opacity: 0.5;
-  }
-
   &.clickable {
     cursor: pointer;
-  }
-
-  &.default {
-    cursor: default;
-  }
-}
-
-/* Image wrapper with selection state */
-.imageContentWrapper {
-  cursor: pointer;
-  transition: opacity var(--duration-base) var(--ease-standard);
-
-  &.selected {
-    opacity: 0.6;
   }
 
   &.default {
@@ -727,30 +670,6 @@
   }
 }
 
-/* Generic text block item styles (for non-metadata text blocks) */
-.textItem {
-  margin-bottom: var(--space-2);
-  line-height: 1.6;
-  width: 100%;
-  white-space: pre-wrap;
-}
-
-.textItem-text {
-  white-space: pre-wrap;
-}
-
-.textItemLabel {
-  font-weight: 600;
-  margin-right: var(--space-1);
-}
-
-/* Text content wrapper styles - mobile first */
-.textContentWrapper {
-  box-sizing: border-box;
-  width: 100%;
-  height: auto;
-}
-
 /* Placeholder styles for missing images - mobile first */
 .placeholderImage {
   box-sizing: border-box;
@@ -775,35 +694,12 @@
   &.clickable {
     cursor: pointer;
   }
-
-  &.notClickable {
-    cursor: default;
-  }
 }
 
 /* Desktop styles for non-parallax images */
 @media (width >= 768px) {
   .nonParallaxImage {
     height: 100%;
-  }
-}
-
-/* Content wrapper sizing - mobile first */
-.contentWrapper {
-  box-sizing: border-box;
-  position: relative;
-  width: 100%;
-
-  &.clickable {
-    cursor: pointer;
-  }
-
-  &.notClickable {
-    cursor: default;
-  }
-
-  &.parallax {
-    height: auto;
   }
 }
 

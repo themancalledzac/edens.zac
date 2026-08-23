@@ -2,7 +2,6 @@ html,
 :root {
   color-scheme: light;
 
-  --content-width: 72rem;
   --page-max-width: 1300px;
 
   /* Colors */
@@ -48,11 +47,8 @@ html,
   --scrim-light-10: rgb(255 255 255 / 10%);
   --scrim-light-20: rgb(255 255 255 / 20%);
   --scrim-light-30: rgb(255 255 255 / 30%);
-  --scrim-light-40: rgb(255 255 255 / 40%);
   --scrim-light-50: rgb(255 255 255 / 50%);
-  --scrim-light-60: rgb(255 255 255 / 60%);
   --scrim-light-70: rgb(255 255 255 / 70%);
-  --scrim-light-80: rgb(255 255 255 / 80%);
   --scrim-light-90: rgb(255 255 255 / 90%);
 
   /* Badge and overlay colors */
@@ -71,7 +67,6 @@ html,
   --color-star: #f5c518; /* ContentComponent select-star fill */
 
   /* Spacing scale */
-  --space-0: 0;
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -85,11 +80,6 @@ html,
   --space-mobile-border-header: 2px; /* Lighter separator for text/metadata blocks on mobile */
   --gap-box-mobile: 0.4rem; /* BoxRenderer hbox/vbox gap — mobile (= LAYOUT.mobileGridGap / 2) */
   --gap-box-desktop: 0.8rem; /* BoxRenderer hbox/vbox gap — desktop (= LAYOUT.gridGap / 2) */
-
-  /* Breakpoints */
-  --breakpoint-mobile: 768px;
-  --breakpoint-tablet: 1024px;
-  --breakpoint-desktop: 1280px;
 
   /* Page-level padding */
   --page-padding-mobile: var(--space-4);
@@ -135,7 +125,6 @@ html,
     --color-primary-dark
   ); /* hover step for the primary <Button>. Light surface: the dark fill deepens. The dark scope re-points this so the white-fill button dims toward gray instead of inverting to near-black. */
 
-  --color-on-primary-muted: #adb5bd; /* AA-safe muted text on the dark --color-primary admin panel (~7.7:1); the light-surface --color-on-surface-muted #666 fails AA there */
   --color-secondary: #6c757d;
   --color-secondary-dark: #5a6268;
   --color-success: #22c55e;
@@ -167,20 +156,16 @@ html,
      over charcoal) and needs no dark-surface counterpart. */
   --color-danger-subtle: rgb(220, 38, 38, 0.2);
 
-  /* Shadows */
-  --shadow-sm: 0 2px 4px rgb(0, 0, 0, 0.1);
-
   /* Motion tokens. Replace the magic-number transition durations scattered
      across the SCSS modules so timing is consistent and tunable in one place.
-     fast = micro UI (hover tint), base = standard, slow = larger affordances. */
+     fast = micro UI (hover tint), base = standard. */
   --duration-fast: 0.15s;
   --duration-base: 0.2s;
-  --duration-slow: 0.3s;
   --ease-standard: ease;
 
   /* Z-Index Layers - Systematic stacking order */
 
-  /* IMPORTANT: Keep in sync with app/constants/index.ts Z_INDEX */
+  /* Sole source of stacking order - the TS mirror was unused and removed. */
   --z-base: 1; /* Base content layer */
   --z-content: 2; /* Content elements above base */
   --z-overlay: 3; /* Text overlays, badges */
@@ -193,7 +178,6 @@ html,
   /* ── Remaining named aliases still referenced by call sites. The legacy
      text/bg/border/overlay-light families and the duplicate --color-accent
      alias were migrated onto the semantic taxonomy and deleted (TK-3). ── */
-  --text-base: var(--text-md); /* font-size, collection-edit stepper */
   --radius-sm: var(--radius-1);
   --color-warning: #f4b400; /* amber: warning affordances + RatingStars star fill */
 }

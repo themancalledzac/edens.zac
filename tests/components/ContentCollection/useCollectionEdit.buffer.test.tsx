@@ -282,6 +282,72 @@ describe('useCollectionEdit — edit buffer lifecycle', () => {
       expect(result.current.isUpdateDirty).toBe(true);
     });
   });
+
+  describe('staged People and gallery access survive unrelated saves', () => {
+    const ADA = { id: 7, name: 'Ada Lovelace' };
+
+    /**
+     * Every DTO must carry its OWN `people`/`recipientEmails` arrays. The old effect keyed off
+     * those array identities, so a refresh only wiped staged edits when the arrays were actually
+     * present — leaving them `undefined` (as the bare fixture does) hides the bug entirely.
+     */
+    function mockFreshDtosWithArrays() {
+      mockGetCollectionUpdateMetadata.mockImplementation(async () =>
+        makeResponse({ people: [], recipientEmails: [] })
+      );
+      mockUpdateCollection.mockImplementation(async () =>
+        makeResponse({ people: [], recipientEmails: [] })
+      );
+    }
+
+    it('does NOT wipe a staged person when an inline title commit refreshes the DTO', async () => {
+      mockFreshDtosWithArrays();
+      const { result } = renderEdit();
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      act(() => result.current.setCollectionPeople([ADA]));
+      expect(result.current.collectionPeople).toEqual([ADA]);
+
+      await act(async () => {
+        await result.current.handleUpdate({ title: 'New Title' });
+      });
+
+      expect(result.current.collectionPeople).toEqual([ADA]);
+    });
+
+    it('does NOT wipe staged gallery password and emails on a background refresh', async () => {
+      mockFreshDtosWithArrays();
+      const { result } = renderEdit();
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      act(() => result.current.setGalleryPassword('hunter2'));
+      act(() => result.current.setGalleryEmail('client@example.com'));
+
+      await act(async () => {
+        await result.current.handleMetadataSaveSuccess({ updatedImages: [], newMetadata: {} });
+      });
+
+      expect(result.current.galleryPassword).toBe('hunter2');
+      expect(result.current.galleryEmail).toBe('client@example.com');
+    });
+
+    it('DOES seed people and gallery access from the admin DTO on first arrival', async () => {
+      mockGetCollectionUpdateMetadata.mockImplementation(async () =>
+        makeResponse({
+          people: [ADA],
+          galleryPassword: 'from-server',
+          recipientEmails: ['a@example.com', 'b@example.com'],
+        })
+      );
+
+      const { result } = renderEdit();
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      expect(result.current.collectionPeople).toEqual([ADA]);
+      expect(result.current.galleryPassword).toBe('from-server');
+      expect(result.current.galleryEmail).toBe('a@example.com, b@example.com');
+    });
+  });
 });
 
 describe('update buffer — kind flags', () => {

@@ -31,8 +31,6 @@ export default tseslint.config(
       'public/**',
       'coverage/**',
       '**/*.d.ts',
-      'Components/**',
-      'old/**',
       '.worktrees/**',
       '.claude/worktrees/**',
       '.claire/**',
@@ -134,14 +132,6 @@ export default tseslint.config(
       'unicorn/prefer-string-starts-ends-with': 'error',
       'unicorn/prefer-string-trim-start-end': 'error',
       'unicorn/prefer-ternary': 'error',
-    },
-  },
-
-  // Allow default export for Next.js pages and API route files
-  {
-    files: ['pages/**/*.{js,jsx,ts,tsx}'],
-    rules: {
-      'no-restricted-syntax': 'off',
     },
   },
 

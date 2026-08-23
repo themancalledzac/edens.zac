@@ -1,40 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 /**
- * useDebounce Hook
- *
- * Delays function execution until after a specified period has passed
- * since the last invocation. Uses a callback ref pattern to ensure
- * the returned function identity is stable.
- *
- * @param callback - Function to debounce
- * @param delay - Delay in milliseconds before execution
- * @returns Debounced version of the callback function (stable reference)
- */
-export function useDebounce<T extends (...args: never[]) => void>(callback: T, delay: number): T {
-  const callbackRef = useRef<T>(callback);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    callbackRef.current = callback;
-  }, [callback]);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
-  return useCallback(
-    ((...args: Parameters<T>) => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => callbackRef.current(...args), delay);
-    }) as T,
-    [delay]
-  );
-}
-
-/**
  * useThrottle Hook
  *
  * Limits function execution to at most once per interval. Fires immediately

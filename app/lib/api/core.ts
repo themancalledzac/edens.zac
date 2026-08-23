@@ -2,7 +2,6 @@ import { isLocalEnvironment } from '@/app/utils/environment';
 import { logger } from '@/app/utils/logger';
 
 const READ = 'read';
-const WRITE = 'write';
 const ADMIN = 'admin';
 const EDIT = 'edit';
 
@@ -174,24 +173,23 @@ export async function fetchReadApi<T>(
 }
 
 /** Maps a `fetchBase` endpoint type to its channel path segment. */
-const ENDPOINT_TYPE_TO_CHANNEL: Record<'write' | 'admin' | 'edit', string> = {
-  write: WRITE,
+const ENDPOINT_TYPE_TO_CHANNEL: Record<'admin' | 'edit', string> = {
   admin: ADMIN,
   edit: EDIT,
 };
 
 /**
- * Base function for making API requests to write, admin, or edit endpoints
+ * Base function for making API requests to admin or edit endpoints
  * Handles URL building, error handling, and response parsing
  *
- * @param endpointType - Type of endpoint ('write', 'admin', or 'edit')
+ * @param endpointType - Type of endpoint ('admin' or 'edit')
  * @param endpoint - API endpoint path (without the base URL)
  * @param options - Fetch options
  * @returns The parsed response data
  * @throws ApiError if the request fails
  */
 const fetchBase = async <T>(
-  endpointType: 'write' | 'admin' | 'edit',
+  endpointType: 'admin' | 'edit',
   endpoint: string,
   options: RequestInit
 ): Promise<T | null> => {
@@ -225,41 +223,6 @@ const fetchBase = async <T>(
     return await throwApiError(error);
   }
 };
-
-/** PUT JSON to the write endpoint */
-export async function fetchPutJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
-  return await fetchBase<T>('write', endpoint, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-}
-
-/** PATCH JSON to the write endpoint */
-export async function fetchPatchJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
-  return await fetchBase<T>('write', endpoint, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-}
-
-/** POST JSON to the write endpoint */
-export async function fetchPostJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
-  return await fetchBase<T>('write', endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-}
-
-/** POST FormData to the write endpoint — used for image uploads */
-export async function fetchFormDataApi<T>(endpoint: string, formData: FormData): Promise<T | null> {
-  return await fetchBase<T>('write', endpoint, {
-    method: 'POST',
-    body: formData,
-  });
-}
 
 /** POST JSON to the admin endpoint */
 export async function fetchAdminPostJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
@@ -331,10 +294,7 @@ export async function fetchEditPostJsonApi<T>(endpoint: string, body: unknown): 
 }
 
 /** PATCH JSON to the edit endpoint */
-export async function fetchEditPatchJsonApi<T>(
-  endpoint: string,
-  body: unknown
-): Promise<T | null> {
+export async function fetchEditPatchJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
   return await fetchBase<T>('edit', endpoint, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
