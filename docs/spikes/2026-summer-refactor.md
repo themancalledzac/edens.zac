@@ -44,6 +44,19 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   This caught two would-be-worthless tests already: C1's first draft passed against the buggy source
   because the fixture left the relevant fields `undefined`, and it is the only reason D1's gate
   coverage is known to be real. Cheap, and it is the difference between a test and a decoration.
+- **The same rule applies to anything you verify by observation, not just to tests.** "No errors in
+  the console", "no violations reported", "nothing in the logs" — a silent result is only evidence
+  if you have shown the channel can speak. Include a case that SHOULD trigger the thing, in the same
+  run. D3 is the worked example: the CSP report-only console was clean, but the backend was down so
+  no image ever loaded and `img-src` was never exercised at all. Injecting an off-policy image
+  alongside the real ones is what turned "no reports" from unfalsifiable into a result.
+- **When an item specifies the mechanism of a fix, verify the mechanism before you implement it.**
+  The board line is a reviewer's shorthand and can name a check that does not work. D5 is the worked
+  example: "the reject is one prefix check" reads as `startsWith('api/')` on the joined path, and
+  that check is walked past by `api/../actuator/env`, because `fetch` resolves dot segments while
+  parsing the URL. One `new URL(...).pathname` in node, before writing any code, is what caught it.
+  Implementing a spec'd check without confirming it does what the item claims ships a decoration —
+  and it passes review, because the diff matches the item.
 - **Work in the primary checkout.** PR #253 merged 2026-08-23, so the two-branches-at-once case is
   over: branch off `main` in `/Users/themancalledzac/Code/edens.zac` directly, no worktree. If a
   second concurrent branch ever becomes necessary again, the worktree traps are: `git worktree add`
@@ -110,7 +123,8 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | D5 | Proxy path reject + `/cdn` matcher removal | Low | ~+30 net (−27 src, +6 reject, +40–60 test) | ✅ PR #273 |
 | D6 | Shared Origin allowlist (CSRF on `/api/revalidate`) | Low-medium | +75 src, +230 test (est. ±60) | ✅ PR #270 |
 | D7 | Wrong danger token on error text (a11y) | Trivial | 0 (rode #253) | ✅ via PR #253 |
-| D8 | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist | Trivial | ±5 src, +2 test | ☐ |
+| D8 | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist | Trivial | ±5 src, +2 test | ☐ **NEXT** |
+| D9 | Decide: redundant localhost literals in the Origin allowlist | Trivial | −2 src or docblock only | ☐ (decision, found 08-23) |
 | E1 | Parallax-card builder consolidation | Medium | +98 src, +659 test (est. −120) | ✅ PR #269 |
 | E2 | `core.ts` fetch skeleton + `clientFetch` | Medium | ~0 net (−180 src, +150–200 test) | ☐ |
 | E3 | `collectionStorage.ts` generics | Low | +50–150 net (characterize first) | ☐ |
@@ -875,6 +889,52 @@ cost write-up). Fails closed, never open: an availability trap, not a bypass.
 - [ ] Two tests: a trailing-slash env value still allows the bare origin; a malformed env value
       denies everything. Prove the first red against the unnormalized helper.
 
+**Ref re-verified 2026-08-23 after D3/D4/D5 landed: zero drift.**
+[originAllowlist.ts:21](app/utils/originAllowlist.ts:21) is still
+`process.env.NEXT_PUBLIC_APP_URL,` inside `allowedOrigins()` (which starts at `:18`). None of the
+three merged MRs touched this file.
+
+**Next because it is the last open Group D item and the smallest thing on the board.** D6 built this
+helper, D5 and D3 kept the session inside the same security surface, and it is `±5` source lines.
+Finishing it closes Group D entirely except for the D9 decision below.
+
+**Guardrail — normalize the env value only. Do NOT normalize the incoming `origin` argument.**
+The tempting symmetry is `new URL(origin).origin` on both sides. That one is a widening, not a
+cleanup: browsers always send a bare `scheme://host[:port]`, so the only callers that send anything
+else are not browsers, and normalizing their input before an exact-match lookup would make
+`https://zacedens.com/anything` compare equal to the allowed origin. The env var is trusted config
+and needs normalizing; the `origin` header is attacker-influenced input and must stay an exact
+match. Same function, two opposite trust levels.
+
+**Second guardrail — leave the two `localhost` literals alone; that is D9, and it is a decision, not
+a cleanup.** They sit three lines below the one you are editing and look obviously redundant. Report
+what changing them would do, do not change them in D8's MR.
+
+### ☐ D9 · Decide: redundant `localhost` literals in the Origin allowlist — found 2026-08-23
+
+Found while setting up D8. `allowedOrigins()`
+([originAllowlist.ts:22-23](app/utils/originAllowlist.ts:22)) adds `http://localhost:3000` and
+`http://localhost:3001` to the Set when `NODE_ENV === 'development'`. `DEV_LAN_ORIGIN`
+([:33](app/utils/originAllowlist.ts:33)) already matches both, and its branch is gated on the same
+`NODE_ENV === 'development'`. Verified, not assumed: the regex returns `true` for
+`http://localhost:3000` and `http://localhost:3001`. The two literals are redundant today.
+
+**Deleting them is invisible to the test suite, which is the reason to be careful rather than the
+reason it is safe.** `tests/utils/originAllowlist.test.ts` asserts localhost is allowed in
+development (`:80-81`) and denied outside it (`:57-58`, `:136`). Every one of those still passes
+with the literals gone, because the regex covers the same cases. No test would catch it if the
+redundancy reasoning were wrong.
+
+**The redundancy is arguably the point.** They are two independent expressions of the same intent.
+If a later MR tightened `DEV_LAN_ORIGIN` — dropping bare `localhost` to require an IP, say — the Set
+literals are what would keep the dev server working. That makes this defense in depth, not dead
+code, and the honest resolutions are "delete and note why in the docblock" or "keep and note why in
+the docblock". Either way the next reader needs the reasoning written down, because the redundancy
+reads as an oversight.
+
+- [ ] Decide delete vs keep, and put the reasoning in the `allowedOrigins()` docblock so this is not
+      re-litigated a third time.
+
 ---
 
 ## Group E — Consolidations
@@ -1250,6 +1310,18 @@ being avoided, not scheduled — make it real work or drop it from the board.
   CSP, with a test pinning that they agree. Held scope: no `Permissions-Policy`, and
   `'unsafe-inline'` stays until a nonce moves the CSP into `proxy.ts`.
   Next: D8 (the last open Group D item), then Group B or C.
+- 2026-08-23 — reconciled: #272, #273 and #274 are all MERGED, zero PRs open, `main` at `840c0b8`.
+  The board needed no status corrections for once — D3/D4/D5 were marked ✅ in the same commits as
+  their fixes, so the record landed with the code instead of trailing it. Re-verified D8's ref
+  (`originAllowlist.ts:21`), zero drift; none of the three MRs touched that file. Filed **D9** from
+  a finding made while setting up D8: the two `localhost` literals in `allowedOrigins()` are
+  redundant with `DEV_LAN_ORIGIN`, verified by running the regex, and deleting them is invisible to
+  all 19 tests in that file — so it is a decision to write down, not a cleanup to do. Hoisted two
+  session lessons into "How to use this doc": verifying a negative by observation needs a positive
+  control (from D3), and an item that specifies the *mechanism* of a fix can specify a broken one
+  (from D5). `app/(admin)/admin/layoutpreview/` is STILL untracked — third session running; it is an
+  A9 bullet and nobody has deleted it.
+  Next: D8.
 
 ## Verified fine — do not re-investigate
 
