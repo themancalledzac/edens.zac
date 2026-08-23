@@ -60,7 +60,7 @@ For SCSS files, also run Stylelint:
 
 ## Common Mistakes to Avoid
 
-- Writing comments inside React component code (JSX `{/* ... */}` or inline `//` in component bodies) - documentation belongs in docblocks (JSDoc above the file/component/function) only
+- Writing comments inside React component code (JSX `{/* ... */}` or inline `//` in component or function bodies) - documentation belongs in docblocks (JSDoc above the file/component/function) only. "Why" context is not an exception: it goes in the docblock of the function it explains. If a function's docblock would get too big because the function does too much, split the function instead of commenting inline
 - Using `'use client'` unnecessarily - prefer Server Components
 - Using `any` type - always use proper TypeScript types
 - Creating components without corresponding SCSS modules
