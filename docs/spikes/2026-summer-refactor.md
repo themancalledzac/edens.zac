@@ -124,7 +124,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | D6 | Shared Origin allowlist (CSRF on `/api/revalidate`) | Low-medium | +75 src, +230 test (est. ±60) | ✅ PR #270 |
 | D7 | Wrong danger token on error text (a11y) | Trivial | 0 (rode #253) | ✅ via PR #253 |
 | D8 | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist | Trivial | +30 src, +52 test (est. ±5 src, +2 test) | ✅ PR #276 |
-| D9 | Decide: redundant localhost literals in the Origin allowlist | Trivial | −2 src or docblock only | ☐ **NEXT** (decision, found 08-23) |
+| D9 | Decide: redundant localhost literals in the Origin allowlist | Trivial | −5 src, +20 docblock, +7 test | ✅ PR #277 — deleted |
 | E1 | Parallax-card builder consolidation | Medium | +98 src, +659 test (est. −120) | ✅ PR #269 |
 | E2 | `core.ts` fetch skeleton + `clientFetch` | Medium | ~0 net (−180 src, +150–200 test) | ☐ |
 | E3 | `collectionStorage.ts` generics | Low | +50–150 net (characterize first) | ☐ |
@@ -937,7 +937,7 @@ match. Same function, two opposite trust levels.
 a cleanup.** They sit three lines below the one you are editing and look obviously redundant. Report
 what changing them would do, do not change them in D8's MR.
 
-### ☐ D9 · Decide: redundant `localhost` literals in the Origin allowlist — found 2026-08-23
+### ✅ D9 · Redundant `localhost` literals in the Origin allowlist — DELETED, PR #277
 
 Found while setting up D8. `allowedOrigins()`
 ([originAllowlist.ts:22-23](app/utils/originAllowlist.ts:22)) adds `http://localhost:3000` and
@@ -979,7 +979,31 @@ same intent" framing above — as written they are the *narrower* of the two, an
 load-bearing if a future MR tightened the regex specifically. Worth weighing in the decision; not a
 decision in itself.
 
-- [ ] Decide delete vs keep, and put the reasoning in the `allowedOrigins()` docblock so this is not
+**Decision: delete.** Reasoning is in the `allowedOrigins()` docblock, as required, in enough
+detail that a reader who thinks the literals were dropped by accident is answered on the spot.
+
+Three things carried it. The literals were verified redundant with `DEV_LAN_ORIGIN` under identical
+`NODE_ENV` gating. They were the *narrower* of the two, so "independent expressions of the same
+intent" was never accurate. And the failure that keeping them would cover is loud, not silent — a
+tightened regex breaks the dev server on the next admin write and turns tests red in the same
+second. Defense in depth is worth its cost against failures that pass unnoticed; this one cannot.
+Kept as a footnote in the docblock: had the tightening ever been deliberate, the literals would have
+silently defeated it.
+
+**Correction to this entry's own premise — the claim below that no test would catch a wrong
+redundancy argument is false, and it was checked rather than reasoned about.** Deleting the literals
+and then simulating the exact future the "keep" case feared (dropping bare `localhost` from
+`DEV_LAN_ORIGIN`) turns `allows both local dev ports` (`:80-81`) red immediately. Those cases pass
+either way only because the reasoning happens to be right — that is the test confirming the premise,
+not a blind spot. The entry read the passing tests as absence of coverage when they were the
+coverage.
+
+Two mixed-case cases were still added (`http://LOCALHOST:3000`), one in each `NODE_ENV`. They pin
+which mechanism answers for the dev ports: a Set lookup is case-sensitive and the regex is not, so
+they can only pass while the regex is the thing responding. Before this MR nothing in the file could
+tell the two mechanisms apart.
+
+- [x] Decided delete; reasoning recorded in the `allowedOrigins()` docblock so this is not
       re-litigated a third time.
 
 ---
@@ -1387,6 +1411,20 @@ being avoided, not scheduled — make it real work or drop it from the board.
   ~140 lines of churn. Caught and reverted here; the file has always been committed unformatted.
   `app/(admin)/admin/layoutpreview/` is STILL untracked — fourth session running.
   Next: D9, the decision, as its own MR.
+- 2026-08-23 — D9 decided and shipped as PR #277, stacked on #276 rather than waiting for it to
+  merge, because both edit the same function; retarget to `main` after #276 lands. **Group D is now
+  closed.** Decision was delete, and the argument that settled it was not the redundancy — it was
+  that the failure "keep" would protect against is loud. A tightened regex breaks the dev server on
+  the next request and reddens tests in the same second; defense in depth is priced for silent
+  failures. **The D9 entry's own premise turned out to be wrong, and only checking it revealed
+  that:** it claimed no test would catch a wrong redundancy argument, but simulating the feared
+  future (dropping bare `localhost` from `DEV_LAN_ORIGIN`) turned `allows both local dev ports` red
+  at once. The entry mistook tests that pass because the reasoning is right for tests that cannot
+  tell. **That is the same failure mode as D5 and D8 one level up** — those two had board items
+  prescribing a broken mechanism; this one had a board item asserting a false fact about coverage.
+  The rule generalizes: verify a board item's *claims*, not just its refs, before acting on them.
+  Refs have been drift-checked every session; claims had not been.
+  Next: Group B or C — Group D is done.
 
 ## Verified fine — do not re-investigate
 
