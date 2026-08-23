@@ -463,3 +463,122 @@ describe('Vercel BFF proxy /api/proxy/[...path] — real-IP header sanitization'
     expect((init.headers as Headers).get('x-real-ip')).toBeNull();
   });
 });
+
+describe('Vercel BFF proxy /api/proxy/[...path] — non-api path reject', () => {
+  const ORIGINAL_ENV = process.env;
+
+  beforeEach(() => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      INTERNAL_API_SECRET: 'test-secret',
+      API_URL: 'http://backend.test',
+      NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+      NODE_ENV: 'development',
+    };
+  });
+
+  afterEach(() => {
+    process.env = ORIGINAL_ENV;
+    jest.restoreAllMocks();
+  });
+
+  function spyFetch() {
+    return jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+  }
+
+  // Spring Boot serves the actuator outside /api. Before the reject, this reached the
+  // backend carrying X-Internal-Secret — the channel gate the BFF injects on every hop.
+  it('rejects actuator paths with 404 and does NOT forward', async () => {
+    const fetchSpy = spyFetch();
+    const req = new NextRequest('http://localhost:3000/api/proxy/actuator/env', { method: 'GET' });
+    const res = await GET(req, {
+      params: Promise.resolve({ path: ['actuator', 'env'] }),
+    } as never);
+
+    expect(res.status).toBe(404);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [['actuator', 'health'], 'actuator/health'],
+    [['swagger-ui', 'index.html'], 'swagger-ui/index.html'],
+    [['api-docs'], 'api-docs (api-prefixed but not an api/ segment)'],
+    [['api'], 'api with no sub-path'],
+    [[], 'an empty path'],
+  ])('rejects %j — %s', async (path, _label) => {
+    const fetchSpy = spyFetch();
+    const req = new NextRequest(`http://localhost:3000/api/proxy/${path.join('/')}`, {
+      method: 'GET',
+    });
+    const res = await GET(req, { params: Promise.resolve({ path }) } as never);
+
+    expect(res.status).toBe(404);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  // A `..` segment survives the api/ prefix check as a raw string, but the URL parser
+  // resolves it away inside fetch — `http://backend.test/api/../actuator/env` is
+  // requested as `http://backend.test/actuator/env`. The reject must catch it before
+  // that normalization, or the prefix check is decorative.
+  it.each([
+    [['api', '..', 'actuator', 'env'], 'a bare .. segment'],
+    [['api', '%2e%2e', 'actuator'], 'the percent-encoded .. spelling'],
+    [['api', 'a', '..', '..', 'actuator'], 'a multi-hop climb out of api/'],
+    ['api\\..\\actuator'.split('/'), 'the backslash spelling'],
+  ])('rejects %j — %s', async (path, _label) => {
+    const fetchSpy = spyFetch();
+    const req = new NextRequest(`http://localhost:3000/api/proxy/${path.join('/')}`, {
+      method: 'GET',
+    });
+    const res = await GET(req, { params: Promise.resolve({ path }) } as never);
+
+    expect(res.status).toBe(404);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  // Not every dot sequence escapes. `..%2F` stays a literal segment under api/ after
+  // normalization, so rejecting it would be over-blocking.
+  it('still forwards a path whose encoded slash keeps it inside api/', async () => {
+    const fetchSpy = spyFetch();
+    const path = ['api', '..%2Fread'];
+    const req = new NextRequest('http://localhost:3000/api/proxy/api/..%2Fread', {
+      method: 'GET',
+    });
+    const res = await GET(req, { params: Promise.resolve({ path }) } as never);
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a write to a non-api path before the origin check runs', async () => {
+    const fetchSpy = spyFetch();
+    const req = new NextRequest('http://localhost:3000/api/proxy/actuator/shutdown', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: '{}',
+    });
+    const res = await POST(req, {
+      params: Promise.resolve({ path: ['actuator', 'shutdown'] }),
+    } as never);
+
+    expect(res.status).toBe(404);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('still forwards a normal api/** read', async () => {
+    const fetchSpy = spyFetch();
+    const req = new NextRequest('http://localhost:3000/api/proxy/api/read/collections', {
+      method: 'GET',
+    });
+    const res = await GET(req, {
+      params: Promise.resolve({ path: ['api', 'read', 'collections'] }),
+    } as never);
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('http://backend.test/api/read/collections');
+  });
+});

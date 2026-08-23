@@ -20,6 +20,22 @@ function buildTargetUrl(pathParts: string[], search: string): string {
 }
 
 /**
+ * True when the proxied path resolves inside the backend's `api/**` surface.
+ *
+ * The backend serves more than `/api` — Spring Boot's actuator among it — and this proxy
+ * injects `X-Internal-Secret` on every hop, so anything it forwards arrives already
+ * authenticated as the BFF. Restricting the proxy to `api/**` keeps the rest unreachable.
+ *
+ * The check runs against the URL-normalized path rather than the raw string, because
+ * `fetch` resolves dot segments while parsing: `api/../actuator/env`, its `%2e%2e`
+ * spelling, and the backslash variant would all be requested as `/actuator/env`. Asking
+ * the same parser the same question means a raw-string prefix check cannot be walked past.
+ */
+function isProxyableApiPath(resolvedPath: string): boolean {
+  return new URL(resolvedPath, 'http://proxy.invalid/').pathname.startsWith('/api/');
+}
+
+/**
  * Strips hop-by-hop and platform-specific headers, re-injects a sanitized real-IP,
  * and adds the internal API secret before forwarding to the backend.
  */
@@ -76,6 +92,12 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
   const params = await context.params;
   const method = req.method;
   const pathParts = params.path || [];
+  const resolvedPath = pathParts.join('/').replace(/^\/+/, '');
+
+  if (!isProxyableApiPath(resolvedPath)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   const targetUrl = buildTargetUrl(pathParts, req.nextUrl.search);
 
   // Belt & suspenders: refuse anonymous admin/edit API in production before forwarding.
@@ -87,7 +109,6 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
   // or bare `api/admin`/`api/edit` path is not caught here) — that's acceptable because
   // this check is NOT the real gate; the backend's own authorization authorizes every
   // request regardless of what this early check catches.
-  const resolvedPath = pathParts.join('/').replace(/^\/+/, '');
   if (
     process.env.NODE_ENV === 'production' &&
     (resolvedPath.startsWith('api/admin/') || resolvedPath.startsWith('api/edit/')) &&

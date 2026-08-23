@@ -12,7 +12,6 @@ import { isLocalEnvironment } from '@/app/utils/environment';
  * Global Next.js Proxy
  * - Gates the whole (admin) App Router route group on an `ezac_session` cookie
  *   in non-local environments (presence check; the backend validates the session)
- * - Maintains legacy local-only protection for /cdn tooling routes
  * - Feature-flagged legacy /catalog → /collection redirects
  *
  * `/` is deliberately absent from the matcher: localhost used to redirect it to the /admin
@@ -24,15 +23,7 @@ import { isLocalEnvironment } from '@/app/utils/environment';
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1) Legacy protection for /cdn tools — allow only in local/dev
-  if (pathname.startsWith('/cdn')) {
-    if (!isLocalEnvironment()) {
-      return NextResponse.redirect(new URL('/', request.url));
-    }
-    return NextResponse.next();
-  }
-
-  // 2) Feature-flagged redirect from legacy catalog URLs to new collection URLs
+  // 1) Feature-flagged redirect from legacy catalog URLs to new collection URLs
   if (pathname.startsWith('/catalog/')) {
     const slug = pathname.split('/')[2] ?? '';
     const redirectsEnabled = process.env.COLLECTION_REDIRECTS_ENABLED === 'true';
@@ -44,7 +35,7 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // 3) Admin route group gate. Covers the WHOLE (admin) App Router group (the
+  // 2) Admin route group gate. Covers the WHOLE (admin) App Router group (the
   //    group folder does not alter the URL), including the /admin hub and
   //    /admin/users/[id]. Local/dev passes through for fast iteration; every
   //    other environment requires an `ezac_session` cookie (presence check —
@@ -82,7 +73,7 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // The whole (admin) route group, plus the legacy /catalog and /cdn rules.
+    // The whole (admin) route group, plus the legacy /catalog rule.
     // '/' is deliberately NOT matched — see the note on `proxy` above.
     // /explore is deliberately PUBLIC (taxonomy directory, chapter 001) — do not
     // add it here; 0203 F4 did and login-walled it in prod.
@@ -91,7 +82,6 @@ export const config = {
     '/admin',
     '/admin/:path*',
     '/catalog/:slug*',
-    '/cdn/:path*',
     '/collection/manage',
     '/collection/manage/:path*',
     '/comments',

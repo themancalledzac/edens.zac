@@ -3,7 +3,7 @@
  *
  * Tests for the Next.js middleware (proxy.ts).
  *
- * Covers the `/cdn` + `/catalog` rules and the (admin) route-group session gate:
+ * Covers the `/catalog` rule and the (admin) route-group session gate:
  * in non-local environments every (admin) route requires an `ezac_session` cookie
  * or redirects to `/login`; local passes through. Also pins the public perimeter:
  * `/` is never redirected and is not even matched (the localhost `/` → `/admin`
@@ -76,18 +76,20 @@ describe('proxy middleware — / is never redirected', () => {
   });
 });
 
-describe('proxy middleware — existing /cdn rule (regression)', () => {
-  it('passes /cdn/foo through on localhost', () => {
-    setLocal();
-    const res = proxy(makeRequest('/cdn/foo'));
-    expect(res.headers.get('x-middleware-next')).toBe('1');
+// /cdn never existed as a route — app/ has no cdn directory, so the rule redirected
+// prod traffic that could only ever 404. These pin that the removal is complete: the
+// matcher no longer pays for it, and the path is ordinary unmatched traffic now.
+describe('proxy middleware — removed /cdn rule', () => {
+  it('no longer matches /cdn', () => {
+    expect(config.matcher).not.toContain('/cdn/:path*');
+    expect(config.matcher).not.toContain('/cdn');
   });
 
-  it('redirects /cdn/foo → / in prod', () => {
-    setProd();
+  it.each([true, false])('passes /cdn/foo through untouched (local=%s)', isLocal => {
+    if (isLocal) setLocal();
+    else setProd();
     const res = proxy(makeRequest('/cdn/foo'));
-    expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe('http://localhost:3000/');
+    expect(res.headers.get('x-middleware-next')).toBe('1');
   });
 });
 
