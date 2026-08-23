@@ -22,7 +22,6 @@ global.fetch = jest.fn();
 // Mock environment
 jest.mock('@/app/utils/environment', () => ({
   isLocalEnvironment: jest.fn(() => true),
-  isProduction: jest.fn(() => false),
 }));
 
 // Mock next/headers for getServerCookieHeader tests

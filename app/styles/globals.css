@@ -180,7 +180,7 @@ html,
 
   /* Z-Index Layers - Systematic stacking order */
 
-  /* IMPORTANT: Keep in sync with app/constants/index.ts Z_INDEX */
+  /* Sole source of stacking order - the TS mirror was unused and removed. */
   --z-base: 1; /* Base content layer */
   --z-content: 2; /* Content elements above base */
   --z-overlay: 3; /* Text overlays, badges */

@@ -3,12 +3,7 @@
  * Tests location conversion, update creation, and diff building
  */
 import type { LocationModel } from '@/app/types/Collection';
-import {
-  buildLocationsDiff,
-  convertLocationsToModels,
-  createLocationsUpdate,
-  slugify,
-} from '@/app/utils/locationUtils';
+import { buildLocationsDiff, convertLocationsToModels, slugify } from '@/app/utils/locationUtils';
 
 const availableLocations: LocationModel[] = [
   { id: 1, name: 'Seattle, WA', slug: 'seattle-wa' },
@@ -96,50 +91,6 @@ describe('convertLocationsToModels', () => {
         { id: 0, name: 'Tokyo, Japan', slug: '' },
       ]);
     });
-  });
-});
-
-describe('createLocationsUpdate', () => {
-  it('should return empty object for empty array', () => {
-    const result = createLocationsUpdate([]);
-    expect(result).toEqual({});
-  });
-
-  it('should return { prev } for array of existing locations', () => {
-    const locations: LocationModel[] = [
-      { id: 5, name: 'Portland, OR', slug: 'portland-or' },
-      { id: 1, name: 'Seattle, WA', slug: 'seattle-wa' },
-    ];
-    const result = createLocationsUpdate(locations);
-    expect(result).toEqual({ prev: [5, 1] });
-  });
-
-  it('should return { newValue } for array of new locations (id: 0)', () => {
-    const locations: LocationModel[] = [
-      { id: 0, name: 'New City', slug: '' },
-      { id: 0, name: 'Another City', slug: '' },
-    ];
-    const result = createLocationsUpdate(locations);
-    expect(result).toEqual({ newValue: ['New City', 'Another City'] });
-  });
-
-  it('should return both prev and newValue for mixed array', () => {
-    const locations: LocationModel[] = [
-      { id: 5, name: 'Portland, OR', slug: 'portland-or' },
-      { id: 0, name: 'New City', slug: '' },
-    ];
-    const result = createLocationsUpdate(locations);
-    expect(result).toEqual({ prev: [5], newValue: ['New City'] });
-  });
-
-  it('should omit prev when there are no existing locations', () => {
-    const result = createLocationsUpdate([{ id: 0, name: 'New City', slug: '' }]);
-    expect(result).not.toHaveProperty('prev');
-  });
-
-  it('should omit newValue when there are no new locations', () => {
-    const result = createLocationsUpdate([{ id: 5, name: 'Portland, OR', slug: 'portland-or' }]);
-    expect(result).not.toHaveProperty('newValue');
   });
 });
 

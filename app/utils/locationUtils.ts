@@ -69,31 +69,6 @@ export function convertLocationsToModels(
 }
 
 /**
- * Create a LocationUpdate from a LocationModel array for API submission.
- * Splits models into `prev` (existing, id > 0) and `newValue` (new, id === 0).
- *
- * @param locations - Selected locations from UI
- * @returns LocationUpdate with prev/newValue arrays
- */
-export function createLocationsUpdate(locations: LocationModel[]): LocationUpdate {
-  const prev: number[] = [];
-  const newValue: string[] = [];
-
-  for (const loc of locations) {
-    if (loc.id > 0) {
-      prev.push(loc.id);
-    } else {
-      newValue.push(loc.name);
-    }
-  }
-
-  return {
-    ...(prev.length > 0 ? { prev } : {}),
-    ...(newValue.length > 0 ? { newValue } : {}),
-  };
-}
-
-/**
  * Build a LocationUpdate diff by comparing updated vs current location arrays.
  * Returns undefined if nothing changed.
  *

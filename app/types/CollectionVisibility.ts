@@ -17,11 +17,3 @@ export const COLLECTION_VISIBILITY_LABELS: Record<CollectionVisibility, string> 
   [CollectionVisibility.UNLISTED]: 'Unlisted',
   [CollectionVisibility.HIDDEN]: 'Hidden (dev only)',
 };
-
-export const COLLECTION_VISIBILITY_DESCRIPTIONS: Record<CollectionVisibility, string> = {
-  [CollectionVisibility.LISTED]:
-    'Appears in list views, searchable, allowed as a visible child collection.',
-  [CollectionVisibility.UNLISTED]:
-    'Direct slug access only. Still requires a password if one is set.',
-  [CollectionVisibility.HIDDEN]: 'Visible only in local dev. Returns 404 in production.',
-};

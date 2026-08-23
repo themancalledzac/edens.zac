@@ -7,7 +7,6 @@
 import {
   exitFullscreen,
   fullscreenElement,
-  isFullscreenSupported,
   onFullscreenChange,
   requestFullscreen,
 } from '@/app/utils/fullscreen';
@@ -23,7 +22,6 @@ type TestDocument = Document & {
   webkitExitFullscreen?: () => Promise<void> | void;
 };
 
-const docEl = () => document.documentElement as TestElement;
 const testDoc = () => document as TestDocument;
 
 afterEach(() => {
@@ -32,22 +30,6 @@ afterEach(() => {
   Reflect.deleteProperty(document, 'webkitFullscreenElement');
   Reflect.deleteProperty(document, 'exitFullscreen');
   Reflect.deleteProperty(document, 'webkitExitFullscreen');
-});
-
-describe('isFullscreenSupported', () => {
-  it('is false when neither the standard nor webkit request exists', () => {
-    expect(isFullscreenSupported()).toBe(false);
-  });
-
-  it('is true when the standard requestFullscreen exists', () => {
-    docEl().requestFullscreen = jest.fn(() => Promise.resolve());
-    expect(isFullscreenSupported()).toBe(true);
-  });
-
-  it('is true when only the webkit request exists', () => {
-    docEl().webkitRequestFullscreen = jest.fn();
-    expect(isFullscreenSupported()).toBe(true);
-  });
 });
 
 describe('fullscreenElement', () => {

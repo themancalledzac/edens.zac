@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { BREAKPOINTS, getContentWidth } from '@/app/constants';
-import { useThrottle } from '@/app/utils/debounce';
+import { useThrottle } from '@/app/hooks/useThrottle';
 
 export interface ViewportDimensions {
   width: number;

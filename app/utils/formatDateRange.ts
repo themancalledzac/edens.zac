@@ -192,19 +192,3 @@ export function formatDateRange(start?: string | null, end?: string | null): str
 
   return `${formatMonthDayYear(startParts)} ${enDash} ${formatMonthDayYear(endParts)}`;
 }
-
-/**
- * Display variant for surfaces with no byte-parity constraint (the /collections showcase).
- *
- * Identical to {@link formatDateRange} except that a single (or same-day) date renders as
- * `Mar 3, 2026` rather than the raw `2026-03-03`, so a grid never mixes ISO strings with
- * formatted ranges. Unparseable input still falls through verbatim.
- */
-export function formatDisplayDateRange(start?: string | null, end?: string | null): string {
-  const range = formatDateRange(start, end);
-  if (!range || range !== start) {
-    return range;
-  }
-  const parts = parseIsoDateParts(range);
-  return parts ? formatMonthDayYear(parts) : range;
-}
