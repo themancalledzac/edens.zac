@@ -44,10 +44,10 @@ const NO_SEED: AdminPanelSeed = {};
  * Initial state is all-expanded on both server and client, so there is no hydration mismatch, and
  * collapsing is not persisted across navigations.
  *
- * It is also where the server's own fetches cross into client land: `seed` carries the users and
- * roles lists the page already loaded to size the panels, so those panels start warm instead of
- * re-requesting them (see {@link AdminPanelSeedProvider}). Same reason it is a context and not a
- * prop — `BoxRenderer` sits between this and every panel.
+ * It is also where the server's own fetches cross into client land: `seed` carries the users,
+ * roles, and collections lists the page already loaded to size the panels, so those panels start
+ * warm instead of re-requesting them (see {@link AdminPanelSeedProvider}). Same reason it is a
+ * context and not a prop — `BoxRenderer` sits between this and every panel.
  */
 export function AdminHubClient({
   content,
@@ -61,6 +61,7 @@ export function AdminHubClient({
     users: false,
     messages: false,
     roles: false,
+    collections: false,
   });
   const collapse = useMemo(
     () => ({

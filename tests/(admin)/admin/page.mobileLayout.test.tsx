@@ -16,6 +16,11 @@ import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
  * which is what it is still there for; the last case below pins exactly that split.
  */
 const MOBILE_VIEWPORT = { contentWidth: 430, viewportHeight: 932, isMobile: true };
+/**
+ * Users, Messages, Roles, Collections. Named rather than written as a literal at each call site,
+ * because a fourth panel is exactly the change that made these assertions fail.
+ */
+const PANEL_COUNT = 4;
 
 // Keyed off ADMIN_TILES rather than a hardcoded list: a fixture key that matches no
 // configured tile silently exercises the no-cover path instead of the cover path it
@@ -69,7 +74,7 @@ describe('admin hub mobile layout', () => {
       row.items.some(item => item.content.contentType === 'PANEL')
     );
 
-    expect(panelRows).toHaveLength(3);
+    expect(panelRows).toHaveLength(PANEL_COUNT);
     for (const row of panelRows) {
       expect(row.items).toHaveLength(1);
       expect(Math.round(row.items[0]!.width)).toBe(MOBILE_VIEWPORT.contentWidth);

@@ -21,6 +21,7 @@ const PANEL_SCSS = [
   'app/components/UserManagementPanel/UserManagementPanel.module.scss',
   'app/components/MessagesPanel/MessagesPanel.module.scss',
   'app/components/RolesPanel/RolesPanel.module.scss',
+  'app/components/CollectionsPanel/CollectionsPanel.module.scss',
 ];
 
 const read = (file: string) => readFileSync(path.join(process.cwd(), file), 'utf8');

@@ -9,11 +9,12 @@
  *
  * That is only safe because a panel's height does not vary with its width, which is a measured
  * property and not an obvious one. Probing the real components against the live Inter font across
- * panel widths 400 → 610px: a Users row is 75.0px at every width, Messages 86.0px, Roles 36.5px.
- * The one thing that would break it is a row wrapping to a second line, and the Users row — the
- * tightest of the three — wraps at a panel width of **350px**, which {@link PANEL_MIN_WIDTH} keeps
- * 50px clear of. (An earlier revision of this docblock put that cliff at "roughly 430-450px". That
- * was an estimate, it was wrong, and it would have made this feature unshippable had it been true.)
+ * panel widths 400 → 610px: every row measures the same at every width (see the row heights in
+ * {@link PANEL_SHAPE}). The one thing that would break it is a row wrapping to a second line, and
+ * the Users row — the tightest of them — wraps at a panel width of **350px**, which
+ * {@link PANEL_MIN_WIDTH} keeps 50px clear of. (An earlier revision of this docblock put that cliff
+ * at "roughly 430-450px". That was an estimate, it was wrong, and it would have made this feature
+ * unshippable had it been true.)
  *
  * Width-independence is what separates this from the measured-footprint path that was reverted on
  * 2026-08-10: a row COUNT cannot change when the packer changes a panel's width, so there is no
@@ -28,48 +29,30 @@
  *
  * Row composition, not rating, is the lever for a panel's width: the packer splits a row's budget
  * among whatever shares it, so a panel's width moves only when the number or shape of its
- * row-mates changes. Re-measured through `buildContentRows` at the 1274.4px max desktop content
- * width with 12/2/6 row counts: ratings 1 through 5 all render the three panels at 478.10px each
- * against the default cover shapes. (Against the live covers `page.collapseStates.test.ts`
- * carries, all five ratings give 700.00px — true but weaker evidence, since that is {@link
- * PANEL_MAX_WIDTH} binding rather than the solve landing in the same place.)
+ * row-mates changes.
  *
  * That is why each panel declares {@link PANEL_MIN_WIDTH} rather than a higher rating: the minimum
- * acts on row MEMBERSHIP, and membership is still the lever that moves. `firstCleanExtension`
- * refuses to grow a row into a composition that starves a declared minimum, so the row closes
- * instead. At 1274.4px that no longer changes the outcome — the fill and shared-width predicates
- * bind first, and stripping `minWidth` off the three panels leaves every row's membership and
- * widths unchanged on all three fixtures below.
+ * acts on row MEMBERSHIP, and membership is the lever that moves. `firstCleanExtension` refuses to
+ * grow a row into a composition that starves a declared minimum, so the row closes instead.
  *
- * Across the narrow-desktop band it is decisive, and decisive about MEMBERSHIP rather than about
- * width. At a 900px body with the live covers, WITH the minimum declared the three panels take two
- * rows — Users alone at 900.00px (one of the cases `LONE_PANEL_ROWS_TODAY` pins in
- * `page.collapseStates.test.ts`), then Messages and Roles sharing a second row at 542.89px each
- * beside two tiles. WITHOUT it they collapse into ONE row, all three squeezed to 347.02px, under
- * the 400px their chrome needs. The minimum did not widen anything; it closed a row.
+ * MEMBERSHIP IS NOT MONOTONIC IN WIDTH, and there is no single content width at which "the panels
+ * share a row" starts being true. The composer can STACK panels into one column, so they fit a row
+ * far narrower than four 400px columns would need, and the pinned-row predicates can reject a WIDER
+ * arrangement that a narrower one satisfies. It depends on the panels' content heights and the nav
+ * tiles' cover shapes as much as on the width.
  *
- * There is no single content width at which "three panels share a row" starts being true. An
- * earlier revision of this docblock put that threshold at 1232.0px; the claim predates two things.
- * The composer can now STACK panels into one column, so three panels fit a row far narrower than
- * three 400px columns would need, and the pinned-row membership predicates can reject a WIDER
- * arrangement that a narrower one satisfies. Membership is therefore non-monotonic in width, and
- * depends on the panels' content heights and the nav tiles' cover shapes as much as on the width.
- * Swept in 0.1px steps from 390 to 1300 and each transition bisected to four decimals through
- * `buildContentRows` — the recipe is to pack `withPanelFootprints(buildAdminHubContent(tiles,
- * counts), noneCollapsed)` at a given `contentWidth` and count the rows holding a panel:
+ * Earlier revisions of this docblock carried measured transition widths for that — 1232.0px, then
+ * 903.23 / 1134.72 / 712.80 / 1045.48 — and a set of measured panel widths beside them. Every one
+ * was measured on a THREE-panel hub and none survives the fourth. They are removed rather than
+ * re-swept, because the compositions they described are not the ones this hub produces: with four
+ * panels, the default-cover fixture no longer groups them at all and strands Users across the full
+ * body at both desktop widths. `page.collapsedLayout.test.ts` and `page.collapseStates.test.ts`
+ * carry the current measured picture, pinned as assertions rather than restated as prose here,
+ * which is the only form that fails when it goes stale.
  *
- * - live 2026-08-10 covers + 12/2/6 rows (what the real page packs): all three share ONE row
- *   between **903.23px and 1284.98px** — the entire desktop band up to the 1274.4px page cap.
- *   Below 903.23px they split.
- * - default cover shapes + 12/2/6 rows (the `page.collapsedLayout.test.ts` fixture): one row from
- *   **1134.72px** up.
- * - the zero-count fallback: one row from **712.80px**, split again from **1045.48px**, one row
- *   once more from **1232.00px**. That last figure is where the retired claim's number came from —
- *   one of three transitions in one fixture, not a page-wide threshold.
- *
- * Do NOT recompute any of these as 3 × 400 + 2 × gap = 1225.6px. That is the width at which three
- * SIDE-BY-SIDE 400px columns would first fit, and a flat three-column row is not the arrangement
- * the composer picks at any of the transitions above.
+ * Do NOT recompute any threshold as 4 × 400 + 3 × gap. That is the width at which four
+ * SIDE-BY-SIDE 400px columns would first fit, and a flat four-column row is not an arrangement the
+ * composer picks.
  */
 
 import {
@@ -99,7 +82,7 @@ import { ADMIN_TILES } from './adminTiles';
  * The Users row wraps — `.rowActions` dropping below `.rowMain`, whose `flex: 1 1 220px` basis is
  * what sets the threshold — at a panel width of **350px**, measured against the live Inter font by
  * sweeping the real geometry from 300 to 600px. 400 keeps 50px clear of that, and is shared by all
- * three panels so the row solves symmetrically. Since the height model assumes a row never wraps,
+ * four panels so the row solves symmetrically. Since the height model assumes a row never wraps,
  * this margin is now load-bearing for layout and not only for legibility.
  *
  * The packer treats this as a preference over ROW MEMBERSHIP, not a reservation of page
@@ -154,11 +137,18 @@ const TILE_MIN_WIDTH = 300;
  * now a declaration rather than a measurement -- which matters because the measurement was the one
  * registration step that failed silently (see the {@link panelContentHeight} docblock).
  *
- * Every shape below now describes a row that actually renders, and each derives its rendered
- * height to the pixel: 71 / 58.5 / 40 per row, on 86 / 79 / 86 of chrome. Measured in Chrome
- * against the live Inter font at panel widths 400, 430, 520 and 610px -- identical at all four,
- * which is the property {@link PANEL_MIN_WIDTH} exists to protect. No shape carries a residual;
- * the `heightAdjustment` escape hatch that covered the two un-migrated panels is gone with them.
+ * The first three derive their rendered height to the pixel: 71 / 58.5 / 40 per row, on 86 / 79 /
+ * 86 of chrome. Measured in Chrome against the live Inter font at panel widths 400, 430, 520 and
+ * 610px -- identical at all four, which is the property {@link PANEL_MIN_WIDTH} exists to protect.
+ * No shape carries a residual; the `heightAdjustment` escape hatch that covered the two un-migrated
+ * panels is gone with them.
+ *
+ * `collections` is the first shape DECLARED rather than measured -- it was written before the panel
+ * existed, and the panel was then built to it. 54px per row, on 79 of chrome. That is the model
+ * working as intended (registering a panel is a declaration now), but it does mean this one shape
+ * has not been confirmed against a browser the way the other three were. The two things that could
+ * make it wrong are both pinned elsewhere: a text line taller than its slot, and the 32px cover
+ * thumbnail growing past the 41px text stack beside it.
  */
 const PANEL_SHAPE: Record<PanelType, { header: RowShape; row: RowShape }> = {
   users: {
@@ -176,6 +166,10 @@ const PANEL_SHAPE: Record<PanelType, { header: RowShape; row: RowShape }> = {
     header: { left: ['header'], right: ['button'] },
     row: { left: ['header'], right: ['button'] },
   },
+  collections: {
+    header: { left: ['header'], right: ['subheader'] },
+    row: { left: ['header', 'subheader'], right: [] },
+  },
 };
 
 /**
@@ -184,7 +178,7 @@ const PANEL_SHAPE: Record<PanelType, { header: RowShape; row: RowShape }> = {
  * The floor is the 12rem that `AdminPanelRenderer.module.scss` used to hold as a `min-height`. It
  * moved here because this is where the row count is: a panel that is empty, loading or errored has
  * no rows to size from and would otherwise reserve only its chrome, so the floor is what keeps the
- * hub from reflowing as the three panels resolve. Expressed once, in the model — a CSS floor as
+ * hub from reflowing as the panels resolve. Expressed once, in the model — a CSS floor as
  * well would let the reserved box and the rendered box disagree, which is the whole class of bug
  * this change removes.
  *
@@ -198,6 +192,7 @@ export interface AdminPanelCounts {
   users: number;
   messages: number;
   roles: number;
+  collections: number;
 }
 
 /**
@@ -246,7 +241,7 @@ export function panelContentHeight(
  * typical list: an under-reservation is corrected by the panel's own scroll, while an
  * over-reservation reintroduces exactly the blank well this feature exists to remove.
  */
-const FALLBACK_COUNTS: AdminPanelCounts = { users: 0, messages: 0, roles: 0 };
+const FALLBACK_COUNTS: AdminPanelCounts = { users: 0, messages: 0, roles: 0, collections: 0 };
 
 /**
  * @param viewportHeight SSR-resolved viewport height, forwarded to {@link panelContentHeight} so a
@@ -290,6 +285,7 @@ export function buildAdminHubContent(
   const usersHeight = panelContentHeight('users', counts.users, viewportHeight);
   const messagesHeight = panelContentHeight('messages', counts.messages, viewportHeight);
   const rolesHeight = panelContentHeight('roles', counts.roles, viewportHeight);
+  const collectionsHeight = panelContentHeight('collections', counts.collections, viewportHeight);
 
   const usersPanel: ContentPanelModel = {
     contentType: 'PANEL',
@@ -336,7 +332,22 @@ export function buildAdminHubContent(
     visible: true,
   };
 
-  return [usersPanel, messagesPanel, rolesPanel, ...tileModels];
+  const collectionsPanel: ContentPanelModel = {
+    contentType: 'PANEL',
+    panelType: 'collections',
+    id: 1004,
+    rating: 5,
+    title: 'Collections',
+    width: 600,
+    height: 1100,
+    minWidth: PANEL_MIN_WIDTH,
+    maxWidth: PANEL_MAX_WIDTH,
+    ...pinnedHeight(collectionsHeight),
+    orderIndex: 103,
+    visible: true,
+  };
+
+  return [usersPanel, messagesPanel, rolesPanel, collectionsPanel, ...tileModels];
 }
 
 /**

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { panelContentHeight } from '@/app/(admin)/admin/adminHubContent';
 import {
   panelChromeHeight,
@@ -37,6 +40,18 @@ const MESSAGES_ROW: RowShape = {
 
 const ROLES_ROW: RowShape = { left: ['header'], right: ['button'] };
 
+/**
+ * The Collections row, which is the first shape declared BEFORE the panel it describes was built
+ * rather than measured off one that already existed. Its left section is the collection name over
+ * its date; nothing sits on the right.
+ *
+ * The 32px cover thumbnail beside that text is not a slot. It is shorter than the 41px stack it
+ * sits next to, so the stack governs the row and the thumbnail contributes no height. That is the
+ * reason the thumbnail is pinned at 32px in CSS: at anything over 41px it would govern instead,
+ * and this shape would understate the row.
+ */
+const COLLECTIONS_ROW: RowShape = { left: ['header', 'subheader'], right: [] };
+
 describe('rowHeight', () => {
   it('reproduces the measured Users row height', () => {
     expect(rowHeight(USERS_ROW)).toBeCloseTo(71, 1);
@@ -48,6 +63,32 @@ describe('rowHeight', () => {
 
   it('reproduces the measured Roles row height', () => {
     expect(rowHeight(ROLES_ROW)).toBeCloseTo(40, 1);
+  });
+
+  it('derives the Collections row height', () => {
+    expect(rowHeight(COLLECTIONS_ROW)).toBeCloseTo(54, 1);
+  });
+
+  /**
+   * The rule the 32px thumbnail exists to satisfy, read out of the stylesheet rather than restated
+   * here. The left stack is 41px; a thumbnail taller than that becomes the tallest thing in the
+   * row, and the shape above stops describing what renders.
+   *
+   * The earlier form declared `const COLLECTIONS_THUMBNAIL = 32` inside the test and compared it
+   * to another constant. Both sides were fixed, so growing the real thumbnail to 48px left it
+   * green — the one change it exists to catch. Reading the declaration is the whole point, the
+   * same reason `subtreeRules.test.ts` parses these stylesheets as text: `next/jest` stubs CSS
+   * modules, so no jsdom assertion can see a declaration at all.
+   */
+  it('leaves the Collections thumbnail under the text stack it sits beside', () => {
+    const css = readFileSync(
+      path.join(process.cwd(), 'app/components/CollectionsPanel/CollectionsPanel.module.scss'),
+      'utf8'
+    );
+    const declared = css.match(/\.cover,\s*\n\s*\.coverPlaceholder {[^}]*?height:\s*(\d+)px;/)?.[1];
+
+    expect(declared).toBeDefined();
+    expect(Number(declared)).toBeLessThan(rowHeight(COLLECTIONS_ROW) - ROW_PADDING_Y);
   });
 
   // The density pass is only honest if the row actually got shorter. Pinning the direction as
