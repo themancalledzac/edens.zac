@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { panelContentHeight } from '@/app/(admin)/admin/adminHubContent';
 import {
   panelChromeHeight,
@@ -66,12 +69,26 @@ describe('rowHeight', () => {
     expect(rowHeight(COLLECTIONS_ROW)).toBeCloseTo(54, 1);
   });
 
-  // The rule the 32px thumbnail exists to satisfy, written as an assertion rather than a comment
-  // in the stylesheet. The left stack is 41px; a thumbnail taller than that becomes the tallest
-  // thing in the row and the shape above stops describing what renders.
+  /**
+   * The rule the 32px thumbnail exists to satisfy, read out of the stylesheet rather than restated
+   * here. The left stack is 41px; a thumbnail taller than that becomes the tallest thing in the
+   * row, and the shape above stops describing what renders.
+   *
+   * The earlier form declared `const COLLECTIONS_THUMBNAIL = 32` inside the test and compared it
+   * to another constant. Both sides were fixed, so growing the real thumbnail to 48px left it
+   * green — the one change it exists to catch. Reading the declaration is the whole point, the
+   * same reason `subtreeRules.test.ts` parses these stylesheets as text: `next/jest` stubs CSS
+   * modules, so no jsdom assertion can see a declaration at all.
+   */
   it('leaves the Collections thumbnail under the text stack it sits beside', () => {
-    const COLLECTIONS_THUMBNAIL = 32;
-    expect(COLLECTIONS_THUMBNAIL).toBeLessThan(rowHeight(COLLECTIONS_ROW) - ROW_PADDING_Y);
+    const css = readFileSync(
+      path.join(process.cwd(), 'app/components/CollectionsPanel/CollectionsPanel.module.scss'),
+      'utf8'
+    );
+    const declared = css.match(/\.cover,\s*\n\s*\.coverPlaceholder {[^}]*?height:\s*(\d+)px;/)?.[1];
+
+    expect(declared).toBeDefined();
+    expect(Number(declared)).toBeLessThan(rowHeight(COLLECTIONS_ROW) - ROW_PADDING_Y);
   });
 
   // The density pass is only honest if the row actually got shorter. Pinning the direction as

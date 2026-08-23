@@ -166,12 +166,6 @@ const PANEL_SHAPE: Record<PanelType, { header: RowShape; row: RowShape }> = {
     header: { left: ['header'], right: ['button'] },
     row: { left: ['header'], right: ['button'] },
   },
-  // The first shape declared before its panel existed rather than measured off one that already
-  // did. The row is a collection name over its date, and nothing on the right. The 32px cover
-  // thumbnail beside that text is not a slot: it is shorter than the 41px stack, so the stack
-  // governs and the thumbnail adds no height. That is why the thumbnail is a fixed square in CSS
-  // -- sized to its own image proportions it would grow with the panel's width, and a row whose
-  // height moves with width is the one thing this pin cannot survive.
   collections: {
     header: { left: ['header'], right: ['subheader'] },
     row: { left: ['header', 'subheader'], right: [] },

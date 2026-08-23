@@ -51,8 +51,9 @@ async function fetchCollections(): Promise<CollectionListModel[]> {
  * collections sink rather than being dropped: some collections have no date concept at all, and a
  * list that hides them is worse than one that puts them at the end.
  *
- * Every date is null until the backend list projection deploys, so today this resolves to the name
- * comparison for every row.
+ * `collectionDate` is optional on {@link CollectionListModel}, so both null branches stay reachable
+ * whatever the backend sends. `sortGroup`'s BLOG branch in `CollectionListSelector` applies the same
+ * rule to the same list; the two should be one helper.
  */
 function newestFirst(a: CollectionListModel, b: CollectionListModel): number {
   const dateA = a.collectionDate ?? null;

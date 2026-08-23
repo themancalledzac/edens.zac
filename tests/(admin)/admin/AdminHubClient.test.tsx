@@ -93,6 +93,10 @@ jest.mock('@/app/components/RolesPanel/RolesPanel', () => ({
   RolesPanel: panelStub('RolesPanel'),
 }));
 
+jest.mock('@/app/components/CollectionsPanel/CollectionsPanel', () => ({
+  CollectionsPanel: panelStub('CollectionsPanel'),
+}));
+
 /** The `AdminPanelRenderer` box wrapping a stubbed panel — where `width`/`maxHeight` land. */
 function panelBox(label: string): HTMLElement {
   const stub = screen.getByTestId(`${label}-stub`);

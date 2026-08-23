@@ -236,23 +236,6 @@ describe.each(CASES)('admin hub at %spx, collapse state: %s', (width, name, coll
       }
     }
   });
-
-  /**
-   * Zac's third fill rule: panels grouped into one column all render at ONE width.
-   *
-   * Broken in exactly one of the 160 width × state combinations swept, named in
-   * {@link WIDTH_SPREAD_BREAKS_TODAY} and skipped here so the other 159 stay enforced. Held in all
-   * 80 before the fourth panel.
-   */
-  it('renders every panel in a row at one shared width', () => {
-    if (WIDTH_SPREAD_BREAKS_TODAY.includes(`${width}px ${name}`)) return;
-    for (const row of rows) {
-      const panelWidths = new Set(
-        row.items.filter(item => isPanelContent(item.content)).map(item => Math.round(item.width))
-      );
-      expect(panelWidths.size).toBeLessThanOrEqual(1);
-    }
-  });
 });
 
 /**
@@ -263,10 +246,35 @@ describe.each(CASES)('admin hub at %spx, collapse state: %s', (width, name, coll
  * `maxWidth` (see `COLLAPSED_PANEL_SIZE`) while a standing panel caps at 700, so the two are not
  * solved against the same bound and the sizer has no reason to bring them level.
  *
- * Pinned exactly, in both directions: a new break fails this, and so does fixing this one. The list
- * is meant to shrink to `[]` and be deleted, not topped up.
+ * Pinned exactly, in both directions: a new break fails this, and so does fixing this one. That
+ * holds because the sweep below collects every break into one list and compares it whole — the
+ * same discipline {@link LONE_PANEL_ROWS_TODAY} uses. An earlier form skipped the listed
+ * combination from inside the parameterized `it`, which enforced the rule one way only: a new
+ * break failed, but fixing the listed one left the test green and the entry sitting here forever.
+ * The list is meant to shrink to `[]` and be deleted, not topped up.
  */
 const WIDTH_SPREAD_BREAKS_TODAY = ['900px collections'];
+
+describe('admin hub panel width spread', () => {
+  it('renders every panel in a row at one shared width, outside the known break', () => {
+    const spreads: string[] = [];
+
+    for (const width of WIDTHS) {
+      for (const [name, collapsed] of STATES) {
+        for (const row of rowsFor(collapsed, width)) {
+          const panelWidths = new Set(
+            row.items
+              .filter(item => isPanelContent(item.content))
+              .map(item => Math.round(item.width))
+          );
+          if (panelWidths.size > 1) spreads.push(`${width}px ${name}`);
+        }
+      }
+    }
+
+    expect(spreads).toEqual(WIDTH_SPREAD_BREAKS_TODAY);
+  });
+});
 
 /**
  * The legibility bound `PANEL_MAX_WIDTH` used to guarantee, restated as a property of the LAYOUT

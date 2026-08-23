@@ -140,9 +140,17 @@ describe('admin hub collapsed layout', () => {
    * than the whole body, so no composition puts all four panels beside the tiles. The composer
    * therefore closes rows early and Users, the tallest, ends up alone.
    *
-   * NOT an artifact of the collections count. Swept 0 through 20 collections against these same
-   * 12/2/6 counts: Users is stranded at every count except 12 and 15. Picking one of those two to
-   * make this read better would be fitting the fixture to the assertion.
+   * The STRANDING is not an artifact of the collections count. Swept 0 through 20 against these
+   * same 12/2/6 counts: Users stands alone at every count except the contiguous band 12-15, at
+   * both this width and the narrow desktop below. Picking a count from that band to make the hub
+   * read better would be fitting the fixture to the assertion.
+   *
+   * The exact MEMBERSHIP asserted here is count-specific, and deliberately so. Three rows split
+   * `[users] [messages] [roles, collections]` only at counts 7 and 8; every other stranded count
+   * gives the two-row `[users] [messages, roles, collections]` that the narrow-desktop test below
+   * pins. The fixture's 8 is one of those two. Pinning the exact split is still the right call —
+   * it is what forces a deliberate edit when the composer changes — but a future edit that moves
+   * the count off 7 or 8 must expect this shape to change, and that is not a regression.
    *
    * NOT what the live-cover fixture does. `page.collapseStates.test.ts` carries the real page's
    * cover dimensions, and there all four panels compose into one column beside the three tiles at

@@ -5,11 +5,11 @@ import { LAYOUT } from '@/app/constants';
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
 
 /**
- * The hub's three panels are rating-5 leaves competing for one row against the nav tiles, and the
+ * The hub's four panels are rating-5 leaves competing for one row against the nav tiles, and the
  * packer re-solves that row whenever a panel is added or its rating changes. Nothing pinned the
- * desktop composition before the roles panel arrived, so a future fourth panel — or a rating tweak
- * — could quietly squeeze the panels to a width no list is readable at, and the first sign of it
- * would be in the browser.
+ * desktop composition before the roles panel arrived, and the collections panel that followed it
+ * proved the point — a fifth panel, or a rating tweak, could quietly squeeze the panels to a width
+ * no list is readable at, and the first sign of it would be in the browser.
  */
 const DESKTOP_VIEWPORT = { contentWidth: 1274, viewportHeight: 900, isMobile: false };
 

@@ -93,10 +93,9 @@
 
   /* An undated collection still owes the row a line. The shape reserves a subheader slot for every
      row whether or not there is a date to put in it, and an empty element has no line box at all —
-     so without this the row would render shorter than the packer reserved, and today, with every
-     date null, that is every row in the panel. A non-breaking space holds the line and shows
-     nothing, which is the right answer for a collection that has no date rather than one whose
-     date is missing. */
+     so without this the row would render shorter than the packer reserved. A non-breaking space
+     holds the line and shows nothing, which is the right answer for a collection that has no date
+     rather than one whose date is missing. */
   &:empty::before {
     content: '\00a0';
   }
@@ -114,6 +113,6 @@
 
 .error {
   margin: 0;
-  color: var(--color-danger);
+  color: var(--color-danger-text);
   font-size: var(--text-sm);
 }
