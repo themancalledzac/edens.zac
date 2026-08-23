@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 import { logger } from '@/app/utils/logger';
+import { isAllowedWriteOrigin } from '@/app/utils/originAllowlist';
 
 /** Returns the backend base URL from `API_URL`, normalized (no trailing slash). */
 function getBackendBase(): string {
@@ -95,14 +96,6 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const ALLOWED_ORIGINS = new Set(
-    [
-      process.env.NEXT_PUBLIC_APP_URL,
-      process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : null,
-      process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : null,
-    ].filter(Boolean) as string[]
-  );
-
   const writeMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
   // 16 KB for JSON writes; 25 MB for multipart uploads. Content-Length is a fast
@@ -112,15 +105,7 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
   const maxBytes = isMultipart ? 25 * 1024 * 1024 : 16 * 1024;
 
   if (writeMethods.has(method)) {
-    const origin = req.headers.get('origin');
-    // Also allow RFC1918/mDNS origins on dev ports (LAN mobile testing).
-    const isDevLanOrigin =
-      process.env.NODE_ENV === 'development' &&
-      !!origin &&
-      /^http:\/\/(?:localhost|127\.0\.0\.1|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|[\da-z-]+\.local|[\da-z-]+\.localhost):(?:3000|3001)$/i.test(
-        origin
-      );
-    if (!origin || !(ALLOWED_ORIGINS.has(origin) || isDevLanOrigin)) {
+    if (!isAllowedWriteOrigin(req.headers.get('origin'))) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     const declaredLength = Number(req.headers.get('content-length') ?? '0');
