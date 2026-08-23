@@ -8,33 +8,7 @@
  * - Handler creators are higher-order functions that return event handlers
  */
 
-import { type ContentImageModel, type ViewableContent } from '@/app/types/Content';
-
-/**
- * Check if an image is not visible (either globally or collection-specific)
- * @param itemContent - The image content to check
- * @param currentCollectionId - Optional collection ID to check collection-specific visibility
- * @returns true if the image is not visible
- */
-export function checkImageVisibility(
-  itemContent: ContentImageModel,
-  currentCollectionId?: number
-): boolean {
-  if (itemContent.visible === false) {
-    return true;
-  }
-
-  if (currentCollectionId && itemContent.collections) {
-    const collectionEntry = itemContent.collections.find(
-      c => c.collectionId === currentCollectionId
-    );
-    if (collectionEntry?.visible === false) {
-      return true;
-    }
-  }
-
-  return false;
-}
+import { type ViewableContent } from '@/app/types/Content';
 
 /**
  * Create a unified click handler for any content type (IMAGE, COLLECTION, GIF, TEXT).
