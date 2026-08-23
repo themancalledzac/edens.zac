@@ -158,7 +158,8 @@ amplifyconfiguration*
 # Local-only authoring artifacts (handoffs, plans, specs, spikes)
 docs/handoffs/
 docs/superpowers/
-docs/spikes/
+docs/spikes/*
+!docs/spikes/2026-summer-refactor.md
 docs/_archive/
 
 todo
