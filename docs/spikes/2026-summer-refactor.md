@@ -107,7 +107,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | D2 | Gate `clearCacheAction` | Low | +212 (est. +15) | ✅ PR #266 |
 | D3 | Security headers | Low-medium | +60 src, +0–40 test | ☐ (unblocked 08-23: prod verified header-free) |
 | D4 | Pin the CloudFront host | Low | ±1 (actual ±1) | ✅ PR #272 |
-| D5 | Proxy path reject + `/cdn` matcher removal | Low | ~+30 net (−27 src, +6 reject, +40–60 test) | ☐ **NEXT** (deferred twice — see the log) |
+| D5 | Proxy path reject + `/cdn` matcher removal | Low | ~+30 net (−27 src, +6 reject, +40–60 test) | ✅ PR #273 |
 | D6 | Shared Origin allowlist (CSRF on `/api/revalidate`) | Low-medium | +75 src, +230 test (est. ±60) | ✅ PR #270 |
 | D7 | Wrong danger token on error text (a11y) | Trivial | 0 (rode #253) | ✅ via PR #253 |
 | D8 | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist | Trivial | ±5 src, +2 test | ☐ |
@@ -637,10 +637,10 @@ so bundling was the tempting move. Held to one MR per item. Re-confirmed against
 `curl -sI https://www.zacedens.com/` still emits `x-powered-by: Next.js` and still injects no CSP,
 XFO, nosniff, Referrer-Policy or HSTS — D3's premises are current as of 2026-08-23.
 
-### ☐ D5 · Proxy path reject + `/cdn` matcher removal
+### ✅ D5 · Proxy path reject + `/cdn` matcher removal — PR #273
 
-- [ ] The catch-all proxy forwards non-`/api` backend paths: `/api/proxy/actuator/env` reaches the backend carrying `X-Internal-Secret` (re-verified 2026-08-22 — `route.ts:14-19` builds the URL with no `api/` requirement; the only pre-forward reject is the prod admin/edit check). Reject when the resolved path does not start with `api/`, with new reject tests proven red against the unpatched handler (~+40–60 test in the pinned suite, add-only per the D6 precedent).
-- [ ] `/cdn` is dead in FOUR places, not two (list completed 2026-08-22): the `proxy.ts` docblock
+- [x] The catch-all proxy forwards non-`/api` backend paths: `/api/proxy/actuator/env` reaches the backend carrying `X-Internal-Secret` (re-verified 2026-08-22 — `route.ts:14-19` builds the URL with no `api/` requirement; the only pre-forward reject is the prod admin/edit check). Reject when the resolved path does not start with `api/`, with new reject tests proven red against the unpatched handler (~+40–60 test in the pinned suite, add-only per the D6 precedent).
+- [x] `/cdn` is dead in FOUR places, not two (list completed 2026-08-22): the `proxy.ts` docblock
       line `:15`, the branch `:27-33`, the matcher comment `:85`, and the matcher entry `:94` — plus
       `tests/proxy.test.ts` (docblock line 6 and the whole "/cdn rule (regression)" describe,
       `:79-93`), which dies with the branch. No such route exists. (`proxy.ts` IS the live Next 16
@@ -667,6 +667,55 @@ rewriting the URL builder, or folding the new reject into the existing prod admi
 check answers a different question (who is asking) than the reject (what are they asking for), and
 merging them makes both harder to test. New reject tests are add-only in the pinned suite, per the
 D6 precedent: `tests/api/proxy/route.test.ts` must pass unchanged.
+
+**Shipped, both parts. The pinned suite passed unchanged (23/23) and the file now runs 35/35;
+`tests/proxy.test.ts` runs 46/46; full suite 4,080/4,080 across 223 files.** Source came in at
+`+23/−16` and tests at `+141/−8`, against a `~+30 net` estimate — close, because the test coupling
+was already listed in the item.
+
+**The `api/` prefix check does not work as a raw-string check, and that is the one thing to carry
+forward from this MR.** `fetch` resolves dot segments while it parses the URL, so
+`buildTargetUrl(['api', '..', 'actuator', 'env'])` produces
+`http://backend.test/api/../actuator/env` and requests `http://backend.test/actuator/env`. A
+`resolvedPath.startsWith('api/')` check passes that string and forwards it, carrying
+`X-Internal-Secret`. The reject would have shipped as decoration. Verified before writing the fix:
+`new URL('http://h/api/../actuator/env').pathname` is `/actuator/env`.
+
+**So the check runs on the normalized path** — `isProxyableApiPath` in
+[route.ts:23](app/api/proxy/[...path]/route.ts:23) resolves the path against a sentinel origin and
+asks whether the result starts with `/api/`. This is still one check, and it is still the item's
+prefix check; the only change is which string it reads. It does not allowlist backend paths, does
+not rewrite `buildTargetUrl`, and does not touch the prod admin/edit check — the three things the
+guardrail named. Reading the guardrail as "must be `startsWith` on the raw join" would have meant
+shipping a bypassable gate.
+
+Normalizing catches three spellings a string check misses, and correctly declines to over-block a
+fourth. `api/%2e%2e/actuator` → `/actuator`, blocked. `api\..\actuator` → `/actuator`, blocked
+(backslashes are path separators for special schemes). `api/a/../../actuator` → `/actuator`,
+blocked. But `api/..%2Fread` stays `/api/..%2Fread`, so it forwards — an encoded slash is a literal
+segment, not a climb. All four are pinned as tests.
+
+**Matcher: only `'/cdn/:path*'` was removed. Nothing else was touched.** The other entries, and what
+changing them would do:
+
+| Entry | What removing it would do |
+| --- | --- |
+| `/admin`, `/admin/:path*` | Un-gates the admin hub and `/admin/users/[id]` at the edge. Prod would serve them to anonymous traffic until the (admin) layout's `requireAdmin()` ran. Not a full breach — the backend is authoritative — but it moves the reject later and leaks the pages' existence. |
+| `/collection/manage`, `/collection/manage/:path*` | Same, for the manage surface. |
+| `/comments`, `/comments/:path*` | Same, for `/comments`. |
+| `/metadata`, `/metadata/:path*` | Same, for `/metadata`. |
+| `/all-images`, `/all-images/:path*` | Same, for `/all-images`. |
+| `/catalog/:slug*` | Kills the legacy `/catalog/:slug` → `/collection/:slug` 308. Old links and any indexed catalog URLs would 404 instead of redirecting. The redirect is already behind `COLLECTION_REDIRECTS_ENABLED`, so it is dormant unless that flag is set. |
+
+And the additions that look tempting and are not: `/explore` and `/all-collections` are deliberately
+absent (both public — see the warnings in the matcher comment), and `/` is absent on purpose so the
+hottest route pays no middleware cost. `/cdn` was safe to remove only because `app/` has no `cdn`
+directory at all — checked, not assumed — so the rule redirected prod traffic that could only ever
+404. The four-place list in the item was exact; there were no other `/cdn` references in the repo
+(the remaining `cdn` grep hits are all `https://cdn.example.com` test fixtures).
+
+**Reject status is 404, not 403.** The proxy has no such route to offer. 404 also tells a prober
+nothing about whether the backend has an actuator.
 
 ### ✅ D6 · Shared Origin allowlist — CSRF on `/api/revalidate` — PR #270
 
@@ -1133,6 +1182,19 @@ being avoided, not scheduled — make it real work or drop it from the board.
   `layoutpreview/` harness as a real A9 bullet — the 08-23 "delete on sight" log line did not stick
   because it was only a log line.
   Next: D5.
+- 2026-08-23 — shipped D5 (PR #273). #272 was already merged on arrival, so the sitting was the
+  work itself. **The item's own guardrail would have produced a broken fix if followed to the
+  letter.** "The reject is one prefix check" reads as `startsWith('api/')` on the raw joined path,
+  and that check is walked past by `api/../actuator/env`, because `fetch` normalizes dot segments
+  while parsing the URL. Verified the normalization before writing anything, then ran the same one
+  check against the normalized path instead of the raw string — still one check, still not
+  allowlisting or rewriting the builder. Three more spellings (`%2e%2e`, backslash, multi-hop) are
+  caught by that and would not have been by a segment blocklist; `..%2F` correctly still forwards.
+  Wrote the eight reject tests first and confirmed all eight red against the unpatched handler
+  before touching `route.ts`. `/cdn` removal was exactly the four places listed, and the matcher
+  guardrail held — the D5 section now carries a table of what changing each remaining entry would
+  do, so the next session with a tidying mindset has the answer without opening the array.
+  Next: D3 (security headers + `poweredByHeader: false`), started in the same session as its own MR.
 
 ## Verified fine — do not re-investigate
 
