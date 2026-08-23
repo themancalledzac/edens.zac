@@ -25,7 +25,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '*.cloudfront.net',
+        hostname: 'd2qp8h5pbkohe6.cloudfront.net',
       },
     ],
     formats: ['image/webp'], // Don't attempt AVIF — backend already serves optimized WebP
