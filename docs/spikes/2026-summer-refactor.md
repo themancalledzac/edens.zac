@@ -13,6 +13,15 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 > unfixed security items (D3, D5, D8) — the backend repo's tracker set the precedent, and those
 > three are the next scheduled sittings. Additional durable copies: the review artifact (stamp
 > below) and MemPalace (`mempalace_user_search(query="frontend cleanup spike review")`).
+>
+> **CONFIRMED 2026-08-23: PR #271 merged, the file is tracked** (`git ls-files docs/spikes/` lists
+> it; `.gitignore` pairs `docs/spikes/*` with `!docs/spikes/2026-summer-refactor.md`).
+> **Trap this creates, hit on the very next run:** a session whose local `main` predates #271 sees
+> this file as untracked, and `git check-ignore -v` reports it plainly IGNORED — the pre-negation
+> `.gitignore` is what's checked out. Do not conclude the tracking never happened; `git fetch` and
+> compare against `origin/main` first. Syncing also needs the local untracked copy removed before
+> the fast-forward, because git refuses to create a tracked file over an untracked one even when
+> the bytes are identical. Diff them first (`git show origin/main:<path>`), then delete and merge.
 
 > **Full-board review, 2026-08-22/23 (7 parallel agents).** Every open item re-verified and stamped
 > COLD or ⛔ in the board. 27 `file:line` refs checked: 22 correct, 4 drifted, 1 gone — corrected in
@@ -46,7 +55,15 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   fix, not a deletion. Group E has one item (`E1`) that is a real correctness risk — do it before the
   rest of E.
 - Before sizing a sitting around an item, grep its symbols for test call sites. The estimates were
-  produced from source only and have been wrong in both directions.
+  produced from source only and have been wrong in both directions. **The grep also tells you which
+  way it will miss:** a zero-hit grep means the source-only number is trustworthy (D4 estimated ±1
+  and shipped ±1, the first estimate on this board to hold); any hits mean budget for test churn on
+  top, which is how A4, A6, D2 and D6 all came in over.
+- **When an item pins a value read off the outside world, re-read it from more than one sample.**
+  D4's distribution was captured from the production homepage alone; a `remotePatterns` pin that
+  misses a second distribution breaks every image on some other page, silently, in production.
+  Seven pages took under a minute to check. The same applies to D3's header claims and to anything
+  that hardcodes a host, ID, or endpoint the repo does not own.
 - When an item is done, mark it `[x]` and append `— PR #NNN`. Leave the detail text in place; it is the record of what changed.
 - **Where a written plan exists, the plan's scope beats this board's one-liner.** The board line was
   written by a reviewer skimming; the plan by someone who read the code. E1 is the worked example:
@@ -89,8 +106,8 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | D1 | Gate `POST /api/revalidate` (HIGH) | Low | +175 | ✅ PR #265 |
 | D2 | Gate `clearCacheAction` | Low | +212 (est. +15) | ✅ PR #266 |
 | D3 | Security headers | Low-medium | +60 src, +0–40 test | ☐ (unblocked 08-23: prod verified header-free) |
-| D4 | Pin the CloudFront host | Low | ±1 | ☐ **NEXT** (hostname captured 08-23) |
-| D5 | Proxy path reject + `/cdn` matcher removal | Low | ~+30 net (−27 src, +6 reject, +40–60 test) | ☐ |
+| D4 | Pin the CloudFront host | Low | ±1 (actual ±1) | ✅ PR #272 |
+| D5 | Proxy path reject + `/cdn` matcher removal | Low | ~+30 net (−27 src, +6 reject, +40–60 test) | ☐ **NEXT** (deferred twice — see the log) |
 | D6 | Shared Origin allowlist (CSRF on `/api/revalidate`) | Low-medium | +75 src, +230 test (est. ±60) | ✅ PR #270 |
 | D7 | Wrong danger token on error text (a11y) | Trivial | 0 (rode #253) | ✅ via PR #253 |
 | D8 | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist | Trivial | ±5 src, +2 test | ☐ |
@@ -335,6 +352,17 @@ Also corrected: `barCell` and `main` appear only in comment text in that file, n
       re-checked 2026-08-22). Check each for uncommitted work before deleting — that is the only
       reason they were left in place. The `cleanup` worktree was removed by the review session (its
       D6 branch merged, tree clean).
+- [ ] `app/(admin)/admin/layoutpreview/` — the untracked screenshot harness for PR #253's
+      four-panel question. Read and confirmed purposeless 2026-08-23: its own first line says
+      "TEMPORARY … Delete this directory when the screenshots are captured", and #253 merged at
+      79fbca5. Carried forward from the 08-23 log entry's "delete on sight", which did not stick
+      because it was a log line and not a tracked bullet — now it is one. **The D4 session's
+      `rm -rf` was denied by the permission gate, so this is a user action, not an agent one.**
+      Deleting it also removes the 3 comment lines G2's `.tsx` baseline has to exclude by hand.
+
+```bash
+rm -rf "app/(admin)/admin/layoutpreview"
+```
 
 ---
 
@@ -569,9 +597,9 @@ future MR wants them unified, it needs to say what it is doing about that asymme
 - [ ] Also found in that response: `x-powered-by: Next.js` is emitted — add `poweredByHeader: false`
       to the same MR.
 
-### ☐ D4 · Image optimizer accepts any `*.cloudfront.net` host
+### ✅ D4 · Image optimizer accepts any `*.cloudfront.net` host — PR #272
 
-- [ ] [next.config.js:28](next.config.js:28) (`hostname: '*.cloudfront.net'` — the `:26` ref was the
+- [x] [next.config.js:28](next.config.js:28) (`hostname: '*.cloudfront.net'` — the `:26` ref was the
       pattern's opening line) — third parties can serve their images through this site's optimizer:
       CloudFront is multi-tenant, so any `dXXXX.cloudfront.net` matches the wildcard, at this site's
       Lambda cost and 24h optimizer cache. **Fully specified 2026-08-23:** the production
@@ -579,7 +607,35 @@ future MR wants them unified, it needs to say what it is doing about that asymme
       wildcard with it. The only other `*.cloudfront.net` literal in the repo is the fake
       `d123.cloudfront.net` fixture in `CollectionsPanel.test.tsx` (on main since #253 merged) —
       unaffected, it never hits the optimizer. Cheapest item on the board; adversarial review
-      confirmed the abuse vector is real. **NEXT.**
+      confirmed the abuse vector is real.
+
+_The board row and this heading were marked ✅ in the same commit as the one-line fix, so the record
+reaches `main` only when the MR does. If you are reading this on the `0272-` branch, it is still
+open._
+
+**Shipped exactly as specified — one line, `±1` estimated and `±1` actual.** Both board claims held
+under re-verification: the `d123.cloudfront.net` fixture is unaffected (`CollectionsPanel.test.tsx`
+passes unchanged, 12/12) and those two are still the only `cloudfront` literals in the repo.
+
+**The homepage was not enough evidence, and checking more was cheap.** The 08-23 capture read the
+distribution off `/` only, which cannot rule out a second distribution serving some other surface —
+and a `remotePatterns` pin that misses one silently breaks every image on that page in production.
+Swept `/` plus six collection pages (`/adventure`, `/event`, `/film`, `/gorge-climbing`,
+`/hidden-lake`, `/travel`): all seven serve images exclusively from `d2qp8h5pbkohe6.cloudfront.net`,
+79 references on the homepage alone. `/explore` and `/about` return no CloudFront host in their
+initial HTML at all. For any future item that pins an external host, sweep more than one page —
+`curl -s <url> | grep -oE '[a-z0-9-]+\.cloudfront\.net' | sort -u` per page is seconds of work.
+
+**First estimate on the board to hold, and it holds for a legible reason.** The recalibration note
+says the estimates count source only and were wrong 4-for-4 (A4, A6, D2, D6). D4 is the control case:
+grepping its symbols found ZERO test call sites, so there was no test coupling to be blind to. The
+existing "grep its symbols for test call sites before sizing a sitting" rule is what predicts which
+way an estimate will miss — a zero-hit grep means the source-only number is trustworthy.
+
+**Not in this MR: `poweredByHeader: false`.** It is D3's bullet, and D3 also edits `next.config.js`,
+so bundling was the tempting move. Held to one MR per item. Re-confirmed against production today:
+`curl -sI https://www.zacedens.com/` still emits `x-powered-by: Next.js` and still injects no CSP,
+XFO, nosniff, Referrer-Policy or HSTS — D3's premises are current as of 2026-08-23.
 
 ### ☐ D5 · Proxy path reject + `/cdn` matcher removal
 
@@ -589,6 +645,28 @@ future MR wants them unified, it needs to say what it is doing about that asymme
       `tests/proxy.test.ts` (docblock line 6 and the whole "/cdn rule (regression)" describe,
       `:79-93`), which dies with the branch. No such route exists. (`proxy.ts` IS the live Next 16
       middleware; the old "unwired" note in the docs was stale and has been corrected.)
+
+**All six refs re-verified 2026-08-23, zero drift** — `proxy.ts:15`, `:27-33` (the branch is exactly
+those seven lines), `:85`, `:94` (`'/cdn/:path*'`), `tests/proxy.test.ts:6` and the `:79-93`
+describe, and `route.ts:14-19` (`buildTargetUrl`, still no `api/` requirement). Note the matcher
+comment at `:85` reads "plus the legacy `/catalog` and `/cdn` rules" — it needs editing down to
+`/catalog`, not deleting.
+
+**Guardrail — remove the four `/cdn` references and NOTHING else from the matcher array.** That
+array is the list deciding which routes get the session gate, so an entry removed or added by hand
+silently un-gates or login-walls a route, and the failure is invisible until production. This has
+already happened once here: `proxy.ts:86-89` carries two warnings written by the cleanup, `/explore`
+is deliberately public and "0203 F4 did and login-walled it in prod", and `/all-collections` is
+public because the backend permission-scopes the list. The `/cdn` removal puts a fresh session
+inside exactly that array with a tidying mindset. If any other entry looks wrong, report what
+changing it would do and let the user decide — do not edit it in the same MR.
+
+**Second guardrail: the path reject is `api/` only.** `buildTargetUrl` joins whatever segments
+arrive, so the reject is one prefix check. Do not also start allowlisting specific backend paths,
+rewriting the URL builder, or folding the new reject into the existing prod admin/edit check — that
+check answers a different question (who is asking) than the reject (what are they asking for), and
+merging them makes both harder to test. New reject tests are add-only in the pinned suite, per the
+D6 precedent: `tests/api/proxy/route.test.ts` must pass unchanged.
 
 ### ✅ D6 · Shared Origin allowlist — CSRF on `/api/revalidate` — PR #270
 
@@ -1042,6 +1120,19 @@ being avoided, not scheduled — make it real work or drop it from the board.
   name). The `layoutpreview/` screenshot harness is now purposeless — delete on sight. Blocked set
   is down to: C6 backend; E9-srOnly, F4, G2b scope, G3 user decisions; G2c rides its refactors.
   Next: D4.
+- 2026-08-23 — shipped D4 (PR #272, open). **D4 had been the `Next:` of the two entries above this
+  one and was about to become a third — the leak the log exists to catch — so it was executed on
+  the spot rather than handed off again.** One line, ±1 estimated and ±1 actual. Re-verified the
+  distribution against seven production pages instead of the homepage the 08-23 capture used;
+  all seven serve `d2qp8h5pbkohe6.cloudfront.net` exclusively. Held the bundling guardrail:
+  `poweredByHeader: false` stayed with D3 even though D3 edits the same file. Reconciled first:
+  zero PRs open, everything through #271 merged, local `main` was 2 behind — and because #271's
+  `.gitignore` negation had not been pulled yet, this file read as untracked and `git check-ignore`
+  called it ignored. Recorded that trap in the header note. Verified all six of D5's `file:line`
+  refs, zero drift, and wrote D5's two guardrails into its section. Filed the still-present
+  `layoutpreview/` harness as a real A9 bullet — the 08-23 "delete on sight" log line did not stick
+  because it was only a log line.
+  Next: D5.
 
 ## Verified fine — do not re-investigate
 
