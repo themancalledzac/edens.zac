@@ -30,13 +30,30 @@ describe('CollectionListSelector', () => {
     jest.clearAllMocks();
   });
 
-  it('renders all collections', () => {
+  // Every row lives under a collapsible bucket section and `Disclosure` renders `{open && children}`,
+  // so a collapsed section has no rows in the DOM at all. Reach a row by opening its section first.
+  const expandSection = (label: string | RegExp) =>
+    fireEvent.click(screen.getByRole('button', { name: label }));
+
+  it('renders every collection once its bucket section is open', () => {
     render(<CollectionListSelector {...defaultProps} />);
 
+    expandSection(/Collections/);
     expect(screen.getByText('Portfolio A')).toBeInTheDocument();
-    expect(screen.getByText('Blog B')).toBeInTheDocument();
-    expect(screen.getByText('Gallery C')).toBeInTheDocument();
     expect(screen.getByText('No Type D')).toBeInTheDocument();
+
+    expandSection(/Blogs/);
+    expect(screen.getByText('Blog B')).toBeInTheDocument();
+
+    expandSection(/Client Galleries/);
+    expect(screen.getByText('Gallery C')).toBeInTheDocument();
+  });
+
+  it('keeps every section collapsed by default', () => {
+    render(<CollectionListSelector {...defaultProps} />);
+    for (const name of ['Portfolio A', 'Blog B', 'Gallery C', 'No Type D']) {
+      expect(screen.queryByText(name)).not.toBeInTheDocument();
+    }
   });
 
   it('renders the label', () => {
@@ -45,78 +62,63 @@ describe('CollectionListSelector', () => {
   });
 
   it('defaults label to "Collections"', () => {
-    // The COLLECTION bucket chip now also reads "Collections", so scope to the list's own
+    // The COLLECTION bucket header also reads "Collections", so scope to the list's own
     // <label> element rather than matching bare text.
     render(<CollectionListSelector {...defaultProps} />);
     expect(screen.getByText('Collections', { selector: 'label' })).toBeInTheDocument();
   });
 
-  it('excludes collection by excludeCollectionId', () => {
-    render(<CollectionListSelector {...defaultProps} excludeCollectionId={2} />);
-
-    expect(screen.getByText('Portfolio A')).toBeInTheDocument();
-    expect(screen.queryByText('Blog B')).not.toBeInTheDocument();
-    expect(screen.getByText('Gallery C')).toBeInTheDocument();
-  });
-
-  it('labels each row with its derived bucket in single-column mode', () => {
+  it('groups each collection under the section for its derived bucket', () => {
     render(<CollectionListSelector {...defaultProps} />);
     // Portfolio A and No Type D are plain collections; Blog B and Gallery C are not.
-    expect(screen.getAllByText('Collections')).toHaveLength(3); // 2 rows + the list label
-    expect(screen.getByText('Blogs')).toBeInTheDocument();
-    expect(screen.getByText('Client Galleries')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Collections \(2\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Blogs \(1\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Client Galleries \(1\)/ })).toBeInTheDocument();
   });
 
-  it('fires onToggle when checkbox is clicked', () => {
+  it('fires onToggle when the Child checkbox is clicked', () => {
     const onToggle = jest.fn();
     render(<CollectionListSelector {...defaultProps} onToggle={onToggle} />);
 
-    const checkbox = screen.getByLabelText('Toggle Portfolio A');
-    fireEvent.click(checkbox);
+    expandSection(/Collections/);
+    fireEvent.click(screen.getByLabelText('Toggle child Portfolio A'));
 
     expect(onToggle).toHaveBeenCalledTimes(1);
     expect(onToggle).toHaveBeenCalledWith(mockCollections[0]);
   });
 
-  it('fires onNavigate on row click when provided', () => {
+  it('fires onNavigate when the row name is clicked', () => {
     const onToggle = jest.fn();
     const onNavigate = jest.fn();
     render(
       <CollectionListSelector {...defaultProps} onToggle={onToggle} onNavigate={onNavigate} />
     );
 
-    // Click on the name text (row click, not checkbox)
-    fireEvent.click(screen.getByText('Blog B'));
+    expandSection(/Blogs/);
+    fireEvent.click(screen.getByLabelText('Open Blog B'));
 
     expect(onNavigate).toHaveBeenCalledTimes(1);
     expect(onNavigate).toHaveBeenCalledWith(mockCollections[1]);
-    // onToggle should NOT be called for row click when onNavigate is provided
     expect(onToggle).not.toHaveBeenCalled();
   });
 
-  it('fires onToggle on row click when onNavigate is not provided', () => {
+  it('renders the name as a plain span when onNavigate is not provided', () => {
+    render(<CollectionListSelector {...defaultProps} />);
+    expandSection(/Blogs/);
+    expect(screen.queryByLabelText('Open Blog B')).not.toBeInTheDocument();
+    expect(screen.getByText('Blog B')).toBeInTheDocument();
+  });
+
+  it('does not toggle when the row itself is clicked', () => {
+    // Rows are role="group" containers, not activatable controls — only the checkboxes and the
+    // name button act.
     const onToggle = jest.fn();
     render(<CollectionListSelector {...defaultProps} onToggle={onToggle} />);
 
-    fireEvent.click(screen.getByText('Gallery C'));
+    expandSection(/Client Galleries/);
+    fireEvent.click(screen.getByRole('group', { name: 'Gallery C' }));
 
-    expect(onToggle).toHaveBeenCalledTimes(1);
-    expect(onToggle).toHaveBeenCalledWith(mockCollections[2]);
-  });
-
-  it('checkbox click does not trigger row click handler', () => {
-    const onToggle = jest.fn();
-    const onNavigate = jest.fn();
-    render(
-      <CollectionListSelector {...defaultProps} onToggle={onToggle} onNavigate={onNavigate} />
-    );
-
-    const checkbox = screen.getByLabelText('Toggle Portfolio A');
-    fireEvent.click(checkbox);
-
-    // Only onToggle should fire, not onNavigate
-    expect(onToggle).toHaveBeenCalledTimes(1);
-    expect(onNavigate).not.toHaveBeenCalled();
+    expect(onToggle).not.toHaveBeenCalled();
   });
 
   it('renders correct checkbox states', () => {
@@ -129,15 +131,15 @@ describe('CollectionListSelector', () => {
       />
     );
 
-    const checkbox1 = screen.getByLabelText('Toggle Portfolio A');
-    const checkbox2 = screen.getByLabelText('Toggle Blog B');
-    const checkbox3 = screen.getByLabelText('Toggle Gallery C');
-    const checkbox4 = screen.getByLabelText('Toggle No Type D');
+    expandSection(/Collections/);
+    expect(screen.getByLabelText('Toggle child Portfolio A').className).toContain('saved');
+    expect(screen.getByLabelText('Toggle child No Type D').className).toContain('empty');
 
-    expect(checkbox1.className).toContain('saved');
-    expect(checkbox2.className).toContain('pending-add');
-    expect(checkbox3.className).toContain('pending-remove');
-    expect(checkbox4.className).toContain('empty');
+    expandSection(/Blogs/);
+    expect(screen.getByLabelText('Toggle child Blog B').className).toContain('pending-add');
+
+    expandSection(/Client Galleries/);
+    expect(screen.getByLabelText('Toggle child Gallery C').className).toContain('pending-remove');
   });
 
   it('shows empty state when no collections', () => {
@@ -145,67 +147,16 @@ describe('CollectionListSelector', () => {
     expect(screen.getByText('No collections available')).toBeInTheDocument();
   });
 
-  it('shows empty state when all collections are excluded', () => {
+  it('pins the home row above the accordion, outside any section', () => {
     render(
       <CollectionListSelector
         {...defaultProps}
-        allCollections={[{ id: 5, name: 'Only One' }]}
-        excludeCollectionId={5}
+        allCollections={[...mockCollections, { id: 9, name: 'Home', slug: 'home' }]}
       />
     );
-    expect(screen.getByText('No collections available')).toBeInTheDocument();
-  });
-
-  describe('keyboard navigation', () => {
-    it('triggers toggle on Enter key press on row', () => {
-      const onToggle = jest.fn();
-      render(<CollectionListSelector {...defaultProps} onToggle={onToggle} />);
-
-      const _rows = screen.getAllByRole('button', { hidden: false });
-      // Rows with role="button" are the collection rows (checkboxes also have role button)
-      // Find the row for 'Portfolio A' by getting the div with role=button containing that text
-      const portfolioRow = screen.getByText('Portfolio A').closest('[role="button"]');
-      fireEvent.keyDown(portfolioRow!, { key: 'Enter' });
-
-      expect(onToggle).toHaveBeenCalledTimes(1);
-      expect(onToggle).toHaveBeenCalledWith(mockCollections[0]);
-    });
-
-    it('triggers toggle on Space key press on row', () => {
-      const onToggle = jest.fn();
-      render(<CollectionListSelector {...defaultProps} onToggle={onToggle} />);
-
-      const blogRow = screen.getByText('Blog B').closest('[role="button"]');
-      fireEvent.keyDown(blogRow!, { key: ' ' });
-
-      expect(onToggle).toHaveBeenCalledTimes(1);
-      expect(onToggle).toHaveBeenCalledWith(mockCollections[1]);
-    });
-
-    it('does not trigger toggle on other keys', () => {
-      const onToggle = jest.fn();
-      render(<CollectionListSelector {...defaultProps} onToggle={onToggle} />);
-
-      const galleryRow = screen.getByText('Gallery C').closest('[role="button"]');
-      fireEvent.keyDown(galleryRow!, { key: 'Tab' });
-
-      expect(onToggle).not.toHaveBeenCalled();
-    });
-
-    it('triggers onNavigate on Enter key press when onNavigate is provided', () => {
-      const onToggle = jest.fn();
-      const onNavigate = jest.fn();
-      render(
-        <CollectionListSelector {...defaultProps} onToggle={onToggle} onNavigate={onNavigate} />
-      );
-
-      const portfolioRow = screen.getByText('Portfolio A').closest('[role="button"]');
-      fireEvent.keyDown(portfolioRow!, { key: 'Enter' });
-
-      expect(onNavigate).toHaveBeenCalledTimes(1);
-      expect(onNavigate).toHaveBeenCalledWith(mockCollections[0]);
-      expect(onToggle).not.toHaveBeenCalled();
-    });
+    // Visible with no section opened, and there is no Home accordion header to open.
+    expect(screen.getByText('Home')).toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: /^Home/ })).toHaveLength(0);
   });
 
   describe('onAddNewChild', () => {
@@ -307,13 +258,6 @@ describe('CollectionListSelector', () => {
       expect(screen.getByLabelText('Toggle sibling Portfolio A').className).toContain('empty');
       expect(screen.getByLabelText('Toggle child Blog B').className).toContain('empty');
     });
-    it('still omits the excludeCollectionId row in two-column mode', () => {
-      render(<CollectionListSelector {...twoColProps} excludeCollectionId={2} />);
-      // Portfolio A lives in the collapsed "Collections" section — expand it to assert it renders.
-      fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
-      expect(screen.getByText('Portfolio A')).toBeInTheDocument();
-      expect(screen.queryByText('Blog B')).not.toBeInTheDocument();
-    });
     it('fires onNavigate when the name is clicked in sibling mode', () => {
       const onNavigate = jest.fn();
       const onToggle = jest.fn();
@@ -412,49 +356,6 @@ describe('CollectionListSelector', () => {
       );
       fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
       expect(screen.getByLabelText('Toggle parent Z')).not.toHaveAttribute('aria-disabled', 'true');
-    });
-  });
-
-  describe('pinnedCollectionId', () => {
-    // Single-column rows are role="button" elements that contain the collection name; the checkbox
-    // buttons render empty. Filtering to text-bearing buttons yields the rows in DOM order.
-    const getRowsInOrder = () =>
-      screen
-        .getAllByRole('button')
-        .filter(el => el.textContent && el.textContent.trim().length > 0);
-
-    it('sorts the pinned collection to the top, keeping all other rows in order', () => {
-      render(<CollectionListSelector {...defaultProps} pinnedCollectionId={3} />);
-
-      const rows = getRowsInOrder();
-      expect(rows[0]).toHaveTextContent('Gallery C'); // id 3 pinned to top
-      expect(rows[1]).toHaveTextContent('Portfolio A');
-      expect(rows[2]).toHaveTextContent('Blog B');
-      expect(rows[3]).toHaveTextContent('No Type D');
-    });
-
-    it('keeps the pinned collection visible and reflects its saved (green) state', () => {
-      render(
-        <CollectionListSelector
-          {...defaultProps}
-          pinnedCollectionId={3}
-          savedCollectionIds={new Set([3])}
-        />
-      );
-
-      const checkbox = screen.getByLabelText('Toggle Gallery C');
-      expect(checkbox).toBeInTheDocument();
-      expect(checkbox.className).toContain('saved');
-    });
-
-    it('leaves order unchanged when pinnedCollectionId is not in the list', () => {
-      render(<CollectionListSelector {...defaultProps} pinnedCollectionId={999} />);
-
-      const rows = getRowsInOrder();
-      expect(rows[0]).toHaveTextContent('Portfolio A');
-      expect(rows[1]).toHaveTextContent('Blog B');
-      expect(rows[2]).toHaveTextContent('Gallery C');
-      expect(rows[3]).toHaveTextContent('No Type D');
     });
   });
 });
@@ -721,7 +622,7 @@ describe('three-column accordion mode', () => {
 
     it('keeps the current row visible (not excluded) with all toggles disabled', () => {
       // P1 (id 2) is the current collection — its "Collections" section auto-opens, so the row
-      // is present without any click. The excludeCollectionId path would have removed it.
+      // is present without any click. It is greyed out in place, never removed from the list.
       renderWithCurrent(2);
       expect(screen.getByText('P1')).toBeInTheDocument();
       expect(screen.getByLabelText('Toggle sibling P1')).toHaveAttribute('aria-disabled', 'true');
@@ -768,32 +669,6 @@ describe('three-column accordion mode', () => {
       expect(screen.queryByLabelText('Open P1')).not.toBeInTheDocument();
       // A non-current sibling in the same bucket (P2) still navigates.
       expect(screen.getByLabelText('Open P2')).toBeInTheDocument();
-    });
-
-    it('still excludes (not greys) a row passed via excludeCollectionId', () => {
-      // excludeCollectionId behavior is independent of currentCollectionId and still removes
-      // the row entirely. Expand "Collections" to assert P1 is absent while P2 remains.
-      render(
-        <CollectionListSelector
-          allCollections={allBuckets}
-          savedCollectionIds={new Set()}
-          pendingAddIds={new Set()}
-          pendingRemoveIds={new Set()}
-          onToggle={jest.fn()}
-          siblingSavedIds={new Set()}
-          siblingPendingAddIds={new Set()}
-          siblingPendingRemoveIds={new Set()}
-          onToggleSibling={jest.fn()}
-          parentSavedIds={new Set()}
-          parentPendingAddIds={new Set()}
-          parentPendingRemoveIds={new Set()}
-          onToggleParent={jest.fn()}
-          excludeCollectionId={2}
-        />
-      );
-      fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
-      expect(screen.queryByText('P1')).not.toBeInTheDocument();
-      expect(screen.getByText('P2')).toBeInTheDocument();
     });
   });
 });

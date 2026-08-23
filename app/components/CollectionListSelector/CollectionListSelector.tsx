@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
 import { Disclosure } from '@/app/components/ui/Disclosure/Disclosure';
@@ -87,27 +87,14 @@ interface CollectionListSelectorProps {
   onNavigate?: (collection: CollectionListModel) => void;
   onAddNewChild?: () => void;
   label?: string;
-  excludeCollectionId?: number;
   /**
-   * When set, this collection stays VISIBLE in its accordion type group but is rendered
-   * greyed-out with all toggles disabled — a "you are here" marker for the collection being
-   * edited (unlike `excludeCollectionId`, which removes the row entirely). It also drives
+   * When set, this collection stays VISIBLE in its type group but is rendered greyed-out with all
+   * toggles disabled — a "you are here" marker for the collection being edited. It also drives
    * auto-expansion of the section the current collection lives in, on load.
    */
   currentCollectionId?: number;
-  /**
-   * When set, this collection is sorted to the TOP of the list (all other rows keep their incoming
-   * order). Used by the image metadata editor to surface the gallery currently being edited — it
-   * stays visible and shows its saved (green) state instead of being hidden.
-   *
-   * Single-column mode only: accordion grouping re-sorts each type group, so pin ordering does not
-   * survive there. The two never compose in practice — pinning is the flat image-metadata selector,
-   * accordion is the manage page.
-   */
-  pinnedCollectionId?: number;
   // Optional second ("Sibling") toggle column. When the full set is supplied the
-  // selector switches to a two-column Sibling | Child grid; otherwise it renders
-  // its original single-column layout unchanged.
+  // selector renders a two-column Sibling | Child grid; otherwise Child is the only column.
   siblingSavedIds?: Set<number>;
   siblingPendingAddIds?: Set<number>;
   siblingPendingRemoveIds?: Set<number>;
@@ -117,11 +104,6 @@ interface CollectionListSelectorProps {
   parentPendingAddIds?: Set<number>;
   parentPendingRemoveIds?: Set<number>;
   onToggleParent?: (collection: CollectionListModel) => void;
-  /**
-   * Engages accordion grouping with only the single `onToggle` column — no sibling/parent
-   * columns. Lets the image metadata editor reuse the grouped layout without multi-column mode.
-   */
-  grouped?: boolean;
   /**
    * Save a synthetic (`derived`) tag-view row as a real collection. When provided, derived rows
    * render read-only with a "Save as Collection" action instead of participating in toggles.
@@ -148,9 +130,7 @@ export default function CollectionListSelector({
   onNavigate,
   onAddNewChild,
   label = 'Collections',
-  excludeCollectionId,
   currentCollectionId,
-  pinnedCollectionId,
   siblingSavedIds,
   siblingPendingAddIds,
   siblingPendingRemoveIds,
@@ -160,7 +140,6 @@ export default function CollectionListSelector({
   parentPendingRemoveIds,
   onToggleParent,
   onSaveDerived,
-  grouped,
 }: CollectionListSelectorProps) {
   const [hoveredChildId, setHoveredChildId] = useState<number | null>(null);
   const [hoveredSiblingId, setHoveredSiblingId] = useState<number | null>(null);
@@ -171,25 +150,6 @@ export default function CollectionListSelector({
   const parentMode =
     !!onToggleParent && !!parentSavedIds && !!parentPendingAddIds && !!parentPendingRemoveIds;
   const [hoveredParentId, setHoveredParentId] = useState<number | null>(null);
-
-  const filteredCollections = useMemo(
-    () =>
-      excludeCollectionId
-        ? allCollections.filter(c => c.id !== excludeCollectionId)
-        : allCollections,
-    [allCollections, excludeCollectionId]
-  );
-
-  const orderedCollections = useMemo(
-    () =>
-      pinnedCollectionId == null
-        ? filteredCollections
-        : [
-            ...filteredCollections.filter(c => c.id === pinnedCollectionId),
-            ...filteredCollections.filter(c => c.id !== pinnedCollectionId),
-          ],
-    [filteredCollections, pinnedCollectionId]
-  );
 
   const currentCollectionBucket = useMemo(() => {
     if (currentCollectionId == null) return null;
@@ -204,27 +164,14 @@ export default function CollectionListSelector({
       setExpandedBucket(currentCollectionBucket);
     }
   }, [currentCollectionBucket]);
-  const accordionMode = siblingMode || parentMode || Boolean(grouped);
 
   const groupsByBucket = useMemo(() => {
-    if (!accordionMode) return null;
     const map = new Map<CollectionBucket, CollectionListModel[]>();
     for (const b of COLLECTION_BUCKET_ORDER) map.set(b, []);
-    for (const c of orderedCollections) map.get(bucketOf(c))!.push(c);
+    for (const c of allCollections) map.get(bucketOf(c))!.push(c);
     for (const [b, rows] of map) map.set(b, sortGroup(rows, b));
     return map;
-  }, [accordionMode, orderedCollections]);
-
-  const handleRowClick = useCallback(
-    (collection: CollectionListModel) => {
-      if (onNavigate) {
-        onNavigate(collection);
-      } else if (!siblingMode) {
-        onToggle(collection);
-      }
-    },
-    [onNavigate, onToggle, siblingMode]
-  );
+  }, [allCollections]);
 
   const renderCheckbox = (
     collection: CollectionListModel,
@@ -269,191 +216,160 @@ export default function CollectionListSelector({
     // Synthetic tag-view rows are read-only until promoted; they never participate in toggles.
     const isDerived = collection.derived === true;
     const derivedReason = 'Tag view — Save as Collection to make it permanent';
-    if (siblingMode || parentMode || grouped) {
-      const isActivelyChild =
-        (savedCollectionIds.has(collection.id) && !pendingRemoveIds.has(collection.id)) ||
-        pendingAddIds.has(collection.id);
-      const isActivelyParent =
-        parentMode &&
-        (((parentSavedIds?.has(collection.id) ?? false) &&
-          !(parentPendingRemoveIds?.has(collection.id) ?? false)) ||
-          (parentPendingAddIds?.has(collection.id) ?? false));
-      const parentDisabled = parentMode && isActivelyChild;
-      const childDisabled = parentMode && isActivelyParent;
-      const disabledReason =
-        'A collection cannot be both a parent and a child of the same collection.';
+    const isActivelyChild =
+      (savedCollectionIds.has(collection.id) && !pendingRemoveIds.has(collection.id)) ||
+      pendingAddIds.has(collection.id);
+    const isActivelyParent =
+      parentMode &&
+      (((parentSavedIds?.has(collection.id) ?? false) &&
+        !(parentPendingRemoveIds?.has(collection.id) ?? false)) ||
+        (parentPendingAddIds?.has(collection.id) ?? false));
+    const parentDisabled = parentMode && isActivelyChild;
+    const childDisabled = parentMode && isActivelyParent;
+    const disabledReason =
+      'A collection cannot be both a parent and a child of the same collection.';
 
-      let childReason: string | undefined;
-      if (isDerived) childReason = derivedReason;
-      else if (isCurrent) childReason = currentReason;
-      else if (childDisabled) childReason = disabledReason;
-      let parentReason: string | undefined;
-      if (isDerived) parentReason = derivedReason;
-      else if (isCurrent) parentReason = currentReason;
-      else if (parentDisabled) parentReason = disabledReason;
+    let childReason: string | undefined;
+    if (isDerived) childReason = derivedReason;
+    else if (isCurrent) childReason = currentReason;
+    else if (childDisabled) childReason = disabledReason;
+    let parentReason: string | undefined;
+    if (isDerived) parentReason = derivedReason;
+    else if (isCurrent) parentReason = currentReason;
+    else if (parentDisabled) parentReason = disabledReason;
 
-      const siblingSelection: SelectionState = {
-        savedIds: siblingSavedIds!,
-        pendingAddIds: siblingPendingAddIds!,
-        pendingRemoveIds: siblingPendingRemoveIds!,
-      };
-      const parentSelection: SelectionState = {
-        savedIds: parentSavedIds!,
-        pendingAddIds: parentPendingAddIds!,
-        pendingRemoveIds: parentPendingRemoveIds!,
-      };
+    const siblingSelection: SelectionState = {
+      savedIds: siblingSavedIds!,
+      pendingAddIds: siblingPendingAddIds!,
+      pendingRemoveIds: siblingPendingRemoveIds!,
+    };
+    const parentSelection: SelectionState = {
+      savedIds: parentSavedIds!,
+      pendingAddIds: parentPendingAddIds!,
+      pendingRemoveIds: parentPendingRemoveIds!,
+    };
 
-      let nameElement: ReactNode;
-      if (isDerived) {
-        nameElement = (
-          <span className={styles.name}>
-            {collection.name}
-            <span className={styles.currentTag}>(tag)</span>
-          </span>
-        );
-      } else if (isCurrent) {
-        nameElement = (
-          <span className={styles.name}>
-            {collection.name}
-            <span className={styles.currentTag}>(current)</span>
-          </span>
-        );
-      } else if (onNavigate) {
-        nameElement = (
-          <button
-            type="button"
-            className={`${styles.name} ${styles.nameButton}`}
-            onClick={() => onNavigate(collection)}
-            aria-label={`Open ${collection.name}`}
-          >
-            {collection.name}
-          </button>
-        );
-      } else {
-        nameElement = <span className={styles.name}>{collection.name}</span>;
-      }
-
-      return (
-        <div
-          key={collection.id}
-          className={`${styles.row} ${styles.rowSibling} ${expanded ? styles.expandedRow : ''} ${isCurrent ? styles.currentRow : ''}`}
-          role="group"
-          aria-label={collection.name}
-        >
-          {nameElement}
-          {isDerived && onSaveDerived && (
-            <button
-              type="button"
-              className={styles.saveDerivedButton}
-              onClick={() => onSaveDerived(collection)}
-              title={derivedReason}
-            >
-              Save as Collection
-            </button>
-          )}
-          {siblingMode && (
-            <span className={`${styles.toggleCell} ${styles.toggleCellSibling}`}>
-              {renderCheckbox(
-                collection,
-                siblingSelection,
-                onToggleSibling!,
-                hoveredSiblingId,
-                setHoveredSiblingId,
-                `Toggle sibling ${collection.name}`,
-                isCurrent || isDerived,
-                isDerived ? derivedReason : isCurrent ? currentReason : undefined
-              )}
-            </span>
-          )}
-          <span className={`${styles.toggleCell} ${styles.toggleCellChild}`}>
-            {renderCheckbox(
-              collection,
-              childSelection,
-              onToggle,
-              hoveredChildId,
-              setHoveredChildId,
-              `Toggle child ${collection.name}`,
-              isCurrent || childDisabled || isDerived,
-              childReason
-            )}
-          </span>
-          {parentMode && (
-            <span className={`${styles.toggleCell} ${styles.toggleCellParent}`}>
-              {renderCheckbox(
-                collection,
-                parentSelection,
-                onToggleParent!,
-                hoveredParentId,
-                setHoveredParentId,
-                `Toggle parent ${collection.name}`,
-                isCurrent || parentDisabled || isDerived,
-                parentReason
-              )}
-            </span>
-          )}
-        </div>
+    let nameElement: ReactNode;
+    if (isDerived) {
+      nameElement = (
+        <span className={styles.name}>
+          {collection.name}
+          <span className={styles.currentTag}>(tag)</span>
+        </span>
       );
+    } else if (isCurrent) {
+      nameElement = (
+        <span className={styles.name}>
+          {collection.name}
+          <span className={styles.currentTag}>(current)</span>
+        </span>
+      );
+    } else if (onNavigate) {
+      nameElement = (
+        <button
+          type="button"
+          className={`${styles.name} ${styles.nameButton}`}
+          onClick={() => onNavigate(collection)}
+          aria-label={`Open ${collection.name}`}
+        >
+          {collection.name}
+        </button>
+      );
+    } else {
+      nameElement = <span className={styles.name}>{collection.name}</span>;
     }
+
     return (
       <div
         key={collection.id}
-        className={`${styles.row} ${onNavigate ? styles.navigable : ''}`}
-        role="button"
-        tabIndex={0}
-        onClick={() => handleRowClick(collection)}
-        onKeyDown={e => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleRowClick(collection);
-          }
-        }}
+        className={`${styles.row} ${styles.rowSibling} ${expanded ? styles.expandedRow : ''} ${isCurrent ? styles.currentRow : ''}`}
+        role="group"
+        aria-label={collection.name}
       >
-        {renderCheckbox(
-          collection,
-          childSelection,
-          onToggle,
-          hoveredChildId,
-          setHoveredChildId,
-          `Toggle ${collection.name}`
+        {nameElement}
+        {isDerived && onSaveDerived && (
+          <button
+            type="button"
+            className={styles.saveDerivedButton}
+            onClick={() => onSaveDerived(collection)}
+            title={derivedReason}
+          >
+            Save as Collection
+          </button>
         )}
-        <span className={styles.type}>{COLLECTION_BUCKET_LABELS[bucketOf(collection)]}</span>
-        <span className={styles.name}>{collection.name}</span>
+        {siblingMode && (
+          <span className={`${styles.toggleCell} ${styles.toggleCellSibling}`}>
+            {renderCheckbox(
+              collection,
+              siblingSelection,
+              onToggleSibling!,
+              hoveredSiblingId,
+              setHoveredSiblingId,
+              `Toggle sibling ${collection.name}`,
+              isCurrent || isDerived,
+              isDerived ? derivedReason : isCurrent ? currentReason : undefined
+            )}
+          </span>
+        )}
+        <span className={`${styles.toggleCell} ${styles.toggleCellChild}`}>
+          {renderCheckbox(
+            collection,
+            childSelection,
+            onToggle,
+            hoveredChildId,
+            setHoveredChildId,
+            `Toggle child ${collection.name}`,
+            isCurrent || childDisabled || isDerived,
+            childReason
+          )}
+        </span>
+        {parentMode && (
+          <span className={`${styles.toggleCell} ${styles.toggleCellParent}`}>
+            {renderCheckbox(
+              collection,
+              parentSelection,
+              onToggleParent!,
+              hoveredParentId,
+              setHoveredParentId,
+              `Toggle parent ${collection.name}`,
+              isCurrent || parentDisabled || isDerived,
+              parentReason
+            )}
+          </span>
+        )}
       </div>
     );
   };
 
-  const listBody =
-    accordionMode && groupsByBucket ? (
-      <>
-        {(groupsByBucket.get('HOME') ?? []).map(c => renderRow(c, false))}
-        {COLLECTION_BUCKET_ORDER.filter(b => b !== 'HOME').map(b => {
-          const rows = groupsByBucket.get(b) ?? [];
-          const isExpanded = expandedBucket === b;
-          return (
-            <div key={b}>
-              <Disclosure
-                open={isExpanded}
-                onOpenChange={open => setExpandedBucket(open ? b : null)}
-                title={
-                  <>
-                    <span className={styles.typeHeaderLabel}>{COLLECTION_BUCKET_LABELS[b]}</span>
-                    <span className={styles.typeHeaderCount}>({rows.length})</span>
-                  </>
-                }
-                classNames={{
-                  toggle: `${styles.typeHeaderRow} ${isExpanded ? styles['typeHeaderRow--expanded'] : ''}`,
-                  chevron: styles.typeHeaderChevron,
-                }}
-              >
-                {rows.map(c => renderRow(c, true))}
-              </Disclosure>
-            </div>
-          );
-        })}
-      </>
-    ) : (
-      orderedCollections.map(c => renderRow(c, false))
-    );
+  const listBody = (
+    <>
+      {(groupsByBucket.get('HOME') ?? []).map(c => renderRow(c, false))}
+      {COLLECTION_BUCKET_ORDER.filter(b => b !== 'HOME').map(b => {
+        const rows = groupsByBucket.get(b) ?? [];
+        const isExpanded = expandedBucket === b;
+        return (
+          <div key={b}>
+            <Disclosure
+              open={isExpanded}
+              onOpenChange={open => setExpandedBucket(open ? b : null)}
+              title={
+                <>
+                  <span className={styles.typeHeaderLabel}>{COLLECTION_BUCKET_LABELS[b]}</span>
+                  <span className={styles.typeHeaderCount}>({rows.length})</span>
+                </>
+              }
+              classNames={{
+                toggle: `${styles.typeHeaderRow} ${isExpanded ? styles['typeHeaderRow--expanded'] : ''}`,
+                chevron: styles.typeHeaderChevron,
+              }}
+            >
+              {rows.map(c => renderRow(c, true))}
+            </Disclosure>
+          </div>
+        );
+      })}
+    </>
+  );
 
   return (
     <div className={styles.container}>
@@ -487,7 +403,7 @@ export default function CollectionListSelector({
         </div>
       )}
       <div className={styles.list}>
-        {orderedCollections.length === 0 ? (
+        {allCollections.length === 0 ? (
           <EmptyState align="page">No collections available</EmptyState>
         ) : (
           listBody
