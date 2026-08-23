@@ -105,7 +105,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | C6 | Password cover strip missing on the public card path | Low-medium | ±30 | ⛔ BACKEND-BLOCKED (split out of E1) |
 | D1 | Gate `POST /api/revalidate` (HIGH) | Low | +175 | ✅ PR #265 |
 | D2 | Gate `clearCacheAction` | Low | +212 (est. +15) | ✅ PR #266 |
-| D3 | Security headers | Low-medium | +60 src, +0–40 test | ☐ (unblocked 08-23: prod verified header-free) |
+| D3 | Security headers | Low-medium | +60 src, +0–40 test | ✅ PR #274 |
 | D4 | Pin the CloudFront host | Low | ±1 (actual ±1) | ✅ PR #272 |
 | D5 | Proxy path reject + `/cdn` matcher removal | Low | ~+30 net (−27 src, +6 reject, +40–60 test) | ✅ PR #273 |
 | D6 | Shared Origin allowlist (CSRF on `/api/revalidate`) | Low-medium | +75 src, +230 test (est. ±60) | ✅ PR #270 |
@@ -588,14 +588,55 @@ presence; a Server Action can resolve one, so this checks `principal?.isAdmin`. 
 a shared helper either weakens D2 to a presence check or demands something of D1 it cannot do. If a
 future MR wants them unified, it needs to say what it is doing about that asymmetry first.
 
-### ☐ D3 · No security headers anywhere
+### ✅ D3 · No security headers anywhere — PR #274
 
-- [ ] `next.config.js` has no `headers()` block, the middleware adds none, and no Amplify `customHttp.yml` is committed. No CSP, no `X-Frame-Options` (login and admin pages are frameable), no `nosniff`, no site-wide `Referrer-Policy`, no HSTS. Add a `headers()` block and start CSP report-only.
+- [x] `next.config.js` has no `headers()` block, the middleware adds none, and no Amplify `customHttp.yml` is committed. No CSP, no `X-Frame-Options` (login and admin pages are frameable), no `nosniff`, no site-wide `Referrer-Policy`, no HSTS. Add a `headers()` block and start CSP report-only.
 - [x] ~~Verify the Amplify console is not already injecting these~~ **ANSWERED 2026-08-23:
       `curl -sI https://www.zacedens.com/` — Amplify injects nothing.** No CSP, no XFO, no nosniff,
       no Referrer-Policy, no HSTS in the production response. The item is unblocked and startable.
-- [ ] Also found in that response: `x-powered-by: Next.js` is emitted — add `poweredByHeader: false`
+- [x] Also found in that response: `x-powered-by: Next.js` is emitted — add `poweredByHeader: false`
       to the same MR.
+
+**Shipped: five headers plus `poweredByHeader: false`, and the CSP is report-only.** Verified
+against a running server, not just the config object — `curl -sI http://localhost:3002/` on the
+"Verify Preview" config returns all five and no `x-powered-by`. Unit tests: 13 new in
+`tests/next.config.test.ts`; full suite 4,079/4,079 across 224 files.
+
+**The CSP was checked against a live browser, including the case the page could not exercise.**
+Three page loads produced zero violation reports, but the Spring backend was down, so every route
+hit its error boundary and no image or video ever rendered — `img-src` and `media-src` were
+untested by that. Closed it by injecting a CloudFront `<img>` and `<video>` into the loaded page and
+re-reading the console: no violation. The control is what makes that result mean something — an
+`<img>` from `example.org` injected alongside them did report, with the browser naming the exact
+directive and confirming "The policy is report-only". So the reporting path works and CloudFront
+passes both directives.
+
+**A clean report-only console is not evidence the policy can be enforced yet.** What was measured is
+three routes in dev, all of them error boundaries, plus two injected elements. Before flipping the
+header name to `Content-Security-Policy`, walk the real pages with the backend up — collection
+pages, `/explore`, `/about`, a client gallery, the admin surfaces — and confirm the console stays
+quiet. The dev build also relaxes three directives (`'unsafe-eval'`, `ws:`/`wss:`,
+`http://localhost:*`) that production does not get, so dev cannot prove production is quiet either.
+Tests pin that those three never reach a production build.
+
+**`'unsafe-inline'` is in both `script-src` and `style-src` and cannot simply be deleted.** Next
+inlines the hydration payload and its style tags. Removing it needs per-request nonces, which means
+the CSP has to move out of `next.config.js` and into `proxy.ts` — a separate item, not a tightening
+of this one.
+
+**HSTS ships without `includeSubDomains` and without `preload`, deliberately.** `preload` is
+removed by petitioning the browser vendors' list, so it is close to one-way, and neither was in the
+item. `max-age=63072000` is the reversible part. A test pins the absence so a later session does not
+add them without meaning to.
+
+**One consolidation rode along, and it is the reason to look at this file when D4's host changes.**
+`CLOUDFRONT_HOST` is now a single const feeding both `images.remotePatterns` and the CSP's
+`img-src`/`media-src`. Two literals for the same host drift; a test asserts the optimizer allowlist
+and the CSP still name the same one.
+
+**Not included: `Permissions-Policy`.** It is free and would fit, but the item named five headers
+and this board's repeated lesson is that un-asked additions are how MRs grow. Worth a one-line
+follow-up item.
 
 ### ✅ D4 · Image optimizer accepts any `*.cloudfront.net` host — PR #272
 
@@ -1195,6 +1236,20 @@ being avoided, not scheduled — make it real work or drop it from the board.
   guardrail held — the D5 section now carries a table of what changing each remaining entry would
   do, so the next session with a tidying mindset has the answer without opening the array.
   Next: D3 (security headers + `poweredByHeader: false`), started in the same session as its own MR.
+- 2026-08-23 — shipped D3 (PR #274), same session as D5 (#273) but a separate MR off `main`, so the
+  two could merge in either order. **They did conflict here, exactly as the entry above predicted,
+  and the resolution was to keep both entries — the log is append-only, so a same-session pair
+  always collides in this one spot.** #273 landed first; #274 was rebased onto it. Five headers plus
+  `poweredByHeader: false`, CSP report-only. Verified against a running server on the "Verify
+  Preview" config rather than against the config object; the headers are real. **The console being
+  clean was not enough and the gap was closable in one step:** the backend was down, so all three
+  routes rendered error boundaries and no image or video ever loaded, leaving `img-src`/`media-src`
+  unexercised — injected a CloudFront `<img>` and `<video>` into the live page plus an `example.org`
+  control, and only the control reported. Without the control the silence would have proven nothing.
+  Folded the D4 CloudFront host into one `CLOUDFRONT_HOST` const shared by `remotePatterns` and the
+  CSP, with a test pinning that they agree. Held scope: no `Permissions-Policy`, and
+  `'unsafe-inline'` stays until a nonce moves the CSP into `proxy.ts`.
+  Next: D8 (the last open Group D item), then Group B or C.
 
 ## Verified fine — do not re-investigate
 
