@@ -57,7 +57,6 @@
   }
 
   &::-webkit-calendar-picker-indicator {
-    filter: var(--calendar-icon-filter, none);
     opacity: 0.7;
     cursor: pointer;
   }

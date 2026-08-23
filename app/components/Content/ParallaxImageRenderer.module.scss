@@ -16,14 +16,3 @@
   cursor: inherit;
   will-change: transform;
 }
-
-/* Placeholder for collections without cover images */
-.placeholderImage {
-  background-color: var(--color-surface-sunken);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-on-surface-muted);
-  font-size: 1.2rem;
-  font-weight: 500;
-}

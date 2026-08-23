@@ -1,13 +1,5 @@
 /* Client Gallery Gate - password prompt for protected galleries */
 
-.gateContainer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 80vh;
-  padding: var(--space-4);
-}
-
 .gateCard {
   width: 100%;
   max-width: 420px;

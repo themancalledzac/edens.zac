@@ -51,60 +51,6 @@
   padding: var(--space-3);
 }
 
-.meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: var(--space-2);
-}
-
-.email {
-  font-weight: 500;
-  color: var(--color-fg);
-  text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
-  }
-}
-
-.time {
-  color: var(--color-on-surface-muted);
-  font-size: var(--text-sm);
-}
-
-.body {
-  margin: 0 0 var(--space-3);
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-}
-
-.actions {
-  display: flex;
-  gap: var(--space-2);
-  justify-content: flex-end;
-}
-
-/* Reply is a real hyperlink (opens Gmail), so it stays an <a> styled as an
-   outline button — not the <Button> primitive (which renders a <button>). */
-.replyButton {
-  padding: var(--space-1) var(--space-3);
-  font-family: inherit;
-  font-size: var(--text-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  background: transparent;
-  color: var(--color-fg);
-  cursor: pointer;
-  text-decoration: none;
-  line-height: 1.4;
-
-  &:hover:not(:disabled) {
-    background: var(--color-surface-raised);
-    border-color: var(--color-fg);
-  }
-}
-
 .error {
   color: var(--color-danger-text);
   margin: var(--space-2) 0 0;
