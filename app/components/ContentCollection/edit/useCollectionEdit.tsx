@@ -1552,7 +1552,7 @@ export function useCollectionEdit({
         key: 'select',
         label: 'Select',
         disabled: browseBusy,
-        onClick: () => setIsMultiSelectMode(true),
+        onClick: enterSelect,
       },
       {
         key: 'reorder',
@@ -1566,7 +1566,7 @@ export function useCollectionEdit({
         key: 'add',
         label: operationLoading ? 'Uploading…' : 'Add',
         disabled: browseBusy,
-        onClick: () => setIsAddMode(true),
+        onClick: enterAdd,
       },
       {
         key: 'edit',
@@ -1604,7 +1604,9 @@ export function useCollectionEdit({
     saving,
     isUpdateDirty,
     handleUpdate,
+    enterSelect,
     enterReorder,
+    enterAdd,
     onExitManage,
   ]);
 
