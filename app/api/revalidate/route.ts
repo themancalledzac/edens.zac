@@ -2,6 +2,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { isLocalEnvironment } from '@/app/utils/environment';
+import { isAllowedWriteOrigin } from '@/app/utils/originAllowlist';
 
 /**
  * Revalidate Collection Cache
@@ -20,12 +21,21 @@ import { isLocalEnvironment } from '@/app/utils/environment';
  * `revalidateCollectionCache` / `revalidateMetadataCache` in the admin edit UI, which is
  * already behind that cookie and sends it on same-origin fetches.
  *
- * This closes the anonymous path, not CSRF: the route still has no Origin allowlist, so an
- * authenticated admin visiting a hostile page can be made to fire it. Tracked as D6.
+ * The session check alone does not stop CSRF — the browser attaches that cookie to cross-site
+ * POSTs too — so the request must also carry an allowed `Origin`, via the same helper the proxy
+ * uses. The Origin check applies in every environment, local included: the allowlist already
+ * covers the dev ports and LAN origins, so localhost admin still needs no login (D6).
+ *
+ * Order matters. The session check runs first so an anonymous caller still gets 401 rather than
+ * a 403 that would suggest the origin was the problem.
  */
 export async function POST(req: NextRequest) {
   if (!isLocalEnvironment() && !req.cookies.get('ezac_session')?.value) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (!isAllowedWriteOrigin(req.headers.get('origin'))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   try {
