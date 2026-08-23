@@ -168,7 +168,7 @@ describe('parallax-card builders - characterization', () => {
     });
 
     it('carries tags', () => {
-      const tags = [{ id: 1, name: 'art-gallery' }];
+      const tags = [{ id: 1, name: 'art-gallery', slug: 'art-gallery' }];
       const result = convertCollectionContentToParallax(
         contentCollection({ tags } as Partial<ContentCollectionModel>)
       );
