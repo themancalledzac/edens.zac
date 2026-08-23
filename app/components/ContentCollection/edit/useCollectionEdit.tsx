@@ -472,12 +472,6 @@ export function useCollectionEdit({
   const [peopleSaving, setPeopleSaving] = useState(false);
   const [peopleStatus, setPeopleStatus] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!enabled) return;
-    setCollectionPeopleState(collection.people ?? []);
-    setPeopleStatus(null);
-  }, [enabled, collection.id, collection.people]);
-
   const handleSavePeople = useCallback(async () => {
     if (!collection) return;
     setPeopleSaving(true);
@@ -525,12 +519,38 @@ export function useCollectionEdit({
   const [galleryStatus, setGalleryStatus] = useState<string | null>(null);
   const [gallerySaving, setGallerySaving] = useState(false);
 
+  /** Identity gate for the staged-field seed below; mirrors the edit buffer's `seeded*` refs. */
+  const seededStagedFieldsIdRef = useRef<number | null>(null);
+  const seededStagedFieldsFromAdminRef = useRef(false);
+
+  /**
+   * Seed the staged People and gallery-access fields on collection identity change, on the
+   * one-time admin-DTO adoption, and on re-entering edit mode — never on a background refresh.
+   *
+   * Keying off `collection.people` / `.galleryPassword` / `.recipientEmails` instead wiped
+   * staged-but-unsaved edits. Every save path (inline title commit, cover pick, reorder save,
+   * upload, metadata save) calls `setCurrentState` with a fresh DTO whose arrays are new
+   * identities, so an unrelated save discarded a pending People or gallery change. The save
+   * handlers re-seed these fields themselves from their own responses.
+   */
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      seededStagedFieldsIdRef.current = null;
+      seededStagedFieldsFromAdminRef.current = false;
+      return;
+    }
+    const identityChanged = collection.id !== seededStagedFieldsIdRef.current;
+    const adoptingAdminDto =
+      !identityChanged && !seededStagedFieldsFromAdminRef.current && currentState !== null;
+    if (!identityChanged && !adoptingAdminDto) return;
+    seededStagedFieldsIdRef.current = collection.id;
+    seededStagedFieldsFromAdminRef.current = currentState !== null;
+    setCollectionPeopleState(collection.people ?? []);
+    setPeopleStatus(null);
     setGalleryPasswordInput(collection.galleryPassword ?? '');
     setGalleryEmail(collection.recipientEmails?.join(', ') ?? '');
     setGalleryStatus(null);
-  }, [enabled, collection.id, collection.galleryPassword, collection.recipientEmails]);
+  }, [enabled, collection, currentState]);
 
   const processedContent = useMemo(
     () =>
