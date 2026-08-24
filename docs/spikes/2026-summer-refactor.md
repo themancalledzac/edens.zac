@@ -9,13 +9,16 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 
 > **Tracked as of 2026-08-23** (branch `0271-summer-refactor-tracker`): `docs/spikes/*` stays
 > gitignored except this file, so the board and its decisions now have history and survive the
-> machine. Trade-off accepted deliberately 2026-08-23: the repo is public and this file documents
-> unfixed security items (D3, D5, D8) — the backend repo's tracker set the precedent, and those
-> three are the next scheduled sittings. Additional durable copies: the review artifact (stamp
-> below) and MemPalace (`mempalace_user_search(query="frontend cleanup spike review")`).
+> machine. Trade-off accepted deliberately 2026-08-23: the repo is public and this file then
+> documented unfixed security items (D3, D5, D8) — the backend repo's tracker set the precedent.
+> All three shipped, and Group D closed 2026-08-24, so the tracked board no longer names a live
+> weakness. Additional durable copies: the review artifact (stamp below) and MemPalace
+> (`mempalace_user_search(query="frontend cleanup spike review")`).
 >
 > **CONFIRMED 2026-08-23: PR #271 merged, the file is tracked** (`git ls-files docs/spikes/` lists
-> it; `.gitignore` pairs `docs/spikes/*` with `!docs/spikes/2026-summer-refactor.md`).
+> it; `.gitignore` pairs `docs/spikes/*` with `!docs/spikes/2026-summer-refactor.md` and, since the
+> archive split, `!docs/spikes/2026-summer-refactor/`. A new archive file is invisible to git
+> without that second negation — add files under that directory, never beside it).
 > **Trap this creates, hit on the very next run:** a session whose local `main` predates #271 sees
 > this file as untracked, and `git check-ignore -v` reports it plainly IGNORED — the pre-negation
 > `.gitignore` is what's checked out. Do not conclude the tracking never happened; `git fetch` and
@@ -109,6 +112,15 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 - **Before filing a frontend fix for a "missing" field check, grep the type.** C6 looked like a
   frontend oversight for a day. `ContentCollectionModel` simply has no `isPasswordProtected` to
   check, which is why the strip was never there. Confirm the data exists before scoping the work.
+- **When an item ships, its write-up moves to `docs/spikes/2026-summer-refactor/` in the same
+  commit that marks it done.** The board keeps the row; the group section keeps a pointer. This is
+  the third attempt at stopping this file from growing without bound, and the first two failed the
+  same way — a consolidation pass shrinks it once, then shipped work accretes right back, because
+  nothing said where done work goes. Now something does.
+- **An open item must be readable without opening the archive.** The archive is for forensics, not
+  for prerequisites. Where an open item depends on something shipped, copy the part it needs into
+  the open item as a guardrail. B1 is the worked example: it restates exactly what E11's drift test
+  cannot see, so B1 can be picked up cold with the archive left closed.
 
 ## MR board
 
@@ -123,7 +135,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | A7a | `useCollectionEdit` legacy aliases | Minimal | −8 | ✅ PR #259 |
 | A7b | `enterSelect`/`enterAdd` inline copies | Low | −2 src | ✅ PR #262 |
 | A8 | Dead SCSS in live modules + `globals.css` tokens | Low | −327 | ✅ PR #263 |
-| A9 | Dead config | Minimal | −35 | ◐ PR #259; 2 follow-ups open |
+| A9 | Dead config | Minimal | −35 | ◐ PR #259; 3 follow-ups open |
 | B1 | Merge `manageUtils.test.ts` | Low | −450 (file is now 1,967 lines) | ☐ **NEXT** |
 | B2 | `rowCombination` characterization dedup | Low | −250 | ☐ |
 | B3 | `metadataUtils.test.ts` dedup | Low | −200 to −300 | ☐ |
@@ -158,6 +170,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E9 | Download icon/hook, auth-card SCSS, `.srOnly` | Low | −100 src, +80–150 test | ☐ (srOnly bullet: user call) |
 | E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator) | Low | −60 src, +120 new | ☐ (unblocked — #253 merged) |
 | E11 | Make cache-tag register/revalidate drift detectable | Low-medium | +277 −28 | ✅ PR #280 |
+| E12 | Wire up `collections-location-${slug}` | Low-medium | +30 src, +60 test | ☐ (was buried in C4; unblocked by #280) |
 | F1 | Decompose `useCollectionEdit.tsx` | Medium-high | ~neutral | ☐ |
 | F2 | `RendererContext` for the BoxRenderer tree | Medium | −100 | ☐ |
 | F3 | File moves and renames | Medium | ~neutral | ☐ |
@@ -168,6 +181,10 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | G3 | `/user/selects` decision | — | — | ⛔ USER DECISION |
 
 Groups A and B together are ~5,000 lines removed at near-zero regression risk.
+
+**Shipped write-ups are not on this page.** Groups A, C and D are closed and their sections live
+in [`2026-summer-refactor/`](2026-summer-refactor/), one file per group, plus the session log.
+A row here with a PR number is the whole live record of that item; the archive has the detail.
 
 **Estimates recalibrated 2026-08-22 to count test coupling** (the original source-only numbers were
 wrong 4-for-4: D2 +15→+212, E1 −120→+757 total, A4 and A6 the same way). Where a range appears, the
@@ -185,202 +202,15 @@ it (or move it to a tracked `docs/cleanup/`) so its decisions survive the machin
 
 ---
 
-## Group A — Pure deletions
+## Group A — Pure deletions — ✅ CLOSED
 
-Everything here is verified zero-reference. No behavior change.
+All nine items merged (#255–#263). Full write-ups: [group-a-deletions.md](2026-summer-refactor/group-a-deletions.md).
+Three bullets under A9 never shipped and stay here.
 
-### ✅ A1 · Dead whole files + their tests — PR #255
+### ◐ A9 · Dead config — PR #259
 
-- [x] `app/hooks/useCollectionData.tsx` (112) — old manage-page relic, test-only. Delete `tests/hooks/useCollectionData.test.tsx` (319).
-- [x] `app/utils/focalLength.ts` (28) — the lens-type filter dimension was removed. Delete `tests/utils/focalLength.test.ts` (105) and `LensType` at [GalleryFilter.ts:13](app/types/GalleryFilter.ts:13). The `focalLength` image *field* stays — it is live in `FullScreenModal` and metadata.
-- [x] `app/utils/groupCollectionsByYear.ts` (69) — test-only. Delete `tests/utils/groupCollectionsByYear.test.ts` (91).
-- [x] `app/components/Breadcrumb/` (86 with SCSS) — never mounted; docs 004 already flags "mount or drop", this is the drop. Delete `tests/components/Breadcrumb/` (42).
-- [x] `app/components/ErrorBoundary/` (108 with SCSS) — zero refs, no test; route errors use `app/error.tsx`.
-- [x] `app/components/Content/index.ts` (9) — barrel with zero importers.
-- [x] `app/page.module.scss` (76), `app/styles/forms.module.scss` (63), `app/styles/admin.module.scss` (51), `app/components/Content/Content.module.scss` (40) — four orphaned style files. `page.module.scss` also removes the repo's only third breakpoint system.
-- [x] `.junie/` (7 broken symlinks tracked in git, all pointing at a nonexistent `.agents/skills/`), `skills-lock.json` (40, orphaned lockfile), `Scripts/copyFileNamesScript.py` (13, orphaned script).
+_Shipped bullets are in the [archive](2026-summer-refactor/group-a-deletions.md). These three are open._
 
-Not in this MR: `app/user/selects/page.tsx` — still needs the G3 decision.
-
-### ✅ A2 · Dead exports in `lib/api` — PR #256
-
-- [x] `core.ts` write channel — `fetchPutJsonApi`, `fetchPatchJsonApi`, `fetchPostJsonApi`, `fetchFormDataApi`, the `'write'` union member, the `WRITE` const. Verified zero call sites. The 20 generic error-handling and response-handling probes in `core.test.ts` were retargeted onto `fetchAdminPostJsonApi` (same `fetchBase` path, assertions unchanged); only the three `write endpoint functions` channel-routing tests were deleted.
-- [x] `content.ts` — `getAllCameras`, `getAllLenses`, `getFilmMetadata`, `createTag`, `createPerson`. The edit UI uses `getMetadata()`; tags and people are created through `updateImages` prev/newValue.
-- [x] `selects.ts` — `listSelectIds`, `listAllSelects`. Only the `*Server` variants are used.
-- [x] `share.ts` — un-export `getShareSettings` (internal use only).
-
-### ✅ A3 · Dead half of `metadataUtils.ts` — PR #257
-
-About 400 of ~1,000 lines. All of it is a relic of the pre-`useMetadataState` form pattern and is referenced only by tests. Shipped at −995 lines total (−398 src, −570 test, −27 across the three call-site files).
-
-- [x] Delete the entire "Display Helper Functions" section. **Except `computeCameraSelectionUpdate`** — it lives in that section but has 3 live call sites in [CameraSettingsSection.tsx:135](app/components/Metadata/sections/CameraSettingsSection.tsx:135). Only the section banner was removed, so it now sits under "Pure Helper Functions" — which is what its own docblock calls it. The other 8 display helpers are gone.
-- [x] Delete the entire "Generic Dropdown Change Handler" section. Took the two private helpers (`handleMultiSelectChange`, `handleSingleSelectChange`) with it.
-- [x] Delete `applyPartialUpdate` and `getFormValue`.
-- [x] `buildImageUpdateForSingleEdit` is a pass-through — retarget its 2 callers and delete it. It was 1 call site + 1 import, both in `useMetadataSubmit.ts`, which already imported `buildImageUpdateDiff`. Its 4 tests were pass-through duplicates of cases `buildImageUpdateDiff` already covers.
-- [x] `mergeNewMetadata`'s `_currentState` param is unused — drop it. The `useCollectionEdit` call site no longer reads `prev`, so the functional `setState` form collapsed to a direct set. 10 test call sites and 4 now-unused fixtures updated.
-- [x] Delete the matching test blocks in `tests/components/Metadata/metadataUtils.test.ts`. 11 top-level describes removed; test count 3895 → 3836.
-
-Lesson for the remaining A-items: the review's "delete the entire X section" claims are section-level, not symbol-level. Re-grep each export inside a section before cutting it — `computeCameraSelectionUpdate` would have broken the build.
-
-### ✅ A4 · Dead small utils, constants, type guards — PR #258
-
-- [x] [contentTypeGuards.ts:184-226](app/utils/contentTypeGuards.ts:184) — `getSlotWidth` and `getRatedContentItem`, the real V1-era survivors. Their docblock still documents the retired vertical penalty. (`rowCombination.ts` itself is clean — no `arFactor`/`verticalPenalty`/`isFullWidthHero` hits anywhere.)
-- [x] `useDebounce` — after removal `debounce.ts` holds only `useThrottle`; move it to `app/hooks/useThrottle.ts`.
-- [x] `createTagsUpdate`, `createLocationsUpdate`, `formatDisplayDateRange`, `isFullscreenSupported`, `isProduction`, `COLLECTION_VISIBILITY_DESCRIPTIONS`.
-- [x] `CollectionPageDTO` — a ~40-line unconsumed DTO mirror.
-- [x] `logger.ts`'s `_logLevelCheck`.
-- [x] `useMetadataEditor`'s deprecated `editingImage` alias and unused `isOpen`.
-- [x] `constants/index.ts` — `Z_INDEX` (whole object, zero refs, values contradict its own comments), `patternWindowSize`, `patternMaxMovement`, `minChunkSize`, `apiMockDelay`, `debounceResize`, `gridWidth`, `gridHeightCatalog`, `gridHeightBlog`, `intersectionMargin`, `adminManageMax`. Fix the stale slot-model comment above `defaultChunkSize`.
-- [x] Each of the above takes its test block with it.
-
-Shipped at −652 (13 insertions). Two of the listed symbols were NOT dead and stayed:
-`useThrottle` (live in [useViewport.ts:50](app/hooks/useViewport.ts:50) — `debounce.ts` moved to
-`app/hooks/useThrottle.ts` rather than being deleted) and `defaultChunkSize` (10 source + 14 test
-refs — comment fix only). The CSS `--z-*` tokens are live; only the unused TS `Z_INDEX` object went.
-Deleting `_logLevelCheck` orphaned the `LogLevel` type, and deleting `isFullscreenSupported`
-orphaned `docEl` in its test — both went too.
-
-**A4 broke an open branch, and nothing in git said so.** `formatDisplayDateRange` was genuinely
-zero-reference *on main* — but PR #253 (`0251-collections-panel`, open since 2026-08-15) imported it.
-The two touch disjoint files, so GitHub reported the PR `MERGEABLE`/`CLEAN` throughout and
-`git merge origin/main` applied with no conflict. The break surfaced only at `tsc`. Fixed on that
-branch by repointing at `formatLongDate`.
-
-**This applies to every remaining Group A and B item.** The spike's dead-code method is "grep call
-sites", which is correct for main and blind to open branches — and Groups A+B are ~5,000 deleted
-lines. Before merging a deletion item, sweep the symbol across remote branches:
-
-```bash
-git grep <symbol> $(git for-each-ref --format='%(refname)' refs/remotes/origin)
-```
-
-Also verified while there: A4/A5/A8 moved **no** admin-hub pixel math. The hub fixtures are computed
-in Node from `listPanelShape.ts` and the packer, so A8's SCSS deletions cannot reach them.
-
-### ✅ A5 · Gray overlay never paints on the manage grid — this is a BUG — PR #260
-
-**The open question in the original review is now answered: the overlay IS wanted. Do not delete it.**
-
-[CollectionContentRenderer.tsx:646](app/components/Content/CollectionContentRenderer.tsx:646) computes
-`isNotVisible` by calling `checkImageVisibility` on a synthesized object with `visible: true,
-collections: []` hardcoded, so it can never return true and hidden images render with no gray tint.
-
-Three things prove the manage grid deliberately renders non-visible content, which is what makes this a
-regression rather than dead code:
-
-- `filterVisibleBlocks` in `contentLayout.ts` only drops invisible blocks when `filterVisible` is true —
-  that is the public path. Manage passes false.
-- `sortNonVisibleToBottom` keeps invisible blocks and sorts them to the end.
-- [componentUtils.ts:148](app/components/Content/componentUtils.ts:148) derives a divider row index from
-  `hasNonVisible`, i.e. the grid draws a separator marking where non-visible content begins.
-
-Root cause: the renderer destructures primitives (`contentId`, `imageUrl`, `contentType`) and never
-receives the real block, which is why someone stubbed one in.
-
-- [x] Threaded a precomputed `notVisible` boolean down from `BoxRenderer`, the last point in the
-      chain that still holds the real block. Gated on `currentCollectionId != null` — the same
-      manage-view test `isPublicView` and `computeFirstNonVisibleRowIndex` already use.
-- [x] Deleted `checkImageVisibility`; `BoxRenderer` calls `!isContentVisibleInCollection(...)`. This
-      retires half of E4's "one IMAGE guard" item.
-- [x] `tests/components/Content/BoxRenderer.visibility.test.tsx` — renders `BoxRenderer` with the
-      REAL `CollectionContentRenderer`, not the module mock, because the bug lived in the seam
-      between them. Confirmed the two positive cases fail against the old behavior.
-
-### ✅ A6 · `CollectionListSelector` flat mode — PR #261
-
-The deletion premise is verified: the only two callers are
-[StructureTab.tsx:133](app/components/ContentCollection/edit/sections/StructureTab.tsx:133) (passes
-sibling + parent props) and [MetadataModal.tsx:214](app/components/Metadata/MetadataModal.tsx:214)
-(passes `grouped`). Neither passes `pinnedCollectionId` or `excludeCollectionId`.
-
-**The −85 estimate is wrong — this is not a one-sitting deletion.** It counts source only:
-
-- All 23 `defaultProps` renders in the 864-line `tests/components/CollectionListSelector.test.tsx`
-  exercise FLAT mode. Zero tests pass `grouped`.
-- `Disclosure` renders `{open && children}`, so collapsed accordion rows are absent from the DOM
-  entirely. Every `getByText` on a collection row breaks unless the test first expands its bucket.
-- Once `accordionMode` is unconditional the `grouped` prop becomes a no-op and must go too, along with
-  `MetadataModal`'s use of it.
-
-- [x] Deleted flat mode, `pinnedCollectionId`, `excludeCollectionId`, and the now-inert `grouped`
-      prop (and `MetadataModal`'s use of it). `filteredCollections`/`orderedCollections` collapsed to
-      `allCollections`. `handleRowClick` and the row-click / Enter-Space handlers went with the flat
-      row. Also removed `.type` and `.navigable` from the SCSS module — orphaned by this change, so
-      not left for A8.
-- [x] Rewrote the test file against accordion mode. Every row assertion now opens its bucket first.
-      Dropped: row-click toggle, Enter/Space on a row, the per-row bucket chip, `pinnedCollectionId`
-      ordering, `excludeCollectionId` filtering. Added: bucket grouping + counts, default-collapsed
-      sections, the pinned home row, and a check that a bare row click is inert.
-
-### ✅ A7 · `useCollectionEdit` dead exports — aliases in PR #259, inline copies in PR #262
-
-- [x] Returned `originalCollectionIds`/`handleCollectionToggle` legacy aliases — `StructureTab` uses
-      `childIds.saved`/`handleChildToggle`. Done in PR #259. The `Metadata` surface has its own
-      identically-named values from `useMetadataState`; different hook, untouched.
-- [x] `enterSelect`/`enterAdd` exports — the bottom bar rebuilt them inline. The cells now point at
-      the named callbacks, which joined the `bottomBarCells` deps array. The exports stayed: 10+ test
-      call sites in `useCollectionEdit.{test,handlers.test,bulkRemove.test}.tsx` drive them directly.
-      Done in PR #262. **`enterEdit` has the identical inline copy three lines below in the same
-      array** — left in place because A7b was scoped to the two named callbacks. One-line follow-up.
-- [x] The `selectedIds`-clearing effect (now `:431-435`). **DECIDED: keep it. It is load-bearing.**
-      The reason given here was wrong — the effect does not earn its keep on the exit-select-mode
-      path, because every path that flips `isMultiSelectMode` false already clears `selectedIds`
-      itself (`resetToBrowse`, `startCaptureDatePick`, `onExitMultiSelect`, the three save-success
-      handlers). The real trigger is the editor closing. `useMetadataEditor` binds
-      `useEscapeKey(closeEditor, !!editingContent)` to its OWN internal `closeEditor`, which only
-      does `setEditingContent(null)` — the `useCollectionEdit` wrapper that clears `selectedIds`
-      never runs on that path. So: single-click an image (`useImageClickHandler` sets
-      `selectedIds=[id]`, multi-select off, opens the editor), press Escape, and this effect is the
-      only thing that drops the selection. Removing it leaves a phantom selection: the next tap on
-      Select shows an image the user never picked, with Remove and Edit enabled against it.
-      [EditModeLayer.tsx:261](app/components/ContentCollection/edit/EditModeLayer.tsx:261) masks the
-      stale value (`isMultiSelectMode ? selectedIds : []`) until select mode is entered, which is why
-      it reads as harmless. Proven both ways with a throwaway probe. **All 3767 tests pass with the
-      effect deleted — zero coverage.** ✅ No longer true: covered by PR #267 (B8 first slice),
-      `useCollectionEdit.escapeSelection.test.tsx`. The effect is now at `:432-436`.
-
-### ✅ A8 · Dead SCSS in live modules + `globals.css` tokens — PR #263
-
-Shipped at −327 across 10 files. The executor warning below was correct and held: `dragContainer`,
-`parallaxContainer`, `overlayContainer`, `mobile`, `clickable`, `default`, `selected` are LIVE via
-`buildWrapperClassName(styles)` in [contentRendererUtils.ts:427](app/utils/contentRendererUtils.ts:427).
-
-- [x] `ContentComponent.module.scss` — `blockInner`, `blockInnerLeft`, `blockInnerLeftWithBadge`,
-      `imageContentWrapper`, `contentWrapper`, the `textItem` family (`textItem`, `textItem-text`,
-      `textItemLabel`, `textContentWrapper`), and the nested `&.dragging` / `&.notClickable`
-      modifiers. −104.
-- [x] Pre-ListPanel leftovers in `MessagesPanel.module.scss` and `Comments.module.scss` — rows render
-      through `ListPanel`/`ListRow` now. −120 combined.
-- [x] 12 dead `globals.css` tokens, including the three `--breakpoint-*` ones (structurally unusable
-      in media preludes — all 113 `@media` rules hardcode 768px). Count was exactly right.
-- [x] `.skipLink` duplicate in `PageShell.module.scss`, `.contentPadding`/`.gridContainer`,
-      `.placeholderImage` (ParallaxImageRenderer), `.gateContainer`, `.overlayContainer` (About), the
-      `--calendar-icon-filter` no-op — the token is referenced but never defined, so
-      `filter: var(--calendar-icon-filter, none)` always resolved to `none`.
-
-**Two more traps found, beyond the documented one.** Any future dead-CSS pass must handle both:
-
-1. `.image` and `.overlay` have zero property-access hits and look dead, but are `@extend` bases for
-   `.imageLeft/Right/Middle/Single` and `.visibilityOverlay`/`.coverImageOverlay`. Deleting them
-   breaks the build. Grep `@extend` before cutting anything.
-2. `.selected` exists ONLY nested under `.imageContentWrapper`, which is never applied — so
-   `buildWrapperClassName`'s `isSelected` branch already emits a class that styles nothing (selection
-   renders via `.selectedIndicator`). Deleting the rule is safe because `.filter(Boolean)` drops the
-   resulting `undefined` and the tests pass their own stub styles object. **Carried forward to E-group:
-   the `isSelected` option on `buildWrapperClassName`/`buildParallaxWrapperClassName` is now fully
-   inert and should go with E8.**
-
-Also corrected: `barCell` and `main` appear only in comment text in that file, not as selectors.
-
-### ✅ A9 · Dead config — PR #259
-
-- [x] `eslint.config.mjs` — ignores for nonexistent `Components/**` and `old/**`; the `pages/**` override disabling a rule that is itself commented out.
-- [x] `tsconfig.json` / `jest.config.mjs` — excludes for nonexistent `old/tests/**` and `**/__tests__/**`.
-- [x] `next.config.js` — the no-op `webpack: config => config` beside the active `turbopack` block.
-- [x] `package.json` — unused `eslint-config-next` devDep; name is still `"my-app"`; add the missing `"analyze"` script for the already-wired bundle analyzer.
-- [x] `.gitignore` — duplicated entries from two concatenated templates.
-- [x] `.cursor/rules/cursor_rules.mdc` — literally titled "Databricks Project Rules". Its frontmatter
-      description was already correct for this repo, so this was a heading fix, not a regeneration.
 - [ ] `.claude/agents/` — NOT done, and the premise looks wrong: `npm`, `npx`, and `node` all resolve
       on PATH (`/opt/homebrew/bin`). Re-confirmed 2026-08-22 from the review session's shell — same
       result, so the "npm is not on PATH" line in CLAUDE.md may itself be stale. Re-diagnose against
@@ -523,221 +353,10 @@ The project rule requires tests for these and they have none.
 
 ---
 
-## Group C — Bug fixes
+## Group C — Bug fixes — ✅ CLOSED except C6
 
-### ✅ C1 · HIGH — Unsaved people/gallery-access edits are wiped by any unrelated save — PR #264
-
-[useCollectionEdit.tsx:478](app/components/ContentCollection/edit/useCollectionEdit.tsx:478) and [:531](app/components/ContentCollection/edit/useCollectionEdit.tsx:531). Both re-seed effects depend on array identities (`collection.people`, `collection.galleryPassword`, `collection.recipientEmails`) that change on every DTO refresh. Every save path — inline title commit, cover pick, reorder save, upload, metadata save — calls `setCurrentState(fresh DTO)`, which delivers new array identities, fires the effects, and discards staged-but-unsaved People and gallery-access edits.
-
-Repro: add a person without saving, then commit an inline title edit. The person selection reverts.
-
-- [x] The two effects collapsed into one, gated by its own `seededStagedFieldsIdRef` /
-      `seededStagedFieldsFromAdminRef` pair — the same discipline the update buffer uses. It needs
-      its OWN refs, not the buffer's: the buffer effect mutates `seededCollectionIdRef` mid-run, so
-      a shared ref would let whichever effect ran first starve the other.
-- [x] The gate clears when `enabled` flips false, which preserves the old re-seed-on-entering-edit-mode
-      behavior. Without that, staged people/gallery would have survived an edit-mode exit while the
-      update buffer is explicitly discarded by `resetToBrowse` — an asymmetry the fix has no business
-      introducing.
-- [x] Three regression tests in `useCollectionEdit.buffer.test.tsx`, alongside the buffer's own
-      background-refresh test.
-
-**Test trap — a regression test here passes against the buggy code unless you avoid it.** The bare
-`makeCollection()` fixture never sets `people`/`recipientEmails`, so the old deps compared
-`undefined === undefined`, the effect never re-fired, and the bug did not reproduce. Each DTO must
-carry its own arrays — `mockImplementation(async () => makeResponse({ people: [], recipientEmails: [] }))`,
-not `mockResolvedValue`, which hands back one object with one array identity. The first draft of
-these tests passed against the unfixed source; only stashing the fix and re-running caught it.
-
-Related: `useCollectionEdit.handlers.test.tsx` carries a comment instructing authors to drive
-password/email through the setters "so the seed effect can't wipe them" — the bug was being worked
-around in tests rather than fixed. That comment is now stale but harmless; the workaround it
-describes still passes.
-
-### ✅ C2 · About portrait declares the wrong aspect ratio — PR #281
-
-- [x] [About.tsx:15](app/components/About/About.tsx:15) declared `width={1000} height={500}` (2:1)
-      for `public/_DSC0145.jpg`, which is 3893x2920 (4:3). Both halves re-read rather than trusted:
-      the file's dimensions come from its JPEG SOF segment, and the CSS is
-      `.profileImage { width: 100%; height: auto }`, which is what makes the declared pair the
-      aspect-ratio box the browser reserves before the file arrives. So a 2:1 declaration reserved
-      the wrong shape and reflowed to 4:3 on every open. Fixed to `height={750}`
-      — 1000 x 2920/3893 = 750.06. About is live code, rendered at `MenuDropdown.tsx:334`.
-- [x] **Scope note: the item said ±1 and the source change is ±1, but a test went in on top.** This
-      bug is invisible in code review and in a screenshot — it exists only in the moment between
-      reserving the box and loading the file, which is exactly the silent class the D3 and C4 lessons
-      are about. `tests/components/About/aboutImageDimensions.test.tsx` renders About and compares
-      the declared ratio against the real file, reading the dimensions out of the JPEG rather than
-      hardcoding them, so re-cropping or replacing the image fails the test instead of quietly
-      restoring the shift. Confirmed red against `height={500}` (delta 0.667), and confirmed red a
-      second time after `eslint --fix` reordered the imports and `tsc` forced a change to the file.
-- [x] Not browser-verified, and it would not have proved anything: `:3000` was not running, and the
-      defect is a pre-load reflow that a static screenshot cannot show. The declared attribute is the
-      whole fix, and the test asserts it against the file.
-
-### ✅ C3 · `SelectsContext.toggle` runs side effects inside a state updater — PR #282
-
-- [x] Confirmed: `onChange?.([...next])` sat inside both `setSelectedIds(prev => …)` updaters
-      ([SelectsContext.tsx](app/components/ContentCollection/SelectsContext.tsx)). StrictMode
-      double-invokes updaters in development, so every toggle notified the owner twice. Reproduced
-      before fixing — the new StrictMode spec reported 2 calls for one toggle, and 4 across a
-      toggle plus its rollback.
-- [x] **The item's prescribed mechanism was wrong, and following it literally would have introduced
-      a worse bug.** "Compute `next` outside, then call the setter and the callback sequentially"
-      is right for the optimistic update but breaks the rollback. The rollback's functional updater
-      is load-bearing: it inverse-applies against whatever the set is *when the persist rejects*.
-      Computing `next` outside would capture the set as it was when the toggle started, so a
-      rollback landing after an unrelated second toggle would discard that second toggle. Verified
-      by reading the closure, not assumed — `toggle` is rebuilt per render, but the pending
-      `persist.catch` still holds the older one.
-- [x] Fix keeps both updaters as pure `prev => next` forms and moves the notifier to an effect keyed
-      on the committed `selectedIds`. Purity and rollback correctness both hold, and the owner still
-      gets exactly one call per change.
-- [x] The mount guard compares the previous set by identity rather than tracking a first-run flag.
-      StrictMode double-invokes effects on mount too, so a flag fires on the second run — which
-      would have reintroduced the same double-notify at the one moment it is hardest to notice.
-      There is a spec for this: mount must not notify at all.
-- [x] Coverage gap closed on the way past. The existing suite never passed `onChange`, so the
-      notifier had no test of any kind — which is why a duplicate call survived. The owner is
-      `setPinnedSelectedIds` ([CollectionPageClient.tsx:560](app/components/ContentCollection/CollectionPageClient.tsx:560)),
-      a plain setState, so the duplicate was idempotent and invisible. The new specs assert call
-      counts rather than payloads for exactly that reason.
-- [x] Dropped the two inline comments in the function body while rewriting those lines, per G2.
-
-**Behavioral change worth knowing.** `onChange` now fires after the commit rather than during the
-update phase, so the owner's state lands one render later than the Set does. It is immaterial for
-the only consumer — a setState feeding a pinned prepend — but a future consumer that needs the
-notification inside the same commit would have to be built differently.
-
-### ✅ C4 · Cache tags that never connect — PR #279
-
-**Shipped: four dead revalidate targets, not five.** The fifth, `collection-home`, was not dead —
-the audit below was wrong about it, and the fix was to keep it and write down why. The
-`collections-location-${slug}` half was left alone as scoped; the report on it is at the end.
-
-- [x] FOUR dead tags removed from `revalidateMetadataCache` ([collectionEditUtils.ts:220](app/components/ContentCollection/edit/collectionEditUtils.ts:220)).
-      `content-people` was never registered, and A2 (PR #256) deleted the fetches that registered
-      `content-cameras`, `content-lenses`, `content-film-metadata`. Deleting them is safe, not just
-      tidy: the only surviving metadata read is `getMetadata` ([collections.ts:329](app/lib/api/collections.ts:329))
-      and it is `cache: 'no-store'`, so no cached data sits behind those tags waiting to go stale.
-      `content-tags`, `content-locations` and `search-images` stay.
-- [x] **`collection-home` is NOT a dead tag. The table below was wrong.** `HOME_SLUG = 'home'` and
-      `app/page.tsx` renders `CollectionPageWrapper slug="home"`, so `getCollectionBySlug('home')`
-      registers `collection-${slug}` as exactly the string `collection-home`
-      ([collections.ts:108](app/lib/api/collections.ts:108)). The audit missed it because it grepped
-      for literal tag strings and this registration is a template — the precise blind spot E11 was
-      filed to describe. Two independent checks before keeping it, both run rather than reasoned:
-      deleting the revalidate call turns two existing cases in `manageUtils.test.ts` red, and both
-      `app/page.tsx` and `app/[slug]/page.tsx` carry `force-dynamic` as an explicitly TEMPORARY
-      workaround with a written restore plan (`revalidate = 3600; dynamic = 'error'`), so removing
-      the tag would have planted a bug that only appears when that `@todo` is cleared. A docblock on
-      `revalidateCollectionCache` now says this, because the next person to grep for the literal will
-      reach the same wrong conclusion.
-- [x] Regression tests added for `revalidateMetadataCache`, which had none — nothing asserted its
-      POST body at all. Both new cases were confirmed red against the unfixed source before the fix
-      went in.
-- [ ] `collections-location-${slug}` — untouched, as scoped. Report below.
-
-**Corrected register-vs-revalidate audit.** Re-grepped 2026-08-25. The line numbers in the previous
-version of this table were off by one on every `revalidateMetadataCache` row.
-
-| Tag | Registered | Revalidated | State |
-| --- | --- | --- | --- |
-| `collections-index` | `collections.ts:84` | `collectionEditUtils.ts:209` | connected |
-| `collection-${slug}` | `collections.ts:108` | `collectionEditUtils.ts:208` | connected |
-| `collection-home` | `collections.ts:108`, as `collection-${slug}` with slug = `home` | `collectionEditUtils.ts:210` | **connected — was misfiled as dead** |
-| `content-tags` | `content.ts:42` | `collectionEditUtils.ts:227` | connected |
-| `content-locations` | `content.ts:58` | `collectionEditUtils.ts:230` | connected |
-| `search-images` | `content.ts:104` | `collectionEditUtils.ts:233` | connected |
-| `collections-location-${slug}` | `collections.ts:151` | — | **orphan registration — left alone** |
-| `content-people` | — | — | **deleted by this MR** |
-| `content-cameras` | — | — | **deleted by this MR** |
-| `content-lenses` | — | — | **deleted by this MR** |
-| `content-film-metadata` | — | — | **deleted by this MR** |
-
-**Report — what wiring up `collections-location-${slug}` would actually take.**
-
-The guardrail written when C4 was set up said the collection's locations and its previous locations
-are "neither plumbed through today". That is not right, and the real obstacle is elsewhere. Both
-halves of the data are already in `useCollectionEdit`: `collection.locations` gives the pre-edit set
-(there is already an `originalLocations` memo built from it), and the save path already reads
-`response.collection.locations` into a `resolvedLocations` local. `CollectionModel.locations` is a
-`LocationModel[]` and `LocationModel` carries `slug`. What actually blocks it:
-
-1. **The helper's signature, and its call sites.** `revalidateCollectionCache(slug)` takes one
-   collection slug and is called from eight places, including `CreateCollectionForm` and
-   `useCaptureDateSelection`, which have no location data in scope. Either the helper grows a second
-   argument most callers cannot fill, or location revalidation moves out of it and into the save
-   paths in `useCollectionEdit` that do know about locations. The second is the honest shape, and it
-   means location freshness depends on which code path did the edit — which needs saying out loud.
-2. **New locations have no slug until the backend assigns one.** A location added during an edit is
-   `{ id: 0, name, slug: '' }` on the frontend. Revalidating from `updateData` would build
-   `collections-location-` and hit nothing. It has to come from the post-save
-   `response.collection.locations`, so it can only run after the save resolves, not optimistically
-   alongside the other three.
-3. **Removals need the union, not the new set.** Moving a collection from Seattle to Portland has to
-   revalidate both location pages. Revalidating only the post-save locations leaves the Seattle page
-   listing a collection that is no longer there for up to `TIMING.revalidateCache`. So the call needs
-   previous ∪ next, which is why the pre-edit set matters and why this is not a one-liner.
-4. **Unverified: whether the backend keys that endpoint off collection locations alone.**
-   `/collections/location/{slug}` is a backend query. Whether an IMAGE-level location change can move
-   a collection in or out of that list is not knowable from this repo, and it decides whether image
-   edits need to trigger this too. Worth one question to the backend before building.
-
-Sizing: small if it lands as a `revalidateLocationCaches(previous, next)` helper called from the
-`useCollectionEdit` save paths — roughly +30 source, +60 test. Do it after E11, not before: E11
-decides how a template-keyed tag gets registered and revalidated through one place, and this is the
-second template-keyed tag that would use it.
-
-### ✅ C5 · Assorted LOW bugs — PR #283
-
-**All five bullets verified true as written.** This is the first item this session whose claims
-survived checking unchanged — C4's audit method and C3's prescribed mechanism both turned out wrong.
-Worth recording, because the doc's verification rules only look like overhead until they are not.
-
-- [x] `sizes` rendered the literal `"(max-width: 768px) 100vw, NaNpx"`. `imageProps` was built before
-      the NaN recovery ran, so the template interpolated the raw `width`. Reproduced before fixing.
-      `resolveValidDimensions` is now hoisted above `imageProps` and `sizes` uses `validWidth`; the
-      hoist is safe because that function is pure with no logging of its own. The diagnostic
-      `logger.error` moved with it, so validation now sits together above first use.
-      Tests: `tests/components/Content/CollectionContentRenderer.nanSizes.test.tsx`.
-- [x] `{...prev!}` fabricated a truncated DTO on upload and text-block success. Both sites are now
-      `setCurrentState(response)`. Two things the bullet did not say and that make the fix stronger:
-      these were the **only two** of eleven `setCurrentState` call sites not passing a whole DTO, and
-      the spread was discarding fresh metadata lists even when `prev` was non-null — `response` comes
-      back from the server with current `tags`/`people`/`cameras`/`lenses`/`filmTypes`, and the old
-      code kept the stale ones and swapped only `collection`. The null-`prev` case is reachable, not
-      theoretical: when the initial admin fetch resolves null the load effect does not retry — its
-      deps are `[enabled, slug, currentState?.collection.slug]`, none of which change on a null
-      response — so `currentState` stays null until some other operation writes it.
-      Tests: `tests/components/ContentCollection/useCollectionEdit.handlers.test.tsx`. Writing them
-      turned up a second gap: `handleTextBlockSubmit` had **no test anywhere in `tests/`** before
-      this. The handler is `handleMediaUpload`, not the `handleImageUpload` named in stale docblocks.
-- [x] Deleted the cached-image fallback in `useFullScreenImage`, kept the GIF branch as instructed.
-      The bullet's reasoning was confirmed at the source rather than taken on trust: the modal renders
-      `next/image` with **no `unoptimized` prop**, so the DOM `src` is always a `/_next/image?url=…`
-      rewrite and `img[src="<raw CloudFront URL>"]` could never match — in production or in dev. The
-      `setTimeout`/`clearTimeout` polling went with it, since it existed only to retry that lookup.
-      Tests: `tests/hooks/useFullScreenImage.gifLoaded.test.tsx`.
-- [x] Normalized 12 `width > 768px` blocks in `app/styles/fullscreen-image.module.scss` to `>=`,
-      matching the 83 other declarations. Guarded by a repo-wide scan rather than a fixed count, so
-      the next file to drift fails too: `tests/styles/breakpointConsistency.test.ts`.
-- [x] Proxy 502 log hardened to `error.message` plus `error.code`. The token-leak premise stays
-      disproven and this stays out of Group D. **But the raw-error log was empirically worse than the
-      bullet claimed:** a test asserting the serialised log call contains no `host`/`port` goes red
-      against the old code, because passing the raw error does serialise its `cause` chain including
-      the upstream address. Not a token, so not a security item — but it is a real leak of internal
-      topology into platform logs, which is exactly what defence in depth is for.
-      Tests: `tests/api/proxy/route.logHygiene.test.ts`.
-
-**Every one of these was proved red before the fix went in.** None of the 4,112 tests already on the
-branch failed against any of the five bugs, which is the whole reason the item existed.
-
-**Carried forward, not fixed here.** The surviving GIF effect in `useFullScreenImage` keys only on
-`[fullScreenState?.currentIndex]`. Swapping the images array while holding the same index would not
-mark a GIF loaded. That dependency list is unchanged from before this MR and there is no code path
-that does it today, so it is noted rather than fixed — but the new test does not cover it either,
-and a future sectioned-viewer change could reach it.
+C1–C5 merged (#264, #281, #282, #279, #283). Full write-ups:
+[group-c-bugs.md](2026-summer-refactor/group-c-bugs.md). C4's `collections-location-${slug}` report became E12.
 
 ### ☐ C6 · Password cover strip is missing on the public collection-card path
 
@@ -764,461 +383,10 @@ is almost certainly WHY the strip only ever existed on `collectionToContentModel
 
 ---
 
-## Group D — Security
+## Group D — Security — ✅ CLOSED
 
-**Fixed and confirmed, do not re-investigate:** X-Forwarded-For / spoofed-IP handling in the BFF proxy. `forwardHeaders` strips all client-controllable IP headers and re-derives `X-Real-IP` from trusted hops, pinned by `tests/api/proxy/route.test.ts:441-463`. Also verified clean: no `dangerouslySetInnerHTML` or `eval`, no secret leakage into `NEXT_PUBLIC_*`, no committed `.env`, no open redirects, CSRF origin-allowlist on writes, SSRF-safe URL building, size caps with post-buffer recheck, correct `Set-Cookie` forwarding, careful share/invite/gallery-gate flows.
-
-### ✅ D1 · HIGH — `POST /api/revalidate` is unauthenticated in production — PR #265
-
-- [x] [route.ts:13](app/api/revalidate/route.ts:13) had no session check, no Origin allowlist, and the `proxy.ts` matcher does not cover `/api/*`. Anyone could loop `{path: "/"}` or `{tags: [...]}` and permanently bust the ISR cache. Its only callers are the admin edit UI ([collectionEditUtils.ts:200](app/components/ContentCollection/edit/collectionEditUtils.ts:200)), which already sits behind the cookie and sends it on same-origin fetches — so the gate broke nothing, as predicted.
-- [x] Gated on `!isLocalEnvironment() && !req.cookies.get('ezac_session')?.value`, before the body is
-      parsed. Uses `isLocalEnvironment()` rather than a bare `NODE_ENV` check, matching `proxy.ts`
-      and the standing "localhost admin needs no login" rule.
-- [x] New `tests/api/revalidate/route.test.ts` — the route had zero tests. Covers the gate and,
-      while there, the previously untested payload handling (empty-body 400, `tags` iteration
-      skipping non-strings, tag+path together, unparseable-JSON 500). The four rejection tests were
-      confirmed to fail against the ungated handler.
-
-**Scope note: this closed the anonymous path, not CSRF.** (CSRF closed by D6, below.) The finding also named the missing Origin
-allowlist, which is NOT fixed here — an authenticated admin visiting a hostile page can still be made
-to fire the route. Deliberately deferred rather than bundled: the proxy's allowlist is a local
-`const` inside its `handle()` function, not a shared helper, so reusing it means refactoring the
-security-critical file whose tests are the pinned CSRF/IP-spoofing suite. Split out as D6 below.
-
-### ✅ D2 · `clearCacheAction` allows anonymous global route-cache purge — PR #266
-
-Last of the anonymous-cache-purge family.
-
-- [x] [clearCache.ts:16](app/lib/actions/clearCache.ts:16) is a `'use client'`-imported Server Action, so its action ID ships in the public bundle and anyone can invoke it with a `Next-Action` POST. The backend leg fails for anonymous callers, but `revalidatePath('/', 'layout')` runs in its own `try` regardless — anonymous cache purge in a loop is a cost and DoS amplifier. Resolve `meServer()` at the top and return early unless `principal?.isAdmin || isLocalEnvironment()`.
-- [x] Ship a test with it. `lib/actions/clearCache.ts` is also a B8 coverage gap, so D2 retires that
-      bullet.
-
-Shipped as a non-exported `isAuthorizedToClearCache()` helper rather than an inline block — a
-`'use server'` module makes every export a callable action, so the gate must stay unexported. Local
-returns authorized WITHOUT resolving a principal (matches `requireAdmin()`; the point of the
-localhost rule is that it must not even ask). `meServer()` throws on any non-401 error, so the
-resolve is wrapped and fails closed. Rejection returns `{ ok: false }` rather than `redirect()`ing:
-`MenuDropdown` already branches on the result, and a redirect from a Server Action would navigate a
-signed-out user mid-click.
-
-**The +15 estimate was off by 14×** (actual +212, of which ~155 is the new test file). Same lesson as
-A4/A6: the estimates count source only. A "+15" security item that also retires a coverage-gap
-bullet is a full sitting, not a one-liner.
-
-Four gate tests confirmed red against the ungated source; the other five pass both ways because they
-pin pre-existing behavior. The assertion carrying the security claim on every rejection path is
-`expect(mockRevalidatePath).not.toHaveBeenCalled()` — the purge is the leg that runs regardless of
-the backend call.
-
-**Do NOT unify D2's check with D1's.** They are deliberately asymmetric and the difference is the
-point: a route handler can only observe a session, so `/api/revalidate` checks `ezac_session`
-presence; a Server Action can resolve one, so this checks `principal?.isAdmin`. Collapsing them into
-a shared helper either weakens D2 to a presence check or demands something of D1 it cannot do. If a
-future MR wants them unified, it needs to say what it is doing about that asymmetry first.
-
-### ✅ D3 · No security headers anywhere — PR #274
-
-- [x] `next.config.js` has no `headers()` block, the middleware adds none, and no Amplify `customHttp.yml` is committed. No CSP, no `X-Frame-Options` (login and admin pages are frameable), no `nosniff`, no site-wide `Referrer-Policy`, no HSTS. Add a `headers()` block and start CSP report-only.
-- [x] ~~Verify the Amplify console is not already injecting these~~ **ANSWERED 2026-08-23:
-      `curl -sI https://www.zacedens.com/` — Amplify injects nothing.** No CSP, no XFO, no nosniff,
-      no Referrer-Policy, no HSTS in the production response. The item is unblocked and startable.
-- [x] Also found in that response: `x-powered-by: Next.js` is emitted — add `poweredByHeader: false`
-      to the same MR.
-
-**Shipped: five headers plus `poweredByHeader: false`, and the CSP is report-only.** Verified
-against a running server, not just the config object — `curl -sI http://localhost:3002/` on the
-"Verify Preview" config returns all five and no `x-powered-by`. Unit tests: 13 new in
-`tests/next.config.test.ts`; full suite 4,079/4,079 across 224 files.
-
-**The CSP was checked against a live browser, including the case the page could not exercise.**
-Three page loads produced zero violation reports, but the Spring backend was down, so every route
-hit its error boundary and no image or video ever rendered — `img-src` and `media-src` were
-untested by that. Closed it by injecting a CloudFront `<img>` and `<video>` into the loaded page and
-re-reading the console: no violation. The control is what makes that result mean something — an
-`<img>` from `example.org` injected alongside them did report, with the browser naming the exact
-directive and confirming "The policy is report-only". So the reporting path works and CloudFront
-passes both directives.
-
-**A clean report-only console is not evidence the policy can be enforced yet.** What was measured is
-three routes in dev, all of them error boundaries, plus two injected elements. Before flipping the
-header name to `Content-Security-Policy`, walk the real pages with the backend up — collection
-pages, `/explore`, `/about`, a client gallery, the admin surfaces — and confirm the console stays
-quiet. The dev build also relaxes three directives (`'unsafe-eval'`, `ws:`/`wss:`,
-`http://localhost:*`) that production does not get, so dev cannot prove production is quiet either.
-Tests pin that those three never reach a production build.
-
-**`'unsafe-inline'` is in both `script-src` and `style-src` and cannot simply be deleted.** Next
-inlines the hydration payload and its style tags. Removing it needs per-request nonces, which means
-the CSP has to move out of `next.config.js` and into `proxy.ts` — a separate item, not a tightening
-of this one.
-
-**HSTS ships without `includeSubDomains` and without `preload`, deliberately.** `preload` is
-removed by petitioning the browser vendors' list, so it is close to one-way, and neither was in the
-item. `max-age=63072000` is the reversible part. A test pins the absence so a later session does not
-add them without meaning to.
-
-**One consolidation rode along, and it is the reason to look at this file when D4's host changes.**
-`CLOUDFRONT_HOST` is now a single const feeding both `images.remotePatterns` and the CSP's
-`img-src`/`media-src`. Two literals for the same host drift; a test asserts the optimizer allowlist
-and the CSP still name the same one.
-
-**Not included: `Permissions-Policy`.** It is free and would fit, but the item named five headers
-and this board's repeated lesson is that un-asked additions are how MRs grow. Worth a one-line
-follow-up item.
-
-### ✅ D4 · Image optimizer accepts any `*.cloudfront.net` host — PR #272
-
-- [x] [next.config.js:28](next.config.js:28) (`hostname: '*.cloudfront.net'` — the `:26` ref was the
-      pattern's opening line) — third parties can serve their images through this site's optimizer:
-      CloudFront is multi-tenant, so any `dXXXX.cloudfront.net` matches the wildcard, at this site's
-      Lambda cost and 24h optimizer cache. **Fully specified 2026-08-23:** the production
-      distribution is `d2qp8h5pbkohe6.cloudfront.net` (read off the live homepage). Replace the
-      wildcard with it. The only other `*.cloudfront.net` literal in the repo is the fake
-      `d123.cloudfront.net` fixture in `CollectionsPanel.test.tsx` (on main since #253 merged) —
-      unaffected, it never hits the optimizer. Cheapest item on the board; adversarial review
-      confirmed the abuse vector is real.
-
-_The board row and this heading were marked ✅ in the same commit as the one-line fix, so the record
-reaches `main` only when the MR does. If you are reading this on the `0272-` branch, it is still
-open._
-
-**Shipped exactly as specified — one line, `±1` estimated and `±1` actual.** Both board claims held
-under re-verification: the `d123.cloudfront.net` fixture is unaffected (`CollectionsPanel.test.tsx`
-passes unchanged, 12/12) and those two are still the only `cloudfront` literals in the repo.
-
-**The homepage was not enough evidence, and checking more was cheap.** The 08-23 capture read the
-distribution off `/` only, which cannot rule out a second distribution serving some other surface —
-and a `remotePatterns` pin that misses one silently breaks every image on that page in production.
-Swept `/` plus six collection pages (`/adventure`, `/event`, `/film`, `/gorge-climbing`,
-`/hidden-lake`, `/travel`): all seven serve images exclusively from `d2qp8h5pbkohe6.cloudfront.net`,
-79 references on the homepage alone. `/explore` and `/about` return no CloudFront host in their
-initial HTML at all. For any future item that pins an external host, sweep more than one page —
-`curl -s <url> | grep -oE '[a-z0-9-]+\.cloudfront\.net' | sort -u` per page is seconds of work.
-
-**First estimate on the board to hold, and it holds for a legible reason.** The recalibration note
-says the estimates count source only and were wrong 4-for-4 (A4, A6, D2, D6). D4 is the control case:
-grepping its symbols found ZERO test call sites, so there was no test coupling to be blind to. The
-existing "grep its symbols for test call sites before sizing a sitting" rule is what predicts which
-way an estimate will miss — a zero-hit grep means the source-only number is trustworthy.
-
-**Not in this MR: `poweredByHeader: false`.** It is D3's bullet, and D3 also edits `next.config.js`,
-so bundling was the tempting move. Held to one MR per item. Re-confirmed against production today:
-`curl -sI https://www.zacedens.com/` still emits `x-powered-by: Next.js` and still injects no CSP,
-XFO, nosniff, Referrer-Policy or HSTS — D3's premises are current as of 2026-08-23.
-
-### ✅ D5 · Proxy path reject + `/cdn` matcher removal — PR #273
-
-- [x] The catch-all proxy forwards non-`/api` backend paths: `/api/proxy/actuator/env` reaches the backend carrying `X-Internal-Secret` (re-verified 2026-08-22 — `route.ts:14-19` builds the URL with no `api/` requirement; the only pre-forward reject is the prod admin/edit check). Reject when the resolved path does not start with `api/`, with new reject tests proven red against the unpatched handler (~+40–60 test in the pinned suite, add-only per the D6 precedent).
-- [x] `/cdn` is dead in FOUR places, not two (list completed 2026-08-22): the `proxy.ts` docblock
-      line `:15`, the branch `:27-33`, the matcher comment `:85`, and the matcher entry `:94` — plus
-      `tests/proxy.test.ts` (docblock line 6 and the whole "/cdn rule (regression)" describe,
-      `:79-93`), which dies with the branch. No such route exists. (`proxy.ts` IS the live Next 16
-      middleware; the old "unwired" note in the docs was stale and has been corrected.)
-
-**All six refs re-verified 2026-08-23, zero drift** — `proxy.ts:15`, `:27-33` (the branch is exactly
-those seven lines), `:85`, `:94` (`'/cdn/:path*'`), `tests/proxy.test.ts:6` and the `:79-93`
-describe, and `route.ts:14-19` (`buildTargetUrl`, still no `api/` requirement). Note the matcher
-comment at `:85` reads "plus the legacy `/catalog` and `/cdn` rules" — it needs editing down to
-`/catalog`, not deleting.
-
-**Guardrail — remove the four `/cdn` references and NOTHING else from the matcher array.** That
-array is the list deciding which routes get the session gate, so an entry removed or added by hand
-silently un-gates or login-walls a route, and the failure is invisible until production. This has
-already happened once here: `proxy.ts:86-89` carries two warnings written by the cleanup, `/explore`
-is deliberately public and "0203 F4 did and login-walled it in prod", and `/all-collections` is
-public because the backend permission-scopes the list. The `/cdn` removal puts a fresh session
-inside exactly that array with a tidying mindset. If any other entry looks wrong, report what
-changing it would do and let the user decide — do not edit it in the same MR.
-
-**Second guardrail: the path reject is `api/` only.** `buildTargetUrl` joins whatever segments
-arrive, so the reject is one prefix check. Do not also start allowlisting specific backend paths,
-rewriting the URL builder, or folding the new reject into the existing prod admin/edit check — that
-check answers a different question (who is asking) than the reject (what are they asking for), and
-merging them makes both harder to test. New reject tests are add-only in the pinned suite, per the
-D6 precedent: `tests/api/proxy/route.test.ts` must pass unchanged.
-
-**Shipped, both parts. The pinned suite passed unchanged (23/23) and the file now runs 35/35;
-`tests/proxy.test.ts` runs 46/46; full suite 4,080/4,080 across 223 files.** Source came in at
-`+23/−16` and tests at `+141/−8`, against a `~+30 net` estimate — close, because the test coupling
-was already listed in the item.
-
-**The `api/` prefix check does not work as a raw-string check, and that is the one thing to carry
-forward from this MR.** `fetch` resolves dot segments while it parses the URL, so
-`buildTargetUrl(['api', '..', 'actuator', 'env'])` produces
-`http://backend.test/api/../actuator/env` and requests `http://backend.test/actuator/env`. A
-`resolvedPath.startsWith('api/')` check passes that string and forwards it, carrying
-`X-Internal-Secret`. The reject would have shipped as decoration. Verified before writing the fix:
-`new URL('http://h/api/../actuator/env').pathname` is `/actuator/env`.
-
-**So the check runs on the normalized path** — `isProxyableApiPath` in
-[route.ts:23](app/api/proxy/[...path]/route.ts:23) resolves the path against a sentinel origin and
-asks whether the result starts with `/api/`. This is still one check, and it is still the item's
-prefix check; the only change is which string it reads. It does not allowlist backend paths, does
-not rewrite `buildTargetUrl`, and does not touch the prod admin/edit check — the three things the
-guardrail named. Reading the guardrail as "must be `startsWith` on the raw join" would have meant
-shipping a bypassable gate.
-
-Normalizing catches three spellings a string check misses, and correctly declines to over-block a
-fourth. `api/%2e%2e/actuator` → `/actuator`, blocked. `api\..\actuator` → `/actuator`, blocked
-(backslashes are path separators for special schemes). `api/a/../../actuator` → `/actuator`,
-blocked. But `api/..%2Fread` stays `/api/..%2Fread`, so it forwards — an encoded slash is a literal
-segment, not a climb. All four are pinned as tests.
-
-**Matcher: only `'/cdn/:path*'` was removed. Nothing else was touched.** The other entries, and what
-changing them would do:
-
-| Entry | What removing it would do |
-| --- | --- |
-| `/admin`, `/admin/:path*` | Un-gates the admin hub and `/admin/users/[id]` at the edge. Prod would serve them to anonymous traffic until the (admin) layout's `requireAdmin()` ran. Not a full breach — the backend is authoritative — but it moves the reject later and leaks the pages' existence. |
-| `/collection/manage`, `/collection/manage/:path*` | Same, for the manage surface. |
-| `/comments`, `/comments/:path*` | Same, for `/comments`. |
-| `/metadata`, `/metadata/:path*` | Same, for `/metadata`. |
-| `/all-images`, `/all-images/:path*` | Same, for `/all-images`. |
-| `/catalog/:slug*` | Kills the legacy `/catalog/:slug` → `/collection/:slug` 308. Old links and any indexed catalog URLs would 404 instead of redirecting. The redirect is already behind `COLLECTION_REDIRECTS_ENABLED`, so it is dormant unless that flag is set. |
-
-And the additions that look tempting and are not: `/explore` and `/all-collections` are deliberately
-absent (both public — see the warnings in the matcher comment), and `/` is absent on purpose so the
-hottest route pays no middleware cost. `/cdn` was safe to remove only because `app/` has no `cdn`
-directory at all — checked, not assumed — so the rule redirected prod traffic that could only ever
-404. The four-place list in the item was exact; there were no other `/cdn` references in the repo
-(the remaining `cdn` grep hits are all `https://cdn.example.com` test fixtures).
-
-**Reject status is 404, not 403.** The proxy has no such route to offer. 404 also tells a prober
-nothing about whether the backend has an actuator.
-
-### ✅ D6 · Shared Origin allowlist — CSRF on `/api/revalidate` — PR #270
-
-Split out of D1, which gated the route on session presence but left it CSRF-open. Next because the
-D1/D2 context is still warm and it is the last open piece of the thread those two started.
-
-_(Moved here 2026-08-23. This section had been filed under the "Group E — Consolidations" heading,
-so a session navigating to Group D could not find it.)_
-
-- [x] The Origin allowlist lives as a local `const ALLOWED_ORIGINS` inside `handle()` in
-      [route.ts:98](app/api/proxy/[...path]/route.ts:98) (line ref re-verified 2026-08-23),
-      together with the RFC1918/mDNS dev-LAN regex. Extract both into a shared helper and apply it
-      to `/api/revalidate`'s POST.
-- [x] `tests/api/proxy/route.test.ts`'s "write-method origin allowance" describe
-      ([:185](tests/api/proxy/route.test.ts:185), re-verified 2026-08-23) is the pinned suite for
-      this logic — it must pass unchanged after the extraction. That is the whole safety argument
-      for the refactor; do not touch those assertions to make the extraction fit.
-- [x] Note `revalidateCollectionCache` sends `Content-Type: application/json`, which forces a CORS
-      preflight — but an attacker can send `text/plain` and `req.json()` still parses it, so the
-      preflight is not a defense.
-
-**Guardrail — do NOT also gate `/api/revalidate` on `principal.isAdmin` while you are in there.**
-That is the tempting adjacent change, because D2 does exactly that and it looks like the obvious
-tidy-up. It is a different decision with a real cost, and D2's section below spells it out: three
-extra `/api/auth/me` round trips per collection save, and a loud failure turned quiet. D6 is the
-Origin check only. If you think the session check should change too, report what it would cost and
-let the user decide.
-
-**Second guardrail: do not bundle D5.** It also edits `proxy.ts`. One MR per item.
-
-**Shipped as `app/utils/originAllowlist.ts` — one export, `isAllowedWriteOrigin(origin)`.** Both
-the `NEXT_PUBLIC_APP_URL` + dev-ports Set and the RFC1918/mDNS regex moved into it. Three decisions
-worth keeping:
-
-- **Env is read on every call, not captured at module load.** The proxy rebuilt its Set per request
-  and both route suites flip `NODE_ENV` / `NEXT_PUBLIC_APP_URL` between cases. Hoisting the Set to
-  module scope would have passed a first run and then broken as soon as a suite reordered.
-- **On `/api/revalidate` the session check runs FIRST, the Origin check second.** An anonymous
-  caller still gets 401, not a 403 that would point at the wrong thing. Pinned by a new test.
-- **The Origin check applies in every environment, local included.** It does not need a local
-  exemption: the allowlist already carries `localhost:3000/3001` and the LAN regex in development,
-  so "localhost admin needs no login" survives untouched while local stops being exempt from CSRF.
-  There is a test for exactly that — a hostile origin is 403 in development too.
-
-**The safety argument held.** `tests/api/proxy/route.test.ts` passes unchanged, 22/22, assertions
-untouched — including all six pinned origin cases. Full suite 222 suites / 3871 tests green.
-
-**Every `/api/revalidate` caller is a browser `fetch()` with a relative URL** (`revalidateCollectionCache`
-and `revalidateMetadataCache` in `collectionEditUtils.ts`, grep-verified as the only two). Browsers set
-`Origin` on every POST regardless of same-origin, so no caller starts 403ing. There is no server-side
-caller — that was the one way this change could have broken production silently.
-
-New `tests/utils/originAllowlist.test.ts` (19 cases) pins the rule itself, including the look-alike
-suffix `https://example.com.evil.example`, the 172.16–31 range boundaries, and the http-only and
-dev-port-only edges. The six new rejection tests on `/api/revalidate` were confirmed red against the
-un-gated handler; the three "allows" cases pass both ways, as they should. Mutating the helper's
-`NODE_ENV === 'development'` guard turned three helper tests red, so they bite too.
-
-#### What gating `/api/revalidate` on `principal.isAdmin` would cost — reported, not done
-
-Asked for alongside D6. The recommendation is **don't**, but the call is the user's.
-
-- **Three to four extra `/api/auth/me` round trips per collection save.** `revalidateCollectionCache`
-  fires three parallel POSTs (`collection-<slug>`+path, `collections-index`, `collection-home`) and
-  `revalidateMetadataCache` fires a fourth. `meServer()` is wrapped in React `cache()`, but that
-  dedupes within one request scope — these are four separate HTTP requests, so each pays its own
-  Lambda→EC2 call with `cache: 'no-store'`. The cookie check costs zero network.
-- **It adds a failure mode the cookie check does not have.** `meServer()` throws on any non-401, so a
-  D2-style gate fails closed when the auth backend is slow or down. Combined with the next point,
-  an auth blip becomes silently stale pages.
-- **The failure is already invisible at the call site.** `fetch()` does not throw on 4xx, and
-  `revalidateCollectionCache`'s `catch` only fires on network errors — and only logs when
-  `isLocalEnvironment()`. A 403 today produces no console line, no toast, nothing: the admin sees a
-  successful save over a cache that never busted. Adding a gate that can 403 for reasons other than
-  "you are signed out" makes that silence worse. Fixing the silence is its own item, not part of D6.
-- **What it would actually buy is narrow.** After D6, a caller must already hold a real `ezac_session`
-  AND come from our own origin. `isAdmin` would additionally stop a signed-in **non-admin** from
-  busting the cache via our own site. Per `docs/009-backend-and-vision.md` the client-user surface
-  shipped dormant with no client users yet, so that gap is currently unreachable — it becomes real
-  when Phase C lands.
-
-**Recommendation: revisit when Phase C ships client users**, and pair it with making the revalidate
-failure visible at the call site. Until then the cookie + Origin pair is the better trade.
-
-_Adversarial re-review 2026-08-22: the D1/D2/D6 gates are sound — no high/medium finding. Ordering
-(session → Origin → body parse) holds; missing/`null` Origin fails closed; the RFC1918 regex is
-anchored; NODE_ENV values other than exactly `development` collapse to the strictest state;
-`clearCache.ts` ships exactly one callable action and fails closed. Two of `originAllowlist.test.ts`'s
-cases (null/empty origin) are belt-and-suspenders that cannot detect deletion of the `if (!origin)`
-guard — harmless, noted for honesty. The one real finding became D8._
-
-### ✅ D7 · Wrong danger token on error text (a11y) — CLOSED by PR #253's merge (2026-08-23)
-
-_(Moved here 2026-08-22 from under the Group E heading — the same misfiling D6 had. Given a board
-row at the same time; it had neither.)_
-
-- [x] Both halves rode #253 (fixed there by f994655, merged 79fbca5): `RolesPanel.module.scss:16`
-      and `CollectionsPanel.module.scss:116` both read `--color-danger-text` on main now.
-      [globals.css:132](app/styles/globals.css:132) documents `--color-danger` as fills-and-borders
-      only; `MessagesPanel.module.scss:18` and `UserManagementPanel.module.scss:15` were already
-      right — all four panels now agree.
-- [ ] Residual, deliberately out of scope: `RolesPanel.module.scss:72` still uses `--color-danger`
-      for a button hover (visible design change; needs its own call). Not worth its own MR — fold
-      into E10 if it happens.
-
-### ✅ D8 · Normalize `NEXT_PUBLIC_APP_URL` when building the Origin allowlist — PR #276
-
-Found by the adversarial review of D6. `allowedOrigins()`
-([originAllowlist.ts:21](app/utils/originAllowlist.ts:21)) puts `process.env.NEXT_PUBLIC_APP_URL`
-into the Set verbatim. Browser `Origin` headers are always bare `scheme://host[:port]`, so a
-trailing slash or path in the env var (`https://zacedens.com/`) makes every production admin write
-403 — silently, because revalidate failures produce no console line (see C5's note and the D6
-cost write-up). Fails closed, never open: an availability trap, not a bypass.
-
-- [x] Normalized in a new `configuredAppOrigin()` helper with `new URL(raw).origin`, guarding the
-      throw on a malformed value (fail closed). `allowedOrigins()` now calls it instead of reading
-      the env var directly.
-- [x] Five tests, not two — the extra three are below. Both board-specified cases went red first
-      against the unnormalized helper, as required.
-
-**The board's spec had a hole, and guarding only the throw would have opened a bypass.**
-`new URL(raw).origin` does not throw on every bad value. A non-special scheme parses fine and
-returns the *string* `"null"`: `new URL('data:text/plain,hi').origin === 'null'`, same for `file:`
-and any unknown scheme. `"null"` is also exactly what a browser sends as `Origin` from a sandboxed
-iframe or an opaque redirect. So a `try/catch` alone would have put `"null"` into the allowlist Set
-and admitted those callers — a fail-*open* introduced by the fix meant to prevent a fail-closed
-outage. The helper drops it explicitly (`origin === 'null' ? null : origin`) and the docblock says
-why, so it does not read as defensive noise. Verified against Node across twelve env-value shapes
-before writing the guard, not assumed.
-
-The three tests beyond the board's two: the env value *as written* (`https://example.com/`) is
-rejected once normalized away; an env value with a path normalizes to the bare origin; a `"null"`
-origin is denied when the env value has an opaque scheme. That last one is the only new test that
-passes on the *unfixed* code — it guards against the naive version of this fix, so it is green
-before and after by design.
-
-**Both guardrails held.** The incoming `origin` argument is untouched and still compared exactly;
-`isAllowedWriteOrigin()`'s docblock now records why the asymmetry with the env var is deliberate.
-The two `localhost` literals are untouched — see the D9 report below.
-
-Verification: 24/24 in `tests/utils/originAllowlist.test.ts`, both consuming route suites green
-(56/56 across `tests/api/proxy/route.test.ts` and `tests/api/revalidate/route.test.ts`), and the
-full suite at 4098/4098 across 224 files. `tsc --noEmit` clean, ESLint and Prettier no-ops on the
-two changed source files.
-
-**Ref re-verified 2026-08-23 after D3/D4/D5 landed: zero drift.**
-[originAllowlist.ts:21](app/utils/originAllowlist.ts:21) is still
-`process.env.NEXT_PUBLIC_APP_URL,` inside `allowedOrigins()` (which starts at `:18`). None of the
-three merged MRs touched this file.
-
-**Next because it is the last open Group D item and the smallest thing on the board.** D6 built this
-helper, D5 and D3 kept the session inside the same security surface, and it is `±5` source lines.
-Finishing it closes Group D entirely except for the D9 decision below.
-
-**Guardrail — normalize the env value only. Do NOT normalize the incoming `origin` argument.**
-The tempting symmetry is `new URL(origin).origin` on both sides. That one is a widening, not a
-cleanup: browsers always send a bare `scheme://host[:port]`, so the only callers that send anything
-else are not browsers, and normalizing their input before an exact-match lookup would make
-`https://zacedens.com/anything` compare equal to the allowed origin. The env var is trusted config
-and needs normalizing; the `origin` header is attacker-influenced input and must stay an exact
-match. Same function, two opposite trust levels.
-
-**Second guardrail — leave the two `localhost` literals alone; that is D9, and it is a decision, not
-a cleanup.** They sit three lines below the one you are editing and look obviously redundant. Report
-what changing them would do, do not change them in D8's MR.
-
-### ✅ D9 · Redundant `localhost` literals in the Origin allowlist — DELETED, PR #277
-
-Found while setting up D8. `allowedOrigins()`
-([originAllowlist.ts:22-23](app/utils/originAllowlist.ts:22)) adds `http://localhost:3000` and
-`http://localhost:3001` to the Set when `NODE_ENV === 'development'`. `DEV_LAN_ORIGIN`
-([:33](app/utils/originAllowlist.ts:33)) already matches both, and its branch is gated on the same
-`NODE_ENV === 'development'`. Verified, not assumed: the regex returns `true` for
-`http://localhost:3000` and `http://localhost:3001`. The two literals are redundant today.
-
-**Deleting them is invisible to the test suite, which is the reason to be careful rather than the
-reason it is safe.** `tests/utils/originAllowlist.test.ts` asserts localhost is allowed in
-development (`:80-81`) and denied outside it (`:57-58`, `:136`). Every one of those still passes
-with the literals gone, because the regex covers the same cases. No test would catch it if the
-redundancy reasoning were wrong.
-
-**The redundancy is arguably the point.** They are two independent expressions of the same intent.
-If a later MR tightened `DEV_LAN_ORIGIN` — dropping bare `localhost` to require an IP, say — the Set
-literals are what would keep the dev server working. That makes this defense in depth, not dead
-code, and the honest resolutions are "delete and note why in the docblock" or "keep and note why in
-the docblock". Either way the next reader needs the reasoning written down, because the redundancy
-reads as an oversight.
-
-**Report from D8's session (2026-08-23) — asked for, and the literals were left alone as
-instructed.** Re-verified the redundancy independently rather than trusting the board's claim, by
-running `DEV_LAN_ORIGIN` against the two strings: both `http://localhost:3000` and
-`http://localhost:3001` return `true`.
-
-What deleting them would do, precisely: **nothing observable today.** The Set is consulted first and
-the regex second, but the literals are added only under `NODE_ENV === 'development'` and the regex
-branch is gated on the same condition — so every request the literals answer, the regex also
-answers, under identical gating. Outside development neither path is reachable. All 24 tests in
-`tests/utils/originAllowlist.test.ts` and all 56 in the two route suites would still pass with the
-literals removed, which is the same blind spot the entry above already names.
-
-One asymmetry the board had not recorded, found while checking: the two are **not** equivalent in
-strictness. `DEV_LAN_ORIGIN` carries the `/i` flag, so it matches `http://LOCALHOST:3000`; the Set
-does an exact, case-sensitive match and does not. The literals are therefore a strict subset of the
-regex, not an overlapping alternative. That cuts against the "two independent expressions of the
-same intent" framing above — as written they are the *narrower* of the two, and would only become
-load-bearing if a future MR tightened the regex specifically. Worth weighing in the decision; not a
-decision in itself.
-
-**Decision: delete.** Reasoning is in the `allowedOrigins()` docblock, as required, in enough
-detail that a reader who thinks the literals were dropped by accident is answered on the spot.
-
-Three things carried it. The literals were verified redundant with `DEV_LAN_ORIGIN` under identical
-`NODE_ENV` gating. They were the *narrower* of the two, so "independent expressions of the same
-intent" was never accurate. And the failure that keeping them would cover is loud, not silent — a
-tightened regex breaks the dev server on the next admin write and turns tests red in the same
-second. Defense in depth is worth its cost against failures that pass unnoticed; this one cannot.
-Kept as a footnote in the docblock: had the tightening ever been deliberate, the literals would have
-silently defeated it.
-
-**Correction to this entry's own premise — the claim below that no test would catch a wrong
-redundancy argument is false, and it was checked rather than reasoned about.** Deleting the literals
-and then simulating the exact future the "keep" case feared (dropping bare `localhost` from
-`DEV_LAN_ORIGIN`) turns `allows both local dev ports` (`:80-81`) red immediately. Those cases pass
-either way only because the reasoning happens to be right — that is the test confirming the premise,
-not a blind spot. The entry read the passing tests as absence of coverage when they were the
-coverage.
-
-Two mixed-case cases were still added (`http://LOCALHOST:3000`), one in each `NODE_ENV`. They pin
-which mechanism answers for the dev ports: a Set lookup is case-sensitive and the regex is not, so
-they can only pass while the regex is the thing responding. Before this MR nothing in the file could
-tell the two mechanisms apart.
-
-- [x] Decided delete; reasoning recorded in the `allowedOrigins()` docblock so this is not
-      re-litigated a third time.
+All nine items merged (#265, #266, #274, #272, #273, #270, #253, #276, #277). Full write-ups:
+[group-d-security.md](2026-summer-refactor/group-d-security.md). D7's one residual bullet moved to E10.
 
 ---
 
@@ -1226,46 +394,9 @@ tell the two mechanisms apart.
 
 Behavior-preserving refactors. Lean on the existing tests.
 
-### ✅ E1 · Parallax-card builder consolidation — PR #269
-
-- [x] The builder exists in four places. Plan executed as written:
-      `docs/superpowers/plans/2026-08-04-parallax-card-builder-consolidation.md`. New
-      `app/utils/parallaxCard.ts` owns `buildParallaxCard`; the four call sites are thin adapters.
-
-**The board's framing was wrong and the plan's was right.** E1 is NOT the fix for the password-strip
-divergence — the plan explicitly puts that out of scope so the refactor stays a provable no-op. The
-divergence is real and is now **C6**, split out. E1 delivered consolidation, not the correctness fix.
-
-**The plan's divergence table was incomplete in three ways**, all found by writing the
-characterization tests first:
-
-1. `convertCollectionContentToParallax` reads dimensions via `pickImageDimensions`
-   (`imageWidth ?? width`), so it also accepts the layout `width`/`height` fields; the other three
-   read `imageWidth`/`imageHeight` only. `Content` carries `width`/`height`, so this is reachable in
-   principle. Preserved as the opt-in `allowLayoutDimensions`, NOT silently unified.
-2. It also carries `rating`, `createdAt` and `updatedAt`, none of which the table listed.
-3. `collectionToContentModel`'s visibility mapping has an `undefined -> true` special case the table
-   flattened to `visibility === LISTED`.
-
-**Estimate was −120 source; actual is +98 source, +659 test.** The builder's docblocks carry the
-option rationale that used to be nowhere, and the plan mandates a characterization suite. A
-consolidation that documents its own divergences does not shrink the tree — do not expect E-group
-items with written plans to come in negative.
-
-- [x] `clampParallaxDimensions` + `extractCollectionDimensions` moved into `parallaxCard.ts` to break
-      the import cycle (`contentLayout` would otherwise import the builder that imports it back).
-      `contentLayout` re-exports `clampParallaxDimensions`, so `adminHubContent.ts` and
-      `contentLayout.test.ts`'s existing describe are untouched.
-- [x] `collectionToContentModel` was module-private; exported so it could be characterized directly
-      rather than through a rendered page.
-- [x] 26 characterization tests (committed BEFORE any migration) + 22 builder unit tests. The
-      characterization file passes unmodified through the migration apart from one fixture line
-      adding a required `slug` to a tag — no assertion changed.
-
-**Not done: the plan's Task 6 browser spot-check.** :3000 serves the primary checkout, which another
-agent held on `0251-collections-panel`; a second dev server would have meant editing their
-`launch.json`. Characterization-unmodified is the substitute evidence, but no DOM diff against `main`
-was run. Worth doing before merge if the parallax grid matters.
+E1 (#269) and E11 (#280) shipped — write-ups in
+[group-e-consolidations.md](2026-summer-refactor/group-e-consolidations.md). E11 matters to B1; B1 carries what it
+needs inline.
 
 ### ☐ E2 · `core.ts` fetch skeleton + `clientFetch`
 
@@ -1359,6 +490,9 @@ branch-only refs (CollectionsPanel) are main refs. Verified byte-identical by `d
       their own — each excepted state is held bidirectional only by a companion exact pin, and
       nothing asserts the two name the same states. Convert to the whole-list compare pattern the
       width sweep uses, or add that assertion.
+- [ ] From D7, which shipped without it: `RolesPanel.module.scss:72` still uses
+      `--color-danger` for a button hover where the other three panels use `--color-danger-text`.
+      A visible design change, so it needs a call rather than a sweep.
 
 ### ☐ E9 · Download icon/hook, auth-card SCSS, `.srOnly`
 
@@ -1368,62 +502,48 @@ branch-only refs (CollectionsPanel) are main refs. Verified byte-identical by `d
 
 ---
 
-### ✅ E11 · Make cache-tag register/revalidate drift detectable — PR #280
+### ☐ E12 · Wire up `collections-location-${slug}`
 
-**Shipped as a test and nothing else: `tests/lib/api/cacheTagDrift.test.ts`, ~205 lines, zero source
-change.** It reads both halves out of the source at run time — the `next: { tags: [...] }` options in
-`lib/api`, and the tags named inside the two revalidate helpers — and asserts the sets agree, with an
-allowlist for tags that are one-sided on purpose.
+_Moved off C4 when Group C was archived. It was scoped, sized and ready, and had no board row —
+the exact drift the board-maintenance note describes. C4 left it untouched deliberately and said
+"do it after E11"; E11 shipped as #280, so it is unblocked._
 
-- [x] What a constants module cannot do, established before designing anything: three of the six
-      registered tags are template strings, so no compile-time check can pair a registration with a
-      revalidation. The goal is detectable drift, not impossible drift, and the shipped test says so
-      in its own docblock.
-- [x] **The answer to "does the constants module earn anything on top of the test": no.** It was the
-      instinct this item was filed to slow down, and slowing it down was right. A constants module
-      moves the six tag strings into one file, but the template tags still get assembled at the call
-      site, so the two halves can still drift and the same test is still the only thing that notices.
-      It would add a layer of indirection and leave the actual check exactly where it is. If a
-      seventh tag ever arrives that is a plain literal used in three places, revisit — until then the
-      module is motion, not progress.
-- [x] Template tags handled as the central case rather than an exception. `isRegistered` matches a
-      literal against template prefixes, which is what pairs `collection-home` with
-      `collection-${slug}`. There is a dedicated test pinning that pair.
-- [x] Fails loudly. Every assertion is a set-difference rendered as a list of sentences, so the
-      failure output names the tag, the file, what is wrong, and both ways out. No bare
-      `expect(a).toEqual(b)` diffs.
-- [x] **Guarded against passing vacuously.** A text scanner that quietly stops matching would make
-      every other assertion trivially true, which is worse than no test at all. One case asserts the
-      scan floors — at least six registrations, at least four revalidations, at least one template.
+- [ ] `collections-location-${slug}` is registered at `collections.ts:151` and revalidated
+      nowhere. It is the one orphan registration left after C4 removed the four dead tags.
 
-**All five assertions were confirmed red before this shipped.** A drift test that has never been
-seen to fail is a decoration, and this one is aimed squarely at a silent failure mode.
+**Report — what wiring up `collections-location-${slug}` would actually take.**
 
-| Simulated drift | Assertion that caught it |
-| --- | --- |
-| Registration regex stops matching | vacuity floors |
-| `content-people` re-added to `revalidateMetadataCache` | revalidated-but-unregistered |
-| Allowlist entry for `collections-location-${slug}` deleted | registered-but-unrevalidated |
-| Allowlist entry added for a tag that is actually connected | stale-allowlist |
-| Template matching replaced with literal comparison | template pairing, plus a false orphan report |
+The guardrail written when C4 was set up said the collection's locations and its previous locations
+are "neither plumbed through today". That is not right, and the real obstacle is elsewhere. Both
+halves of the data are already in `useCollectionEdit`: `collection.locations` gives the pre-edit set
+(there is already an `originalLocations` memo built from it), and the save path already reads
+`response.collection.locations` into a `resolvedLocations` local. `CollectionModel.locations` is a
+`LocationModel[]` and `LocationModel` carries `slug`. What actually blocks it:
 
-That last row is the one worth keeping. With template matching removed, the test reports
-`collection-home` as revalidating nothing and advises deleting it — reproducing C4's exact false
-positive, in a check whose whole purpose is preventing it. A drift test built on literal comparison
-would have been confidently wrong, which is why the pairing has its own test.
+1. **The helper's signature, and its call sites.** `revalidateCollectionCache(slug)` takes one
+   collection slug and is called from eight places, including `CreateCollectionForm` and
+   `useCaptureDateSelection`, which have no location data in scope. Either the helper grows a second
+   argument most callers cannot fill, or location revalidation moves out of it and into the save
+   paths in `useCollectionEdit` that do know about locations. The second is the honest shape, and it
+   means location freshness depends on which code path did the edit — which needs saying out loud.
+2. **New locations have no slug until the backend assigns one.** A location added during an edit is
+   `{ id: 0, name, slug: '' }` on the frontend. Revalidating from `updateData` would build
+   `collections-location-` and hit nothing. It has to come from the post-save
+   `response.collection.locations`, so it can only run after the save resolves, not optimistically
+   alongside the other three.
+3. **Removals need the union, not the new set.** Moving a collection from Seattle to Portland has to
+   revalidate both location pages. Revalidating only the post-save locations leaves the Seattle page
+   listing a collection that is no longer there for up to `TIMING.revalidateCache`. So the call needs
+   previous ∪ next, which is why the pre-edit set matters and why this is not a one-liner.
+4. **Unverified: whether the backend keys that endpoint off collection locations alone.**
+   `/collections/location/{slug}` is a backend query. Whether an IMAGE-level location change can move
+   a collection in or out of that list is not knowable from this repo, and it decides whether image
+   edits need to trigger this too. Worth one question to the backend before building.
 
-**Known limits, stated rather than papered over.**
-
-- It is a text scan, so it is coupled to how the source is written. Splitting a `next: {}` option
-  across lines in a shape the regex misses breaks the scan — the vacuity floors turn that into a
-  loud failure rather than a silent pass, which is the trade being made.
-- It only reads the two revalidate helpers and `lib/api`. A tag registered or revalidated somewhere
-  new is invisible to it. `/api/revalidate` takes its tags from the request body and cannot be
-  scanned; `clearCacheAction` uses `revalidatePath` and has no tags at all.
-- Prefix matching means a registered `collection-${slug}` covers any revalidated tag starting with
-  `collection-`. A genuinely wrong tag like `collection-typo-here` would pass. This is the failure
-  mode C4's guardrail describes for `collections-location-${slug}`, and no static check can catch
-  it — the slug is a runtime value.
+Sizing: small if it lands as a `revalidateLocationCaches(previous, next)` helper called from the
+`useCollectionEdit` save paths — roughly +30 source, +60 test. Do it after E11, not before: E11
+decides how a template-keyed tag gets registered and revalidated through one place, and this is the
+second template-keyed tag that would use it.
 
 ---
 
@@ -1542,178 +662,10 @@ Kept here because the cleanup sequencing has to make room for it.
 
 ## Session log
 
-One line per `/next` run. Three consecutive entries ending in the same `Next:` means that item is
-being avoided, not scheduled — make it real work or drop it from the board.
+One line per `/next` run. The newest entry is here; older entries are in
+[session-log.md](2026-summer-refactor/session-log.md). Three consecutive entries ending in the same `Next:` means
+that item is being avoided, not scheduled — make it real work or drop it from the board.
 
-- 2026-08-22 — merged A5 (#260), A6 (#261), A7b (#262), A8 (#263) and synced main; the incoming
-  prompt claimed #262/#263 were still open, they were not. Shipped C1 (#264) and D1 (#265), both
-  merged and deployed via Amplify. Filed D6 (Origin allowlist, split out of D1). Hoisted the
-  prove-the-test-fails rule into "How to use this doc" after it caught two would-be-worthless tests.
-  Next: D2, then B8's first slice.
-- 2026-08-22 (2) — shipped D2 (#266, merged) and B8's first slice (#267, merged). Reported on
-  unifying D1/D2: the doc's reason ("a route handler cannot resolve a session") is WRONG —
-  `meServer()` works in a route handler. Corrected in D2's section below; the real argument is 3
-  extra auth round trips per collection save and turning a loud failure quiet.
-  Next: G2's CLAUDE.md commit, then E1.
-- 2026-08-22 (3) — `0251-collections-panel` (PR #253) is a SEPARATE agent's branch. Cleanup work
-  moved to a worktree at `.claude/worktrees/cleanup` so the primary checkout is never disturbed;
-  per the global rule that is the sanctioned two-branches-at-once case. `node_modules` cloned with
-  `cp -Rc`. Shipped G2's CLAUDE.md wording (#268) and E1 (#269). Split C6 out of E1 — the board
-  called E1 a correctness fix, but the plan scopes it as a pure refactor, and the password-strip
-  divergence is a separate item that may need a backend field first.
-  Next: C6's decision (check whether it is a backend item), or D6 / D3-D5 to finish Group D.
-  _(That "Next" named two items and a range, which is not a next. Resolved in the entry below:
-  C6 is backend-blocked, so D6 is next. One item per entry from here on.)_
-- 2026-08-23 — reconciled: #266, #267, #268, #269 all MERGED (the previous entry left them
-  unverified). Local `main` was 7 behind. Answered C6 and it is **backend-blocked** —
-  `ContentCollectionModel` carries no `isPasswordProtected`, so the public card path has nothing to
-  strip on; marked ⛔ so nobody opens an empty frontend MR. Moved the D6 section out from under the
-  Group E heading, where it was unfindable. Re-verified D6's two line refs.
-  Next: D6.
-- 2026-08-22 — shipped D6 (PR #270). Origin allowlist extracted to `app/utils/originAllowlist.ts`
-  and applied to `/api/revalidate`'s POST; the pinned proxy suite passed unchanged, 22/22, which was
-  the whole safety argument for the extraction. Held both guardrails: no `principal.isAdmin` change
-  (cost reported in the D6 section instead — the short version is three to four extra `/api/auth/me`
-  round trips per save to close a gap that is unreachable until Phase C ships client users), and D5
-  not bundled even though it edits the same file. Estimate ±60 vs actual +75 src / +230 test — the
-  same "estimates count source only" lesson as A4/A6/D2, now four for four.
-  Next: D5.
-- 2026-08-22 — brought PR #253 (`0251-collections-panel`, open and untouched since 08-15) current
-  with main. Clean merge, one compile break from A4's `formatDisplayDateRange` deletion, fixed at
-  `3242531`. 220 suites / 4143 tests green; hub fixtures needed no re-derivation. The PR is still
-  blocked on the same unanswered design question it opened with — whether four tall panels belong
-  on the admin hub. Not a cleanup item; it needs a decision, not a sitting.
-- 2026-08-23 — PR #270 (D6) merged. Wrote `2026-08-22-frontend-cleanup-HANDOFF.md` next to this
-  file for a review-only session on a different model, and mirrored its durable parts into MemPalace
-  (`mempalace_user_search(query="frontend cleanup spike review")`) because this directory is
-  gitignored and a handoff that dies with the machine is not a handoff. The handoff's findings that
-  belong here: **E10 and D7 have sections but no board row**, and **D7 is filed under the Group E
-  heading** — the exact unfindability bug this log recorded fixing for D6 on 08-23, recurring. Also
-  **A1 is ✅ on the board while G3 says it blocks A1's last item**; unreconciled. Corrected C5's
-  proxy-log ref, which D6 drifted from :153 to :140.
-  Next: D5 — but D4 is ±3 lines and closes a live abuse vector, so consider taking it first.
-  _(The two entries above this one were appended later with 08-22 dates from a late-night session;
-  the log was reordered causally on 2026-08-23 and a stray blank line removed.)_
-- 2026-08-22/23 — full-board review session (7 parallel read-only agents; no MRs opened). Merged
-  main into #253's branch (clean; 223 suites / 4,066 tests green) and pushed. Verdicts: the D1/D2/D6
-  gates are SOUND under adversarial review (one new trivial item filed, D8); ZERO regressions from
-  A5/A6/C1/E1/D2 reached main; PR #253 is technically merge-ready, awaiting only the four-panel
-  decision. 27 refs checked (4 drifted, 1 gone) — corrected in place. Estimates recalibrated;
-  every open item stamped COLD or ⛔ on the board. D3 and D4 UNBLOCKED against production
-  (no headers injected; distribution `d2qp8h5pbkohe6.cloudfront.net`). C5's token-leak bullet
-  DISPROVEN and reframed. D7 moved under Group D and shrank to "rides #253"; E10 marked AWAITS #253.
-  E5 lost two bullets (one false, one already done). Board rows added for D7/D8/E10. Removed the
-  cleanup worktree (D6 branch merged, tree clean). Blocked set: C6 backend; D7/E10 await #253;
-  E9-srOnly, F4, G2b scope, G3 are user decisions; G2c rides its refactors. Everything else is COLD.
-  Next: D4.
-- 2026-08-23 — **PR #253 MERGED (79fbca5).** D7 closed outright (both token fixes rode the branch);
-  E10 unblocked — all four panels are on main. Primary checkout back on `main`; the worktree era is
-  over, cleanup MRs branch off main in the primary checkout directly. The user accepted the review's
-  recommendations wholesale. Renamed this file `2026-summer-refactor.md` as the standing per-session
-  tracker (pointer stub left at the old date-stamped path; MemPalace drawers updated to the new
-  name). The `layoutpreview/` screenshot harness is now purposeless — delete on sight. Blocked set
-  is down to: C6 backend; E9-srOnly, F4, G2b scope, G3 user decisions; G2c rides its refactors.
-  Next: D4.
-- 2026-08-23 — shipped D4 (PR #272, open). **D4 had been the `Next:` of the two entries above this
-  one and was about to become a third — the leak the log exists to catch — so it was executed on
-  the spot rather than handed off again.** One line, ±1 estimated and ±1 actual. Re-verified the
-  distribution against seven production pages instead of the homepage the 08-23 capture used;
-  all seven serve `d2qp8h5pbkohe6.cloudfront.net` exclusively. Held the bundling guardrail:
-  `poweredByHeader: false` stayed with D3 even though D3 edits the same file. Reconciled first:
-  zero PRs open, everything through #271 merged, local `main` was 2 behind — and because #271's
-  `.gitignore` negation had not been pulled yet, this file read as untracked and `git check-ignore`
-  called it ignored. Recorded that trap in the header note. Verified all six of D5's `file:line`
-  refs, zero drift, and wrote D5's two guardrails into its section. Filed the still-present
-  `layoutpreview/` harness as a real A9 bullet — the 08-23 "delete on sight" log line did not stick
-  because it was only a log line.
-  Next: D5.
-- 2026-08-23 — shipped D5 (PR #273). #272 was already merged on arrival, so the sitting was the
-  work itself. **The item's own guardrail would have produced a broken fix if followed to the
-  letter.** "The reject is one prefix check" reads as `startsWith('api/')` on the raw joined path,
-  and that check is walked past by `api/../actuator/env`, because `fetch` normalizes dot segments
-  while parsing the URL. Verified the normalization before writing anything, then ran the same one
-  check against the normalized path instead of the raw string — still one check, still not
-  allowlisting or rewriting the builder. Three more spellings (`%2e%2e`, backslash, multi-hop) are
-  caught by that and would not have been by a segment blocklist; `..%2F` correctly still forwards.
-  Wrote the eight reject tests first and confirmed all eight red against the unpatched handler
-  before touching `route.ts`. `/cdn` removal was exactly the four places listed, and the matcher
-  guardrail held — the D5 section now carries a table of what changing each remaining entry would
-  do, so the next session with a tidying mindset has the answer without opening the array.
-  Next: D3 (security headers + `poweredByHeader: false`), started in the same session as its own MR.
-- 2026-08-23 — shipped D3 (PR #274), same session as D5 (#273) but a separate MR off `main`, so the
-  two could merge in either order. **They did conflict here, exactly as the entry above predicted,
-  and the resolution was to keep both entries — the log is append-only, so a same-session pair
-  always collides in this one spot.** #273 landed first; #274 was rebased onto it. Five headers plus
-  `poweredByHeader: false`, CSP report-only. Verified against a running server on the "Verify
-  Preview" config rather than against the config object; the headers are real. **The console being
-  clean was not enough and the gap was closable in one step:** the backend was down, so all three
-  routes rendered error boundaries and no image or video ever loaded, leaving `img-src`/`media-src`
-  unexercised — injected a CloudFront `<img>` and `<video>` into the live page plus an `example.org`
-  control, and only the control reported. Without the control the silence would have proven nothing.
-  Folded the D4 CloudFront host into one `CLOUDFRONT_HOST` const shared by `remotePatterns` and the
-  CSP, with a test pinning that they agree. Held scope: no `Permissions-Policy`, and
-  `'unsafe-inline'` stays until a nonce moves the CSP into `proxy.ts`.
-  Next: D8 (the last open Group D item), then Group B or C.
-- 2026-08-23 — reconciled: #272, #273 and #274 are all MERGED, zero PRs open, `main` at `840c0b8`.
-  The board needed no status corrections for once — D3/D4/D5 were marked ✅ in the same commits as
-  their fixes, so the record landed with the code instead of trailing it. Re-verified D8's ref
-  (`originAllowlist.ts:21`), zero drift; none of the three MRs touched that file. Filed **D9** from
-  a finding made while setting up D8: the two `localhost` literals in `allowedOrigins()` are
-  redundant with `DEV_LAN_ORIGIN`, verified by running the regex, and deleting them is invisible to
-  all 19 tests in that file — so it is a decision to write down, not a cleanup to do. Hoisted two
-  session lessons into "How to use this doc": verifying a negative by observation needs a positive
-  control (from D3), and an item that specifies the *mechanism* of a fix can specify a broken one
-  (from D5). `app/(admin)/admin/layoutpreview/` is STILL untracked — third session running; it is an
-  A9 bullet and nobody has deleted it.
-  Next: D8.
-- 2026-08-23 — D8 shipped as PR #276; `main` was already at `eb45705` when the session opened (#275
-  had merged on its own, so "merge it" was a reconciliation, not a merge). **The board's own spec
-  was the bug this time.** "Guard the throw" is not sufficient to normalize `NEXT_PUBLIC_APP_URL`:
-  `new URL()` does not throw on a non-special scheme, it returns the literal string `"null"` — which
-  is what browsers send from sandboxed iframes — so the prescribed fix would have added `"null"` to
-  the allowlist and opened the exact class of hole D6 was built to close. Caught by checking Node's
-  actual behavior across twelve env-value shapes before writing the guard. **Second consecutive
-  session where an item specified the mechanism of its own fix and specified a broken one** (D5 was
-  the first, already hoisted into "How to use this doc"); the lesson is paying rent, so treat a
-  board item's prescribed mechanism as a hypothesis to test, never a spec to transcribe. Both
-  guardrails held — the incoming `origin` argument untouched, the D9 literals reported on rather
-  than changed. That report found something D9 had wrong: the literals are a strict *subset* of
-  `DEV_LAN_ORIGIN` (the regex is case-insensitive, the Set match is not), so "two independent
-  expressions of the same intent" overstates them. **Do not run Prettier on this file** — it is not
-  Prettier-clean on `main`, so `--write` realigns every board table and buries the real diff under
-  ~140 lines of churn. Caught and reverted here; the file has always been committed unformatted.
-  `app/(admin)/admin/layoutpreview/` is STILL untracked — fourth session running.
-  Next: D9, the decision, as its own MR.
-- 2026-08-23 — D9 decided and shipped as PR #277, stacked on #276 rather than waiting for it to
-  merge, because both edit the same function; retarget to `main` after #276 lands. **Group D is now
-  closed.** Decision was delete, and the argument that settled it was not the redundancy — it was
-  that the failure "keep" would protect against is loud. A tightened regex breaks the dev server on
-  the next request and reddens tests in the same second; defense in depth is priced for silent
-  failures. **The D9 entry's own premise turned out to be wrong, and only checking it revealed
-  that:** it claimed no test would catch a wrong redundancy argument, but simulating the feared
-  future (dropping bare `localhost` from `DEV_LAN_ORIGIN`) turned `allows both local dev ports` red
-  at once. The entry mistook tests that pass because the reasoning is right for tests that cannot
-  tell. **That is the same failure mode as D5 and D8 one level up** — those two had board items
-  prescribing a broken mechanism; this one had a board item asserting a false fact about coverage.
-  The rule generalizes: verify a board item's *claims*, not just its refs, before acting on them.
-  Refs have been drift-checked every session; claims had not been.
-  Next: Group B or C — Group D is done.
-- 2026-08-24 — reconciled: **#276 and #277 both MERGED** (01:19Z, seconds apart); #277 was retargeted
-  from the D8 branch to `main` before merging, so the stack resolved cleanly. `main` at `237ea03`.
-  **Group D is closed — all nine items.** No status corrections needed; D8/D9 were marked in the
-  same commits as their fixes.
-  Audited C4 before handing it off rather than trusting its bullets, and it **understated itself a
-  second time**: it only ever examined `revalidateMetadataCache`, so it missed `collection-home`,
-  a dead revalidate target in `revalidateCollectionCache` two lines above. Five dead tags across two
-  functions, not four in one. Full register-vs-revalidate table now in the item so the next MR does
-  not re-derive it. Also filed **E11** for the tag-registry idea, specifically to keep it OUT of C4.
-  The stale-index trap fired once and was caught: MemPalace still indexes a second
-  `revalidateMetadataCache` in `manageUtils.ts` that A-group deleted — the palace is a June snapshot,
-  so grep before believing it about file existence.
-  `app/(admin)/admin/layoutpreview/` — **re-attempted the delete and was denied again**, with bypass
-  permissions active. Now confirmed reproducible rather than a D4-session fluke, so it is genuinely
-  a user action; A9 updated to say stop trying. Fifth session carrying it.
-  Next: C4, dead-revalidate half only.
 - 2026-08-24 — **Group C is closed except the backend-blocked C6.** Shipped C4 (#279, +155 −62),
   E11 (#280, +277 −28), C2 (#281, +99 −5), C3 (#282, +121 −10), C5 (#283, +497 −101); all five
   merged, `main` at 2e7a184. Estimates on the board rows were replaced with measured diffs.
@@ -1752,3 +704,10 @@ being avoided, not scheduled — make it real work or drop it from the board.
   reaches the alert+Retry branch, never the empty state), a11y checks out, and the only diff-level
   notes were the E10 skip-list bullet and a stale `AdminHubClient` seed docblock (fixed on the
   branch).
+- X-Forwarded-For / spoofed-IP handling in the BFF proxy (moved here from the Group D heading
+  when Group D was archived). `forwardHeaders` strips all client-controllable IP headers and
+  re-derives `X-Real-IP` from trusted hops, pinned by `tests/api/proxy/route.test.ts:441-463`.
+  Also clean: no `dangerouslySetInnerHTML` or `eval`, no secret leakage into `NEXT_PUBLIC_*`, no
+  committed `.env`, no open redirects, CSRF origin-allowlist on writes, SSRF-safe URL building,
+  size caps with post-buffer recheck, correct `Set-Cookie` forwarding, careful share/invite/
+  gallery-gate flows.

@@ -160,6 +160,7 @@ docs/handoffs/
 docs/superpowers/
 docs/spikes/*
 !docs/spikes/2026-summer-refactor.md
+!docs/spikes/2026-summer-refactor/
 docs/_archive/
 
 todo
