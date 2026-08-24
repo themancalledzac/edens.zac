@@ -68,6 +68,7 @@ import {
   mergeNewMetadata,
   refreshCollectionAfterOperation,
   revalidateCollectionCache,
+  revalidateLocationCaches,
   revalidateMetadataCache,
   toggleRelation,
 } from './collectionEditUtils';
@@ -747,6 +748,10 @@ export function useCollectionEdit({
           collectionStorage.update(response.collection.slug, response.collection);
           collectionStorage.updateFull(response.collection.slug, response);
           void revalidateCollectionCache(response.collection.slug);
+          void revalidateLocationCaches(
+            collection.locations ?? [],
+            response.collection.locations ?? []
+          );
 
           if (response.collection.slug !== collection.slug) {
             router.replace(manageHref(response.collection.slug));
