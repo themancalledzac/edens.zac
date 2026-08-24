@@ -151,7 +151,6 @@ export function processContentForDisplay(
     const headerRows = createHeaderRow(
       options.collectionData,
       componentWidth,
-      chunkSize,
       options?.isMobile,
       options?.forceHeaderRail
     );
@@ -576,13 +575,11 @@ function createTextOnlyHeaderRow(
  * Returns null if cover image missing or has no dimensions.
  * @param collection - Collection model with cover image and metadata
  * @param componentWidth - Total available width for the row
- * @param _chunkSize - Number of normal-width items per row (unused, kept for API compatibility)
  * @returns RowWithPatternAndSizes (or array on mobile) with header items, or null if no cover image
  */
 export function createHeaderRow(
   collection: CollectionModel,
   componentWidth: number,
-  _chunkSize: number = LAYOUT.defaultChunkSize,
   isMobile: boolean = false,
   forceRail: boolean = false
 ): RowWithPatternAndSizes | RowWithPatternAndSizes[] | null {
