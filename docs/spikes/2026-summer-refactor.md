@@ -57,6 +57,13 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   parsing the URL. One `new URL(...).pathname` in node, before writing any code, is what caught it.
   Implementing a spec'd check without confirming it does what the item claims ships a decoration —
   and it passes review, because the diff matches the item.
+- **An item's claims about test coverage are claims, not facts — check them the same way.** The
+  rule above covers a spec'd *mechanism*; this one covers a spec'd *fact*. D9 is the worked example:
+  the entry asserted "no test would catch it if the redundancy reasoning were wrong", and that was
+  false. Deleting the redundant literals and then simulating the feared change turned an existing
+  test red at once. The entry had mistaken tests that pass *because the reasoning is right* for
+  tests that cannot tell the difference. Cost of checking: one sed, one jest run. **Refs on this
+  board have been drift-checked every session; claims never had been.** Both need it.
 - **Work in the primary checkout.** PR #253 merged 2026-08-23, so the two-branches-at-once case is
   over: branch off `main` in `/Users/themancalledzac/Code/edens.zac` directly, no worktree. If a
   second concurrent branch ever becomes necessary again, the worktree traps are: `git worktree add`
@@ -113,7 +120,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | C1 | Unsaved people/gallery-access wipe (HIGH) | Low | +73 −11 | ✅ PR #264 |
 | C2 | About portrait aspect ratio | Trivial | ±1 | ☐ |
 | C3 | `SelectsContext.toggle` purity | Low | ±20 | ☐ |
-| C4 | Cache tags that never connect | Low | ±30 | ☐ |
+| C4 | Cache tags that never connect | Low | ±30 (dead-tag half only) | ☐ **NEXT** |
 | C5 | Assorted LOW bugs | Low | ±55 src, +100–200 test | ☐ |
 | C6 | Password cover strip missing on the public card path | Low-medium | ±30 | ⛔ BACKEND-BLOCKED (split out of E1) |
 | D1 | Gate `POST /api/revalidate` (HIGH) | Low | +175 | ✅ PR #265 |
@@ -135,6 +142,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E8 | Renderer + `MenuDropdown` dedup | Medium | −120 src, +0–50 test | ☐ |
 | E9 | Download icon/hook, auth-card SCSS, `.srOnly` | Low | −100 src, +80–150 test | ☐ (srOnly bullet: user call) |
 | E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator) | Low | −60 src, +120 new | ☐ (unblocked — #253 merged) |
+| E11 | Make cache-tag register/revalidate drift detectable | Low-medium | +40 src, +60 test | ☐ (found 08-24; do AFTER C4) |
 | F1 | Decompose `useCollectionEdit.tsx` | Medium-high | ~neutral | ☐ |
 | F2 | `RendererContext` for the BoxRenderer tree | Medium | −100 | ☐ |
 | F3 | File moves and renames | Medium | ~neutral | ☐ |
@@ -373,6 +381,12 @@ Also corrected: `barCell` and `main` appear only in comment text in that file, n
       because it was a log line and not a tracked bullet — now it is one. **The D4 session's
       `rm -rf` was denied by the permission gate, so this is a user action, not an agent one.**
       Deleting it also removes the 3 comment lines G2's `.tsx` baseline has to exclude by hand.
+      **Re-attempted and re-denied 2026-08-24 — this is now confirmed reproducible, not a one-off
+      of the D4 session.** The permission gate denies `rm -rf` on this path even with bypass
+      permissions active, so no agent session can clear it. Fifth session carrying it. Stop
+      re-attempting the delete; put the command in the handoff prompt instead and let the user run
+      it. Re-read before deleting if you want: it is one file, `page.tsx`, whose first line still
+      reads "TEMPORARY — screenshot harness for the PR #253 four-panel layout question.
 
 ```bash
 rm -rf "app/(admin)/admin/layoutpreview"
@@ -507,6 +521,53 @@ describes still passes.
       `content-cameras`, `content-lenses`, `content-film-metadata`. Only `content-tags`,
       `content-locations`, `search-images` still connect. Decide per tag: delete, or re-register on
       the live `getMetadata` fetch. (Re-verified 2026-08-22 — the item understated itself by three.)
+- [ ] **FIFTH dead tag, in the OTHER function — found 2026-08-24, and this item had missed it
+      because it only ever audited `revalidateMetadataCache`.** `revalidateCollectionCache`
+      ([collectionEditUtils.ts:210](app/components/ContentCollection/edit/collectionEditUtils.ts:210))
+      revalidates `collection-home`, which is registered by no fetch anywhere in `app/`. Same
+      decision as the other four: delete, or register it on whatever the home page actually fetches.
+      **That makes it five dead revalidate targets across two functions, not four in one** — so a
+      fix scoped from the bullet above alone leaves one behind.
+
+**Full register-vs-revalidate audit, 2026-08-24 (grepped, not estimated).** Six tags are registered
+on `next` fetches; ten are revalidated. This is the whole picture — the next MR should not need to
+re-derive it.
+
+| Tag | Registered | Revalidated | State |
+| --- | --- | --- | --- |
+| `collections-index` | `collections.ts:84` | `collectionEditUtils.ts:209` | connected |
+| `collection-${slug}` | `collections.ts:108` | `collectionEditUtils.ts:208` | connected |
+| `content-tags` | `content.ts:42` | `collectionEditUtils.ts:228` | connected |
+| `content-locations` | `content.ts:58` | `collectionEditUtils.ts:231` | connected |
+| `search-images` | `content.ts:104` | `collectionEditUtils.ts:234` | connected |
+| `collections-location-${slug}` | `collections.ts:151` | — | **orphan registration** |
+| `collection-home` | — | `collectionEditUtils.ts:210` | **dead revalidate** |
+| `content-people` | — | `collectionEditUtils.ts:229` | **dead revalidate** |
+| `content-cameras` | — | `collectionEditUtils.ts:230` | **dead revalidate** |
+| `content-lenses` | — | `collectionEditUtils.ts:232` | **dead revalidate** |
+| `content-film-metadata` | — | `collectionEditUtils.ts:233` | **dead revalidate** |
+
+**Scope for the next MR: the dead-revalidate half only (the five).** Per tag, decide delete vs
+register — and the decision is not cosmetic either way. Deleting a tag whose data is still fetched
+but untagged leaves that data stale behind `TIMING.revalidateCache` forever, silently, which is the
+same failure class D6 and D8 were about. Registering a tag nothing reads is dead weight. Grep the
+live fetch for each before choosing.
+
+**Guardrail — leave `collections-location-${slug}` alone in that MR, and report what wiring it up
+would take.** It is the orphan-registration half and it is not symmetrical with the other five. The
+tempting fix is one line next to the existing three in `revalidateCollectionCache`:
+
+```ts
+revalidate({ tag: `collections-location-${slug}` }),   // WRONG
+```
+
+That is wrong, and it fails silently in the way that looks fixed. **The `slug` in scope there is the
+COLLECTION slug; the tag is keyed by LOCATION slug** — `collections.ts:147` literally throws
+`'location slug is required'`, and the fetch path is `/collections/location/${slug}`. So that line
+would revalidate `collections-location-<collection-slug>`, a tag nothing registers, creating a SIXTH
+dead tag while the real location tags stay exactly as stale as before. Doing it properly needs the
+collection's locations at edit time, plus the *previous* locations when a location changes, and
+neither is plumbed through today. That is its own item, not a bullet on this one.
 
 ### ☐ C5 · Assorted LOW bugs
 
@@ -1154,6 +1215,29 @@ branch-only refs (CollectionsPanel) are main refs. Verified byte-identical by `d
 
 ---
 
+### ☐ E11 · Make cache-tag register/revalidate drift detectable — found 2026-08-24
+
+Filed so it does not get done inside C4. While auditing C4 the obvious "elegant" fix presents
+itself: a shared tag-constants module, or a helper that registers and revalidates through one
+symbol so the two halves cannot drift. It is the right instinct and the wrong MR — C4 is a ±30 bug
+fix, and this touches every `next: { tags: [...] }` in `lib/api` plus both revalidate helpers.
+
+Do it AFTER C4, and only once C4 has established which tags should exist. Building the registry
+first would just freeze the current drift into a nicer-looking shape.
+
+- [ ] Note what a constants module CANNOT do before designing one: three of the six registered tags
+      are template strings (`collection-${slug}`, `collections-location-${slug}`), so no compile-time
+      check can pair a registration with a revalidation. Anything claiming to make drift impossible
+      is overclaiming — the realistic goal is *detectable*, not impossible.
+- [ ] The cheapest thing that would have caught all six of C4's findings is a test, not a type: grep
+      both sides at test time and assert the sets agree, with an explicit allowlist for tags that
+      are deliberately one-sided. That is ~60 lines and needs no source change at all. Consider
+      whether the constants module earns anything on top of it.
+- [ ] Whatever ships, it must fail loudly. The whole C4 class of bug is silent — a tag that
+      revalidates nothing throws no error and logs no line.
+
+---
+
 ## Group F — Structural
 
 Bigger, optional, sequenced last. Do each individually and verify on :3000.
@@ -1425,6 +1509,22 @@ being avoided, not scheduled — make it real work or drop it from the board.
   The rule generalizes: verify a board item's *claims*, not just its refs, before acting on them.
   Refs have been drift-checked every session; claims had not been.
   Next: Group B or C — Group D is done.
+- 2026-08-24 — reconciled: **#276 and #277 both MERGED** (01:19Z, seconds apart); #277 was retargeted
+  from the D8 branch to `main` before merging, so the stack resolved cleanly. `main` at `237ea03`.
+  **Group D is closed — all nine items.** No status corrections needed; D8/D9 were marked in the
+  same commits as their fixes.
+  Audited C4 before handing it off rather than trusting its bullets, and it **understated itself a
+  second time**: it only ever examined `revalidateMetadataCache`, so it missed `collection-home`,
+  a dead revalidate target in `revalidateCollectionCache` two lines above. Five dead tags across two
+  functions, not four in one. Full register-vs-revalidate table now in the item so the next MR does
+  not re-derive it. Also filed **E11** for the tag-registry idea, specifically to keep it OUT of C4.
+  The stale-index trap fired once and was caught: MemPalace still indexes a second
+  `revalidateMetadataCache` in `manageUtils.ts` that A-group deleted — the palace is a June snapshot,
+  so grep before believing it about file existence.
+  `app/(admin)/admin/layoutpreview/` — **re-attempted the delete and was denied again**, with bypass
+  permissions active. Now confirmed reproducible rather than a D4-session fluke, so it is genuinely
+  a user action; A9 updated to say stop trying. Fifth session carrying it.
+  Next: C4, dead-revalidate half only.
 
 ## Verified fine — do not re-investigate
 
