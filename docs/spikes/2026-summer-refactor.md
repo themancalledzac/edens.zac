@@ -147,7 +147,9 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
      E10 shipped this defect into a draft and the full suite stayed green.
      Guards now in the repo: `tests/styles/scssImportResolution.test.ts` (case 1, repo-wide) and
      `tests/components/panelStyleReferences.test.ts` (case 2, panels only). **Extending case 2 beyond
-     the panels is an open user call.** Until then, any MR that moves or deletes SCSS must verify by
+     the panels is an open user call, now sized: 104 files under `app/` import a CSS module and
+     there are 401 distinct `styles.<key>` reads across them. A repo-wide version of the panel guard
+     is a real item, which is the argument for one generic test over per-component assertions.** Until then, any MR that moves or deletes SCSS must verify by
      `next build` or by an explicit resolution assertion — a green jest run is not evidence.
 - **A test that cannot fail is the most common defect this board finds.** Three separate agents in
   the 2026-08-23 run each found one, and each proved it with a control rather than asserting it: run
@@ -241,7 +243,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | D9  | Decide: redundant localhost literals in the Origin allowlist             | Trivial     | −5 src, +20 docblock, +7 test                              | ✅ PR #277 — deleted                                                                         |
 | E1  | Parallax-card builder consolidation                                      | Medium      | +98 src, +659 test (est. −120)                             | ✅ PR #269                                                                                   |
 | E2  | `core.ts` fetch skeleton + `clientFetch`                                 | Medium      | ~0 net (−180 src, +150–200 test)                           | ☐                                                                                            |
-| E3  | `collectionStorage.ts` generics                                          | Low         | +50–150 net (characterize first)                           | ☐                                                                                            |
+| E3  | `collectionStorage.ts` generics                                          | Low         | +50–150 net (characterize first)                           | ☐ **NEXT** — after #296 merges                                                               |
 | E4  | Entity-diff generics + one IMAGE guard                                   | Medium      | −80 (A5 landed the guard half)                             | ☐                                                                                            |
 | E5  | Filter/sort/date duplication                                             | Low         | **0 src / +139 test actual** (est. −50 src)                | ◐ PR #299 open                                                                               |
 | E6  | `useCollectionEdit` refresh helpers                                      | Medium      | −90 src, ±100 test churn                                   | ☐                                                                                            |
@@ -262,8 +264,8 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)          | Low         | ~neutral (relocation + splits)                             | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors                       |
 | G3  | `/user/selects` decision                                                 | —           | —                                                          | ⛔ USER DECISION                                                                             |
 | H1  | Merge `Following` into `Collections` on `/user`                          | Medium      | −60 src, ±150 test churn (6 test files)                    | ☐ (do C8 first)                                                                              |
-| H2a | `/user` rail copy pass + chip-style the Admin links                      | Low         | **+319 / −117 actual** (est. −25 src)                      | ◐ PR #302 open; label needs a user call                                                      |
-| H3  | `Send a message` into the rail as a plain button                         | Low         | rode H2a                                                   | ◐ PR #302 open; label needs a user call                                                      |
+| H2a | `/user` rail copy pass + chip-style the Admin links                      | Low         | **+319 / −117 actual** (est. −25 src)                      | ✅ PR #302                                                                                   |
+| H3  | `Send a message` into the rail as a plain button                         | Low         | rode H2a                                                   | ✅ PR #302                                                                                   |
 
 Groups A and B together are ~5,000 lines removed at near-zero regression risk.
 
@@ -560,7 +562,24 @@ needs inline.
 - [ ] Three copies of the fetch skeleton inside `core.ts` — `fetchAdminGetApi` is `fetchReadApi` with a different channel constant. Fold `'read'` into `fetchBase`.
 - [ ] Drop the pointless `Content-Type` on GETs, the double-`throwApiError` try/catch shape, and the identity `ENDPOINT_TYPE_TO_CHANNEL` map.
 
-### ☐ E3 · `collectionStorage.ts` generics
+### ☐ E3 · `collectionStorage.ts` generics — **NEXT**, once #296 merges
+
+**Why it is next.** PR #296 was written specifically as this item's characterization safety net, so
+its context is as warm as it will ever be. That suite pins `update`/`updateFull` separately from
+`set`/`setFull`, pins every key prefix by literal string, and carries a mutation (M2) that simulates
+this exact refactor going wrong. Do not start E3 before #296 is on `main`; without it this is an
+unguarded rewrite of a storage layer.
+
+**Guardrail — leave the `cached.slug !== slug` guards alone in this MR, and report what deleting
+them would do.** The generics half is COLD and needs no decision. The guards half is a behavior
+change with a user call attached (see the rewritten bullet below), and bundling the two makes the
+diff impossible to review: a reviewer cannot tell a generic-collapse bug from an intentional guard
+removal. Ship the generics with the guards carried through unchanged, and put the deletion analysis
+in the PR body. If the analysis says removing them is safe, that is a second, one-line MR that the
+reviewer can actually see.
+
+Mutation M3 in the #296 suite is the test that goes red if you touch them. If it goes red in this
+MR, you have gone out of scope.
 
 - [ ] `update`/`updateFull` are literal aliases of `set`/`setFull`. The `get`/`set`/`clear` pairs differ only in key prefix and type — one generic pair halves the file (~100 lines).
 - [ ] ~~The `cached.slug !== slug` checks can never fire. Remove them.~~ **Half wrong — reworded
@@ -961,7 +980,9 @@ bookmark degrades to `collections` rather than erroring, via the `resolveTabKey`
 code that is about to change. Confirm the fallback still fires once the key is removed from the
 union — the board's record is that unverified item claims have been wrong twice.
 
-Tests that will need updating: `tests/app/user/page.test.tsx:238-262` (chip labels, counts, hrefs),
+Tests that will need updating: `tests/app/user/page.test.tsx:252-276` (chip labels, counts, hrefs
+— **drifted from `:238-262`, corrected 2026-08-24 after #302 rewrote this file**; anchor on
+`labels all four sections with their counts` and `gives every section a ?tab= link`),
 `tests/components/UserSpace/UserSpace.sectionSwitch.test.tsx`,
 `tests/components/UserSpace/userSpaceData.test.ts:73,93,166,237`,
 `tests/components/UserSpace/userSpaceData.selfCatalog.test.ts:77`,
@@ -1090,16 +1111,34 @@ unification** — settle those two together or they will produce two competing d
 
 ## Session log
 
+_Newest first. **Dates are local (America/Los_Angeles), not UTC** — earlier entries mixed the two,
+which is why a "08-23" entry can sit between two "08-24" ones. The ordering was verified correct
+against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates._
+
+- 2026-08-24 — **ten items shipped as parallel agents**, PRs #294–#304, plus #305 (this board) and
+  #297 (restores a test #294 dropped). Merged so far: #294, #295, #302. Four board claims disproved,
+  two estimate biases named, three standing traps hoisted into "how to use this doc". Filed E13 and
+  E14. Corrected H1's test ref (drifted `:238-262` → `:252-276`). Settled two blocked questions by
+  looking: the repo has **no CI at all**, and the class-key guard would span 104 files / 401 reads.
+  Next: **E3**, once #296 merges.
+
 ### 2026-08-23/24 — ten items as parallel agents, one worktree and one MR each
 
 Ran B5, B6, B8 (two slices), E5, E9, E10, E12, G1 and H2a+H3 concurrently in ten git worktrees under
 `.claude/worktrees/`, each on its own branch off `53aaac4`. Every item produced a PR: #294–#304.
 
-**Merge state at time of writing:** #294 and #295 merged. #296–#304 open.
+**Merge state, updated 2026-08-24:** #294, #295 and #302 merged. #296–#301, #303, #304 and the
+board PR #305 open. #297 restores a test #294 dropped and should merge before anyone trusts
+`CollectionContentRenderer`'s coverage.
 
 **Open decisions for the user — nothing else in these MRs is blocked.**
 
-1. **The H3 label (PR #302).** "Send a message" became "Contact the photographer" in both the button
+1. ~~**The H3 label (PR #302).**~~ **SETTLED by merge, 2026-08-24.** #302 merged at `4cd41f2`,
+   so "Contact the photographer" is live in both the button and the modal heading. Changing it is
+   now an ordinary one-line copy edit, not a pending decision — if it reads wrong in use, file it as
+   a new item rather than reopening this one. Note the rename also reached a docblock in
+   `app/lib/api/share.ts`, which quotes the old string; that was updated in the same PR.
+   Original text: "Send a message" became "Contact the photographer" in both the button
    (`SendMessageButton.tsx:28`) and the modal heading (`:34`). It names the destination and matches
    the menu's existing "Contact" vocabulary. Reads slightly oddly on the owner's own `/user`, though
    the ordering change already puts it last for admins. One word replaces it.
@@ -1110,7 +1149,11 @@ Ran B5, B6, B8 (two slices), E5, E9, E10, E12, G1 and H2a+H3 concurrently in ten
 4. **Extending the CSS-module class-key guard beyond the admin panels.** See the standing trap in
    "How to use this doc".
 5. **`.srOnly`** — unchanged, still the G2-style user call it always was.
-6. **Enforcing the archive rule mechanically.** `previous-work.md` has now gone stale twice. G1
+6. **Enforcing the archive rule mechanically.** ⛔ USER DECISION, but **narrowed by fact on
+   2026-08-24: this repo has no CI.** `.github/workflows/` does not exist, so G1's suggested CI
+   check is not a small addition — it means standing up GitHub Actions first. The PR-template
+   checkbox is the only cheap option on the table today. Decide between "add a PR template now" and
+   "stand up CI, and let this ride along with it"; do not treat the CI check as a quick win. `previous-work.md` has now gone stale twice. G1
    proposes a PR-template checkbox or a CI check that its newest PR number tracks `main`. The CI
    check is the one that would actually fire: two PRs were merged by hand mid-run without the book
    being updated.
