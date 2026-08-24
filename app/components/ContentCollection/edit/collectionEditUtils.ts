@@ -194,7 +194,16 @@ export function handleSingleImageEdit(
   return null;
 }
 
-/** POSTs to /api/revalidate for the collection's tag, path, and the global indexes. Fails silently in production. */
+/**
+ * POSTs to /api/revalidate for the collection's tag, path, and the global indexes. Fails silently
+ * in production.
+ *
+ * `collection-home` is a real tag, not a stray literal. The home page renders the collection whose
+ * slug is `home`, so `getCollectionBySlug` registers `collection-${slug}` as exactly that string
+ * (`lib/api/collections.ts`). Editing any collection changes what the home page shows, which is why
+ * it is revalidated alongside `collections-index`. Do not delete it as dead — grepping for the
+ * literal will not find its registration, because the registration is a template.
+ */
 export async function revalidateCollectionCache(slug: string): Promise<void> {
   const revalidate = (body: Record<string, string>) =>
     fetch('/api/revalidate', {
@@ -216,22 +225,23 @@ export async function revalidateCollectionCache(slug: string): Promise<void> {
   }
 }
 
-/** Invalidates all metadata cache tags (tags, people, cameras, locations, lenses, film). */
+/**
+ * Invalidates the metadata cache tags that a `next` fetch actually registers: `content-tags`,
+ * `content-locations` and `search-images`, all in `lib/api/content.ts`.
+ *
+ * `content-people`, `content-cameras`, `content-lenses` and `content-film-metadata` were listed
+ * here until C4 removed them. PR #256 deleted the fetches that registered the last three, and
+ * `content-people` was never registered at all. The only surviving metadata read, `getMetadata` in
+ * `lib/api/collections.ts`, is `cache: 'no-store'`, so no cached metadata is left to invalidate.
+ * Add a tag back here only in the same change that adds the `next: { tags: [...] }` registering it.
+ */
 export async function revalidateMetadataCache(): Promise<void> {
   try {
     await fetch('/api/revalidate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        tags: [
-          'content-tags',
-          'content-people',
-          'content-cameras',
-          'content-locations',
-          'content-lenses',
-          'content-film-metadata',
-          'search-images',
-        ],
+        tags: ['content-tags', 'content-locations', 'search-images'],
       }),
     });
   } catch (error) {

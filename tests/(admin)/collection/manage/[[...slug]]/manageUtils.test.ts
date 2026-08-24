@@ -23,6 +23,7 @@ import {
   refreshCollectionAfterOperation,
   replayMoves,
   revalidateCollectionCache,
+  revalidateMetadataCache,
   toggleRelation,
   updateBlockOrderIndex,
   validateCoverImageSelection,
@@ -1148,6 +1149,50 @@ describe('revalidateCollectionCache', () => {
     });
 
     expect(global.fetch).toHaveBeenCalledTimes(3);
+  });
+});
+
+/**
+ * Guards C4. `revalidateMetadataCache` must post only tags that a `next` fetch actually registers.
+ * `content-people`, `content-cameras`, `content-lenses` and `content-film-metadata` are registered
+ * by nothing, so listing them revalidated nothing and disguised the fact that the data behind them
+ * is not cached at all any more. The failure is silent — `revalidateTag` on an unknown tag throws
+ * no error — so a test is the only thing that can catch a re-add.
+ */
+describe('revalidateMetadataCache', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('should post exactly the three tags that a next fetch registers', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+    await revalidateMetadataCache();
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tags: ['content-tags', 'content-locations', 'search-images'] }),
+    });
+  });
+
+  it('should post no tag that no fetch registers', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+    await revalidateMetadataCache();
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0] as [string, { body: string }];
+    const { tags } = JSON.parse(init.body) as { tags: string[] };
+
+    expect(tags).not.toContain('content-people');
+    expect(tags).not.toContain('content-cameras');
+    expect(tags).not.toContain('content-lenses');
+    expect(tags).not.toContain('content-film-metadata');
   });
 });
 
