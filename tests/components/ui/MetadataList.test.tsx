@@ -149,4 +149,100 @@ describe('MetadataList', () => {
     await waitFor(() => expect(screen.getByText("Failed to delete 'forest'")).toBeInTheDocument());
     expect(mockRevalidate).not.toHaveBeenCalled();
   });
+
+  it('hands onRenamed the pre-save item and the saved response', async () => {
+    const onRenamed = jest.fn();
+    mockPut.mockResolvedValue({ id: 1, name: 'woods', slug: 'woods' });
+    render(
+      <MetadataList
+        title="Locations"
+        emptyLabel="No locations"
+        items={items}
+        basePath="/metadata/locations"
+        onRenamed={onRenamed}
+      />
+    );
+
+    fireEvent.change(screen.getAllByRole('textbox')[0]!, { target: { value: 'woods' } });
+    fireEvent.click(screen.getByRole('button', { name: /update/i }));
+
+    await waitFor(() =>
+      expect(onRenamed).toHaveBeenCalledWith(
+        { id: 1, name: 'forest', slug: 'forest' },
+        { id: 1, name: 'woods', slug: 'woods' }
+      )
+    );
+  });
+
+  it('hands onDeleted the removed item', async () => {
+    const onDeleted = jest.fn();
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    mockDelete.mockImplementation(() => Promise.resolve());
+    render(
+      <MetadataList
+        title="Locations"
+        emptyLabel="No locations"
+        items={items}
+        basePath="/metadata/locations"
+        onDeleted={onDeleted}
+      />
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: /delete/i })[0]!);
+    await waitFor(() =>
+      expect(onDeleted).toHaveBeenCalledWith({ id: 1, name: 'forest', slug: 'forest' })
+    );
+  });
+
+  it('does not call onRenamed when the rename PUT resolves null', async () => {
+    const onRenamed = jest.fn();
+    mockPut.mockResolvedValue(null);
+    render(
+      <MetadataList
+        title="Locations"
+        emptyLabel="No locations"
+        items={items}
+        basePath="/metadata/locations"
+        onRenamed={onRenamed}
+      />
+    );
+
+    fireEvent.change(screen.getAllByRole('textbox')[0]!, { target: { value: 'woods' } });
+    fireEvent.click(screen.getByRole('button', { name: /update/i }));
+
+    await waitFor(() => expect(screen.getByText("Failed to update 'forest'")).toBeInTheDocument());
+    expect(onRenamed).not.toHaveBeenCalled();
+  });
+
+  it('does not call onDeleted when the delete throws', async () => {
+    const onDeleted = jest.fn();
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    mockDelete.mockRejectedValue(new Error('boom'));
+    render(
+      <MetadataList
+        title="Locations"
+        emptyLabel="No locations"
+        items={items}
+        basePath="/metadata/locations"
+        onDeleted={onDeleted}
+      />
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: /delete/i })[0]!);
+    await waitFor(() => expect(screen.getByText("Failed to delete 'forest'")).toBeInTheDocument());
+    expect(onDeleted).not.toHaveBeenCalled();
+  });
+
+  it('renames fine with no callbacks wired (tags and people pass none)', async () => {
+    mockPut.mockResolvedValue({ id: 1, name: 'woods', slug: 'woods' });
+    render(
+      <MetadataList title="Tags" emptyLabel="No tags" items={items} basePath="/metadata/tags" />
+    );
+
+    fireEvent.change(screen.getAllByRole('textbox')[0]!, { target: { value: 'woods' } });
+    fireEvent.click(screen.getByRole('button', { name: /update/i }));
+
+    await waitFor(() => expect(mockRevalidate).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText(/failed to update/i)).not.toBeInTheDocument();
+  });
 });

@@ -24,6 +24,14 @@ export interface MetadataListProps<T extends MetadataListItem> {
   basePath: string;
   /** Optional "go to" target for an item (e.g. /location/[slug]). */
   getHref?: (item: T) => string | null;
+  /**
+   * Called after a rename saves, with the item as it was and as the backend returned it.
+   * `previous` is the only place the OLD slug still exists — `items` is overwritten with the
+   * response on the next line.
+   */
+  onRenamed?: (previous: T, next: T) => void;
+  /** Called after a delete succeeds, with the item that was removed. */
+  onDeleted?: (item: T) => void;
 }
 
 /**
@@ -32,6 +40,10 @@ export interface MetadataListProps<T extends MetadataListItem> {
  * Rename and delete both invalidate the flat metadata caches through `revalidateMetadataCache`.
  * The call is unconditional because `content-tags`, `content-locations` and `search-images` are
  * shared by all three entity types, and this component does not know which one it is holding.
+ *
+ * Anything slug-keyed is the caller's job, through `onRenamed` / `onDeleted`. Only
+ * `MetadataPageClient` knows which entity type a given list holds, and only there does `T` bind
+ * to a concrete type the slug-keyed helpers accept.
  */
 export function MetadataList<T extends MetadataListItem>({
   title,
@@ -39,6 +51,8 @@ export function MetadataList<T extends MetadataListItem>({
   items: initialItems,
   basePath,
   getHref,
+  onRenamed,
+  onDeleted,
 }: MetadataListProps<T>) {
   const [items, setItems] = useState<T[]>(initialItems);
   const [editedNames, setEditedNames] = useState<Record<number, string>>({});
@@ -69,6 +83,7 @@ export function MetadataList<T extends MetadataListItem>({
         setItems(prev => prev.map(i => (i.id === item.id ? response : i)));
         clearEdit(item.id);
         void revalidateMetadataCache();
+        onRenamed?.(item, response);
       } else {
         setError(`Failed to update '${item.name}'`);
       }
@@ -89,6 +104,7 @@ export function MetadataList<T extends MetadataListItem>({
       setItems(prev => prev.filter(i => i.id !== item.id));
       clearEdit(item.id);
       void revalidateMetadataCache();
+      onDeleted?.(item);
     } catch {
       setError(`Failed to delete '${item.name}'`);
     } finally {
