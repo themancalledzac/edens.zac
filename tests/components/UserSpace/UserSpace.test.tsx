@@ -8,14 +8,27 @@ jest.mock('@/app/components/Personal/FollowsContext', () => ({
   FollowsProvider: () => 'FollowsProvider',
 }));
 
-import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
-import { TAB_KEYS,
-type TabKey,   type UserSpaceData } from '@/app/components/UserSpace/userSpaceData';
+import {
+  TAB_KEYS,
+  type TabKey,
+  type UserSpaceData,
+} from '@/app/components/UserSpace/userSpaceData';
+import { UserSpaceGrid } from '@/app/components/UserSpace/UserSpaceGrid';
 import { type MeResponse } from '@/app/types/Auth';
+
+/**
+ * These assertions read the props off `UserSpaceGrid`, not `CollectionPageClient`.
+ *
+ * `UserSpaceGrid` is the client boundary `UserSpace` now renders the grid through — it exists to
+ * re-derive the Following chip's count from live follow state, and forwards everything else to
+ * `CollectionPageClient` verbatim. This file walks the element tree without rendering it, so the
+ * first component it can read is that boundary. `UserSpace.followCount.test.tsx` renders for real
+ * and covers what arrives at the other side.
+ */
 
 const principal: MeResponse = {
   email: 'c@x.com',
@@ -98,7 +111,7 @@ describe('UserSpace — own space (me present)', () => {
   });
 
   it('hands the principal to the collection stack', () => {
-    expect(findProps(render(principal), CollectionPageClient).me).toBe(principal);
+    expect(findProps(render(principal), UserSpaceGrid).me).toBe(principal);
   });
 });
 
@@ -115,11 +128,11 @@ describe('UserSpace — admin observing another user (me null)', () => {
   });
 
   it('passes me=null down, which disarms SaveHeart and the cover-manage shortcut', () => {
-    expect(findProps(render(null), CollectionPageClient).me).toBeNull();
+    expect(findProps(render(null), UserSpaceGrid).me).toBeNull();
   });
 
   it('still renders the grid itself — the space is visible, only its controls are off', () => {
-    expect(findProps(render(null), CollectionPageClient)).not.toBeNull();
+    expect(findProps(render(null), UserSpaceGrid)).not.toBeNull();
   });
 
   it('seeds no saved ids, so none of the target’s state leaks into admin providers', () => {
@@ -131,13 +144,13 @@ describe('UserSpace — admin observing another user (me null)', () => {
       me: null,
       ssrViewport: null,
     });
-    expect(findProps(result, CollectionPageClient).initialSavedImageIds).toEqual([]);
+    expect(findProps(result, UserSpaceGrid).initialSavedImageIds).toEqual([]);
   });
 });
 
 describe('UserSpace — section chips', () => {
   it('builds every chip href from basePath so admin chips stay on the admin route', () => {
-    const props = findProps(render(null, 'collections', '/admin/users/5'), CollectionPageClient);
+    const props = findProps(render(null, 'collections', '/admin/users/5'), UserSpaceGrid);
     expect(props.sections.map((s: { href: string }) => s.href)).toEqual([
       '/admin/users/5?tab=collections',
       '/admin/users/5?tab=images',
@@ -150,7 +163,7 @@ describe('UserSpace — section chips', () => {
   // hydrated) while its count is 2. Deriving the badge from `content.length` would silently badge
   // it 0 — a claim that the user follows nothing, made on a page that has not looked.
   it('counts every section regardless of which is active, hydrated or not', () => {
-    const props = findProps(render(principal), CollectionPageClient);
+    const props = findProps(render(principal), UserSpaceGrid);
     expect(props.sections.map((s: { key: string; count: number }) => [s.key, s.count])).toEqual([
       ['collections', 0],
       ['images', 1],
@@ -160,13 +173,11 @@ describe('UserSpace — section chips', () => {
   });
 
   it('marks the active section', () => {
-    expect(findProps(render(principal, 'saved'), CollectionPageClient).activeSectionKey).toBe(
-      'saved'
-    );
+    expect(findProps(render(principal, 'saved'), UserSpaceGrid).activeSectionKey).toBe('saved');
   });
 
   it('renders only the active section’s blocks', () => {
-    const props = findProps(render(principal, 'images'), CollectionPageClient);
+    const props = findProps(render(principal, 'images'), UserSpaceGrid);
     expect(props.collection.content).toHaveLength(1);
   });
 });
@@ -184,11 +195,11 @@ describe('UserSpace — rail extras', () => {
       ssrViewport: null,
       railExtras: extras,
     });
-    expect(findProps(result, CollectionPageClient).railExtras).toBe(extras);
+    expect(findProps(result, UserSpaceGrid).railExtras).toBe(extras);
   });
 
   it('defaults to no extras when the page supplies none', () => {
-    expect(findProps(render(principal), CollectionPageClient).railExtras).toBeNull();
+    expect(findProps(render(principal), UserSpaceGrid).railExtras).toBeNull();
   });
 });
 
@@ -252,7 +263,7 @@ describe('UserSpace — a section whose read failed', () => {
   it('omits the failed section’s count instead of badging it 0', () => {
     const props = findProps(
       withFailedSaved('Saved images are unavailable right now.'),
-      CollectionPageClient
+      UserSpaceGrid
     );
     const saved = props.sections.find((s: { key: string }) => s.key === 'saved');
     expect(saved.count).toBeUndefined();
@@ -261,7 +272,7 @@ describe('UserSpace — a section whose read failed', () => {
   it('leaves every loaded section’s count in place', () => {
     const props = findProps(
       withFailedSaved('Saved images are unavailable right now.'),
-      CollectionPageClient
+      UserSpaceGrid
     );
     expect(
       props.sections
@@ -275,7 +286,7 @@ describe('UserSpace — a section whose read failed', () => {
   });
 
   it('badges a genuinely empty section with 0, which is a count nobody guessed at', () => {
-    const props = findProps(withFailedSaved(), CollectionPageClient);
+    const props = findProps(withFailedSaved(), UserSpaceGrid);
     const saved = props.sections.find((s: { key: string }) => s.key === 'saved');
     expect(saved.count).toBe(0);
   });

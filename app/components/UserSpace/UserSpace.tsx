@@ -1,11 +1,11 @@
 import { type ReactNode } from 'react';
 
-import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { type TabKey, type UserSpaceData } from '@/app/components/UserSpace/userSpaceData';
+import { UserSpaceGrid } from '@/app/components/UserSpace/UserSpaceGrid';
 import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type SsrViewport } from '@/app/utils/ssrViewport';
@@ -85,6 +85,15 @@ export interface UserSpaceProps {
  * miniature, and it would sit beside a body that has just said the number is unknown. `count` on
  * {@link ToolbarSection} is optional precisely so an unknown count can be left unsaid.
  *
+ * ## Why the grid goes through UserSpaceGrid
+ *
+ * The Following chip's count is server-rendered from the followed-id list, while unfollowing is a
+ * client-only optimistic update in `FollowsProvider` — so the badge held the old number until the
+ * next server render. This is a Server Component and cannot watch that change, so the grid is
+ * rendered through {@link UserSpaceGrid}, a thin client component below the provider that adds the
+ * difference between the ids this render was built from and the provider's live set. The count
+ * still comes from the id list; nothing recounts the rendered tiles.
+ *
  * Load-bearing invariant: the backend's `UserPageAssembler` builds this collection with no `id`,
  * `isClient` or `isPasswordProtected` (it is assembled, not a `collection` row). That absence is
  * what keeps the client-gallery affordances inside `CollectionPageClient` switched off —
@@ -124,7 +133,7 @@ export function UserSpace({
   // the top on every section switch. `CollectionPageClient` resets its own per-section state off
   // `activeSectionKey` instead — see the `renderedSectionKey` block there.
   const grid = (
-    <CollectionPageClient
+    <UserSpaceGrid
       collection={sectionCollection}
       serverContentWidth={ssrViewport?.contentWidth}
       serverViewportHeight={ssrViewport?.viewportHeight}
@@ -134,6 +143,7 @@ export function UserSpace({
       sections={toolbarSections}
       activeSectionKey={activeKey}
       railExtras={railExtras}
+      serverFollowedIds={followedCollectionIds}
     />
   );
 

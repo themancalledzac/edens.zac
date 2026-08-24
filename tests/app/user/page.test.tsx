@@ -35,8 +35,11 @@ jest.mock('@/app/components/ContactForm/ContactForm', () => ({
     <span data-locked-email={lockedEmail} />
   ),
 }));
+// `useFollows` is stubbed to null because `UserSpaceGrid` calls it on every render; null is the
+// no-provider answer, which leaves the section counts exactly as the server built them.
 jest.mock('@/app/components/Personal/FollowsContext', () => ({
   FollowsProvider: ({ children }: { children: unknown }) => children,
+  useFollows: () => null,
 }));
 jest.mock('@/app/components/Personal/AccountCard', () => ({
   AccountCard: () => 'AccountCard',
@@ -45,12 +48,12 @@ jest.mock('@/app/components/Personal/AccountCard', () => ({
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
-import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { AccountCard } from '@/app/components/Personal/AccountCard';
 import { AdminCard } from '@/app/components/Personal/AdminCard';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
+import { UserSpaceGrid } from '@/app/components/UserSpace/UserSpaceGrid';
 import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
 import { getAllCollections } from '@/app/lib/api/collections';
@@ -77,6 +80,11 @@ const gifBlock = (id: number) => ({ id, contentType: 'GIF' });
  * the collection stack itself — it has no `children` to walk. It is a plain synchronous server
  * component with no hooks, so calling it here is safe, and it keeps these assertions end-to-end:
  * they still check the props the shared stack actually receives, not just what the page forwards.
+ *
+ * The walk stops at `UserSpaceGrid`, the client boundary that re-derives the Following chip's
+ * count from live follow state and forwards the rest to `CollectionPageClient` verbatim. It uses
+ * hooks, so it cannot be invoked the way `UserSpace` is; `UserSpace.followCount.test.tsx` renders
+ * it for real and covers what comes out the other side.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function findProps(node: any, type: unknown): any {
@@ -95,7 +103,7 @@ function findProps(node: any, type: unknown): any {
 
 /** Props the page handed to the shared collection renderer for the active section. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const gridProps = (result: unknown): any => findProps(result, CollectionPageClient);
+const gridProps = (result: unknown): any => findProps(result, UserSpaceGrid);
 
 /**
  * The section chips the page handed to the shared bar. There is no `/user`-only switcher component
