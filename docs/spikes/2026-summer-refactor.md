@@ -71,6 +71,14 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   assembled from a template, `collection-${slug}`, and no grep for the literal can see it. A
   pattern-match audit should name the set its pattern is blind to and walk that set by hand. Here
   the blind set was the three template tags, and `HOME_SLUG = 'home'` settled it in one look.
+- **A prescribed fix can be right on the happy path and wrong on the error path — check both.** The
+  rule above is about how a claim was gathered; this one is about the fix an item hands you. C3 is
+  the worked example: "compute `next` outside, then call the setter and the callback sequentially"
+  is correct for the optimistic update and silently destructive for the rollback, which has to
+  inverse-apply against whatever the state is *when the persist rejects*, not against a set captured
+  when the toggle started. Following the item literally would have made a second toggle vanish
+  whenever the first one failed. Error paths run late, hold stale closures, and are the least
+  covered part of any file — read the failure branch before adopting a one-line prescription.
 - **Work in the primary checkout.** PR #253 merged 2026-08-23, so the two-branches-at-once case is
   over: branch off `main` in `/Users/themancalledzac/Code/edens.zac` directly, no worktree. If a
   second concurrent branch ever becomes necessary again, the worktree traps are: `git worktree add`
@@ -116,7 +124,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | A7b | `enterSelect`/`enterAdd` inline copies | Low | −2 src | ✅ PR #262 |
 | A8 | Dead SCSS in live modules + `globals.css` tokens | Low | −327 | ✅ PR #263 |
 | A9 | Dead config | Minimal | −35 | ◐ PR #259; 2 follow-ups open |
-| B1 | Merge `manageUtils.test.ts` | Low | −450 | ☐ |
+| B1 | Merge `manageUtils.test.ts` | Low | −450 (file is now 1,967 lines) | ☐ **NEXT** |
 | B2 | `rowCombination` characterization dedup | Low | −250 | ☐ |
 | B3 | `metadataUtils.test.ts` dedup | Low | −200 to −300 | ☐ |
 | B4 | `contentLayout.test.ts` merge | Low | −150 to −250 | ☐ |
@@ -125,10 +133,10 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | B7 | `useClickOutside` spy tests | Low | −90 | ☐ |
 | B8 | Fill the required-coverage gaps | Low | +1,100–1,650 for the 4 open bullets (est. +600 for all 6) | ◐ 2 of 6 — PR #266 (clearCache), PR #267 (Escape) |
 | C1 | Unsaved people/gallery-access wipe (HIGH) | Low | +73 −11 | ✅ PR #264 |
-| C2 | About portrait aspect ratio | Trivial | ±1 src, +75 test | ✅ PR #281 |
-| C3 | `SelectsContext.toggle` purity | Low | ±35 src, +56 test | ✅ PR #282 |
-| C4 | Cache tags that never connect | Low | ±66 (4 dead tags + tests) | ✅ PR #279 |
-| C5 | Assorted LOW bugs | Low | −30 src, +230 test | ✅ PR #283 |
+| C2 | About portrait aspect ratio | Trivial | +99 −5 | ✅ PR #281 |
+| C3 | `SelectsContext.toggle` purity | Low | +121 −10 | ✅ PR #282 |
+| C4 | Cache tags that never connect | Low | +155 −62 | ✅ PR #279 |
+| C5 | Assorted LOW bugs | Low | +497 −101 (11 files) | ✅ PR #283 |
 | C6 | Password cover strip missing on the public card path | Low-medium | ±30 | ⛔ BACKEND-BLOCKED (split out of E1) |
 | D1 | Gate `POST /api/revalidate` (HIGH) | Low | +175 | ✅ PR #265 |
 | D2 | Gate `clearCacheAction` | Low | +212 (est. +15) | ✅ PR #266 |
@@ -149,7 +157,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E8 | Renderer + `MenuDropdown` dedup | Medium | −120 src, +0–50 test | ☐ |
 | E9 | Download icon/hook, auth-card SCSS, `.srOnly` | Low | −100 src, +80–150 test | ☐ (srOnly bullet: user call) |
 | E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator) | Low | −60 src, +120 new | ☐ (unblocked — #253 merged) |
-| E11 | Make cache-tag register/revalidate drift detectable | Low-medium | +205 test, 0 src | ✅ PR #280 |
+| E11 | Make cache-tag register/revalidate drift detectable | Low-medium | +277 −28 | ✅ PR #280 |
 | F1 | Decompose `useCollectionEdit.tsx` | Medium-high | ~neutral | ☐ |
 | F2 | `RendererContext` for the BoxRenderer tree | Medium | −100 | ☐ |
 | F3 | File moves and renames | Medium | ~neutral | ☐ |
@@ -405,11 +413,45 @@ rm -rf "app/(admin)/admin/layoutpreview"
 
 The suite is 51,446 lines against 37,211 source lines. Hygiene is otherwise excellent: zero skips, zero `.only`, zero snapshots, zero stale TODOs, no tautologies. Every item below is zero coverage loss.
 
-### ☐ B1 · Merge `manageUtils.test.ts`
+### ☐ B1 · Merge `manageUtils.test.ts` — NEXT
 
-- [ ] `manageUtils.test.ts` (1,930 lines) tests `collectionEditUtils.ts` under a stale name at a stale route-shaped path. Merge into `tests/components/ContentCollection/edit/collectionEditUtils.test.ts`.
-- [ ] Drop its duplicate `handleApiError` suite — a strict subset of `apiUtils.test.ts`'s.
+- [ ] `manageUtils.test.ts` is **1,967 lines** (the board said 1,930; C4 added the
+      `revalidateMetadataCache` suite). It tests `collectionEditUtils.ts` under a stale name at a
+      stale route-shaped path. Merge into
+      `tests/components/ContentCollection/edit/collectionEditUtils.test.ts`, which already exists —
+      this is a merge into a live file, not a rename.
+- [ ] Drop its duplicate `handleApiError` suite — claimed to be a strict subset of
+      `apiUtils.test.ts`'s. **That is a claim, and two of four items this session had a false one.**
+      `apiUtils.test.ts:3` and `manageUtils.test.ts:956` both open a `describe('handleApiError')`;
+      diff the cases before deleting either, and say in the MR which cases were genuinely duplicated.
 - [ ] Drop the position-permutation padding on one-line delegates.
+- [ ] **The path itself is the hidden win, and it is worth stating because it cost time three
+      separate times this session.** `tests/(admin)/collection/manage/[[...slug]]/manageUtils.test.ts`
+      contains `(`, `)`, `[` and `]`, all regex metacharacters. Jest treats a positional argument as
+      a regex against the path, so `jest 'tests/(admin)/.../manageUtils.test.ts'` matches **zero
+      files and exits 1** — it looks like the suite vanished. Every run has to use a bare substring
+      (`jest manageUtils`). Moving the file removes that trap for good.
+
+**Guardrail — leave the two revalidate suites alone.** `describe('revalidateCollectionCache')`
+(`:1038`) and `describe('revalidateMetadataCache')` (`:1162`) will look redundant next to
+`tests/lib/api/cacheTagDrift.test.ts`, which E11 (#280) just landed and which is entirely about
+those same tags. They are not redundant, and deleting them would be the most expensive mistake
+available in this MR:
+
+- The drift test **scans source text** and asserts the registered and revalidated tag *sets* agree.
+  It never renders a request. It cannot see a malformed POST body, a wrong header, or a tag posted
+  under the wrong key.
+- The `manageUtils` suites assert the actual `fetch('/api/revalidate', …)` payload, and one of them
+  is the pin on `collection-home` that made C4 safe to ship. C4's whole finding was that
+  `collection-home` looks dead to a literal grep; that pin is what turns a future "cleanup" red.
+
+Carry both suites into the merged file unchanged, and report what folding them into the drift test
+would actually cost. If the answer turns out to be "nothing, because X", that is a real finding —
+but it needs to be argued from what each test asserts, not from the two files being about tags.
+
+**Also out of scope, and deliberately.** Do not merge the six `useCollectionEdit.*.test.tsx` files
+while you are here — that is B5, and it carries its own fixture-consolidation risk. Do not move
+`collectionEditUtils.ts` itself; that is F3.
 
 ### ☐ B2 · `rowCombination` characterization dedup
 
@@ -1672,6 +1714,23 @@ being avoided, not scheduled — make it real work or drop it from the board.
   permissions active. Now confirmed reproducible rather than a D4-session fluke, so it is genuinely
   a user action; A9 updated to say stop trying. Fifth session carrying it.
   Next: C4, dead-revalidate half only.
+- 2026-08-24 — **Group C is closed except the backend-blocked C6.** Shipped C4 (#279, +155 −62),
+  E11 (#280, +277 −28), C2 (#281, +99 −5), C3 (#282, +121 −10), C5 (#283, +497 −101); all five
+  merged, `main` at 2e7a184. Estimates on the board rows were replaced with measured diffs.
+  **Two of the four bug items named something that was wrong, in two different ways.** C4's audit
+  table called `collection-home` a dead tag; it is `collection-${slug}` resolved for the home
+  collection, invisible to the literal grep the audit was built from — so C4 shipped as four dead
+  tags, not five, and the fix for the fifth was to keep it and write down why. C3's prescribed fix
+  was correct for the optimistic update and destructive for the rollback, which needs to
+  inverse-apply against current state; following it literally would have dropped a concurrent
+  toggle. Both lessons are hoisted into "How to use this doc" — an audit's *method* is a claim, and
+  a prescribed fix has to be checked on the *error* path, not just the happy one. C5, by contrast,
+  was true on all five bullets, which is what makes the other two worth flagging rather than
+  assuming the board is generally unreliable. C5's proxy bullet turned out understated: the raw
+  error log does serialise its `cause` chain including the upstream `host:port`, proven by a test
+  that goes red against the old code — still not a token, so it stays out of Group D.
+  #282 needed a rebase after #281 merged; both had edited the same two rows of the MR board table.
+  Next: B1.
 
 ## Verified fine — do not re-investigate
 
