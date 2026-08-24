@@ -25,32 +25,29 @@ The **React 18 → 19 runtime upgrade** ([#176](https://github.com/themancalledz
 ## Remaining work
 
 - **001 design-system carve-outs (inherited)** 🟢 — two intentionally-deferred CSS sweeps routed here from [001](001-design-review.md): (a) the **`@custom-media` breakpoint bridge** (bridge `--breakpoint-*` tokens so the ~100 hardcoded `768px` queries become token-driven — deferred for a postcss/Next 16 conflict), and (b) the **gap-rule + `rgb()`-slash syntax sweeps** (Phase 4 Tasks 6d/6e). Mechanical, low-risk.
-- **Observability** 🟡 — the `console.error`/`console.warn` → `logger` migration is **done** (#171, zero remain outside `logger.ts`). **Remaining:** add external error tracking (Sentry or CloudWatch) where the logger currently has only a `// Future: reportToService()` placeholder. _Needs a service decision before scoping._
+- **Observability** 🟡 — the `console.error`/`console.warn` → `logger` migration is **done** (#171, zero remain outside `logger.ts`). **Remaining:** add external error tracking (Sentry or CloudWatch). `logger.error` writes to `console.error` and nothing else — the `// Future: reportToService()` placeholder that used to mark the hook is gone, so there is no stub to fill in; the reporting call has to be added. _Needs a service decision before scoping._
 - **Cleanup (Wave B)** 🟢 — `bffPaths.ts` (kill hardcoded BFF prefixes), shared `<StatusBanner>`,
   `useApiSubmit` hook, `contactApi` `ApiError` standardization, shared test factories. _(The
   `<GalleryAccessSection>` extraction is moot — `ManageClient` was deleted in the `0179` overhaul,
   [008](008-collection-admin.md).)_
 - **Function decomposition** 🟢 — split `buildRows` / `CollectionContentRenderer` /
-  `MetadataModal` (and the medium/low candidates); consolidate `fetchReadApi`/`fetchAdminGetApi`
-  into a `fetchBase`; plus the dead-code removals carried in from the old `todo-random.md`
-  (`getAllCollectionsAdmin`, the `_chunkSize`/`_currentState`/`_deletedIds` unused params, the
-  `getContentDimensions` DEBUG `console.error`). _`ManageClient` is no longer a target — deleted in
-  `0179`._
-- **Parallax-card builder consolidation** 🟢 — the collection-card `ContentParallaxImageModel`
-  shape is hand-built in **four** places that have already drifted apart:
-  `convertCollectionContentToParallax` (`app/utils/contentLayout.ts`), `collectionToContentModel`
-  (`app/components/ContentCollection/CollectionPage.tsx`), `buildMeContentBlock`
-  (`app/utils/meContentBlock.ts`), and `app/utils/allCollectionsContentBlock.ts`. They diverge in
-  ways that are partly deliberate and partly incidental: only `collectionToContentModel` applies
-  the password-protected cover strip and maps `CollectionVisibility` → the `visible` boolean (the
-  others use `col.visible ?? true`), only `convertCollectionContentToParallax` carries `tags` and
-  applies the 1000×1000 no-cover fallback, and only the two synthetic tiles set `alt`. The two
-  real-collection builders set `collectionId`; the two sentinel tiles deliberately omit it so they
-  stay unfollowable. Collapse into one builder whose options make each of those a stated choice
-  rather than an accident of which copy you landed in. Surfaced while reusing the standard
-  collection stack on `/user` (branch `0239-user-page-collection-reuse`); a `TODO` marker sits on
-  `convertCollectionContentToParallax`. Detailed plan (local, `docs/superpowers/` is gitignored):
-  `docs/superpowers/plans/2026-08-04-parallax-card-builder-consolidation.md`.
+  `MetadataModal` (and the medium/low candidates); route `fetchReadApi`/`fetchAdminGetApi` through
+  the `fetchBase` helper that now exists in `lib/api/core.ts` (the admin and edit channels already
+  do); plus the two surviving unused params carried in from the old `todo-random.md` —
+  `_chunkSize` on `createHeaderRow` (`contentLayout.ts:585`, kept for API compatibility) and
+  `_deletedIds` on `handleDeleteSuccess` (`useCollectionEdit.tsx:1037`). _`ManageClient` is no
+  longer a target — deleted in `0179`. Three items dropped off this list because they no longer
+  exist: `getAllCollectionsAdmin` is live again (`RoleDetailView.tsx` calls it), `_currentState` is
+  gone, and so is the `getContentDimensions` DEBUG `console.error`._
+- **Parallax-card builder consolidation** ✅ **shipped**
+  ([#269](https://github.com/themancalledzac/edens.zac/pull/269), board item E1) — the
+  collection-card `ContentParallaxImageModel` shape was hand-built in four places that had drifted
+  apart. All four now call `buildParallaxCard` in `app/utils/parallaxCard.ts`, whose options make
+  each former divergence a stated choice rather than an accident of which copy you landed in: the
+  password-protected cover strip, the `CollectionVisibility` → `visible` mapping, `tags`, the
+  1000×1000 no-cover fallback, `alt`, and whether the card sets `collectionId` (the two sentinel
+  tiles omit it so they stay unfollowable). The `TODO` marker on
+  `convertCollectionContentToParallax` is gone.
 - **Tests** 🟡 — layout property tests (fold in the image-reorder scenario fixtures from
   [005 · reorder audit](spikes/005-image-reorder-audit.md)); hooks and component render tests
   (`useFullScreenImage`, `useMetadataEditor`, `BoxRenderer`, `CollectionContentRenderer`,
