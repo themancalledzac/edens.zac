@@ -306,7 +306,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E13 | Trigger `collections-location-${slug}` from the image-metadata save path | Low-medium  | **+36 src net / +165 test actual** (est. +30 src, +60 test)                                | ✅ PR #313 — src estimate held; location-RENAME gap split out as E16                         |
 | E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value       | Low         | **−3 src / −4 test net actual**, 36 call sites (est. −2 src, ~40 sites)                    | ✅ PR #307 — the one estimate on this board that held                                        |
 | E15 | `createHeaderRow`'s two trailing boolean params → options object         | Low         | **+22 src net / 14 test call sites** (est. ±15 src, ~20 sites)                             | ✅ PR #314 — stacked on #313; first call-site estimate to come in OVER                       |
-| E16 | Revalidate the OLD slug when a location is RENAMED                       | Low-medium  | **slice 1 actual +9 src / +72 test**; slice 2 est. +25 src / +120 test                     | ◐ **slice 1 SHIPPED** (#316) — flat half done for all 3 entity types; slice 2 next          |
+| E16 | Revalidate the OLD slug when a location is RENAMED                       | Low-medium  | **+40 src / +281 test actual** across 2 slices (est. +30 src / +120 test)                  | ✅ PR #316 (slice 1) + #317 (slice 2) — src held; test half 2.3x over                        |
 | F1  | Decompose `useCollectionEdit.tsx`                                        | Medium-high | ~neutral                                                                                   | ☐                                                                                            |
 | F2  | `RendererContext` for the BoxRenderer tree                               | Medium      | −100 src, **+150–250 test** (re-sized 2026-08-24, bias 1b)                                 | ☐                                                                                            |
 | F3  | File moves and renames                                                   | Medium      | ~neutral                                                                                   | ☐                                                                                            |
@@ -1278,15 +1278,18 @@ guessing:
   a rename the old slug throws, while `collections-location-${oldSlug}` keeps serving a cached
   snapshot of a page whose URL no longer resolves.
 
-- [ ] Revalidate the old slug's tag on rename. The old slug is only in scope BEFORE the PUT
-      resolves, as `item.slug`; `handleUpdate` overwrites `items` with the response and discards it.
+- [x] ~~Revalidate the old slug's tag on rename.~~ **SHIPPED 2026-08-24 as slice 2 (#317).** The
+      old slug is only in scope BEFORE the PUT resolves, as `item.slug`; `handleUpdate` overwrites
+      `items` with the response and discards it.
       `revalidateLocationCaches([item], [response])` fits the existing signature as-is — this is a
       **third call site, not a change to the helper**, same as E13 was a second.
-- [ ] **The obstacle that makes this bigger than E13: `MetadataList` is generic.** It renders tags,
-      people and locations from one component and does not know which it is holding. A hardcoded
-      call is wrong. Add a per-list callback prop — `onRenamed?: (previous, next) => void` — and let
-      `MetadataPageClient` pass the location-specific one. Do NOT special-case entity type inside
-      `MetadataList`.
+- [x] ~~**The obstacle that makes this bigger than E13: `MetadataList` is generic.**~~ **BUILT AS
+      DESCRIBED, slice 2 (#317)** — a per-list `onRenamed` callback plus an `onDeleted` twin, wired
+      by `MetadataPageClient` for locations only. It type-checked with no cast on the first try,
+      which is the report below coming true rather than luck. Original reasoning, unchanged: it
+      renders tags, people and locations from one component and does not know which it is holding,
+      so a hardcoded call is wrong. Add a per-list callback prop and let `MetadataPageClient` pass
+      the location-specific one. Do NOT special-case entity type inside `MetadataList`.
 - [x] ~~**Tags need the same treatment; people do not.**~~ **SETTLED 2026-08-24 — the tag half is a
       no-op and is now OUT of scope.** The backend halves are as described: `MetadataService.java:95`
       re-slugs tags exactly like locations, while `updatePerson` (`:160-161`) sets only the name and
@@ -1312,12 +1315,11 @@ guessing:
       the comment that justifies the call, and no estimate on this board budgets for it.** Budget
       it in slice 2. No branch was needed — the call is correct unconditionally, so the generic
       shape was never under pressure in this slice.
-- [ ] `MetadataList.handleDelete` (`:74`) has the same exposure and is a cheaper case: on delete
+- [x] ~~`MetadataList.handleDelete` (`:74`) has the same exposure and is a cheaper case:~~ on delete
       the slug is unambiguously gone. Decide it with this item rather than filing a third row.
-      **Half done: the flat-cache call shipped in slice 1** — `handleDelete` got the same
-      unconditional `revalidateMetadataCache()` as the rename path. The slug half is slice 2 and
-      is the easier of the two callbacks: delete has no response to diff against, so it needs
-      only the removed item, not a before/after pair. Box stays unchecked until that lands.
+      **DONE across both slices.** Slice 1 gave it the unconditional `revalidateMetadataCache()`;
+      slice 2 gave it `onDeleted`, wired to `revalidateLocationCaches([item], [])`. It was the
+      cheaper case as predicted — no response to diff against, so it takes only the removed item.
 
 **Guardrail — leave `MetadataList`'s generic shape alone.** This item puts you in
 `app/components/ui/MetadataList/MetadataList.tsx`, which renders tags, people AND locations from one
@@ -1354,12 +1356,32 @@ before. There is a harder one underneath it, and it is a type error:
   hands it two `LocationModel`s and `revalidateLocationCaches([previous], [next])` type-checks with
   no cast. **The generic binding does the narrowing the string prop cannot.**
 
+**Confirmed by building it (slice 2, #317).** `onRenamed?: (previous: T, next: T) => void` and
+`onDeleted?: (item: T) => void`, wired in `MetadataPageClient` as
+`onRenamed={(previous, next) => void revalidateLocationCaches([previous], [next])}` and
+`onDeleted={item => void revalidateLocationCaches([item], [])}`. `tsc --noEmit` passed with no
+cast and no change to `revalidateLocationCaches`, exactly as predicted. Two more call sites for
+that helper, still no edit to it — its docblock's "give a new caller its own call" rule now has
+four callers behind it.
+
 So the branch costs a double cast or a forbidden helper change, and the callback costs a prop. Take
 the callback — not because the design is tidier, but because it is the only one of the two that
 type-checks under this repo's no-`any` rule. Second-order cost worth naming: `entityType` would
 duplicate a fact `basePath` already carries (`/metadata/locations`), giving two sources of truth
 that can silently disagree. **No edit made. The guardrail holds, on a stronger reason than the one
 it was written with.**
+
+**Close-out sizing, both slices.** +40 src / +281 test against +30 src / +120 test estimated.
+The src half held; the test half came in 2.3x over, the same direction and roughly the same
+factor as E13 (+165 against +60). **Two items running now say the test estimates on this board
+are the ones that are wrong, not the src estimates** — E13, E15 and E16 all had src land at or
+near estimate. Worth re-basing the remaining test columns before F2 quotes "+150-250 test".
+
+And the docblock lesson landed a THIRD time, harder: **22 of slice 2's 31 src lines are comment**
+(slice 1 was 6 of 9, E13 was 39 of 45). Two new props needed their own doc comments, and
+`MetadataPageClient` needed a docblock explaining why it owns slug revalidation at all. At three
+occurrences this is not an anecdote: **on this codebase, a src estimate for an item that adds a
+caller or a prop should be doubled, and the doubling is all comment.**
 
 **Second guardrail: do not add `collections-location-*` to `revalidateMetadataCache`.** Slice 1
 calls that helper, and its docblock carries a standing rule — a tag goes in it only in the same
