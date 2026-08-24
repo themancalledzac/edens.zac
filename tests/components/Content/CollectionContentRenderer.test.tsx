@@ -1035,3 +1035,93 @@ describe('CollectionContentRenderer — click branches', () => {
     });
   });
 });
+
+/**
+ * Which branch paints the reorder overlay, and when it stands down.
+ *
+ * E8 lifted the overlay into a single shared node used by both the GIF branch and the image
+ * branch, because the two invocations passed byte-identical props. Only the gate differed: the
+ * image branch additionally requires `contentId !== currentCoverImageId`, so the pinned cover
+ * block cannot be moved out of the top of the grid. Neither gate was pinned before — the sole
+ * reorder test covered click suppression — so a regression in the lift would have been silent.
+ */
+describe('CollectionContentRenderer — reorder overlay gates', () => {
+  const reorderHandlers = {
+    onArrowMove: jest.fn(),
+    onPickUp: jest.fn(),
+    onPlace: jest.fn(),
+    onCancelImageMove: jest.fn(),
+  };
+
+  const imageProps = {
+    contentId: 7,
+    className: 'imageSingle',
+    width: 300,
+    height: 200,
+    isMobile: false,
+    imageUrl: 'https://cdn.example/img.jpg',
+    imageWidth: 300,
+    imageHeight: 200,
+    alt: 'a photo',
+    enableParallax: false,
+    contentType: 'IMAGE' as const,
+  };
+
+  const gifProps = { ...imageProps, contentType: 'GIF' as const, alt: 'an animation' };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseMe.mockReturnValue(null);
+  });
+
+  it('paints the overlay on an image tile in reorder mode', () => {
+    render(<CollectionContentRenderer {...imageProps} isReorderMode {...reorderHandlers} />);
+    expect(screen.getByLabelText('Move left')).toBeInTheDocument();
+    expect(screen.getByLabelText('Move right')).toBeInTheDocument();
+  });
+
+  it('withholds it from the image tile that is the current cover', () => {
+    render(
+      <CollectionContentRenderer
+        {...imageProps}
+        isReorderMode
+        currentCoverImageId={imageProps.contentId}
+        {...reorderHandlers}
+      />
+    );
+    expect(screen.queryByLabelText('Move left')).not.toBeInTheDocument();
+  });
+
+  it('paints the overlay on a GIF tile in reorder mode', () => {
+    render(<CollectionContentRenderer {...gifProps} isReorderMode {...reorderHandlers} />);
+    expect(screen.getByLabelText('Move left')).toBeInTheDocument();
+  });
+
+  it('does not apply the cover exclusion to a GIF, which is never a cover image', () => {
+    render(
+      <CollectionContentRenderer
+        {...gifProps}
+        isReorderMode
+        currentCoverImageId={gifProps.contentId}
+        {...reorderHandlers}
+      />
+    );
+    expect(screen.getByLabelText('Move left')).toBeInTheDocument();
+  });
+
+  it('stands down outside reorder mode', () => {
+    render(<CollectionContentRenderer {...imageProps} {...reorderHandlers} />);
+    expect(screen.queryByLabelText('Move left')).not.toBeInTheDocument();
+  });
+
+  it('stands down when the surface supplies no reorder handlers', () => {
+    render(<CollectionContentRenderer {...imageProps} isReorderMode />);
+    expect(screen.queryByLabelText('Move left')).not.toBeInTheDocument();
+  });
+
+  it('wires the arrows to the id of the tile they sit on', () => {
+    render(<CollectionContentRenderer {...imageProps} isReorderMode {...reorderHandlers} />);
+    fireEvent.click(screen.getByLabelText('Move right'));
+    expect(reorderHandlers.onArrowMove).toHaveBeenCalledWith(imageProps.contentId, 1);
+  });
+});

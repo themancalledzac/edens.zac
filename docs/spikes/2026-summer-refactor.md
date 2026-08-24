@@ -272,7 +272,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | B6  | Fold in `CollectionContentRenderer` characterization                     | Low         | **0 actual** (est. −150)                                                                   | ✅ PR #294 + #297 (restore)                                                                  |
 | B7  | `useClickOutside` spy tests                                              | Low         | −37 (est. −90)                                                                             | ✅ PR #286                                                                                   |
 | B8  | Fill the required-coverage gaps                                          | Low         | +1,545 actual for the 3 slices shipped                                                     | ◐ 5 of 6 — #266 (clearCache), #267 (Escape), #295 (share+messages), #296 (collectionStorage) |
-| B9  | `useCollectionEdit.buffer.test.tsx` flakes under parallel load           | Low         | 0 repro in 22 runs across 3 worker configs                                                 | ✅ CLOSED not-reproducible 2026-08-24 — NOT fixed; CI still untried                           |
+| B9  | `useCollectionEdit.buffer.test.tsx` flakes under parallel load           | Low         | 0 repro in 22 runs across 3 worker configs                                                 | ✅ CLOSED not-reproducible 2026-08-24 — NOT fixed; CI still untried                          |
 | C1  | Unsaved people/gallery-access wipe (HIGH)                                | Low         | +73 −11                                                                                    | ✅ PR #264                                                                                   |
 | C2  | About portrait aspect ratio                                              | Trivial     | +99 −5                                                                                     | ✅ PR #281                                                                                   |
 | C3  | `SelectsContext.toggle` purity                                           | Low         | +121 −10                                                                                   | ✅ PR #282                                                                                   |
@@ -298,7 +298,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E5  | Filter/sort/date duplication                                             | Low         | **0 src / +139 test actual** (est. −50 src)                                                | ◐ PR #299; 4 bullets still open                                                              |
 | E6  | `useCollectionEdit` refresh helpers                                      | Medium      | −90 src, ±100 test churn                                                                   | ☐                                                                                            |
 | E7  | `useFilteredContentBlocks` hook                                          | Medium      | +100–200 net (new hook suite)                                                              | ☐                                                                                            |
-| E8  | Renderer + `MenuDropdown` dedup                                          | Medium      | −120 src, **+150–250 test** (re-sized 2026-08-24, bias 1b)                                 | ☐                                                                                            |
+| E8  | Renderer + `MenuDropdown` dedup                                          | Medium      | est −120 src / +150–250 test → **actual −49 src / +90 test** (PR #319)                     | ✅                                                                                           |
 | E9  | Download icon/hook, auth-card SCSS, `.srOnly`                            | Low         | **+16 src / +393 test actual** (est. −100 src)                                             | ◐ PR #300 — both COLD bullets shipped; srOnly ⛔ user call                                   |
 | E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator)        | Low         | **−79 src code-only / +176 test code-only** (est. −60 src)                                 | ◐ PR #304; late-added bullets 6–7 unswept                                                    |
 | E11 | Make cache-tag register/revalidate drift detectable                      | Low-medium  | +277 −28                                                                                   | ✅ PR #280                                                                                   |
@@ -493,7 +493,7 @@ fixture object leaking across workers is the first place to look. Do not "fix" i
 retry or by moving it to `--runInBand`; both hide the defect rather than removing it.
 
 **CLOSED 2026-08-24 as NOT-REPRODUCIBLE — not as fixed. Nothing was changed.** This item asked for
-a reproduction under *different conditions*, on the explicit grounds that repeating the default-run
+a reproduction under _different conditions_, on the explicit grounds that repeating the default-run
 measurement had become uninformative. That was done: **6 full-suite runs across three worker
 configurations — `--maxWorkers=100%`, `=2` and `=1` — all 244 suites / 4374 tests green, with
 `useCollectionEdit.buffer.test.tsx` passing in every one.** Serial (`=1`) matters most: it removes
@@ -810,12 +810,12 @@ absorb a new required field on `ContentTagModel`, where the factory breaks at th
 `buildAssociationDiff` ([metadataUtils.ts:305](app/components/Metadata/metadataUtils.ts:305)) is a
 THIRD prev/newValue/remove implementation and reads like the same function. It is not:
 
-|                     | `buildEntityDiff`                 | `buildAssociationDiff`                    |
-| ------------------- | --------------------------------- | ----------------------------------------- |
-| Emits a diff when   | new names differ **positionally** | the edited set holds **any** unsaved name |
-| ~~`id` type~~       | ~~`number` (required)~~           | ~~`number \| undefined`~~                 |
-| `prev` built from   | a `Set` — duplicates collapse     | a raw array — duplicates survive          |
-| Shape               | returns a value                   | mutates `diff[field]` in place            |
+|                   | `buildEntityDiff`                 | `buildAssociationDiff`                    |
+| ----------------- | --------------------------------- | ----------------------------------------- |
+| Emits a diff when | new names differ **positionally** | the edited set holds **any** unsaved name |
+| ~~`id` type~~     | ~~`number` (required)~~           | ~~`number \| undefined`~~                 |
+| `prev` built from | a `Set` — duplicates collapse     | a raw array — duplicates survive          |
+| Shape             | returns a value                   | mutates `diff[field]` in place            |
 
 Given identical unsaved names on both sides, `buildEntityDiff` returns `undefined` and
 `buildAssociationDiff` emits a write. Same failure mode as the IMAGE guards and as B3. The warning
@@ -872,7 +872,7 @@ instead of two, not a smaller tree — the same lesson E3 taught, in the same di
 
 - [ ] `CollectionPageClient` and `EditModeLayer` both run the full filter → process → sort pipeline, so it runs twice per filter change while editing. Extract one hook.
 
-### ☐ E8 · Renderer + `MenuDropdown` dedup — NEXT
+### ✅ E8 · Renderer + `MenuDropdown` dedup — PR #319
 
 **Why it is next (picked 2026-08-24).** The board named E8/F2/F5 as the candidates after E16; F5
 shipped this session, so E8 and F2 remain. E8 first because it is the smaller of the two and
@@ -900,8 +900,56 @@ they render different elements for different content types, and F5 spent this se
 redundant `isGif` boolean precisely because `isGifBlock` is the real discriminator. Lifting the
 shared overlay is the scoped change; collapsing the branches is the tempting overreach past it.
 
-- [ ] `CollectionContentRenderer` — `ReorderOverlay` JSX is duplicated verbatim in the GIF and image branches; the two placeholder blocks share construction; `isSelected` is recomputed inline twice; seven no-op `key={contentId}` on root returns.
-- [ ] `MenuDropdown` — eight copies of the menu-item block → one config array (~60 lines). The `pageType` union has two values that decide nothing.
+- [x] ~~`CollectionContentRenderer` — `ReorderOverlay` JSX is duplicated verbatim in the GIF and image branches; the two placeholder blocks share construction; `isSelected` is recomputed inline twice; seven no-op `key={contentId}` on root returns.~~ Done. One correction to the bullet: `ReorderOverlay` was **already** its own component (`./ReorderOverlay`, imported since the click-to-place work) — what was duplicated is the 12-prop _invocation_, now a single `reorderOverlay` node. The three `buildWrapperClassName` calls that collapsed into `boxBaseClassName` are **three**, not two: the GIF branch passed the same option object as both placeholder blocks. All seven no-op keys removed.
+- [x] ~~`MenuDropdown` — eight copies of the menu-item block → one config array (~60 lines).~~ Done, but the count was **nine**, not eight (Home, Me, Explore, Collections, Create, Update, Metadata, Comments, Admin), and the saving was **28 net lines**, not ~60 — the array entries cost real lines back. The three `<button>` rows (Log in, Log out, Clear Cache) were deliberately left alone: only two of the three share a shape, and Clear Cache carries `aria-disabled` plus a pending label. Possible follow-up, not folded in here.
+- [ ] **Follow-up, evidence attached: the `pageType` union is inert and can go.** Left in place per instruction; see the measurement below.
+
+**`pageType` guardrail — measured, and the board's claim was half right.** The union is declared in
+THREE places (`MenuDropdown.tsx:28`, `SiteHeader.tsx:12`, `PageShell.tsx:11`); `SiteHeader` and
+`PageShell` are pure pass-throughs with no styling hook, and the only read anywhere is
+`isAdmin && pageType === 'collection'` gating the Update item. So the values break down as:
+
+- `'manage'` — **zero call sites repo-wide.** Narrowing the union to drop it: 0 tsc errors. Free.
+- `'collectionsCollection'` — behaviorally inert but **not free**: 6 src call sites + 1 test
+  assertion (`PageShell.test.tsx:29`). Narrowing produced exactly 7 tsc errors.
+- `'default'` — explicit at 3 call sites, and the defaulted value.
+
+So "two values that decide nothing" is right about the _behavior_ and wrong about the _cost_: one is
+a 3-line deletion, the other is a 10-file sweep. **Unlike E10, the inertness claim survived the
+E10 test**: flipping all six `'collectionsCollection'` callers to `'default'` left **4374/4374 tests
+and 244/244 suites passing — zero movement**, where perturbing E10's `width: 600`/`height: 1100`
+moved 15 hub tests. The union is a four-value enum doing one boolean's work, and collapsing it to
+`isCollectionPage?: boolean` is a clean follow-up with this evidence behind it.
+
+**Sizing: −49 src / +90 test, against −120 src and +150–250 test. The src estimate MISSED for the
+first time in four items** — F5 had just recorded "the src estimate held, the third in a row." It
+came in at 41% of estimate for two reasons, both bullet-authoring errors rather than estimating
+errors: the bullet budgeted for extracting `ReorderOverlay` into a file that already existed, and
+the `MenuDropdown` config array was quoted at ~60 lines saved when an array entry per item costs
+most of that back (28 net).
+
+**The test half contradicts F5's corrected rule, and the reason matters more than the number.** F5
+predicted E8 would land near F5 (+20) because both are deletions, not caller-additions. It landed at
++90 — ratio 1.84 test-lines per src-line deleted, between F5's 0.8 and E16's overrun. But the +90
+has nothing to do with E8 being a deletion: **the reorder overlay's render gates had never been
+pinned by any test.** The whole file had exactly one reorder test and it covered click suppression.
+Lifting a shared node out of two branches whose gates differ, with no coverage of either gate, is
+precisely where a silent regression hides — so the tests are the refactor's cost, not padding.
+
+**Third revision of the estimating rule.** The test half does not track add-a-caller vs
+delete-a-caller. It tracks **whether the touched behavior was already pinned.** E13/E16 ran over
+because new callers are unpinned by definition; F5 ran under because parameter-removal touched code
+its tests already covered; E8 ran mid because it touched one well-covered surface (`MenuDropdown` —
+52 existing tests, zero churn needed) and one uncovered one (the overlay gates — all +90 landed
+there). **Before sizing the test half of any remaining item, grep for existing coverage of the exact
+behavior being moved.** F2's `RendererContext` is the live case: it moves prop threading through the
+same `BoxRenderer` tree, and `boxRendererUtils.test.ts` already pins the reorder-flag half of it —
+so size F2's test half by which of its touched surfaces are bare, not by its src sign.
+
+**Red-check confirmed, per F5's warning.** Both new gate assertions were verified to fail against a
+broken implementation: deleting `contentId !== currentCoverImageId` fails exactly the cover test
+(1 failed / 70 passed), and neutralizing the shared node fails exactly the four presence tests
+(4 failed / 67 passed). No assertion in the block passes vacuously.
 
 ### ◐ E10 · Admin panel dedup — PR #304; late-added bullets 6–7 unswept
 
@@ -1078,7 +1126,7 @@ image-side TRIGGER for a page whose contents both sides feed.
       `location.setSlug(SlugUtil.generateSlug(locationName))` with no guard, and the DAO's UPDATE
       writes the column. So the old slug does not go stale, it **stops existing**:
       `CollectionService.getLocationPageBySlug` resolves via `locationRepository.findBySlug(...)
-      .orElseThrow(...)`, and there is no slug-history or redirect table anywhere in the backend.
+    .orElseThrow(...)`, and there is no slug-history or redirect table anywhere in the backend.
       `/location/{old-slug}` 404s while its cache tag keeps serving a snapshot of a page whose URL
       is gone. **Filed as E16 rather than folded in here** — the caller is a generic list component
       shared with tags and people, so it needs a callback prop, not a hardcoded call. That is a
@@ -1096,7 +1144,7 @@ Sizing: +30 src, +60 test, assuming the helper needs no changes. **Actual +36 sr
    `content_type` predicate doing it. GIFs live in `content_gif`. So a location-tagged GIF can
    never appear on `/location/{slug}`, and revalidating on GIF save would be a no-op.
    **Backend footnote worth its own eyes later:** `content_image_locations` is content-level keyed
-   (`cil.content_id`, generalized by V27), so GIFs *can* be location-tagged and simply never
+   (`cil.content_id`, generalized by V27), so GIFs _can_ be location-tagged and simply never
    surface. That reads like an unintentional gap on the backend, not a deliberate exclusion. Not
    filed here because it is a backend item, not a frontend one.
 
@@ -1313,7 +1361,7 @@ guessing:
   **revalidates nothing** — grep for `revalidate` in that file returns zero hits.
 - **Backend.** `MetadataService.java:410` runs `location.setSlug(SlugUtil.generateSlug(locationName))`
   unconditionally on update, and the DAO's `UPDATE location SET location_name = :locationName,
-  slug = :slug` writes it. There is no `@PreUpdate` to worry about — `LocationEntity` is a plain
+slug = :slug` writes it. There is no `@PreUpdate` to worry about — `LocationEntity` is a plain
   POJO with hand-written JDBC, so that one line is the whole story.
 - **Consequence.** `CollectionService.getLocationPageBySlug` resolves through
   `locationRepository.findBySlug(slug).orElseThrow(...)`. No slug-history table, no redirects. After

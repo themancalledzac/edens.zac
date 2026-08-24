@@ -47,6 +47,19 @@ const disclosureClassNames = {
 };
 
 /**
+ * One destination row in the overlay.
+ *
+ * `show` is a plain boolean rather than a predicate because every gate reads state the component
+ * already has in scope; the arrays are rebuilt each render, so the gates re-evaluate anyway.
+ * `label` doubles as the React key — the labels are the user-visible menu text and are unique.
+ */
+interface MenuNavItem {
+  label: string;
+  href: string;
+  show: boolean;
+}
+
+/**
  * Hands focus back when the overlay closes.
  *
  * The element that opened the menu is preferred, but `.focus()` on a node that has left the
@@ -271,6 +284,36 @@ export function MenuDropdown({
 
   if (!isOpen) return null;
 
+  const primaryNavItems: MenuNavItem[] = [
+    { label: 'Home', href: '/', show: pathname !== '/' },
+    { label: 'Me', href: '/user', show: !meLoading && Boolean(me) },
+  ];
+
+  const secondaryNavItems: MenuNavItem[] = [
+    { label: 'Explore', href: '/explore', show: true },
+    { label: 'Collections', href: '/collections', show: true },
+    { label: 'Create', href: '/collection/manage', show: isAdmin },
+    {
+      label: 'Update',
+      href: collectionSlug ? manageHref(collectionSlug) : '/collection/manage',
+      show: isAdmin && pageType === 'collection',
+    },
+    { label: 'Metadata', href: '/metadata', show: isAdmin },
+    { label: 'Comments', href: '/comments', show: isAdmin },
+    { label: 'Admin', href: '/admin', show: isAdmin },
+  ];
+
+  const renderNavItems = (items: MenuNavItem[]) =>
+    items
+      .filter(item => item.show)
+      .map(item => (
+        <div key={item.label} className={styles.dropdownMenuItem}>
+          <NavLink href={item.href} className={styles.dropdownMenuLink} onClick={onClose}>
+            <span className={styles.dropdownMenuOptions}>{item.label}</span>
+          </NavLink>
+        </div>
+      ));
+
   return (
     <div
       className={styles.dropdown}
@@ -294,27 +337,14 @@ export function MenuDropdown({
       </div>
 
       <div className={styles.dropdownMenuOptionsWrapper}>
-        {pathname !== '/' && (
-          <div className={styles.dropdownMenuItem}>
-            <NavLink href="/" className={styles.dropdownMenuLink} onClick={onClose}>
-              <span className={styles.dropdownMenuOptions}>Home</span>
-            </NavLink>
-          </div>
-        )}
+        {renderNavItems(primaryNavItems)}
 
         {!meLoading && me && (
-          <>
-            <div className={styles.dropdownMenuItem}>
-              <NavLink href="/user" className={styles.dropdownMenuLink} onClick={onClose}>
-                <span className={styles.dropdownMenuOptions}>Me</span>
-              </NavLink>
-            </div>
-            <div className={styles.dropdownMenuItem}>
-              <button type="button" className={styles.dropdownMenuButton} onClick={handleLogout}>
-                <span className={styles.dropdownMenuOptions}>Log out</span>
-              </button>
-            </div>
-          </>
+          <div className={styles.dropdownMenuItem}>
+            <button type="button" className={styles.dropdownMenuButton} onClick={handleLogout}>
+              <span className={styles.dropdownMenuOptions}>Log out</span>
+            </button>
+          </div>
         )}
 
         {!meLoading && !me && (
@@ -343,65 +373,7 @@ export function MenuDropdown({
           <ContactForm onSubmit={handleContactSubmit} />
         </Disclosure>
 
-        <div className={styles.dropdownMenuItem}>
-          <NavLink href="/explore" className={styles.dropdownMenuLink} onClick={onClose}>
-            <span className={styles.dropdownMenuOptions}>Explore</span>
-          </NavLink>
-        </div>
-
-        <div className={styles.dropdownMenuItem}>
-          <NavLink href="/collections" className={styles.dropdownMenuLink} onClick={onClose}>
-            <span className={styles.dropdownMenuOptions}>Collections</span>
-          </NavLink>
-        </div>
-
-        {isAdmin && (
-          <div className={styles.dropdownMenuItem}>
-            <NavLink
-              href="/collection/manage"
-              className={styles.dropdownMenuLink}
-              onClick={onClose}
-            >
-              <span className={styles.dropdownMenuOptions}>Create</span>
-            </NavLink>
-          </div>
-        )}
-
-        {isAdmin && pageType === 'collection' && (
-          <div className={styles.dropdownMenuItem}>
-            <NavLink
-              href={collectionSlug ? manageHref(collectionSlug) : '/collection/manage'}
-              className={styles.dropdownMenuLink}
-              onClick={onClose}
-            >
-              <span className={styles.dropdownMenuOptions}>Update</span>
-            </NavLink>
-          </div>
-        )}
-
-        {isAdmin && (
-          <div className={styles.dropdownMenuItem}>
-            <NavLink href="/metadata" className={styles.dropdownMenuLink} onClick={onClose}>
-              <span className={styles.dropdownMenuOptions}>Metadata</span>
-            </NavLink>
-          </div>
-        )}
-
-        {isAdmin && (
-          <div className={styles.dropdownMenuItem}>
-            <NavLink href="/comments" className={styles.dropdownMenuLink} onClick={onClose}>
-              <span className={styles.dropdownMenuOptions}>Comments</span>
-            </NavLink>
-          </div>
-        )}
-
-        {isAdmin && (
-          <div className={styles.dropdownMenuItem}>
-            <NavLink href="/admin" className={styles.dropdownMenuLink} onClick={onClose}>
-              <span className={styles.dropdownMenuOptions}>Admin</span>
-            </NavLink>
-          </div>
-        )}
+        {renderNavItems(secondaryNavItems)}
 
         {/* Clear Cache stays local-only by choice: evicting the backend's
             in-process admin caches + nuking the Next route cache is a dev

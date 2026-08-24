@@ -72,6 +72,18 @@ import { SelectStar } from './SelectStar';
  * whole tile, and a second copy on the `<img>` only shows up as a duplicate to someone stepping
  * through elements one at a time. An inert tile has no such wrapper, so there the image keeps the
  * name.
+ *
+ * `reorderOverlay` is built once and rendered by both the GIF branch and the image branch — the
+ * two invocations passed byte-identical props. Only the *gate* differed, and that difference is
+ * real rather than incidental: the image branch additionally requires
+ * `contentId !== currentCoverImageId`, because the cover block is pinned to the top of the grid and
+ * must not be draggable out of it. GIFs are never a cover, so that clause would be inert there and
+ * stays at the call site instead of being folded into the shared node.
+ *
+ * `boxBaseClassName` is the wrapper class shared by the GIF branch and both placeholder branches;
+ * all three passed the same options to {@link buildWrapperClassName} (notably `isSelected: false`,
+ * since none of them can be part of a selection). The main image return does NOT use it — its
+ * wrapper is selection-aware and parallax-aware, so it builds its own.
  */
 export default function CollectionContentRenderer({
   contentId,
@@ -267,7 +279,6 @@ export default function CollectionContentRenderer({
 
     return (
       <div
-        key={contentId}
         className={`${buildWrapperClassName(className, cbStyles, {
           includeDragContainer: false,
           enableParallax: false,
@@ -479,18 +490,38 @@ export default function CollectionContentRenderer({
     );
   }
 
+  const reorderOverlay =
+    isReorderMode && onArrowMove && onPickUp && onPlace && onCancelImageMove ? (
+      <ReorderOverlay
+        isPickedUp={isPickedUp}
+        pickedUpImageId={pickedUpImageId}
+        hasMoved={hasMoved}
+        isFirst={isFirstInOrder}
+        isLast={isLastInOrder}
+        onArrowLeft={() => onArrowMove(contentId, -1)}
+        onArrowRight={() => onArrowMove(contentId, 1)}
+        onPickUp={() => onPickUp(contentId)}
+        onPlace={() => onPlace(contentId)}
+        onCancel={() => onCancelImageMove(contentId)}
+      />
+    ) : null;
+
+  const boxBaseClassName = buildWrapperClassName(className, cbStyles, {
+    includeDragContainer: false,
+    enableParallax: false,
+    isMobile,
+    hasClickHandler,
+    isSelected: false,
+  });
+
+  const placeholderWidth = width || 300;
+  const placeholderHeight = height || (placeholderWidth * 2) / 3;
+
   // GIF content is stored as MP4
   if (contentType === 'GIF' && imageUrl && imageUrl.trim() !== '') {
     return (
       <div
-        key={contentId}
-        className={`${buildWrapperClassName(className, cbStyles, {
-          includeDragContainer: false,
-          enableParallax: false,
-          isMobile,
-          hasClickHandler: hasClickHandler,
-          isSelected: false,
-        })} ${cbStyles.contentBox}`}
+        className={`${boxBaseClassName} ${cbStyles.contentBox}`}
         style={{
           width: Number.isFinite(width) ? width : 300,
           height: Number.isFinite(height) ? height : 200,
@@ -517,20 +548,7 @@ export default function CollectionContentRenderer({
           </video>
           {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
         </div>
-        {isReorderMode && onArrowMove && onPickUp && onPlace && onCancelImageMove && (
-          <ReorderOverlay
-            isPickedUp={isPickedUp}
-            pickedUpImageId={pickedUpImageId}
-            hasMoved={hasMoved}
-            isFirst={isFirstInOrder}
-            isLast={isLastInOrder}
-            onArrowLeft={() => onArrowMove(contentId, -1)}
-            onArrowRight={() => onArrowMove(contentId, 1)}
-            onPickUp={() => onPickUp(contentId)}
-            onPlace={() => onPlace(contentId)}
-            onCancel={() => onCancelImageMove(contentId)}
-          />
-        )}
+        {reorderOverlay}
       </div>
     );
   }
@@ -538,20 +556,11 @@ export default function CollectionContentRenderer({
   const hasValidImage = imageUrl && imageUrl.trim() !== '';
 
   if (!hasValidImage) {
-    const placeholderWidth = width || 300;
-    const placeholderHeight = height || (placeholderWidth * 2) / 3;
-    const placeholderClassName = `${buildWrapperClassName(className, cbStyles, {
-      includeDragContainer: false,
-      enableParallax: false,
-      isMobile,
-      hasClickHandler,
-      isSelected: false,
-    })} ${cbStyles.imagePlaceholder}`;
+    const placeholderClassName = `${boxBaseClassName} ${cbStyles.imagePlaceholder}`;
 
     if (isSlugNav) {
       return (
         <Tile
-          key={contentId}
           href={`/${hasSlug}`}
           aria-label={cardLinkLabel}
           className={placeholderClassName}
@@ -564,7 +573,6 @@ export default function CollectionContentRenderer({
 
     return (
       <div
-        key={contentId}
         className={placeholderClassName}
         {...activatableProps(hasClickHandler, handleClick)}
         style={{
@@ -587,22 +595,13 @@ export default function CollectionContentRenderer({
       return null;
     }
 
-    const placeholderWidth = width || 300;
-    const placeholderHeight = height || (placeholderWidth * 2) / 3;
-    const placeholderClassName = `${buildWrapperClassName(className, cbStyles, {
-      includeDragContainer: false,
-      enableParallax: false,
-      isMobile,
-      hasClickHandler,
-      isSelected: false,
-    })} ${cbStyles.contentBox}`;
+    const placeholderClassName = `${boxBaseClassName} ${cbStyles.contentBox}`;
 
     // Manage view: keep the "Image unavailable" box and make it clickable so the admin
     // can open the edit/delete modal and remove the broken image. Mirrors the click
     // wiring of the empty-URL ("No Image") placeholder above.
     return (
       <div
-        key={contentId}
         className={placeholderClassName}
         {...activatableProps(hasClickHandler, handleClick)}
         style={{
@@ -698,14 +697,14 @@ export default function CollectionContentRenderer({
     className: enableParallax
       ? buildParallaxWrapperClassName(className, cbStyles, {
           isMobile,
-          isSelected: contentType === 'IMAGE' && selectedIds.includes(contentId),
+          isSelected,
         })
       : buildWrapperClassName(className, cbStyles, {
           includeDragContainer: false,
           enableParallax,
           isMobile,
-          hasClickHandler: hasClickHandler,
-          isSelected: contentType === 'IMAGE' && selectedIds.includes(contentId),
+          hasClickHandler,
+          isSelected,
         }),
     style: {
       width: validWidth,
@@ -720,7 +719,6 @@ export default function CollectionContentRenderer({
   if (isSlugNav) {
     return (
       <div
-        key={contentId}
         {...wrapperProps}
         {...(enableParallax ? { 'data-parallax-container': '' } : { 'data-image-wrapper': '' })}
       >
@@ -744,7 +742,6 @@ export default function CollectionContentRenderer({
 
   return (
     <div
-      key={contentId}
       {...wrapperProps}
       {...(enableParallax ? { 'data-parallax-container': '' } : { 'data-image-wrapper': '' })}
     >
@@ -782,25 +779,7 @@ export default function CollectionContentRenderer({
           save={saveHeart}
         />
       )}
-      {isReorderMode &&
-        onArrowMove &&
-        onPickUp &&
-        onPlace &&
-        onCancelImageMove &&
-        contentId !== currentCoverImageId && (
-          <ReorderOverlay
-            isPickedUp={isPickedUp}
-            pickedUpImageId={pickedUpImageId}
-            hasMoved={hasMoved}
-            isFirst={isFirstInOrder}
-            isLast={isLastInOrder}
-            onArrowLeft={() => onArrowMove(contentId, -1)}
-            onArrowRight={() => onArrowMove(contentId, 1)}
-            onPickUp={() => onPickUp(contentId)}
-            onPlace={() => onPlace(contentId)}
-            onCancel={() => onCancelImageMove(contentId)}
-          />
-        )}
+      {contentId !== currentCoverImageId && reorderOverlay}
     </div>
   );
 }
