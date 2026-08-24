@@ -744,12 +744,11 @@ describe('hasRenderableContent', () => {
 
 describe('createHeaderRow', () => {
   const componentWidth = 800;
-  const chunkSize = 4;
 
   describe('Normal cases with full metadata', () => {
     it('should create header row with two items: cover image and metadata text block', () => {
       const collection = createCollectionModel(1);
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
 
       expect(result).not.toBeNull();
       expect(result?.items).toHaveLength(2);
@@ -760,7 +759,7 @@ describe('createHeaderRow', () => {
 
     it('should create header row with cover image block with correct properties', () => {
       const collection = createCollectionModel(1);
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
       const coverBlock = result?.items[0]?.content as ContentParallaxImageModel;
 
       expect(coverBlock).toBeDefined();
@@ -774,7 +773,7 @@ describe('createHeaderRow', () => {
 
     it('should create header row with metadata block with all metadata items', () => {
       const collection = createCollectionModel(1);
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
       const metadataBlock = result?.items[1]?.content as ContentTextModel;
 
       expect(metadataBlock).toBeDefined();
@@ -785,7 +784,7 @@ describe('createHeaderRow', () => {
 
     it('should calculate sizes for header row items', () => {
       const collection = createCollectionModel(1);
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
 
       expect(result?.items[0]?.width).toBeGreaterThan(0);
       expect(result?.items[0]?.height).toBeGreaterThan(0);
@@ -801,7 +800,7 @@ describe('createHeaderRow', () => {
   describe('Desktop row shape', () => {
     it('should return a single row with rowType "header" on desktop', () => {
       const collection = createCollectionModel(1);
-      const result = createHeaderRow(collection, 1200, 2, false);
+      const result = createHeaderRow(collection, 1200, false);
       const row = asSingleRow(result);
       expect(row).not.toBeNull();
       expect(row?.rowType).toBe('header');
@@ -809,7 +808,7 @@ describe('createHeaderRow', () => {
 
     it('should include cover image as first item on desktop', () => {
       const collection = createCollectionModel(1);
-      const result = createHeaderRow(collection, 1200, 2, false);
+      const result = createHeaderRow(collection, 1200, false);
       const row = asSingleRow(result);
       expect(row?.items.length).toBeGreaterThanOrEqual(1);
       expect(row?.items[0]?.content.contentType).toBe('IMAGE');
@@ -819,7 +818,7 @@ describe('createHeaderRow', () => {
   describe('Mobile rows', () => {
     it('should return an array of rows on mobile (isMobile=true)', () => {
       const collection = createCollectionModel(1);
-      const result = createHeaderRow(collection, 375, 2, true);
+      const result = createHeaderRow(collection, 375, true);
       expect(Array.isArray(result)).toBe(true);
       const rows = result as RowWithPatternAndSizes[];
       expect(rows.length).toBeGreaterThanOrEqual(1);
@@ -827,7 +826,7 @@ describe('createHeaderRow', () => {
 
     it('should give each mobile row rowType "header"', () => {
       const collection = createCollectionModel(1);
-      const result = createHeaderRow(collection, 375, 2, true) as RowWithPatternAndSizes[];
+      const result = createHeaderRow(collection, 375, true) as RowWithPatternAndSizes[];
       for (const row of result) {
         expect(row.rowType).toBe('header');
       }
@@ -835,7 +834,7 @@ describe('createHeaderRow', () => {
 
     it('should include a metadata row on mobile when collection has description', () => {
       const collection = createCollectionModel(1, { description: 'Some description' });
-      const result = createHeaderRow(collection, 375, 2, true) as RowWithPatternAndSizes[];
+      const result = createHeaderRow(collection, 375, true) as RowWithPatternAndSizes[];
       // Should have cover row + metadata row
       expect(result.length).toBeGreaterThanOrEqual(2);
     });
@@ -854,7 +853,7 @@ describe('createHeaderRow', () => {
       });
 
     it('builds a cover-only header when there is no metadata and no rail is forced', () => {
-      const row = asSingleRow(createHeaderRow(bare(), 1200, 2, false));
+      const row = asSingleRow(createHeaderRow(bare(), 1200, false));
       expect(row?.items).toHaveLength(1);
       expect(row?.items[0]?.content.contentType).toBe('IMAGE');
     });
@@ -863,21 +862,21 @@ describe('createHeaderRow', () => {
       // The rail is where the filter toolbar and the download row mount, so a page that shows
       // either needs it even with no metadata text. Gating it on items alone is what dropped the
       // filter bar from /user, which has no date, locations or siblings.
-      const row = asSingleRow(createHeaderRow(bare(), 1200, 2, false, true));
+      const row = asSingleRow(createHeaderRow(bare(), 1200, false, true));
       expect(row?.items).toHaveLength(2);
       expect(row?.items[1]?.content.contentType).toBe('TEXT');
       expect((row?.items[1]?.content as ContentTextModel).items).toEqual([]);
     });
 
     it('gives the forced rail real width so the toolbar has somewhere to render', () => {
-      const row = asSingleRow(createHeaderRow(bare(), 1200, 2, false, true));
+      const row = asSingleRow(createHeaderRow(bare(), 1200, false, true));
       expect(row?.items[1]?.width).toBeGreaterThan(0);
       expect(row?.items[1]?.height).toBeGreaterThan(0);
     });
 
     it('still emits a header row when forced on a cover-less collection with no metadata', () => {
       const row = asSingleRow(
-        createHeaderRow({ ...bare(), coverImage: undefined }, 1200, 2, false, true)
+        createHeaderRow({ ...bare(), coverImage: undefined }, 1200, false, true)
       );
       expect(row).not.toBeNull();
       expect(row?.items).toHaveLength(1);
@@ -885,7 +884,7 @@ describe('createHeaderRow', () => {
     });
 
     it('leaves the mobile header stacked, with the forced rail as its own row', () => {
-      const rows = createHeaderRow(bare(), 375, 2, true, true) as RowWithPatternAndSizes[];
+      const rows = createHeaderRow(bare(), 375, true, true) as RowWithPatternAndSizes[];
       expect(Array.isArray(rows)).toBe(true);
       expect(rows).toHaveLength(2);
       expect(rows[1]?.items[0]?.content.contentType).toBe('TEXT');
@@ -893,8 +892,8 @@ describe('createHeaderRow', () => {
 
     it('does not change a collection that already has metadata', () => {
       const withMeta = createCollectionModel(1);
-      const unforced = asSingleRow(createHeaderRow(withMeta, 1200, 2, false));
-      const forced = asSingleRow(createHeaderRow(withMeta, 1200, 2, false, true));
+      const unforced = asSingleRow(createHeaderRow(withMeta, 1200, false));
+      const forced = asSingleRow(createHeaderRow(withMeta, 1200, false, true));
       expect(forced?.items).toHaveLength(unforced?.items.length ?? 0);
       expect(forced?.items[1]?.width).toBe(unforced?.items[1]?.width);
     });
@@ -903,7 +902,7 @@ describe('createHeaderRow', () => {
   describe('date metadata item', () => {
     /** The metadata text block is the second desktop header item. */
     function dateItemValue(collection: CollectionModel): string | undefined {
-      const row = asSingleRow(createHeaderRow(collection, 1200, 2, false));
+      const row = asSingleRow(createHeaderRow(collection, 1200, false));
       const metadataBlock = row?.items[1]?.content as ContentTextModel | undefined;
       return metadataBlock?.items?.find(item => item.type === 'date')?.value;
     }
@@ -942,7 +941,7 @@ describe('createHeaderRow', () => {
           { id: 51, name: 'Dolomites 2025', slug: 'dolomites-2025' },
         ],
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
       const metadataBlock = result?.items[1]?.content as ContentTextModel;
       const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
       expect(collectionItems).toHaveLength(2);
@@ -960,7 +959,7 @@ describe('createHeaderRow', () => {
 
     it('should emit no collection items when the collection has no siblings', () => {
       const collection = createCollectionModel(1); // fixture has no siblings
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
       const metadataBlock = result?.items[1]?.content as ContentTextModel;
       expect(metadataBlock.items.filter(item => item.type === 'collection')).toHaveLength(0);
     });
@@ -972,7 +971,7 @@ describe('createHeaderRow', () => {
           { id: 61, name: 'No Slug' },
         ],
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
       const metadataBlock = result?.items[1]?.content as ContentTextModel;
       const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
       expect(collectionItems).toHaveLength(1);
@@ -992,7 +991,7 @@ describe('createHeaderRow', () => {
           { id: 71, name: 'No Cover', slug: 'no-cover' },
         ],
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
       const metadataBlock = result?.items[1]?.content as ContentTextModel;
       const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
       expect(collectionItems).toHaveLength(2);
@@ -1020,7 +1019,7 @@ describe('createHeaderRow', () => {
           { id: 81, name: 'Europe 2025', slug: 'europe-2025' },
         ],
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
       const metadataBlock = result?.items[1]?.content as ContentTextModel;
       const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
       expect(collectionItems).toEqual([
@@ -1034,7 +1033,7 @@ describe('createHeaderRow', () => {
         siblings: [{ id: 50, name: 'Dolomites Film', slug: 'dolomites-film' }],
         parents: [{ id: 80, name: 'Italy', slug: 'italy' }],
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
       const metadataBlock = result?.items[1]?.content as ContentTextModel;
       const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
       expect(collectionItems.map(item => item.value)).toEqual(['Dolomites Film', 'Italy']);
@@ -1045,7 +1044,7 @@ describe('createHeaderRow', () => {
         siblings: [{ id: 50, name: 'Shared', slug: 'shared' }],
         parents: [{ id: 50, name: 'Shared', slug: 'shared' }],
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
       const metadataBlock = result?.items[1]?.content as ContentTextModel;
       const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
       expect(collectionItems).toHaveLength(1);
@@ -1064,7 +1063,7 @@ describe('createHeaderRow', () => {
           { id: 83, name: 'No Slug Parent' },
         ],
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
       const metadataBlock = result?.items[1]?.content as ContentTextModel;
       const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
       expect(collectionItems).toEqual([
@@ -1093,7 +1092,7 @@ describe('createHeaderRow', () => {
           locations: [],
         },
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
 
       // Horizontal images: AR 1.78 clamped to 1.25, coverWidth = maxRowHeight * 1.25
       const coverWidth = result?.items[0]?.width || 0;
@@ -1115,7 +1114,7 @@ describe('createHeaderRow', () => {
           locations: [],
         },
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
 
       const coverWidth = result?.items[0]?.width || 0;
       const minCoverWidth = componentWidth * 0.3;
@@ -1141,7 +1140,7 @@ describe('createHeaderRow', () => {
           locations: [],
         },
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
 
       const coverWidth = result?.items[0]?.width || 0;
       const minCoverWidth = componentWidth * 0.3;
@@ -1166,7 +1165,7 @@ describe('createHeaderRow', () => {
           locations: [],
         },
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
 
       const rowHeight = result?.items[0]?.height || 0;
 
@@ -1193,7 +1192,7 @@ describe('createHeaderRow', () => {
           locations: [],
         },
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
 
       const coverWidth = result?.items[0]?.width || 0;
       const descWidth = result?.items[1]?.width || 0;
@@ -1212,7 +1211,7 @@ describe('createHeaderRow', () => {
         locations: [],
         description: undefined,
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
 
       expect(result).not.toBeNull();
       expect(result?.items).toHaveLength(1);
@@ -1228,7 +1227,7 @@ describe('createHeaderRow', () => {
         description: undefined,
         locations: [],
       });
-      const result = createHeaderRow(collection, 1200, 2);
+      const result = createHeaderRow(collection, 1200);
       expect(result).toBeNull();
     });
 
@@ -1239,7 +1238,7 @@ describe('createHeaderRow', () => {
         locations: [],
         description: undefined,
       });
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+      const result = createHeaderRow(collection, componentWidth);
 
       expect(result).toBeNull();
     });
@@ -1248,7 +1247,7 @@ describe('createHeaderRow', () => {
       const collection = createCollectionModel(1, {
         coverImage: undefined,
       });
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
 
       expect(result).not.toBeNull();
       expect(result?.rowType).toBe('header');
@@ -1263,7 +1262,7 @@ describe('createHeaderRow', () => {
         locations: [],
         description: 'A short bio',
       });
-      const row = asSingleRow(createHeaderRow(collection, 1200, 2, false));
+      const row = asSingleRow(createHeaderRow(collection, 1200, false));
       expect(row).not.toBeNull();
       expect(row?.rowType).toBe('header');
       expect(row?.items).toHaveLength(1);
@@ -1281,7 +1280,7 @@ describe('createHeaderRow', () => {
           // no imageWidth / imageHeight / width / height
         },
       });
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+      const result = createHeaderRow(collection, componentWidth);
       expect(result).toBeNull();
     });
   });
