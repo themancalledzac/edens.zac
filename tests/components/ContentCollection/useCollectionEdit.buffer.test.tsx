@@ -12,9 +12,8 @@
  * wipe typed-but-unsaved buffer edits.
  */
 
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 
-import { useCollectionEdit } from '@/app/components/ContentCollection/edit/useCollectionEdit';
 import {
   getCollectionUpdateMetadata,
   getMetadata,
@@ -23,13 +22,17 @@ import {
 } from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
-  type CollectionListModel,
-  type CollectionModel,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
-  type GeneralMetadataDTO,
 } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
+import {
+  makeCollection,
+  makeListModel,
+  makeMetadata,
+  makeResponse,
+} from '@/tests/fixtures/collectionEditFixtures';
+import { renderEdit } from '@/tests/fixtures/renderCollectionEdit';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn() }),
@@ -63,63 +66,6 @@ const mockStorageGetFull = collectionStorage.getFull as jest.MockedFunction<
   typeof collectionStorage.getFull
 >;
 
-function makeMetadata(overrides: Partial<GeneralMetadataDTO> = {}): GeneralMetadataDTO {
-  return {
-    tags: [],
-    people: [],
-    locations: [],
-    cameras: [],
-    lenses: [],
-    filmTypes: [],
-    filmFormats: [],
-    collections: [],
-    ...overrides,
-  };
-}
-
-function makeListModel(overrides: Partial<CollectionListModel> = {}): CollectionListModel {
-  return {
-    id: 5,
-    name: 'Child Collection',
-    slug: 'child-collection',
-    ...overrides,
-  };
-}
-
-function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
-  return {
-    id: 42,
-    slug: 'smith-wedding',
-    title: 'Smith Wedding',
-    description: 'A description',
-    isClient: false,
-    isBlog: false,
-    locations: [],
-    visibility: CollectionVisibility.LISTED,
-    displayMode: 'ORDERED',
-    collectionDate: '2026-01-01',
-    rowsWide: 4,
-    content: [],
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-    ...overrides,
-  };
-}
-
-function makeResponse(overrides: Partial<CollectionModel> = {}): CollectionUpdateResponseDTO {
-  return {
-    collection: makeCollection(overrides),
-    tags: [],
-    people: [],
-    locations: [],
-    cameras: [],
-    lenses: [],
-    filmTypes: [],
-    filmFormats: [],
-    collections: [],
-  };
-}
-
 /** Response where child collection 5 is already saved (contained as a content block). */
 function makeResponseWithChild(): CollectionUpdateResponseDTO {
   return makeResponse({
@@ -133,11 +79,6 @@ function makeResponseWithChild(): CollectionUpdateResponseDTO {
       },
     ],
   });
-}
-
-function renderEdit(opts: { collection?: CollectionModel } = {}) {
-  const collection = opts.collection ?? makeCollection();
-  return renderHook(() => useCollectionEdit({ collection, slug: collection.slug, enabled: true }));
 }
 
 function payloadOfCall(index: number): CollectionUpdateRequest {
@@ -357,25 +298,19 @@ describe('update buffer — kind flags', () => {
   });
 
   it('seeds isClient/isBlog from the collection so the kind checkboxes reflect storage', () => {
-    const { result } = renderHook(() =>
-      useCollectionEdit({
-        collection: makeCollection({ isClient: true, isBlog: false }),
-        slug: 'smith-wedding',
-        enabled: false,
-      })
-    );
+    const { result } = renderEdit({
+      enabled: false,
+      collection: makeCollection({ isClient: true, isBlog: false }),
+    });
     expect(result.current.updateData.isClient).toBe(true);
     expect(result.current.updateData.isBlog).toBe(false);
   });
 
   it('seeds both false for an ordinary collection', () => {
-    const { result } = renderHook(() =>
-      useCollectionEdit({
-        collection: makeCollection({ isClient: false, isBlog: false }),
-        slug: 'smith-wedding',
-        enabled: false,
-      })
-    );
+    const { result } = renderEdit({
+      enabled: false,
+      collection: makeCollection({ isClient: false, isBlog: false }),
+    });
     expect(result.current.updateData.isClient).toBe(false);
     expect(result.current.updateData.isBlog).toBe(false);
   });

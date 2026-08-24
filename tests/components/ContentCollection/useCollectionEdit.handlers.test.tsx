@@ -1,6 +1,5 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 
-import { useCollectionEdit } from '@/app/components/ContentCollection/edit/useCollectionEdit';
 import {
   getCollectionUpdateMetadata,
   getMetadata,
@@ -18,18 +17,19 @@ import {
 } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
-  type CollectionListModel,
-  type CollectionModel,
-  type CollectionUpdateResponseDTO,
-  type GeneralMetadataDTO,
-} from '@/app/types/Collection';
-import { CollectionVisibility } from '@/app/types/CollectionVisibility';
-import {
   type ContentGifModel,
   type ContentImageModel,
   type ContentImageUpdateResponse,
 } from '@/app/types/Content';
+import {
+  makeCollection,
+  makeListModel,
+  makeMetadata,
+  makeMetadataRich,
+  makeResponse,
+} from '@/tests/fixtures/collectionEditFixtures';
 import { createCollectionContent } from '@/tests/fixtures/contentFixtures';
+import { renderEdit } from '@/tests/fixtures/renderCollectionEdit';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: mockRouterReplace }),
@@ -83,77 +83,6 @@ jest.mock('@/app/components/ContentCollection/edit/collectionEditUtils', () => {
   };
 });
 
-function makeMetadata(overrides: Partial<GeneralMetadataDTO> = {}): GeneralMetadataDTO {
-  return {
-    tags: [],
-    people: [],
-    locations: [],
-    cameras: [],
-    lenses: [],
-    filmTypes: [],
-    filmFormats: [],
-    collections: [],
-    ...overrides,
-  };
-}
-
-function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
-  return {
-    id: 42,
-    slug: 'smith-wedding',
-    title: 'Smith Wedding',
-    description: 'A description',
-    isClient: false,
-    isBlog: false,
-    locations: [],
-    visibility: CollectionVisibility.LISTED,
-    displayMode: 'ORDERED',
-    collectionDate: '2026-01-01',
-    rowsWide: 4,
-    content: [],
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-    ...overrides,
-  };
-}
-
-function makeResponse(
-  overrides: Partial<CollectionModel> = {},
-  responseOverrides: Partial<CollectionUpdateResponseDTO> = {}
-): CollectionUpdateResponseDTO {
-  return {
-    collection: makeCollection(overrides),
-    tags: [],
-    people: [],
-    locations: [],
-    cameras: [],
-    lenses: [],
-    filmTypes: [],
-    filmFormats: [],
-    collections: [],
-    ...responseOverrides,
-  };
-}
-
-function makeListModel(overrides: Partial<CollectionListModel> = {}): CollectionListModel {
-  return {
-    id: 5,
-    name: 'Child Collection',
-    slug: 'child-collection',
-    ...overrides,
-  };
-}
-
-/** A response whose every metadata list is populated, so a truncated DTO is visible. */
-const metadataRich: Partial<CollectionUpdateResponseDTO> = {
-  tags: [{ id: 1, name: 'wedding', slug: 'wedding' }],
-  people: [{ id: 2, name: 'Alice' }],
-  locations: [{ id: 3, name: 'Seattle', slug: 'seattle' }],
-  cameras: [{ id: 4, name: 'Leica M6', isFilm: true }],
-  lenses: [{ id: 5, name: 'Summicron 35' }],
-  filmTypes: [{ id: 6, name: 'Portra 400', defaultIso: 400 }],
-};
-
 /** Build an array-backed FileList stand-in (jsdom has no FileList constructor). */
 function makeFileList(files: File[]): FileList {
   const fileList = {
@@ -167,20 +96,6 @@ function makeFileList(files: File[]): FileList {
     Object.defineProperty(fileList, index, { value: file, enumerable: true });
   }
   return fileList as unknown as FileList;
-}
-
-function renderEdit(
-  opts: { enabled?: boolean; collection?: CollectionModel; onExitManage?: () => void } = {}
-) {
-  const collection = opts.collection ?? makeCollection();
-  return renderHook(() =>
-    useCollectionEdit({
-      collection,
-      slug: collection.slug,
-      enabled: opts.enabled ?? true,
-      onExitManage: opts.onExitManage,
-    })
-  );
 }
 
 describe('useCollectionEdit — handler tests', () => {
@@ -771,6 +686,7 @@ describe('useCollectionEdit — handler tests', () => {
     it('adopts the whole refreshed DTO after upload when the initial fetch returned null', async () => {
       mockCreateImages.mockResolvedValue({ successful: [], failed: [], skipped: [] });
       mockGetCollectionUpdateMetadata.mockResolvedValueOnce(null);
+      const metadataRich = makeMetadataRich();
       const refreshed = makeResponse({}, metadataRich);
       mockGetCollectionUpdateMetadata.mockResolvedValue(refreshed);
 
@@ -795,6 +711,7 @@ describe('useCollectionEdit — handler tests', () => {
     /** Same truncated-DTO trap as the upload path: the refresh response replaces state wholesale. */
     it('adopts the whole refreshed DTO after a text block create when the initial fetch returned null', async () => {
       mockGetCollectionUpdateMetadata.mockResolvedValueOnce(null);
+      const metadataRich = makeMetadataRich();
       const refreshed = makeResponse({}, metadataRich);
       mockGetCollectionUpdateMetadata.mockResolvedValue(refreshed);
 
