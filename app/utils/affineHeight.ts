@@ -15,11 +15,9 @@
  *   `solveHboxSplit` — how the winning arrangement RENDERS.
  *
  * The two are one statement and must return the same number: the composer promises a row
- * will fill its box, and the sizer either keeps that promise or the page grows pockets. They
- * used to be four hand-mirrored function pairs enforced by comments alone, and a past
- * divergence between them is exactly where the admin hub's dead-space bug came from. This
- * module is the mirror made structural — each pair now reads one formula from one place —
- * and `tests/utils/affineHeight.mirror.test.ts` pins the residual freedom the adapters keep
+ * will fill its box, and the sizer either keeps that promise or the page grows pockets.
+ * Each pair reads one formula from one place rather than mirroring it by hand, and
+ * `tests/utils/affineHeight.mirror.test.ts` pins the residual freedom the adapters keep
  * (their leaf-AR accessors; see below).
  *
  * Signature conventions are the adapters' own: the composer's split takes the full parent
@@ -177,9 +175,9 @@ export interface EqualHeightSplitInput {
  * - **Both children pinned** (`aL + aR === 0`): the equation degenerates to `bL = bR` —
  *   true or false, but never a statement about W, and the division is 0/0. Heights yield
  *   no equation, so the DECLARED shapes share the width — a bar declaring twice the AR of
- *   its sibling gets twice the width. (An even split, the old rule, gave a nested pair
- *   half of what a lone sibling got, which starved declared minimums the renderer's own
- *   band would then have to undo.)
+ *   its sibling gets twice the width. Do not simplify this to an even split: that gives a
+ *   nested pair half of what a lone sibling gets, starving declared minimums that the
+ *   renderer's own band then has to undo.
  * - **One child pinned, and the other cannot reach that height at any width it could be
  *   given**: the solve runs off the end of the row, and a bare `Math.max(0, …)` clamp
  *   would hand the pinned child ZERO width, deleting a panel from the page. Keeping the

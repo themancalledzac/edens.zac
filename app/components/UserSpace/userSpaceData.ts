@@ -194,13 +194,13 @@ async function loadShareView(target: { mode: 'share'; token?: string }): Promise
  *
  * ## Why `activeKey` is a parameter
  *
- * Every section's COUNT is still read on every request, so all four chips keep an accurate badge.
- * But the Following section additionally needs the full collection catalog to turn its id list
- * into renderable blocks, and that read (`getAllCollections(0, 500)`) is ~0.5s and ~57KB against
- * the local backend — spent on all four tabs to serve one. The page is `force-dynamic`, so it was
- * spent again on every single tab switch.
+ * Every section's COUNT is read on every request, so all four chips keep an accurate badge. But the
+ * Following section additionally needs the full collection catalog to turn its id list into
+ * renderable blocks, and that read (`getAllCollections(0, 500)`) is ~0.5s and ~57KB against the
+ * local backend — spent on all four tabs to serve one. The page is `force-dynamic`, so hydrating it
+ * unconditionally spends it again on every single tab switch.
  *
- * Deferring it is only safe because the count no longer comes from the hydrated array: Following's
+ * Deferring it is only safe because the count does not come from the hydrated array: Following's
  * badge is `followedCollectionIds.length`, which the (cheap) follows read already gives us, so the
  * chip is accurate whether or not the catalog was fetched. That is the whole reason
  * {@link UserSpaceSection.count} exists as a field rather than being derived from `content.length`

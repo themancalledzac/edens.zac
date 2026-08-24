@@ -88,13 +88,13 @@ export interface UserSpaceProps {
  * ## Why the grid goes through UserSpaceGrid
  *
  * The Following chip's count is server-rendered from the followed-id list, while unfollowing is a
- * client-only optimistic update in `FollowsProvider` — so the badge held the old number until the
- * next server render. This is a Server Component and cannot watch that change, so the grid is
- * rendered through {@link UserSpaceGrid}, a thin client component below the provider that adds the
- * difference between the ids this render was built from and the provider's live set. The count
- * still comes from the id list; nothing recounts the rendered tiles.
+ * client-only optimistic update in `FollowsProvider`. This is a Server Component and cannot watch
+ * that change, so the grid renders through {@link UserSpaceGrid}, a thin client component below the
+ * provider that adds the difference between the ids this render was built from and the provider's
+ * live set. Without it the chip keeps the pre-unfollow number until the next server render. The
+ * count still comes from the id list; nothing recounts the rendered tiles.
  *
- * Load-bearing invariant: the backend's `UserPageAssembler` builds this collection with no `id`,
+ * Invariant: the backend's `UserPageAssembler` builds this collection with no `id`,
  * `isClient` or `isPasswordProtected` (it is assembled, not a `collection` row). That absence is
  * what keeps the client-gallery affordances inside `CollectionPageClient` switched off —
  * `canDownloadCollection` short-circuits on the missing id and `selectsEnabled` on the missing

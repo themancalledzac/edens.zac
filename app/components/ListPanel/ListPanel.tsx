@@ -35,10 +35,8 @@ interface ListPanelProps {
  * Shared shell for list panels: a header row, and a scrollable body beneath it.
  *
  * The header and every row are the SAME shape — three sections (left, middle, right) resolved
- * against one pair of rails. That is what makes the old header/row misalignment structurally
- * impossible rather than a value to keep re-tuning: header controls used to sit at a 17px inset
- * (`1px border + 16px header padding`) while row controls sat at 33px (`1 + 16 body + 8 list +
- * 8 row`), a 16px discontinuity at every row. There is no separate header inset left to get wrong.
+ * against one pair of rails. That is what makes header/row misalignment structurally impossible
+ * rather than a value to keep re-tuning: there is no separate header inset to get wrong.
  *
  * When collapsible, the header becomes a {@link Disclosure} — the title turns into the toggle and
  * the body unmounts, while the header's middle and right controls stay outside the button and
@@ -52,9 +50,9 @@ interface ListPanelProps {
  *
  * `.isCollapsed` also paints the strip of empty body surface a closed panel keeps showing, through
  * an `::after` that takes the space below the header. That is presentation with no content, so it
- * belongs to the stylesheet and not to this component: as markup it was two nested divs whose only
- * job was to be seen and not read, held out of the accessibility tree by an `aria-hidden` that any
- * later edit could drop.
+ * belongs to the stylesheet and not to this component: as markup it would be two nested divs whose
+ * only job is to be seen and not read, held out of the accessibility tree by an `aria-hidden` that
+ * any later edit could drop.
  *
  * `collapsed` is inverted into the disclosure's `open` rather than renamed, because the panel's
  * callers and the renderer that owns the state both speak in terms of collapsing.

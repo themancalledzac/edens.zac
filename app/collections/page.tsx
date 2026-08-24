@@ -87,11 +87,10 @@ function extractCollectionBlocks(content: unknown): ContentCollectionModel[] {
  * regardless of which aggregates the backend ships on the child blocks: on an index surface the
  * bar is part of the page, not an accident of the payload.
  *
- * The tiles are no longer grouped under year headings. Ordering and date narrowing come from the
- * shared bar's Order and Date controls — the reason the bespoke `CollectionShowcaseTile` and
- * year-grouped grid are gone. Ordering reaches these tiles through `applySort`'s collection-card
- * path; the image-only `isDateable` sort never did, which is why the bar had no working Order
- * control here before.
+ * The tiles are not grouped under year headings; ordering and date narrowing come from the shared
+ * bar's Order and Date controls instead. Ordering reaches these tiles through `applySort`'s
+ * collection-card path — the image-only `isDateable` sort does not see them, so a change that
+ * routes collection cards back through it silently disables the Order control here.
  */
 export default async function CollectionsPage() {
   let collection: CollectionModel | null;

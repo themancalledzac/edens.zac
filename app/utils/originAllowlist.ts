@@ -42,25 +42,13 @@ function configuredAppOrigin(): string | null {
 /**
  * Origins allowed to send writes by exact match: the deployed app URL, and nothing else.
  *
- * This Set used to also carry `http://localhost:3000` and `http://localhost:3001` under
- * `NODE_ENV === 'development'`. They were removed deliberately (D9), not overlooked, and the
- * reasoning is here so it is not re-litigated a third time.
+ * Dev ports are NOT listed here. `DEV_LAN_ORIGIN` below matches `http://localhost:3000` and
+ * `:3001` under the same `NODE_ENV === 'development'` gate, and does it case-insensitively, so
+ * exact-match literals for them would be a narrower duplicate of a check that already runs (D9).
+ * Keep the dev-port allowance in that one place: literals here would silently survive any later
+ * tightening of the regex.
  *
- * They were redundant with `DEV_LAN_ORIGIN` below, which matches both strings and is gated on
- * the same `NODE_ENV === 'development'` — so every request the literals answered, the regex
- * answered too, under identical conditions. They were also the *narrower* of the two, not an
- * equal-strength duplicate: the regex carries `/i` and matches `http://LOCALHOST:3000`, while
- * a Set lookup is exact and did not.
- *
- * Keeping them as defense in depth was the alternative, and it was rejected on the grounds that
- * the failure they would cover is loud rather than silent. If a later MR tightened the regex
- * and dropped bare `localhost`, the dev server would fail on the very next admin write and two
- * cases in `originAllowlist.test.ts` would go red immediately. Defense in depth earns its cost
- * against failures that pass unnoticed; this one cannot. Worse, the literals would have quietly
- * defeated that tightening if it were ever intentional.
- *
- * The dev-port allowance now lives in exactly one place. Adding a second exact-match origin
- * here is still fine — that is what the Set is for.
+ * Adding a second non-dev exact-match origin here is fine — that is what the Set is for.
  */
 function allowedOrigins(): Set<string> {
   return new Set([configuredAppOrigin()].filter(Boolean) as string[]);

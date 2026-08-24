@@ -1537,12 +1537,10 @@ function consumedWidth(component: AtomicComponent, width: number, gap: number): 
  * - 2.5 gaps clears that worst case by 8.7px, ~37%, which is the margin covering cover shapes
  *   this sweep did not enumerate.
  *
- * The number is unchanged from when it was first set; its BASIS is not. It used to be calibrated
- * against this model's 29px estimate of a 21.4px rendered gap — a 35% modeling error sitting
- * inside the very constant that defines "fills the body". `subtreeMaxWidth` in
- * `rowStructureAlgorithm.ts` was dropping the gap between capped hbox siblings that this function
- * charges; with the two reconciled, model slack and rendered slack now agree to the pixel on all
- * 787 rows, and the tolerance is calibrated against a measurement rather than an estimate.
+ * Those figures are rendered slack, not modeled slack, and the two agree only because
+ * `subtreeMaxWidth` in `rowStructureAlgorithm.ts` charges the gap between capped hbox siblings
+ * that this function also charges. If that changes, this constant is calibrated against a number
+ * the renderer no longer produces and the sweep has to be re-run.
  */
 const FILL_TOLERANCE_GAPS = 2.5;
 
