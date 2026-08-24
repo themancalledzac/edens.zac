@@ -8,10 +8,9 @@
  * - Should NOT call onClose when clicking inside the ref element
  * - Should call onClose when pressing Escape key
  * - Should NOT call onClose for other key presses
- * - Should NOT attach listeners when isOpen is false
- * - Should attach listeners when isOpen is true
- * - Should remove listeners on cleanup/unmount
- * - Should remove listeners when isOpen changes to false
+ * - Should NOT call onClose when isOpen is false
+ * - Should stop calling onClose after isOpen flips from true to false
+ * - Should stop calling onClose after unmount
  * - Should handle null ref gracefully
  *
  * useClickOutsideMultiple:
@@ -138,92 +137,56 @@ describe('useClickOutside', () => {
   });
 
   describe('isOpen state behavior', () => {
-    it('should NOT attach listeners when isOpen is false', () => {
-      const ref = { current: containerElement };
-      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
-
-      renderHook(() => useClickOutside(ref, false, mockOnClose));
-
-      // Should not have added mousedown or keydown listeners
-      expect(addEventListenerSpy).not.toHaveBeenCalledWith('mousedown', expect.any(Function));
-      expect(addEventListenerSpy).not.toHaveBeenCalledWith('keydown', expect.any(Function));
-
-      addEventListenerSpy.mockRestore();
-    });
-
-    it('should attach listeners when isOpen is true', () => {
-      const ref = { current: containerElement };
-      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
-
-      renderHook(() => useClickOutside(ref, true, mockOnClose));
-
-      expect(addEventListenerSpy).toHaveBeenCalledWith('mousedown', expect.any(Function));
-      expect(addEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
-
-      addEventListenerSpy.mockRestore();
-    });
-
-    it('should NOT call onClose when isOpen is false even if click occurs', () => {
+    it('should NOT call onClose when isOpen is false, for outside click or Escape', () => {
       const ref = { current: containerElement };
 
       renderHook(() => useClickOutside(ref, false, mockOnClose));
 
-      // Simulate click outside
       act(() => {
-        const event = new MouseEvent('mousedown', { bubbles: true });
-        outsideElement.dispatchEvent(event);
+        outsideElement.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       });
 
       expect(mockOnClose).not.toHaveBeenCalled();
     });
 
-    it('should remove listeners when isOpen changes from true to false', () => {
+    it('should stop calling onClose after isOpen changes from true to false', () => {
       const ref = { current: containerElement };
-      const removeEventListenerSpy = jest.spyOn(document, 'removeEventListener');
 
       const { rerender } = renderHook(({ isOpen }) => useClickOutside(ref, isOpen, mockOnClose), {
         initialProps: { isOpen: true },
       });
 
-      // Change isOpen to false
+      act(() => {
+        outsideElement.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      });
+
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+
       rerender({ isOpen: false });
 
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('mousedown', expect.any(Function));
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
+      act(() => {
+        outsideElement.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      });
 
-      removeEventListenerSpy.mockRestore();
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('Cleanup behavior', () => {
-    it('should remove listeners on unmount', () => {
-      const ref = { current: containerElement };
-      const removeEventListenerSpy = jest.spyOn(document, 'removeEventListener');
-
-      const { unmount } = renderHook(() => useClickOutside(ref, true, mockOnClose));
-
-      unmount();
-
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('mousedown', expect.any(Function));
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
-
-      removeEventListenerSpy.mockRestore();
-    });
-
-    it('should not call onClose after unmount', () => {
+    it('should not call onClose after unmount, for outside click or Escape', () => {
       const ref = { current: containerElement };
 
       const { unmount } = renderHook(() => useClickOutside(ref, true, mockOnClose));
 
       unmount();
 
-      // Simulate click outside after unmount
       act(() => {
-        const event = new MouseEvent('mousedown', { bubbles: true });
-        outsideElement.dispatchEvent(event);
+        outsideElement.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       });
 
-      // Should not have been called because listeners were removed
       expect(mockOnClose).not.toHaveBeenCalled();
     });
   });
