@@ -166,79 +166,45 @@ describe('buildImageUpdateDiff', () => {
     });
   });
 
-  describe('Camera field (prev/newValue/remove pattern)', () => {
-    it('should use prev pattern when camera ID exists and changed', () => {
-      const currentState = createImageContent(1, { camera: { id: 1, name: 'Old Camera' } });
-      const updateState = { id: 1, camera: { id: 2, name: 'New Camera' } };
+  describe.each(['camera', 'lens'] as const)('%s field (prev/newValue/remove pattern)', field => {
+    const withEquipment = (
+      value: { id: number; name: string } | null
+    ): Partial<ContentImageModel> => (field === 'camera' ? { camera: value } : { lens: value });
+
+    it('should use prev pattern when the ID exists and changed', () => {
+      const currentState = createImageContent(1, withEquipment({ id: 1, name: 'Old' }));
+      const updateState = { id: 1, ...withEquipment({ id: 2, name: 'New' }) };
 
       const result = buildImageUpdateDiff(updateState, currentState);
 
-      expect(result.camera).toEqual({ prev: 2 });
+      expect(result[field]).toEqual({ prev: 2 });
     });
 
-    it('should use remove pattern when camera is removed', () => {
-      const currentState = createImageContent(1, { camera: { id: 1, name: 'Camera' } });
-      const updateState = { id: 1, camera: null };
+    it('should use remove pattern when the value is cleared', () => {
+      const currentState = createImageContent(1, withEquipment({ id: 1, name: 'Existing' }));
+      const updateState = { id: 1, ...withEquipment(null) };
 
       const result = buildImageUpdateDiff(updateState, currentState);
 
-      expect(result.camera).toEqual({ remove: true });
+      expect(result[field]).toEqual({ remove: true });
     });
 
-    it('should use newValue pattern when camera has id 0 (new camera)', () => {
-      const currentState = createImageContent(1, { camera: null });
-      const updateState = { id: 1, camera: { id: 0, name: 'New Camera' } };
+    it('should use newValue pattern for a brand-new entry (id 0)', () => {
+      const currentState = createImageContent(1, withEquipment(null));
+      const updateState = { id: 1, ...withEquipment({ id: 0, name: 'Brand New' }) };
 
       const result = buildImageUpdateDiff(updateState, currentState);
 
-      expect(result.camera).toEqual({ newValue: 'New Camera' });
+      expect(result[field]).toEqual({ newValue: 'Brand New' });
     });
 
-    it('should not include camera when unchanged', () => {
-      const currentState = createImageContent(1, { camera: { id: 1, name: 'Camera' } });
-      const updateState = { id: 1, camera: { id: 1, name: 'Camera' } };
+    it('should not include the field when unchanged', () => {
+      const currentState = createImageContent(1, withEquipment({ id: 1, name: 'Existing' }));
+      const updateState = { id: 1, ...withEquipment({ id: 1, name: 'Existing' }) };
 
       const result = buildImageUpdateDiff(updateState, currentState);
 
-      expect(result.camera).toBeUndefined();
-    });
-  });
-
-  describe('Lens field (prev/newValue/remove pattern)', () => {
-    it('should use prev pattern when lens ID exists and changed', () => {
-      const currentState = createImageContent(1, { lens: { id: 1, name: 'Old Lens' } });
-      const updateState = { id: 1, lens: { id: 2, name: 'New Lens' } };
-
-      const result = buildImageUpdateDiff(updateState, currentState);
-
-      expect(result.lens).toEqual({ prev: 2 });
-    });
-
-    it('should use remove pattern when lens is removed', () => {
-      const currentState = createImageContent(1, { lens: { id: 1, name: 'Lens' } });
-      const updateState = { id: 1, lens: null };
-
-      const result = buildImageUpdateDiff(updateState, currentState);
-
-      expect(result.lens).toEqual({ remove: true });
-    });
-
-    it('should use newValue pattern when lens has id 0 (new lens)', () => {
-      const currentState = createImageContent(1, { lens: null });
-      const updateState = { id: 1, lens: { id: 0, name: 'New Lens' } };
-
-      const result = buildImageUpdateDiff(updateState, currentState);
-
-      expect(result.lens).toEqual({ newValue: 'New Lens' });
-    });
-
-    it('should not include lens when unchanged', () => {
-      const currentState = createImageContent(1, { lens: { id: 1, name: 'Lens' } });
-      const updateState = { id: 1, lens: { id: 1, name: 'Lens' } };
-
-      const result = buildImageUpdateDiff(updateState, currentState);
-
-      expect(result.lens).toBeUndefined();
+      expect(result[field]).toBeUndefined();
     });
   });
 
@@ -329,201 +295,110 @@ describe('buildImageUpdateDiff', () => {
     });
   });
 
-  describe('Tags field (prev/newValue/remove pattern)', () => {
-    it('should include prev when existing tags are selected', () => {
-      const currentState = createImageContent(1, { tags: [] });
-      const updateState = {
-        id: 1,
-        tags: [
-          { id: 1, name: 'Tag 1', slug: 'tag-1' },
-          { id: 2, name: 'Tag 2', slug: 'tag-2' },
-        ],
-      };
+  describe.each(['tags', 'people'] as const)(
+    '%s field (prev/newValue/remove pattern, via the shared buildAssociationDiff)',
+    field => {
+      const withItems = (items: Array<{ id: number; name: string }>): Partial<ContentImageModel> =>
+        field === 'tags'
+          ? {
+              tags: items.map(item => ({
+                ...item,
+                slug: item.name.toLowerCase().replace(/ /g, '-'),
+              })),
+            }
+          : { people: items };
 
-      const result = buildImageUpdateDiff(updateState, currentState);
+      it('should include prev when existing items are selected', () => {
+        const currentState = createImageContent(1, withItems([]));
+        const updateState = {
+          id: 1,
+          ...withItems([
+            { id: 1, name: 'Existing 1' },
+            { id: 2, name: 'Existing 2' },
+          ]),
+        };
 
-      expect(result.tags).toEqual({
-        prev: [1, 2],
+        const result = buildImageUpdateDiff(updateState, currentState);
+
+        expect(result[field]).toEqual({ prev: [1, 2] });
       });
-    });
 
-    it('should include newValue when new tags are added', () => {
-      const currentState = createImageContent(1, { tags: [] });
-      const updateState = {
-        id: 1,
-        tags: [
-          { id: 0, name: 'New Tag 1', slug: '' },
-          { id: 0, name: 'New Tag 2', slug: '' },
-        ],
-      };
+      it('should include newValue when brand-new items are added', () => {
+        const currentState = createImageContent(1, withItems([]));
+        const updateState = {
+          id: 1,
+          ...withItems([
+            { id: 0, name: 'New 1' },
+            { id: 0, name: 'New 2' },
+          ]),
+        };
 
-      const result = buildImageUpdateDiff(updateState, currentState);
+        const result = buildImageUpdateDiff(updateState, currentState);
 
-      expect(result.tags).toEqual({
-        newValue: ['New Tag 1', 'New Tag 2'],
+        expect(result[field]).toEqual({ newValue: ['New 1', 'New 2'] });
       });
-    });
 
-    it('should include remove when tags are removed', () => {
-      const currentState = createImageContent(1, {
-        tags: [
-          { id: 1, name: 'Tag 1', slug: 'tag-1' },
-          { id: 2, name: 'Tag 2', slug: 'tag-2' },
-        ],
+      it('should include remove when items are dropped', () => {
+        const currentState = createImageContent(
+          1,
+          withItems([
+            { id: 1, name: 'Existing 1' },
+            { id: 2, name: 'Existing 2' },
+          ])
+        );
+        const updateState = { id: 1, ...withItems([]) };
+
+        const result = buildImageUpdateDiff(updateState, currentState);
+
+        expect(result[field]).toEqual({ remove: [1, 2] });
       });
-      const updateState = { id: 1, tags: [] };
 
-      const result = buildImageUpdateDiff(updateState, currentState);
+      it('should handle mixed existing and new items', () => {
+        const currentState = createImageContent(1, withItems([{ id: 1, name: 'Existing' }]));
+        const updateState = {
+          id: 1,
+          ...withItems([
+            { id: 1, name: 'Existing' },
+            { id: 0, name: 'New' },
+          ]),
+        };
 
-      expect(result.tags).toEqual({
-        remove: [1, 2],
+        const result = buildImageUpdateDiff(updateState, currentState);
+
+        expect(result[field]).toEqual({ prev: [1], newValue: ['New'] });
       });
-    });
 
-    it('should handle mixed existing and new tags', () => {
-      const currentState = createImageContent(1, {
-        tags: [{ id: 1, name: 'Existing Tag', slug: 'existing-tag' }],
+      it('should handle adding and removing simultaneously', () => {
+        const currentState = createImageContent(
+          1,
+          withItems([
+            { id: 1, name: 'Existing 1' },
+            { id: 2, name: 'Existing 2' },
+          ])
+        );
+        const updateState = {
+          id: 1,
+          ...withItems([
+            { id: 2, name: 'Existing 2' },
+            { id: 0, name: 'New' },
+          ]),
+        };
+
+        const result = buildImageUpdateDiff(updateState, currentState);
+
+        expect(result[field]).toEqual({ prev: [2], newValue: ['New'], remove: [1] });
       });
-      const updateState = {
-        id: 1,
-        tags: [
-          { id: 1, name: 'Existing Tag', slug: 'existing-tag' },
-          { id: 0, name: 'New Tag', slug: '' },
-        ],
-      };
 
-      const result = buildImageUpdateDiff(updateState, currentState);
+      it('should not include the field when unchanged', () => {
+        const currentState = createImageContent(1, withItems([{ id: 1, name: 'Existing' }]));
+        const updateState = { id: 1, ...withItems([{ id: 1, name: 'Existing' }]) };
 
-      expect(result.tags).toEqual({
-        prev: [1],
-        newValue: ['New Tag'],
+        const result = buildImageUpdateDiff(updateState, currentState);
+
+        expect(result[field]).toBeUndefined();
       });
-    });
-
-    it('should handle adding and removing tags simultaneously', () => {
-      const currentState = createImageContent(1, {
-        tags: [
-          { id: 1, name: 'Tag 1', slug: 'tag-1' },
-          { id: 2, name: 'Tag 2', slug: 'tag-2' },
-        ],
-      });
-      const updateState = {
-        id: 1,
-        tags: [
-          { id: 2, name: 'Tag 2', slug: 'tag-2' },
-          { id: 0, name: 'New Tag', slug: '' },
-        ],
-      };
-
-      const result = buildImageUpdateDiff(updateState, currentState);
-
-      expect(result.tags).toEqual({
-        prev: [2],
-        newValue: ['New Tag'],
-        remove: [1],
-      });
-    });
-
-    it('should not include tags when unchanged', () => {
-      const currentState = createImageContent(1, {
-        tags: [{ id: 1, name: 'Tag 1', slug: 'tag-1' }],
-      });
-      const updateState = {
-        id: 1,
-        tags: [{ id: 1, name: 'Tag 1', slug: 'tag-1' }],
-      };
-
-      const result = buildImageUpdateDiff(updateState, currentState);
-
-      expect(result.tags).toBeUndefined();
-    });
-  });
-
-  describe('People field (prev/newValue/remove pattern)', () => {
-    it('should include prev when existing people are selected', () => {
-      const currentState = createImageContent(1, { people: [] });
-      const updateState = {
-        id: 1,
-        people: [
-          { id: 1, name: 'Person 1' },
-          { id: 2, name: 'Person 2' },
-        ],
-      };
-
-      const result = buildImageUpdateDiff(updateState, currentState);
-
-      expect(result.people).toEqual({
-        prev: [1, 2],
-      });
-    });
-
-    it('should include newValue when new people are added', () => {
-      const currentState = createImageContent(1, { people: [] });
-      const updateState = {
-        id: 1,
-        people: [
-          { id: 0, name: 'New Person 1' },
-          { id: 0, name: 'New Person 2' },
-        ],
-      };
-
-      const result = buildImageUpdateDiff(updateState, currentState);
-
-      expect(result.people).toEqual({
-        newValue: ['New Person 1', 'New Person 2'],
-      });
-    });
-
-    it('should include remove when people are removed', () => {
-      const currentState = createImageContent(1, {
-        people: [
-          { id: 1, name: 'Person 1' },
-          { id: 2, name: 'Person 2' },
-        ],
-      });
-      const updateState = { id: 1, people: [] };
-
-      const result = buildImageUpdateDiff(updateState, currentState);
-
-      expect(result.people).toEqual({
-        remove: [1, 2],
-      });
-    });
-
-    it('should handle mixed existing and new people', () => {
-      const currentState = createImageContent(1, {
-        people: [{ id: 1, name: 'Existing Person' }],
-      });
-      const updateState = {
-        id: 1,
-        people: [
-          { id: 1, name: 'Existing Person' },
-          { id: 0, name: 'New Person' },
-        ],
-      };
-
-      const result = buildImageUpdateDiff(updateState, currentState);
-
-      expect(result.people).toEqual({
-        prev: [1],
-        newValue: ['New Person'],
-      });
-    });
-
-    it('should not include people when unchanged', () => {
-      const currentState = createImageContent(1, {
-        people: [{ id: 1, name: 'Person 1' }],
-      });
-      const updateState = {
-        id: 1,
-        people: [{ id: 1, name: 'Person 1' }],
-      };
-
-      const result = buildImageUpdateDiff(updateState, currentState);
-
-      expect(result.people).toBeUndefined();
-    });
-  });
+    }
+  );
 
   describe('Collections field (prev/newValue/remove pattern)', () => {
     it('should include newValue when new collections are added', () => {
