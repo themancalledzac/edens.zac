@@ -1008,6 +1008,14 @@ describe('CollectionContentRenderer — click branches', () => {
       expect(onImageClick).toHaveBeenCalledWith(21);
     });
 
+    it('fires the click handler on Enter/Space keydown', () => {
+      const onImageClick = jest.fn();
+      render(<CollectionContentRenderer {...placeholderProps} onImageClick={onImageClick} />);
+      const button = screen.getByRole('button', { name: 'Untitled' });
+      fireEvent.keyDown(button, { key: 'Enter' });
+      expect(onImageClick).toHaveBeenCalledWith(21);
+    });
+
     it('is not a button when no click handler exists', () => {
       render(<CollectionContentRenderer {...placeholderProps} />);
       expect(screen.queryByRole('button')).not.toBeInTheDocument();
