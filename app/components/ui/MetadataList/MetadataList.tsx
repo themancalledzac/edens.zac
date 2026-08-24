@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { Button } from '@/app/components/ui/Button/Button';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { fetchAdminDeleteApi, fetchAdminPutJsonApi } from '@/app/lib/api/core';
@@ -25,7 +26,13 @@ export interface MetadataListProps<T extends MetadataListItem> {
   getHref?: (item: T) => string | null;
 }
 
-/** Generic editable metadata list (tags / people / locations). */
+/**
+ * Generic editable metadata list (tags / people / locations).
+ *
+ * Rename and delete both invalidate the flat metadata caches through `revalidateMetadataCache`.
+ * The call is unconditional because `content-tags`, `content-locations` and `search-images` are
+ * shared by all three entity types, and this component does not know which one it is holding.
+ */
 export function MetadataList<T extends MetadataListItem>({
   title,
   emptyLabel,
@@ -61,6 +68,7 @@ export function MetadataList<T extends MetadataListItem>({
       if (response !== null) {
         setItems(prev => prev.map(i => (i.id === item.id ? response : i)));
         clearEdit(item.id);
+        void revalidateMetadataCache();
       } else {
         setError(`Failed to update '${item.name}'`);
       }
@@ -80,6 +88,7 @@ export function MetadataList<T extends MetadataListItem>({
       await fetchAdminDeleteApi(`${basePath}/${item.id}`);
       setItems(prev => prev.filter(i => i.id !== item.id));
       clearEdit(item.id);
+      void revalidateMetadataCache();
     } catch {
       setError(`Failed to delete '${item.name}'`);
     } finally {
