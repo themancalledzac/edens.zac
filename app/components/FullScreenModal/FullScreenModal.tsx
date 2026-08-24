@@ -32,10 +32,8 @@ import {
   resolveDisplayLocations,
 } from './fullScreenModalUtils';
 
-type ImageBlock = ViewableContent;
-
 type FullScreenState = {
-  images: ImageBlock[];
+  images: ViewableContent[];
   currentIndex: number;
 };
 

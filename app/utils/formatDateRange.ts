@@ -16,7 +16,12 @@
 
 import { logger } from '@/app/utils/logger';
 
-const MONTHS_SHORT = [
+/**
+ * Three-letter month abbreviations, indexed by month number minus one. Exported because the
+ * per-day filter chips in `collectionDates.ts` label with the same abbreviations, and a second
+ * copy there drifted from this one silently.
+ */
+export const MONTHS_SHORT = [
   'Jan',
   'Feb',
   'Mar',

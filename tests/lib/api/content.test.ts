@@ -124,6 +124,17 @@ describe('Read Endpoints', () => {
       expect(calledUrl).toContain('/content/images/search');
       expect(calledUrl).not.toContain('?');
     });
+
+    it('comma-joins list dimensions rather than repeating them', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse([]));
+
+      await searchImages({ tagIds: [1, 2], personIds: [3, 4] });
+
+      const calledUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(calledUrl).toContain('tagIds=1%2C2');
+      expect(calledUrl).toContain('personIds=3%2C4');
+      expect(calledUrl).not.toContain('tagIds=1&tagIds=2');
+    });
   });
 });
 
@@ -183,6 +194,33 @@ describe('Admin Endpoints', () => {
       expect(url).toContain('tagIds=7');
       expect(url).toContain('captureStartDate=2026-01-01');
       expect(url).toContain('captureEndDate=2026-12-31');
+    });
+
+    it('repeats list dimensions rather than comma-joining them', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        mockSuccessResponse({ content: [], totalElements: 0, totalPages: 0, number: 0, last: true })
+      );
+
+      await getAllImages({ tagIds: [3, 7], personIds: [1, 2] });
+
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('tagIds=3&tagIds=7');
+      expect(url).toContain('personIds=1&personIds=2');
+      expect(url).not.toContain('tagIds=3%2C7');
+    });
+
+    it('passes the remaining shared filter dimensions', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        mockSuccessResponse({ content: [], totalElements: 0, totalPages: 0, number: 0, last: true })
+      );
+
+      await getAllImages({ cameraId: 2, lensId: 9, isFilm: false, blackAndWhite: true });
+
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('cameraId=2');
+      expect(url).toContain('lensId=9');
+      expect(url).toContain('isFilm=false');
+      expect(url).toContain('blackAndWhite=true');
     });
   });
 

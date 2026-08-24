@@ -7,22 +7,9 @@
  * and can move an evening capture onto the next day (or a small-hours one onto the previous day).
  */
 
-const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+import { MONTHS_SHORT } from '@/app/utils/formatDateRange';
 
-const MONTH_NAMES = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
+const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 /** The calendar day of a capture date as 'YYYY-MM-DD', or null when there is no usable date. */
 export function captureDayKey(captureDate: string | null | undefined): string | null {
@@ -47,7 +34,7 @@ export function distinctDays(captureDates: readonly (string | null | undefined)[
  */
 export function formatDayLabel(dayKey: string, allDays: readonly string[]): string {
   const [year, month, day] = dayKey.split('-');
-  const monthName = MONTH_NAMES[Number(month) - 1] ?? month;
+  const monthName = MONTHS_SHORT[Number(month) - 1] ?? month;
   const label = `${monthName} ${Number(day)}`;
   const years = new Set(allDays.map(d => d.slice(0, 4)));
   return years.size > 1 ? `${label}, ${year}` : label;

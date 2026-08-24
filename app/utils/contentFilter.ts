@@ -660,6 +660,29 @@ export function parseFilterFromParams(
 }
 
 /**
+ * Every query key {@link serializeFilterToParams} can emit.
+ *
+ * Exported so a consumer that merges filter params into a live URL — `useFilterUrlState`'s
+ * `syncToUrl` — can clear exactly the keys this module owns and leave every other param alone
+ * (notably `?image=<id>` for the fullscreen deep-link). It lives next to the serializer so the
+ * two are edited together; `contentFilter.filterParamKeys.test.ts` fails if they drift apart.
+ */
+export const FILTER_PARAM_KEYS = [
+  'rating',
+  'people',
+  'location',
+  'tag',
+  'camera',
+  'date',
+  'q',
+  'from',
+  'to',
+  'isFilm',
+  'bw',
+  'collection',
+] as const;
+
+/**
  * Serialize filter criteria to URL search params string.
  * Only includes non-empty values.
  *

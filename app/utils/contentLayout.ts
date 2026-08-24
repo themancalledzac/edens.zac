@@ -62,8 +62,6 @@ export interface ProcessContentOptions {
   isMobile?: boolean;
   /** Collection model for creating header row (cover image + metadata) */
   collectionData?: CollectionModel;
-  /** Display mode — controls content sort order */
-  displayMode?: 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED';
   /** Target aspect ratio for AR-aware tree structure selection (default 1.5) */
   targetAR?: number;
   /**
@@ -127,6 +125,11 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
  * If collectionData is provided, creates a header row (cover image + metadata)
  * as the first row, before processing regular content.
  *
+ * Content arrives already ordered. {@link processContentBlocks} applies the collection's
+ * `displayMode` sort, the collection page then applies its Date chip on top, and row packing
+ * below is order-preserving. This function must not re-sort: a second pass here would undo both
+ * that chip and the manage grid's hidden-content-to-the-bottom ordering.
+ *
  * `componentWidth` and the resolved gap are handed to {@link buildRows} as well as to the
  * sizer. Row composition is otherwise unitless, and stays so for photographs; the pixels
  * matter only to content that declares a {@link Content.minWidth} (admin panels), where
@@ -136,7 +139,7 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
  * @param content - Array of content blocks to process (should NOT include header items)
  * @param componentWidth - Total available width for display
  * @param chunkSize - Number of normal-width items per row (default: 2)
- * @param options - Processing options (isMobile, collectionData, displayMode)
+ * @param options - Processing options (isMobile, collectionData, targetAR, …)
  * @returns Array of rows with structural key and sized content blocks
  */
 export function processContentForDisplay(
@@ -466,6 +469,36 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
 }
 
 /**
+ * Sentinel content id carried by the header's metadata text block. Like
+ * {@link COVER_IMAGE_CONTENT_ID} it is not a content-table row.
+ */
+const HEADER_TEXT_CONTENT_ID = -2;
+
+/**
+ * The header's metadata text block. Both header shapes render the same block and differ only in
+ * how it is sized: beside a cover it takes the cover's dimensions, and on the cover-less and
+ * mobile paths it spans `componentWidth` at auto height (0).
+ */
+function buildHeaderTextBlock(
+  items: TextBlockItem[],
+  width: number,
+  height: number
+): ContentTextModel {
+  return {
+    contentType: 'TEXT',
+    id: HEADER_TEXT_CONTENT_ID,
+    items,
+    format: 'plain',
+    formatType: 'plain',
+    align: 'left',
+    orderIndex: -1,
+    visible: true,
+    width,
+    height,
+  };
+}
+
+/**
  * Create metadata text block with same dimensions as cover image for equal row sizing.
  *
  * `forceRail` builds the block with zero items — see {@link ProcessContentOptions.forceHeaderRail}.
@@ -482,18 +515,7 @@ function createMetadataTextBlock(
     return null;
   }
 
-  return {
-    contentType: 'TEXT',
-    id: -2,
-    items,
-    format: 'plain',
-    formatType: 'plain',
-    align: 'left',
-    orderIndex: -1,
-    visible: true,
-    width,
-    height,
-  };
+  return buildHeaderTextBlock(items, width, height);
 }
 
 /**
@@ -539,18 +561,7 @@ function createTextOnlyHeaderRow(
     return null;
   }
 
-  const textBlock: ContentTextModel = {
-    contentType: 'TEXT',
-    id: -2,
-    items: metadataItems,
-    format: 'plain',
-    formatType: 'plain',
-    align: 'left',
-    orderIndex: -1,
-    visible: true,
-    width: componentWidth,
-    height: 0,
-  };
+  const textBlock = buildHeaderTextBlock(metadataItems, componentWidth, 0);
 
   return {
     rowType: 'header',

@@ -7,6 +7,7 @@ import {
   distinctDays,
   formatDayLabel,
 } from '@/app/utils/collectionDates';
+import { formatDateRange } from '@/app/utils/formatDateRange';
 
 describe('captureDayKey', () => {
   it('takes the calendar day as a literal slice', () => {
@@ -95,5 +96,23 @@ describe('dayLabels', () => {
       '2026-07-20': 'Jul 20',
       '2026-07-21': 'Jul 21',
     });
+  });
+});
+
+describe('formatDayLabel month abbreviations', () => {
+  /**
+   * Cross-module guard: the chip labels and the collection-date range labels must print the same
+   * abbreviation for a given month. `collectionDates.ts` used to hold its own copy of the twelve
+   * names, so the two could drift with nothing failing.
+   */
+  it('matches the abbreviations formatDateRange prints, for all twelve months', () => {
+    for (let month = 1; month <= 12; month++) {
+      const mm = String(month).padStart(2, '0');
+      const dayKey = `2026-${mm}-15`;
+      const fromRange = formatDateRange(dayKey, `2026-${mm}-16`).split(' ')[0];
+
+      expect(fromRange).toMatch(/^[A-Z][a-z]{2}$/);
+      expect(formatDayLabel(dayKey, [dayKey])).toBe(`${fromRange} 15`);
+    }
   });
 });
