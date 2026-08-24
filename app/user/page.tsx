@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 
-import { MeProvider } from '@/app/components/auth/MeProvider';
 import { AccountCard } from '@/app/components/Personal/AccountCard';
 import { AdminCard } from '@/app/components/Personal/AdminCard';
 import { ShareCard } from '@/app/components/Personal/ShareCard';
@@ -28,18 +27,25 @@ interface UserPageProps {
  *
  * The sections themselves live in {@link UserSpace}, shared with `/admin/users/[id]` so an admin
  * sees a user's space exactly as that user sees it. Everything specific to viewing one's OWN
- * space stays here: the send-message button, the account card, and the admin card.
+ * space stays here: the contact button, the account card, and the admin card.
  *
- * The Account and Admin cards ride in the header rail rather than below the grid. That rail — the
+ * All four ride in the header rail rather than below the grid or in a bar above it. That rail — the
  * TEXT block leading the first row, beside the cover — is where this app already puts what is
  * *about* a collection (date, location, description, siblings, the filter bar), so page-level
  * cards belong with them instead of in a slab at the bottom of the page.
  *
- * The whole sections region is wrapped in `MeProvider` because `SendMessageButton` is a sibling of
- * the collection stack, not a descendant: the provider that stack mounts internally does not reach
- * it, so without this wrapper `useMe()` returns null there and the send-message form opens with a
- * blank, editable email instead of the signed-in address. `CollectionPageClient` still mounts its
- * own provider from the same principal, so the nested provider carries an identical value.
+ * ## Why the contact button's position depends on `isAdmin`
+ *
+ * For a signed-in client or follower, messaging the photographer is plausibly the most-used thing
+ * on this page, so it leads. For the site owner reading their own space it is close to useless —
+ * the form would prefill their own address, and they read incoming messages through Admin →
+ * Comments — so it goes last, after the card that takes them there. The rail is assembled per
+ * viewer already, so ordering on the principal costs one condition.
+ *
+ * No `MeProvider` here: `railExtras` renders inside `CollectionPageClient`, which mounts its own
+ * provider from the same principal this page passes it as `me`. `SendMessageButton` used to sit in
+ * a top bar OUTSIDE that stack, which is what the page-level provider existed for — moving it into
+ * the rail made the button a descendant and the wrapper redundant.
  */
 export default async function UserPage({ searchParams }: UserPageProps) {
   const principal = await meServer();
@@ -57,32 +63,30 @@ export default async function UserPage({ searchParams }: UserPageProps) {
   ]);
   if (!data) notFound();
 
+  const contact = <SendMessageButton />;
+
   return (
     <PageShell pageType="default" collectionSlug={data.collection.slug}>
       <h1 className={styles.srOnly}>Your Space</h1>
 
-      <MeProvider me={principal}>
-        <div className={styles.sections}>
-          <div className={styles.topBar}>
-            <SendMessageButton />
-          </div>
-
-          <UserSpace
-            data={data}
-            activeKey={activeKey}
-            basePath="/user"
-            me={principal}
-            ssrViewport={ssrViewport}
-            railExtras={
-              <>
-                <AccountCard email={principal.email} />
-                <ShareCard read={share} />
-                {principal.isAdmin && <AdminCard />}
-              </>
-            }
-          />
-        </div>
-      </MeProvider>
+      <div className={styles.sections}>
+        <UserSpace
+          data={data}
+          activeKey={activeKey}
+          basePath="/user"
+          me={principal}
+          ssrViewport={ssrViewport}
+          railExtras={
+            <>
+              {!principal.isAdmin && contact}
+              <AccountCard email={principal.email} />
+              <ShareCard read={share} />
+              {principal.isAdmin && <AdminCard />}
+              {principal.isAdmin && contact}
+            </>
+          }
+        />
+      </div>
     </PageShell>
   );
 }

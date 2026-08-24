@@ -1,4 +1,12 @@
-/* SendMessageButton modal — compact contact form in the canonical Modal. */
+/* SendMessageButton — the rail trigger, plus the compact contact form in the canonical Modal. */
+
+/* The trigger rides the collection header rail, a flex column that stretches its children to the
+   rail's full width. Left to stretch, an ordinary button reads as a filled slab spanning the
+   column — the loud treatment this placement was chosen to avoid. */
+.trigger {
+  flex: 0 0 auto;
+  align-self: flex-start;
+}
 
 .content {
   display: flex;

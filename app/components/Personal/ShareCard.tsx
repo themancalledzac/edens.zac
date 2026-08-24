@@ -122,9 +122,7 @@ export function ShareCard({ read }: ShareCardProps) {
 
   const toggleCollection = (collection: CollectionModel, include: boolean) =>
     run(async () => {
-      await (include
-        ? addShareCollection(collection.id)
-        : removeShareCollection(collection.id));
+      await (include ? addShareCollection(collection.id) : removeShareCollection(collection.id));
       setSettings(current =>
         current
           ? {
@@ -152,12 +150,8 @@ export function ShareCard({ read }: ShareCardProps) {
   if (!settings?.exists) {
     return (
       <Card title="Share">
-        <p className={styles.hint}>
-          Create a link that shows your work to anyone you send it to. No account or password
-          needed on their side, and you can turn it off whenever you like.
-        </p>
         <Button type="button" variant="outline" loading={busy} onClick={handleReset}>
-          Create a link
+          Link to share
         </Button>
         {error && <FormError>{error}</FormError>}
       </Card>
@@ -169,8 +163,8 @@ export function ShareCard({ read }: ShareCardProps) {
       {shareUrl ? (
         <>
           <p className={styles.hint}>
-            Anyone with this link can see your work. The same link keeps working until you reset
-            it, so you can send it to as many people as you like.
+            Anyone with this link can see your work. The same link keeps working until you reset it,
+            so you can send it to as many people as you like.
           </p>
           <p className={styles.link}>{shareUrl}</p>
           <div className={styles.row}>
@@ -211,8 +205,8 @@ export function ShareCard({ read }: ShareCardProps) {
       {settings.candidateCollections.length > 0 && (
         <div className={styles.optIns}>
           <p className={styles.hint}>
-            Galleries you were given access to are not shared by default. Add any you want your
-            link to include.
+            Galleries you were given access to are not shared by default. Add any you want your link
+            to include.
           </p>
           <ul className={styles.optInList}>
             {settings.candidateCollections.map(collection => (
@@ -234,8 +228,8 @@ export function ShareCard({ read }: ShareCardProps) {
 
       <div className={styles.danger}>
         <p className={styles.hint}>
-          Resetting makes a new link and stops the old one working — anyone still using it will
-          lose access.
+          Resetting makes a new link and stops the old one working — anyone still using it will lose
+          access.
         </p>
         <Button type="button" variant="outline" loading={busy} onClick={handleReset}>
           Reset link

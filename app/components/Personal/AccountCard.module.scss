@@ -3,13 +3,9 @@
    The section shell (heading, rule, body, and the `flex: 0 0 auto` the header rail depends on)
    comes from <Card>. Only the content inside it is styled here. */
 
-.email {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--color-on-surface-muted);
-}
-
-.passkeyRow {
+/* The email and the enrollment button share one row, the button end-aligned. Wraps on a narrow
+   rail, where a long address and the button cannot both fit on one line. */
+.emailRow {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-4);
@@ -17,7 +13,7 @@
   justify-content: space-between;
 }
 
-.hint {
+.email {
   margin: 0;
   font-size: var(--text-sm);
   color: var(--color-on-surface-muted);
