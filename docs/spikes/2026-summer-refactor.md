@@ -82,6 +82,15 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   when the toggle started. Following the item literally would have made a second toggle vanish
   whenever the first one failed. Error paths run late, hold stale closures, and are the least
   covered part of any file — read the failure branch before adopting a one-line prescription.
+- **`git push` and `gh` need the sandbox disabled, and the errors lie about why.** Every agent this
+  session lost a round trip to this. `~/.ssh` is on the sandbox read-deny list, so a push over SSH
+  fails with `This proxy requires authentication, and this client did not offer an authentication
+  method` — which reads as a credentials problem and invites the wrong fix. It is a network
+  restriction. `gh` fails differently, with
+  `tls: failed to verify certificate: x509: OSStatus -26276`. Retry both outside the sandbox; the
+  user can allowlist it from an interactive terminal with `/sandbox`. Do not work around the TLS
+  failure by other means — if `gh` cannot be trusted to verify a certificate, say so and hand the
+  step back.
 - **Work in the primary checkout.** PR #253 merged 2026-08-23, so the two-branches-at-once case is
   over: branch off `main` in `/Users/themancalledzac/Code/edens.zac` directly, no worktree. If a
   second concurrent branch ever becomes necessary again, the worktree traps are: `git worktree add`
@@ -112,15 +121,61 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 - **Before filing a frontend fix for a "missing" field check, grep the type.** C6 looked like a
   frontend oversight for a day. `ContentCollectionModel` simply has no `isPasswordProtected` to
   check, which is why the strip was never there. Confirm the data exists before scoping the work.
-- **When an item ships, its write-up moves to `docs/spikes/2026-summer-refactor/` in the same
-  commit that marks it done.** The board keeps the row; the group section keeps a pointer. This is
-  the third attempt at stopping this file from growing without bound, and the first two failed the
-  same way — a consolidation pass shrinks it once, then shipped work accretes right back, because
-  nothing said where done work goes. Now something does.
+- **When an item ships, its write-up moves to `docs/spikes/2026-summer-refactor/` in the same commit
+  that marks it done.** The board keeps the row; the group section keeps a pointer. This is the
+  third attempt at stopping this file from growing without bound, and the first two failed the same
+  way — a consolidation pass shrinks it once, then shipped work accretes right back, because nothing
+  said where done work goes. Now something does.
+- **That directory is the board's reference set, not only an archive.** It holds two kinds of file:
+  shipped write-ups for closed groups, and out-of-band detail for work that is not cleanup, such as
+  the product items in `group-h-features.md`. The rule above was originally written as
+  "shipped work only", and that was too tight — enforcing it literally would have forced 26KB of
+  product roadmap onto a cleanup board, re-creating the bloat the split removed. The invariant that
+  actually has to hold is narrower:
+
+  > The MR board plus the live sections must be enough to pick up any cleanup MR cold, with every
+  > reference file closed.
+
+  So the test for whether an item may live in a reference file is **reachability, not status**. An
+  item with a row on the MR board must have its detail on the board, because a row cannot depend on
+  a reference file. An item that is a design review, a user decision, an ops project or a vision
+  item is not an MR, gets no row, and belongs in a reference file reached from
+  "What to build next". F4 and G3 are the calibration: both are ⛔ and both correctly carry rows,
+  because both have short live sections — the ⛔ is not what licenses the row.
 - **An open item must be readable without opening the archive.** The archive is for forensics, not
   for prerequisites. Where an open item depends on something shipped, copy the part it needs into
   the open item as a guardrail. B1 is the worked example: it restates exactly what E11's drift test
   cannot see, so B1 can be picked up cold with the archive left closed.
+- **A new reference file must go INSIDE `docs/spikes/2026-summer-refactor/`, never beside it.**
+  `.gitignore` matches `docs/spikes/*` and negates exactly two paths — this file and that
+  directory. A doc filed next to the directory is invisible to git with no error and no warning; it
+  will look tracked in the editor and vanish with the machine. `git check-ignore -v <path>` before
+  assuming any new doc is safe.
+- **A claim that two test suites are duplicates is really a claim about their SOURCE.** Two suites
+  are only redundant if they exercise the same source function. B3 is the worked example: the board
+  called camera/lens/filmType a duplicated triplet, but `buildCameraDiff` and `buildLensDiff` are
+  two separate copy-pasted functions with identical bodies, so deleting either suite would have
+  dropped all coverage of a real function — and `buildFilmTypeDiff` is unrelated logic. B7 is the
+  same error pointed the other way: two of its four listener-spy tests asserted on a `keydown`
+  listener that `useClickOutside` never registers, because Escape is delegated to `useEscapeKey`.
+  Read the source both suites call before believing they overlap.
+- **Duplication claims are the weakest class on this board — budget for checking them, not for
+  acting on them.** Five were checked in one session and the tally is worth stating exactly, because
+  rounding it to "always wrong" would be the same overstatement the rule exists to catch. B1's
+  `handleApiError` claim held completely: eight of ten cases were byte-identical twins, the other
+  two hit the same branch, nothing needed carrying over. The other four were wrong or partial — B3's
+  triplet was a pair plus unrelated logic, B7's spies watched a listener that is never registered,
+  B2 found three of eighteen cases unique, and B4's "duplicate" describes turned out complementary,
+  which is why its estimate was off by an order of magnitude. So: one in five survived intact. Treat
+  a duplication claim as a lead worth an hour, not as a finding, and expect the work to be merging
+  rather than deleting.
+- **A red-then-green test is the gate, but it is not the same as having watched the bug.** The
+  prove-it-fails rule above is necessary and it is not sufficient, because a test written from the
+  same mental model as the fix can encode the same error and go red for the wrong reason. C1 is the
+  worked example one level down: its first draft went green against buggy source because the fixture
+  left the relevant fields `undefined`. The same mistake is available one level up. Where an
+  observation is cheap — a page you can open, a button you can click — spend the minute and record
+  that you did. Where it is not, say so in the item rather than implying it happened.
 
 ## MR board
 
@@ -136,13 +191,13 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | A7b | `enterSelect`/`enterAdd` inline copies | Low | −2 src | ✅ PR #262 |
 | A8 | Dead SCSS in live modules + `globals.css` tokens | Low | −327 | ✅ PR #263 |
 | A9 | Dead config | Minimal | −35 | ◐ PR #259; 3 follow-ups open |
-| B1 | Merge `manageUtils.test.ts` | Low | −450 (file is now 1,967 lines) | ☐ **NEXT** |
-| B2 | `rowCombination` characterization dedup | Low | −250 | ☐ |
-| B3 | `metadataUtils.test.ts` dedup | Low | −200 to −300 | ☐ |
-| B4 | `contentLayout.test.ts` merge | Low | −150 to −250 | ☐ |
+| B1 | Merge `manageUtils.test.ts` | Low | −209 net (est. −450) | ◐ PR #290 OPEN |
+| B2 | `rowCombination` characterization dedup | Low | −229 (est. −250) | ◐ PR #288 OPEN |
+| B3 | `metadataUtils.test.ts` dedup | Low | −125 (est. −200 to −300) | ◐ PR #287 OPEN |
+| B4 | `contentLayout.test.ts` merge | Low | −32 (est. −150 to −250) | ◐ PR #289 OPEN |
 | B5 | `useCollectionEdit` fixture consolidation | Low | −350 | ☐ |
 | B6 | Fold in `CollectionContentRenderer` characterization | Low | −150 | ☐ |
-| B7 | `useClickOutside` spy tests | Low | −90 | ☐ |
+| B7 | `useClickOutside` spy tests | Low | −37 (est. −90) | ◐ PR #286 OPEN |
 | B8 | Fill the required-coverage gaps | Low | +1,100–1,650 for the 4 open bullets (est. +600 for all 6) | ◐ 2 of 6 — PR #266 (clearCache), PR #267 (Escape) |
 | C1 | Unsaved people/gallery-access wipe (HIGH) | Low | +73 −11 | ✅ PR #264 |
 | C2 | About portrait aspect ratio | Trivial | +99 −5 | ✅ PR #281 |
@@ -150,6 +205,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | C4 | Cache tags that never connect | Low | +155 −62 | ✅ PR #279 |
 | C5 | Assorted LOW bugs | Low | +497 −101 (11 files) | ✅ PR #283 |
 | C6 | Password cover strip missing on the public card path | Low-medium | ±30 | ⛔ BACKEND-BLOCKED (split out of E1) |
+| C9 | Dimensionless cover renders no header, missing cover does | Low | ±20 src, +40 test | ☐ (found by B4; needs a decision first) |
 | D1 | Gate `POST /api/revalidate` (HIGH) | Low | +175 | ✅ PR #265 |
 | D2 | Gate `clearCacheAction` | Low | +212 (est. +15) | ✅ PR #266 |
 | D3 | Security headers | Low-medium | +60 src, +0–40 test | ✅ PR #274 |
@@ -241,7 +297,20 @@ rm -rf "app/(admin)/admin/layoutpreview"
 
 ## Group B — Test-suite reductions
 
-The suite is 51,446 lines against 37,211 source lines. Hygiene is otherwise excellent: zero skips, zero `.only`, zero snapshots, zero stale TODOs, no tautologies. Every item below is zero coverage loss.
+The suite is 51,446 lines against 37,211 source lines. Hygiene is otherwise excellent: zero skips, zero `.only`, zero snapshots, zero stale TODOs.
+
+**Correction, 2026-08-24 — "no tautologies" was wrong, and so was every estimate in this group.**
+B2 found two cases in `rowCombination.characterization.test.ts` that hand-build a tree with
+`hPair`/`vStack` and then assert the tree they just built, with no production path under test. They
+were dropped as dead weight rather than as duplicates.
+
+Five items shipped in one sitting (B1, B2, B3, B4, B7 — PRs #290, #288, #287, #286, #289). Every
+estimate came in short, in the same direction, for the same reason: **they counted repeated text and
+assumed repetition meant redundancy.** −450 → −209, −250 → −229, −200/−300 → −125, −150/−250 → −32,
+−90 → −37. B4 is the extreme, off by roughly an order of magnitude, because its "duplicate"
+describes turned out complementary — so the work was merging, not deleting. Two items moved the
+opposite way from subtraction entirely: B3's test count went **up** (106 → 107) and B7 gained a
+behavioral test. Re-estimate B5, B6 and B8 as merges before sizing a sitting around them.
 
 ### ☐ B1 · Merge `manageUtils.test.ts` — NEXT
 
@@ -283,10 +352,64 @@ but it needs to be argued from what each test asserts, not from the two files be
 while you are here — that is B5, and it carries its own fixture-consolidation risk. Do not move
 `collectionEditUtils.ts` itself; that is F3.
 
+**SHIPPED — PR #290 (open).** `manageUtils.test.ts` deleted; `collectionEditUtils.test.ts` 190 →
+1,948 lines. Suite 4,126 → 4,101, and the −25 is fully accounted for: 10 `handleApiError`, 13
+position-permutation, 2 exact duplicates. Real diff −209 net against an estimate of −450.
+
+- [x] **The `handleApiError` duplicate claim HELD** — the only one of five duplication claims this
+      session that did. Eight of ten cases are byte-identical twins in `apiUtils.test.ts`; the other
+      two differ only in a string literal and a property name and hit the same branch. Nothing
+      existed only in the manageUtils copy. Both suites independently reach 100% branch coverage of
+      `apiUtils.ts`.
+- [x] **The better finding: the suite was in the wrong file entirely.** `manageUtils.test.ts`
+      imported `handleApiError` from `@/app/utils/apiUtils`, not from `collectionEditUtils` — it was
+      testing another module's function. That is why it read as duplicated.
+- [x] Both revalidate suites carried over **byte-identical**, verified by diffing each block against
+      `git show HEAD:<old path>` after the merge, reorder, eslint and prettier.
+
+**The guardrail's report — folding them into the drift test loses four of six catches.** Six source
+mutations, each run against both files. CAUGHT means the suite failed.
+
+| Mutation | `cacheTagDrift` | revalidate suites |
+| --- | --- | --- |
+| 3 tags in source, only 1 POSTed | MISSED | CAUGHT |
+| Metadata tags under key `tag` not `tags` | CAUGHT | CAUGHT |
+| `POST` → `PUT` | MISSED | CAUGHT |
+| `Content-Type` dropped | MISSED | CAUGHT |
+| `path` dropped, tag correct | MISSED | CAUGHT |
+| `collection-home` deleted | CAUGHT | CAUGHT |
+
+Row one settles it. Leave all three tag literals in the source and change only which ones reach
+`fetch`: the drift test still reads three tags out of the text and passes, while the runtime suite
+fails on `toHaveBeenCalledTimes(3)`. **A source scan cannot distinguish a tag that is posted from a
+tag that is merely written down** — which is exactly why the `collection-home` pin has to be a live
+request assertion. Method, headers and path never appear in the drift test's regexes at all. The
+intersection is one row. Keep both, and stop re-asking.
+
 ### ☐ B2 · `rowCombination` characterization dedup
 
 - [ ] `rowCombination.characterization.test.ts:481-714` — the "architecture types" half duplicates `rowCombination.test.ts`'s own describes. Both files kept a copy after an unfinished handoff. Keep the numbered scenario pins; they are still valuable while the layout engine is under active work.
 - [ ] `heroAcceptance.test.ts` is a strict subset of the unit file — delete it.
+
+**SHIPPED — PR #288 (open).** Characterization file 714 → 470, `rowCombination.heroAcceptance.test.ts`
+deleted (15 lines), unit file 1,734 → 1,764. Net −229. Suite 4,126 → 4,109: 20 cases removed, 3
+carried over.
+
+- [x] **Only 15 of the 18 "architecture types" cases were duplicated.** Three existed nowhere else
+      and were moved into `rowCombination.test.ts` rather than dropped: the `numericAR` pins (H at
+      1.7778, V at 0.5625) — the only `numericAR` assertion in the entire suite; the
+      `effectiveRating` V1★→1 case, which the unit file skipped while pinning V3★ and H3★, and which
+      mapped to 0 under the retired vertical penalty; and leaf order through `acToBoxTree(hChain(3))`,
+      which the unit file's own `hChain() of 3` could not assert because it reused ids (1, 1, 2).
+- [x] **Two more were tautological, not duplicated.** `builds H(leaf, V(leaf,leaf))` and
+      `builds H(leaf, V(H(a,b), leaf))` hand-construct a tree with `hPair`/`vStack` and then assert
+      the tree they just built. No production path under test. Dropped as dead weight.
+- [x] The `heroAcceptance` claim held. Its two cases differ from the `emergent full-width hero`
+      describe only in a density argument (1.5 vs 1.4), and `isSoloHero(item, rowWidth)`
+      ([rowCombination.ts:279](app/utils/rowCombination.ts:279)) takes no density parameter — so the
+      difference exercised nothing. Both unit-file counterparts also assert leaf type and item count.
+- [x] A line was added to the characterization file's docblock saying type-level coverage belongs in
+      `rowCombination.test.ts`, so the second copy does not grow back after the next handoff.
 
 ### ☐ B3 · `metadataUtils.test.ts` dedup
 
@@ -295,9 +418,58 @@ while you are here — that is B5, and it carries its own fixture-consolidation 
       camera/lens/filmType triplet (:169/:207/:245). Keep one full suite per shared builder plus one
       wiring test per field, or convert to `it.each`. Est −200 to −300, not −500.
 
+**SHIPPED — PR #287 (open).** 1,893 → 1,768 lines (−125). Tests in file 106 → **107**.
+
+- [x] **The "camera/lens/filmType triplet" was wrong, and acting on it would have deleted real
+      coverage.** There is no shared equipment builder. `buildCameraDiff` and `buildLensDiff` are two
+      separate copy-pasted source functions with identical bodies, so dropping either suite as a
+      duplicate would have removed all coverage of a live function. `buildFilmTypeDiff` is unrelated
+      logic entirely — string compare, `availableFilmTypes` lookup by name or `filmTypeName`, ISO
+      defaulting to 400, plus a fallback when the list is absent. It is a pair plus an unrelated
+      third; the filmType suite was left fully intact.
+- [x] **The test count went up.** Tags was a strict superset of People, which had no
+      "adding and removing simultaneously" case. Parameterizing with `describe.each` over the field
+      runs all six cases against both, so People gained coverage it never had. `describe.each` was
+      chosen over "one full suite plus a thin wiring test" precisely because it does not have to
+      claim camera and lens share an implementation when they do not.
+- [x] Every line ref was correct — `:332`, `:442`, `:169`, `:207`, `:245` each opened exactly the
+      describe named, and the 1,893 count was right. **First item this session whose refs needed no
+      correction**, which is worth recording next to the fact that its central claim was false: the
+      refs and the claims fail independently.
+- [x] `buildContentPeopleLocationsDiff` left alone. It calls `buildAssociationDiff('people', ...)`
+      so it reads as a third copy, but it covers the GIF/MP4 entry point and pins `locations`, which
+      routes through a different utility.
+- [x] Mutation-proved: flipping `buildLensDiff`'s `remove: true` to `false` fails exactly one test,
+      the lens variant. Rewiring `buildAssociationDiff('people', updateState.tags, ...)` fails nine.
+- [x] Type trap: `ContentTagModel` ([Metadata.ts](app/types/Metadata.ts)) has `slug` **required**
+      while `ContentPersonModel` has none, so a shared `{id, name}` fixture fails `tsc`. The helper
+      maps a slug in for tags only.
+
 ### ☐ B4 · `contentLayout.test.ts` merge
 
 - [ ] Two merged generations left duplicate `createHeaderRow` and `processContentForDisplay` describes. Merge them, keeping the stronger assertions.
+
+**SHIPPED — PR #289 (open).** 1,587 → 1,555 lines (−32, against an estimate of −150 to −250 — off by
+roughly an order of magnitude). Tests in file 111 → 107.
+
+- [x] **The duplicate describes exist but do not overlap.** `createHeaderRow` at `:745` and `:983`,
+      `processContentForDisplay` at `:919` and `:1362`. The two `processContentForDisplay` copies
+      collide on only three tests: copy A is the sole home of `collectionData` header-row
+      integration, copy B the sole home of `mobileChunkSize`, `targetAR` and id-order preservation.
+      The two `createHeaderRow` copies collide only inside "Missing cover image cases" — `forceRail`,
+      date-metadata pins and mobile rows live only in A; siblings, parents and height-constrained
+      sizing only in B. **Collapsing on describe name alone would have dropped whichever copy lost.**
+      The estimate was wrong because the work was merging, not deleting.
+- [x] Four tests removed: empty input (byte-identical), mixed content types (kept exact id-set
+      equality over five types, dropped `length >= 3` over three), mobile positive widths (subsumed
+      by the Mobile vs desktop test), cover-with-no-dimensions (kept the direct construction, dropped
+      the fixture-mutating one). Both cover-less variants kept — `undefined` and `null` are distinct
+      falsy values — and the missing `rowType === 'header'` assertion was added to the copy lacking it.
+- [x] `processContentForDisplay — row packing is order-preserving (D2 characterization)` has a
+      distinct name, is not a duplicate, and was left alone. So was
+      `contentLayoutWidthCostBaseline.test.ts`.
+- [x] The copies never contradicted each other. What looked like a contradiction is real asymmetry in
+      the source, and both copies encoded it correctly — filed as **C9**.
 
 ### ☐ B5 · `useCollectionEdit` fixture consolidation
 
@@ -321,6 +493,26 @@ while you are here — that is B5, and it carries its own fixture-consolidation 
 ### ☐ B7 · `useClickOutside` spy tests
 
 - [ ] Drop the four listener-attachment-spy tests. They pin an implementation detail; the behavior tests already pin the outcomes.
+
+**SHIPPED — PR #286 (open).** 21 insertions, 58 deletions, net −37 (est. −90). File 21 → 18 tests;
+suite 4,126 → 4,123 (four spy tests out, one behavior test in).
+
+- [x] **Two of the four spy tests asserted on a listener this hook never registers.**
+      `useClickOutside` attaches only `mousedown`; Escape is delegated to
+      `useEscapeKey(onClose, isOpen)`, and `useEscapeKey.test.ts` already spies on it. The clearest
+      case on this board of tests reaching past their own subject.
+- [x] **One spy was load-bearing and was replaced, not deleted.** The `isOpen` true→false removal
+      spy had no behavioral equivalent for the single-state hook (`useClickOutsideMultiple` had one).
+      Replacement: mount open, dispatch an outside click, assert `onClose` fired once; rerender
+      closed, dispatch again, assert the count is still one. Firing once first is what proves the
+      listener was live and then removed, rather than never attached at all.
+- [x] **The delegation hid a real gap.** Both cleanup tests dispatched only `mousedown`, so a leaked
+      `keydown` listener was invisible. Mutation-proved: deleting cleanup from `useClickOutside`
+      turns 4 tests red, deleting it from `useEscapeKey` turns exactly 2 — and both are the ones the
+      Escape dispatch was added to. Nothing else in the file caught that leak. Both hooks restored;
+      `git diff` on `app/hooks/` is empty.
+- [x] The unmount spy deleted cleanly — the existing "should not call onClose after unmount" test
+      already covers it.
 
 ### ☐ B8 · Fill the required-coverage gaps
 
@@ -353,7 +545,7 @@ The project rule requires tests for these and they have none.
 
 ---
 
-## Group C — Bug fixes — ✅ CLOSED except C6
+## Group C — Bug fixes — ✅ C1–C5 CLOSED; C6 and C9 open
 
 C1–C5 merged (#264, #281, #282, #279, #283). Full write-ups:
 [group-c-bugs.md](2026-summer-refactor/group-c-bugs.md). C4's `collections-location-${slug}` report became E12.
@@ -380,6 +572,27 @@ is almost certainly WHY the strip only ever existed on `collectionToContentModel
 - [ ] Only if the field lands: post-E1 the frontend side is a two-line change — pass a stripped
       `coverImage` into `buildParallaxCard`, exactly as `collectionToContentModel` now does.
 - [ ] Do NOT open this as a frontend MR before the field exists. There is nothing to write.
+
+### ☐ C9 · A dimensionless cover renders no header; a missing cover renders one
+
+Found by B4 (PR #289) while merging the duplicated `createHeaderRow` describes. Both test copies
+encoded this correctly, so it is behaviour-as-written rather than a regression — but the two paths
+disagree in a way that reads more like an oversight than a decision, and nothing on the board had
+recorded it.
+
+- [ ] `coverImage` absent (`undefined` **or** `null`) → `createTextOnlyHeaderRow`, which returns a
+      one-item TEXT row when metadata exists and `null` otherwise. A collection with a description
+      and no cover therefore renders a header.
+- [ ] `coverImage` present but missing `imageWidth`/`imageHeight` → `null` unconditionally, metadata
+      ignored. The same collection with a broken cover renders nothing.
+- [ ] **The decision, which is the user's:** should a dimensionless cover fall back to the
+      text-only header, or is rendering nothing deliberate? Falling back is the smaller change and
+      makes the two paths agree. Rendering nothing may be intentional if a cover that failed to
+      measure signals a broken collection worth hiding — but nothing says so.
+- [ ] Whichever way it goes, pin it. Neither path currently has a test asserting the *contrast*, so
+      a future refactor can flip one without failing anything.
+
+Est ±20 src, +40 test. Low priority — it needs an answer before it needs code.
 
 ---
 
@@ -570,6 +783,9 @@ Bigger, optional, sequenced last. Do each individually and verify on :3000.
 - [ ] `ReorderMove` type → `app/types/Content.ts`; the public tree currently imports it from the admin edit directory.
 - [ ] Rename the lowercase `auth/` and `messages/` component directories.
 - [ ] Fold the `AdminPanel/` fossil (now only contexts) into `ListPanel/`.
+- [ ] Two `logger.warn('manageUtils', …)` labels in `collectionEditUtils.ts` still name a module
+      that no longer exists. Found by B1 (#290) and deliberately left there — renaming log labels
+      inside a test-only MR would have put a source change in a diff that had none.
 
 ### ⛔ F4 · `TaxonomyPage` ← `LocationPageClient` — USER DECISION
 
@@ -666,6 +882,33 @@ One line per `/next` run. The newest entry is here; older entries are in
 [session-log.md](2026-summer-refactor/session-log.md). Three consecutive entries ending in the same `Next:` means
 that item is being avoided, not scheduled — make it real work or drop it from the board.
 
+- 2026-08-24 (2) — **five Group B MRs in one sitting, run as parallel agents in separate
+  worktrees:** B1 (#290), B2 (#288), B3 (#287), B4 (#289), B7 (#286). All open, none merged — the
+  rows are ◐ not ✅ deliberately, because nothing here was verified merged. C8 (stale `Following`
+  chip count) is a sixth, in flight.
+  **Every estimate in Group B came in short, in the same direction, for the same reason:** they
+  counted repeated text and assumed repetition meant redundancy. B4 was off by roughly an order of
+  magnitude. Two items moved the opposite way from subtraction — B3's test count went up 106 → 107
+  and B7 gained a behavioural test.
+  **Four of five duplication claims were wrong; B1's was the one that held.** That ratio is now a
+  rule in "How to use this doc": a duplication claim is a lead worth an hour, not a finding.
+  B3's was the dangerous one — deleting the "duplicate" `buildLensDiff` suite would have removed all
+  coverage of a live source function. Refs, by contrast, were fine everywhere; B3's needed no
+  correction at all. **Claims and refs fail independently, and only refs had been drift-checked.**
+  B1 settled the E11 guardrail with a six-mutation table: folding the revalidate suites into the
+  drift test loses four of six catches, because a source scan cannot tell a tag that is posted from
+  a tag that is merely written down. Both suites stay.
+  Filed: **C9** (a dimensionless cover renders no header while a missing cover renders one, found by
+  B4) and an F3 bullet for the stale `logger.warn('manageUtils')` labels. `contentLayout.ts`'s
+  asymmetry needs a decision before it needs code.
+  **C8 shipped too (#291, +418 −22)** — the `Following` chip count no longer goes stale on unfollow.
+  A new client component `UserSpaceGrid.tsx` sits below `FollowsProvider` and applies a set-difference
+  delta to the server count; `UserSpace.tsx` stays a Server Component. Five of eight tests were
+  confirmed red first, and the failure DOM showed the bug exactly — button already reading "Follow"
+  while the count still read 2. **C8's board row and write-up live on `0286-user-feature-requests`**
+  (79a12ff), filed by a parallel session alongside C7 and B9; this branch deliberately adds neither,
+  to keep the two from colliding. Merge 0286 first.
+  Next: B5 — but see the guardrail on it.
 - 2026-08-24 — **Group C is closed except the backend-blocked C6.** Shipped C4 (#279, +155 −62),
   E11 (#280, +277 −28), C2 (#281, +99 −5), C3 (#282, +121 −10), C5 (#283, +497 −101); all five
   merged, `main` at 2e7a184. Estimates on the board rows were replaced with measured diffs.
