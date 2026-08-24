@@ -287,7 +287,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E12 | Wire up `collections-location-${slug}`                                   | Low-medium  | **+72 src / +293 test actual** (est. +30 src)                                              | ✅ PR #301; image-path trigger split out as E13                                              |
 | E13 | Trigger `collections-location-${slug}` from the image-metadata save path | Low-medium  | **+36 src net / +165 test actual** (est. +30 src, +60 test)                                | ✅ PR #313 — src estimate held; location-RENAME gap split out as E16                         |
 | E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value       | Low         | **−3 src / −4 test net actual**, 36 call sites (est. −2 src, ~40 sites)                    | ✅ PR #307 — the one estimate on this board that held                                        |
-| E15 | `createHeaderRow`'s two trailing boolean params → options object         | Low         | ±15 src, ~20 test call sites                                                               | ☐ NEW — E14 raised it; #307 shipped without seeing it (E14 was in unmerged #305)             |
+| E15 | `createHeaderRow`'s two trailing boolean params → options object         | Low         | **+22 src net / 14 test call sites** (est. ±15 src, ~20 sites)                             | ✅ PR #314 — stacked on #313; first call-site estimate to come in OVER                       |
 | E16 | Revalidate the OLD slug when a location is RENAMED                       | Low-medium  | +25 src, +60 test                                                                          | ☐ **COLD** — E13's pre-build check; rename confirmed real and it 404s, not just goes stale   |
 | F1  | Decompose `useCollectionEdit.tsx`                                        | Medium-high | ~neutral                                                                                   | ☐                                                                                            |
 | F2  | `RendererContext` for the BoxRenderer tree                               | Medium      | −100 src, **+150–250 test** (re-sized 2026-08-24, bias 1b)                                 | ☐                                                                                            |
@@ -1125,23 +1125,65 @@ next signature change. **Not done in #307 — carried forward as E15.**
 
 ---
 
-### ☐ E15 · `createHeaderRow`'s two trailing boolean params → options object
+### ✅ E15 · `createHeaderRow`'s two trailing boolean params → options object — PR #314
+
+**SHIPPED 2026-08-24 — PR #314, +22 src net / 14 test call sites rewritten.**
+
+**The first call-site estimate on this board to come in OVER rather than under.** Estimated ~20
+sites, actual 14 — 36 total callers, of which 22 pass two arguments and were untouched exactly as
+predicted. The estimate was made the right way (grep first), and it still missed by 30%, because it
+counted "calls with a third or fourth argument" from a naive text scan. A `createHeaderRow(` scan
+that does not balance parentheses miscounts every nested call like `createHeaderRow(bare(), 1200,
+false)`. **Balance the parens, or the grep-first rule buys less than it looks like it does.**
+
+**E14's self-verification property carried over intact, which is the reusable part.** Changing slot
+3 from `boolean` to an object means every unconverted call fails to compile — `TS2559` for the
+three-argument form, `TS2554: Expected 2-3 arguments, but got 4` for the four-argument one. The
+compiler enumerated all 14 sites; no site was found by reading. Same as E14, and the same caveat
+applies: this is a TypeScript property, not a general one.
+
+**The "roughly net-neutral, may be net positive" line-count prediction was wrong.** Actual +22 src
+net. The conversion itself is nearly free — the signature loses a line, the destructure adds one,
+the production call site loses two — but `HeaderRowOptions` needs declaring and its two keys need
+docblocks, and `forceRail` in particular is not self-explanatory. That is the cost of the
+readability win, not a surprise, and the item was right that the win is the point.
+
+**Behaviour is provably unchanged**: 108 `contentLayout` tests pass unmodified except for their call
+shape, and the full suite is 243 suites / 4356 tests — identical counts to before, as a pure
+refactor should be. **Browser verification was not possible**: the local Spring Boot backend was not
+running, so every page fails at `meServer`'s `/auth/me` fetch with `ECONNREFUSED` before any header
+renders. Unrelated to this change, but recorded so the next reader does not take "verified by tests
+and types only" for an oversight.
 
 _Split out of E14, 2026-08-24. E14 raised this as the alternative to a straight `_chunkSize`
 deletion; #307 shipped the deletion without weighing it, because E14's section was still sitting in
 the unmerged #305 board PR and was invisible from `main`._
+
+**#314 is stacked on #313, deliberately, for exactly that reason.** E15 and E13 both edit this
+board, so branching E15 off `main` would have conflicted here AND re-created the trap E14 named — a
+session working from `main` cannot see an item that lives in an open board PR. Merge #313 first.
 
 After #307 the signature is `createHeaderRow(collection, componentWidth, isMobile = false,
 forceRail = false)` — two trailing positional booleans. This is the boolean-trap shape: the call
 sites now read `createHeaderRow(bare(), 375, true, true)`, where nothing at the call site says which
 `true` is which.
 
-- [ ] Convert the tail to a single options object — `createHeaderRow(collection, width, opts)` with
+- [x] Convert the tail to a single options object — `createHeaderRow(collection, width, opts)` with
       `opts` carrying `isMobile` and `forceRail`. Both already default to `false`, so `opts` and
-      both its keys stay optional and the two-argument calls do not change at all.
-- [ ] Roughly 20 call sites in `tests/utils/contentLayout.test.ts` pass a third or fourth argument
-      and need rewriting; the ~16 two-argument calls are untouched. **Grep the symbol before sizing**
-      — that is what made E14's estimate the only one on this board to hold.
+      both its keys stay optional and the two-argument calls do not change at all. **Done as
+      written; the defaults moved into a destructure and all 22 two-argument callers are untouched.**
+- [x] ~~Roughly 20 call sites~~ **14 call sites** in `tests/utils/contentLayout.test.ts` pass a third
+      or fourth argument and need rewriting; the ~~~16~~ **22** two-argument calls are untouched.
+      **Grep the symbol before sizing** — that is what made E14's estimate the only one on this
+      board to hold. **It held here too, but only roughly: both call-site numbers were off because
+      the scan did not balance parentheses.**
+
+**Two sibling functions have the same shape and were deliberately left alone.**
+`createTextOnlyHeaderRow` (`contentLayout.ts:557`) and `createMetadataTextBlock` (`:511`) each take
+a single trailing `forceRail: boolean = false`. They are not the boolean-trap shape this item
+targets — one trailing boolean next to clearly-typed arguments is readable, and both are
+module-private with a handful of callers. Converting them would be churn. Named here so the next
+reader sees they were considered rather than missed.
 
 **Smaller now than it would have been inside E14**, because `_chunkSize` is already gone: this
 converts two parameters, not three, and the positional-shift hazard it removes is the one E14 just
@@ -1149,7 +1191,10 @@ paid once.
 
 **Do this one for the readability, not the line count — it is roughly net-neutral and may be net
 positive.** If that is not worth an MR right now, say so on the row and close it rather than leaving
-it to be re-derived a third time.
+it to be re-derived a third time. **Done, and the readability framing was correct: the line count
+went the other way (+22) and the call sites still read better —
+`createHeaderRow(bare(), 1200, { isMobile: false, forceRail: true })` against the old
+`createHeaderRow(bare(), 1200, false, true)`.**
 
 ---
 
@@ -1664,6 +1709,30 @@ against real merge timestamps on 2026-08-24; only the labels were inconsistent. 
   Suite 243 suites / 4356 tests green. **Verified the new tests fail without the change** — 4 of 7
   do; the other 3 are guards and are labelled as such rather than counted as coverage.
   Next: **E15**, as its own MR.
+
+- 2026-08-24 (5) — **shipped E15 (#314)**, stacked on #313. +22 src net / 14 test call sites.
+  Suite unchanged at 243 / 4356, which is the right result for a pure refactor.
+  **First call-site estimate on this board to come in OVER** (est. ~20, actual 14). The estimate
+  followed the grep-first rule and still missed 30%, because the scan did not balance parentheses —
+  every nested call like `createHeaderRow(bare(), 1200, false)` miscounts. **The rule needs the
+  qualifier: balance the parens, or grep-first buys less than it appears to.** Both of E15's own
+  call-site numbers were wrong for this reason (14 not ~20 to change, 22 not ~16 untouched).
+  **E14's self-verification property carried over exactly**, which is the transferable finding:
+  changing slot 3 from `boolean` to an object makes every unconverted call a compile error
+  (`TS2559`, and `TS2554` for the four-argument form). The compiler enumerated all 14 sites; none
+  was found by reading. Two positional-parameter changes in a row now, both mechanical for the same
+  TypeScript-specific reason.
+  **The board's "roughly net-neutral" line-count guess was wrong** (+22), because an options object
+  has to declare and document its keys — `forceRail` especially is not self-explanatory. The
+  readability framing it paired that guess with was right, so the item's advice survives its
+  arithmetic.
+  **Stacked on #313 deliberately.** Both items edit this board, so branching off `main` would have
+  conflicted AND re-created the exact trap E14 named — a session working from `main` cannot see an
+  item sitting in an open board PR. Merge #313 first.
+  **Browser verification blocked, not skipped:** the local Spring Boot backend was down, so every
+  page dies at `meServer`'s `/auth/me` with `ECONNREFUSED` before a header renders. Verified by
+  types and the 108 `contentLayout` tests instead, and said so rather than implying a visual check.
+  Next: **E16**, or E8/F2/F5 — nothing on E13/E15 is left open.
 
 - 2026-08-24 (2) — **shipped E3's generics half (#306) and E14 (#307)**; merged #296 (B8's
   `collectionStorage` slice) first as E3's safety net, and #305 (this board) landed mid-session.

@@ -151,12 +151,10 @@ export function processContentForDisplay(
   const result: RowWithPatternAndSizes[] = [];
 
   if (options?.collectionData) {
-    const headerRows = createHeaderRow(
-      options.collectionData,
-      componentWidth,
-      options?.isMobile,
-      options?.forceHeaderRail
-    );
+    const headerRows = createHeaderRow(options.collectionData, componentWidth, {
+      isMobile: options?.isMobile,
+      forceRail: options?.forceHeaderRail,
+    });
     if (headerRows) {
       if (Array.isArray(headerRows)) {
         result.push(...headerRows);
@@ -570,6 +568,27 @@ function createTextOnlyHeaderRow(
 }
 
 /**
+ * Tail options for {@link createHeaderRow}.
+ *
+ * These were two trailing positional booleans until E15. At the call sites that read
+ * `createHeaderRow(collection, 375, true, true)`, nothing said which `true` was which — and
+ * removing `_chunkSize` from the same tail in E14 had just shifted both of them by one slot. An
+ * options object costs nothing here (both keys default to `false`, so the 22 two-argument callers
+ * are unaffected) and makes the next signature change free of that hazard.
+ */
+export interface HeaderRowOptions {
+  /** Mobile splits the header into one full-width row per item. */
+  isMobile?: boolean;
+  /**
+   * Build the metadata rail even when there is no metadata text — see
+   * {@link ProcessContentOptions.forceHeaderRail}, which is where this value comes from. The rail
+   * is the mount point for the filter toolbar and the download row, so a page showing those needs
+   * it regardless of its own text.
+   */
+  forceRail?: boolean;
+}
+
+/**
  * Create header row with cover image and metadata as a RowWithPatternAndSizes
  *
  * Creates a header row that will be prepended to regular content rows.
@@ -586,14 +605,17 @@ function createTextOnlyHeaderRow(
  * Returns null if cover image missing or has no dimensions.
  * @param collection - Collection model with cover image and metadata
  * @param componentWidth - Total available width for the row
+ * @param options - See {@link HeaderRowOptions}. Both keys default to `false`, so a caller that
+ *   wants neither omits the argument entirely.
  * @returns RowWithPatternAndSizes (or array on mobile) with header items, or null if no cover image
  */
 export function createHeaderRow(
   collection: CollectionModel,
   componentWidth: number,
-  isMobile: boolean = false,
-  forceRail: boolean = false
+  options: HeaderRowOptions = {}
 ): RowWithPatternAndSizes | RowWithPatternAndSizes[] | null {
+  const { isMobile = false, forceRail = false } = options;
+
   // Metadata is independent of the cover; compute it up front so a cover-less collection
   // (e.g. the /user page for a user who isn't tagged in any image yet) can still render a
   // description-only intro instead of no header at all.
