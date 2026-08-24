@@ -266,7 +266,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E1  | Parallax-card builder consolidation                                      | Medium      | +98 src, +659 test (est. −120)                                                             | ✅ PR #269                                                                                   |
 | E2  | `core.ts` fetch skeleton + `clientFetch`                                 | Medium      | ~0 net (−180 src, +150–200 test)                                                           | ☐                                                                                            |
 | E3  | `collectionStorage.ts` generics                                          | Low         | **−12 src actual** (−46 code, +39 comment); +927 test via #296 (est. +50–150 net for both) | ◐ generics ✅ PR #306; guards bullet ⛔ user call                                            |
-| E4  | Entity-diff generics + one IMAGE guard                                   | Medium      | −80 (A5 landed the guard half); re-size the twins region, not the files                    | ☐ queued after G4 — entity-diff half COLD; IMAGE-guard half ⛔ guards are NOT duplicates     |
+| E4  | Entity-diff generics + one IMAGE guard                                   | Medium      | **+44 src / +177 test actual** for the twins half (est. −80)                               | ✅ PR #311 — twins → `entityUtils.ts`; IMAGE-guard half STRUCK, guards are NOT duplicates    |
 | E5  | Filter/sort/date duplication                                             | Low         | **0 src / +139 test actual** (est. −50 src)                                                | ◐ PR #299 open                                                                               |
 | E6  | `useCollectionEdit` refresh helpers                                      | Medium      | −90 src, ±100 test churn                                                                   | ☐                                                                                            |
 | E7  | `useFilteredContentBlocks` hook                                          | Medium      | +100–200 net (new hook suite)                                                              | ☐                                                                                            |
@@ -677,7 +677,7 @@ MR, you have gone out of scope.
       After #306 the guards live in **one** place, not two — `createSlugCache`'s `get` serves both
       caches — so deleting them is now a single edit and M3 goes red on 6 tests, not 4.
 
-### ☐ E4 · Entity-diff generics + one IMAGE guard — queued after G4
+### ◐ E4 · Entity-diff generics — twins shipped; IMAGE-guard half struck
 
 **Why it is queued next after G4.** Both refs verified correct against `main` 2026-08-24 (`contentFilter.ts:68`,
 `contentTypeGuards.ts:23` — neither drifted). It is the same generic-collapse shape E3 just proved,
@@ -714,12 +714,41 @@ and this bullet should be struck rather than shipped.
 
 Apply the estimate lesson from E3 before sizing: measure the duplicated region, not the files.
 
-- [ ] `isImageContent` ([contentFilter.ts:68](app/utils/contentFilter.ts:68)) vs `isContentImage`
-      ([contentTypeGuards.ts:23](app/utils/contentTypeGuards.ts:23)) — two exported IMAGE guards, and
-      no import cycle justifies the copy. Consolidate on `isContentImage`. (The other half of this
-      item — `checkImageVisibility` — already landed via A5/PR #260; the −150 estimate predates that
-      and is now −80. Keep thin public wrappers on the twins so both existing suites pass unchanged.)
-- [ ] `tagUtils.ts` and `locationUtils.ts` are line-for-line twins — generic `convertToModels<T>` / `buildEntityDiff<T>`.
+- [x] ~~`isImageContent` vs `isContentImage`~~ — **STRUCK 2026-08-24, user decision.** The guards are
+      not duplicates (see the table above), and the user confirmed it rather than leaving it open.
+      Consolidating would add an `imageUrl` presence check to 20 call sites, which is a behavior
+      change, not a consolidation. Nothing to ship; the two guards are correctly distinct.
+- [x] `tagUtils.ts` / `locationUtils.ts` twins → `entityUtils.ts` — PR #311.
+
+**Shipped 2026-08-24 (PR #311).** `convertToModels<T>` and `buildEntityDiff` now live in
+`app/utils/entityUtils.ts`; `tagUtils` and `locationUtils` are wrappers that fix the type and keep
+their exported names, so all four call sites and both existing suites pass untouched.
+
+`buildEntityDiff` did NOT need a type parameter — its body reads only `.id` and `.name`, and both
+concrete models are assignable to `EntityRef`. Only `convertToModels` is generic, and it takes a
+`createUnknown` factory instead of casting its constructed fallback to `T`: a cast would silently
+absorb a new required field on `ContentTagModel`, where the factory breaks at the wrapper.
+
+**Second not-a-duplicate, found while doing this — do not fold it in later.**
+`buildAssociationDiff` ([metadataUtils.ts:305](app/components/Metadata/metadataUtils.ts:305)) is a
+THIRD prev/newValue/remove implementation and reads like the same function. It is not:
+
+|                   | `buildEntityDiff`                 | `buildAssociationDiff`                    |
+| ----------------- | --------------------------------- | ----------------------------------------- |
+| Emits a diff when | new names differ **positionally** | the edited set holds **any** unsaved name |
+| `id` type         | `number` (required)               | `number \| undefined`                     |
+| Shape             | returns a value                   | mutates `diff[field]` in place            |
+
+Given identical unsaved names on both sides, `buildEntityDiff` returns `undefined` and
+`buildAssociationDiff` emits a write. Moving its callers onto the shared helper changes which saves
+fire. Same failure mode as the IMAGE guards and as B3. The warning is pinned in `entityUtils.ts`'s
+own docblock, not only here.
+
+**Estimate, measured after the fact.** Board said −80 (which included the now-struck guard half).
+Actual for the twins half: **source +44 lines**, +177 test. The duplicated region really was ~105
+lines collapsing to ~55, but the shared module needs its own docblocks and `EntityRef`/`EntityUpdate`
+need declaring, and those exceed what the wrappers gave back. The win is one copy of the mechanic
+instead of two, not a smaller tree — the same lesson E3 taught, in the same direction.
 
 ### ☐ E5 · Filter/sort/date duplication
 
