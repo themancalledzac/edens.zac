@@ -125,7 +125,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | B7 | `useClickOutside` spy tests | Low | −90 | ☐ |
 | B8 | Fill the required-coverage gaps | Low | +1,100–1,650 for the 4 open bullets (est. +600 for all 6) | ◐ 2 of 6 — PR #266 (clearCache), PR #267 (Escape) |
 | C1 | Unsaved people/gallery-access wipe (HIGH) | Low | +73 −11 | ✅ PR #264 |
-| C2 | About portrait aspect ratio | Trivial | ±1 | ☐ |
+| C2 | About portrait aspect ratio | Trivial | ±1 src, +75 test | ✅ PR #281 |
 | C3 | `SelectsContext.toggle` purity | Low | ±20 | ☐ |
 | C4 | Cache tags that never connect | Low | ±66 (4 dead tags + tests) | ✅ PR #279 |
 | C5 | Assorted LOW bugs | Low | ±55 src, +100–200 test | ☐ |
@@ -512,9 +512,26 @@ password/email through the setters "so the seed effect can't wipe them" — the 
 around in tests rather than fixed. That comment is now stale but harmless; the workaround it
 describes still passes.
 
-### ☐ C2 · About portrait declares the wrong aspect ratio
+### ✅ C2 · About portrait declares the wrong aspect ratio — PR #281
 
-- [ ] [About.tsx:15](app/components/About/About.tsx:15) declares `width={1000} height={500}` (2:1) but `public/_DSC0145.jpg` is 3893×2920 (4:3). With `width: 100%; height: auto` the browser reserves a 2:1 box then reflows to 4:3 — a visible shift every time About opens. Fix: `height={750}`.
+- [x] [About.tsx:15](app/components/About/About.tsx:15) declared `width={1000} height={500}` (2:1)
+      for `public/_DSC0145.jpg`, which is 3893x2920 (4:3). Both halves re-read rather than trusted:
+      the file's dimensions come from its JPEG SOF segment, and the CSS is
+      `.profileImage { width: 100%; height: auto }`, which is what makes the declared pair the
+      aspect-ratio box the browser reserves before the file arrives. So a 2:1 declaration reserved
+      the wrong shape and reflowed to 4:3 on every open. Fixed to `height={750}`
+      — 1000 x 2920/3893 = 750.06. About is live code, rendered at `MenuDropdown.tsx:334`.
+- [x] **Scope note: the item said ±1 and the source change is ±1, but a test went in on top.** This
+      bug is invisible in code review and in a screenshot — it exists only in the moment between
+      reserving the box and loading the file, which is exactly the silent class the D3 and C4 lessons
+      are about. `tests/components/About/aboutImageDimensions.test.tsx` renders About and compares
+      the declared ratio against the real file, reading the dimensions out of the JPEG rather than
+      hardcoding them, so re-cropping or replacing the image fails the test instead of quietly
+      restoring the shift. Confirmed red against `height={500}` (delta 0.667), and confirmed red a
+      second time after `eslint --fix` reordered the imports and `tsc` forced a change to the file.
+- [x] Not browser-verified, and it would not have proved anything: `:3000` was not running, and the
+      defect is a pre-load reflow that a static screenshot cannot show. The declared attribute is the
+      whole fix, and the test asserts it against the file.
 
 ### ☐ C3 · `SelectsContext.toggle` runs side effects inside a state updater
 

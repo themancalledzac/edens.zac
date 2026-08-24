@@ -16,7 +16,7 @@ export function About() {
             src="/_DSC0145.jpg"
             alt="Zechariah Edens - Portrait"
             width={1000}
-            height={500}
+            height={750}
             className={styles.profileImage}
           />
         </div>
