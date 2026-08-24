@@ -41,6 +41,16 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 ## How to use this doc
 
 - One MR per numbered item (`A1`, `B3`, …). Do not bundle across items.
+- **A status cell naming an open PR is a claim by the session that opened it, not a fact.** Run
+  `gh pr view <N> --json state,mergedAt` on every PR the board calls open before trusting any of
+  them. On 2026-08-24 all five rows saying "PR #N open" — B5/#298, E5/#299, E9/#300, G1/#303,
+  E10/#304 — had merged hours earlier, and their sections' checkboxes had gone unswept with them,
+  so bullets that had shipped still read as work remaining. Close the row AND the boxes in the same
+  pass as the merge.
+- **Cross-repo `file:line` refs are not covered by any drift sweep here.** The per-session sweep
+  scopes to files this repo's merges touched, so a ref into `edens.zac.backend` can rot for weeks
+  unseen. C7's backend refs had drifted three-of-four when re-checked. Re-verify them by hand
+  against that repo's `origin/main` — not a local working branch — whenever such an item is picked up.
 - Every MR ends with the standard verification: scoped `eslint --fix` → `prettier --write` → `tsc --noEmit` → full `jest`.
 - **Prove every regression test fails without its fix.** Stash the source change, re-run the new
   test, confirm it goes red, restore. A green test proves nothing until you have watched it fail.
@@ -240,7 +250,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | B2  | `rowCombination` characterization dedup                                  | Low         | −229 (est. −250)                                                                           | ✅ PR #288                                                                                   |
 | B3  | `metadataUtils.test.ts` dedup                                            | Low         | −125 (est. −200 to −300)                                                                   | ✅ PR #287                                                                                   |
 | B4  | `contentLayout.test.ts` merge                                            | Low         | −32 (est. −150 to −250)                                                                    | ✅ PR #289                                                                                   |
-| B5  | `useCollectionEdit` fixture consolidation                                | Low         | **−145 actual** (est. −350)                                                                | ◐ PR #298 open                                                                               |
+| B5  | `useCollectionEdit` fixture consolidation                                | Low         | **−145 actual** (est. −350)                                                                | ✅ PR #298                                                                                   |
 | B6  | Fold in `CollectionContentRenderer` characterization                     | Low         | **0 actual** (est. −150)                                                                   | ✅ PR #294 + #297 (restore)                                                                  |
 | B7  | `useClickOutside` spy tests                                              | Low         | −37 (est. −90)                                                                             | ✅ PR #286                                                                                   |
 | B8  | Fill the required-coverage gaps                                          | Low         | +1,545 actual for the 3 slices shipped                                                     | ◐ 5 of 6 — #266 (clearCache), #267 (Escape), #295 (share+messages), #296 (collectionStorage) |
@@ -267,23 +277,23 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E2  | `core.ts` fetch skeleton + `clientFetch`                                 | Medium      | ~0 net (−180 src, +150–200 test)                                                           | ☐                                                                                            |
 | E3  | `collectionStorage.ts` generics                                          | Low         | **−12 src actual** (−46 code, +39 comment); +927 test via #296 (est. +50–150 net for both) | ◐ generics ✅ PR #306; guards bullet ⛔ user call                                            |
 | E4  | Entity-diff generics + one IMAGE guard                                   | Medium      | **+44 src / +177 test actual** for the twins half (est. −80)                               | ✅ PR #311 — twins → `entityUtils.ts`; IMAGE-guard half STRUCK, guards are NOT duplicates    |
-| E5  | Filter/sort/date duplication                                             | Low         | **0 src / +139 test actual** (est. −50 src)                                                | ◐ PR #299 open                                                                               |
+| E5  | Filter/sort/date duplication                                             | Low         | **0 src / +139 test actual** (est. −50 src)                                                | ◐ PR #299; 4 bullets still open                                                              |
 | E6  | `useCollectionEdit` refresh helpers                                      | Medium      | −90 src, ±100 test churn                                                                   | ☐                                                                                            |
 | E7  | `useFilteredContentBlocks` hook                                          | Medium      | +100–200 net (new hook suite)                                                              | ☐                                                                                            |
-| E8  | Renderer + `MenuDropdown` dedup                                          | Medium      | −120 src, +0–50 test                                                                       | ☐                                                                                            |
-| E9  | Download icon/hook, auth-card SCSS, `.srOnly`                            | Low         | **+16 src / +393 test actual** (est. −100 src)                                             | ◐ PR #300 open; srOnly bullet still ⛔ user call                                             |
-| E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator)        | Low         | **−79 src code-only / +176 test code-only** (est. −60 src)                                 | ◐ PR #304 open                                                                               |
+| E8  | Renderer + `MenuDropdown` dedup                                          | Medium      | −120 src, **+150–250 test** (re-sized 2026-08-24, bias 1b)                                 | ☐                                                                                            |
+| E9  | Download icon/hook, auth-card SCSS, `.srOnly`                            | Low         | **+16 src / +393 test actual** (est. −100 src)                                             | ◐ PR #300 — both COLD bullets shipped; srOnly ⛔ user call                                   |
+| E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator)        | Low         | **−79 src code-only / +176 test code-only** (est. −60 src)                                 | ◐ PR #304; late-added bullets 6–7 unswept                                                    |
 | E11 | Make cache-tag register/revalidate drift detectable                      | Low-medium  | +277 −28                                                                                   | ✅ PR #280                                                                                   |
 | E12 | Wire up `collections-location-${slug}`                                   | Low-medium  | **+72 src / +293 test actual** (est. +30 src)                                              | ✅ PR #301; image-path trigger split out as E13                                              |
-| E13 | Trigger `collections-location-${slug}` from the image-metadata save path | Low-medium  | +30 src, +60 test                                                                          | ☐ NEW — split out of E12, backend question answered                                          |
+| E13 | Trigger `collections-location-${slug}` from the image-metadata save path | Low-medium  | +30 src, +60 test                                                                          | ☐ **COLD, NEXT** — backend question answered 2026-08-24 by reading `origin/main`             |
 | E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value       | Low         | **−3 src / −4 test net actual**, 36 call sites (est. −2 src, ~40 sites)                    | ✅ PR #307 — the one estimate on this board that held                                        |
 | E15 | `createHeaderRow`'s two trailing boolean params → options object         | Low         | ±15 src, ~20 test call sites                                                               | ☐ NEW — E14 raised it; #307 shipped without seeing it (E14 was in unmerged #305)             |
 | F1  | Decompose `useCollectionEdit.tsx`                                        | Medium-high | ~neutral                                                                                   | ☐                                                                                            |
-| F2  | `RendererContext` for the BoxRenderer tree                               | Medium      | −100                                                                                       | ☐                                                                                            |
+| F2  | `RendererContext` for the BoxRenderer tree                               | Medium      | −100 src, **+150–250 test** (re-sized 2026-08-24, bias 1b)                                 | ☐                                                                                            |
 | F3  | File moves and renames                                                   | Medium      | ~neutral                                                                                   | ☐                                                                                            |
 | F4  | `TaxonomyPage` ← `LocationPageClient`                                    | Medium      | −150                                                                                       | ⛔ USER DECISION                                                                             |
-| F5  | `FullScreenModal` link + resolver cleanup                                | Low         | −30                                                                                        | ☐                                                                                            |
-| G1  | Docs corrections                                                         | Trivial     | **+106 / −72 actual** (est. ±50)                                                           | ◐ PR #303 open                                                                               |
+| F5  | `FullScreenModal` link + resolver cleanup                                | Low         | −30 src, **+60–120 test** (re-sized 2026-08-24, bias 1b)                                   | ☐                                                                                            |
+| G1  | Docs corrections                                                         | Trivial     | **+106 / −72 actual** (est. ±50)                                                           | ✅ PR #303                                                                                   |
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)          | Low         | ~neutral (relocation + splits)                                                             | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors                       |
 | G3  | `/user/selects` decision                                                 | —           | —                                                                                          | ⛔ USER DECISION                                                                             |
 | G4  | Docblock standard — length, structure, and no history                    | Low         | **−50 net actual across 19 blocks** (est. −300 to −500 across ~53); 0 src                  | ◐ intersection pass done — 19 long+historical blocks rewritten; remaining 45 historical open |
@@ -302,11 +312,25 @@ item by item; both causes are known and neither is going away.
 
 1. **Group E "consolidations" come out flat or positive on source, never negative.** Scorecard:
    B6 0 vs −150, B5 −145 vs −350/−450, E5 0 vs −50, E9 +16 vs −100, E12 +72 vs +30, E10 −79
-   code-only vs −60. The cause is the same every time: **extracted units need docblocks the inline
+   code-only vs −60, **E4 +44 vs −80**, **G4 −50 vs −300/−500**. The cause is the same every time:
+   **extracted units need docblocks the inline
    copies never had**, and this repo's no-inline-comment rule means that context has nowhere else to
    go. E9 is the clearest case — excluding docblocks its call sites drop 265 → 215 code lines and the
    two extracted files add exactly 50 back. Break-even by construction. When sizing a consolidation,
    quote the code-only delta and the raw delta separately, or the number will look like a failure.
+   1b. **An extraction also buys a required test suite, and no Group E estimate has counted one.**
+   Bias 1 names the docblock cost. E4 showed a second, additive one: `CLAUDE.md` requires tests for
+   every new utility function, so extracting a shared module is never just moving code — it commits
+   you to a new suite. Test actuals where a module was extracted: E1 +659, E9 +393, E12 +293, E4
+   +177, E5 +139. None were predicted. **A consolidation's honest estimate is three numbers: code
+   delta, docblock delta, new-test delta**, and only the first is ever negative.
+
+   Applied forward to the un-started consolidations, whose current estimates count only the first:
+   **E8** (−120 src, +0–50 test) — the `+0–50` assumes the extracted renderer/`MenuDropdown` unit
+   needs almost no new coverage; on this scorecard read it as +150–250. **F2** (−100) and **F5**
+   (−30) carry no test figure at all; both extract a unit and so both need one. E2 (−180 src,
+   +150–200 test) and E7 (+100–200 net, "new hook suite") already price it and are the two to copy.
+
 2. **Group B estimates over-count preamble.** The existing note below says the estimates counted
    repeated _text_ and assumed repetition meant redundancy. That is one failure mode. B5 found the
    opposite one: the board counted whole preambles at 122–169 lines each (886 total) when only 460 of
@@ -389,7 +413,7 @@ work was merging, not deleting. Two items moved the opposite way from subtractio
 test count went **up** (106 → 107) and B7 gained a behavioural test. **Re-estimate the three
 remaining items as merges, not deletions.**
 
-### ☐ B5 · `useCollectionEdit` fixture consolidation
+### ✅ B5 · `useCollectionEdit` fixture consolidation — PR #298
 
 - [ ] SIX files (PR #267 added `escapeSelection.test.tsx` with the same hand-rolled preamble) each
       open with a 122–169-line preamble hand-rolling `makeCollection`/`makeMetadata` — now defined
@@ -490,9 +514,9 @@ Split out of E1, which deliberately left it alone to stay a provable no-op.
       strips `coverImage` for `isPasswordProtected` collections unless `showProtectedCovers` is set.
       `convertCollectionContentToParallax` ([contentLayout.ts](app/utils/contentLayout.ts)) does NOT
       — it passes `col.coverImage` through unconditionally. Both feed the same parallax card.
-      **VERIFIED 2026-08-23: this is a BACKEND item, not a frontend one.** `ContentCollectionModel` has
+      **VERIFIED 2026-08-23, re-verified 2026-08-24 (still zero): this is a BACKEND item, not a frontend one.** `ContentCollectionModel` has
       zero `isPasswordProtected` — grep the interface in `app/types/Content.ts` and confirm. Only
-      `CollectionModel` carries it ([Collection.ts:241](app/types/Collection.ts:241)). So the public card
+      `CollectionModel` carries it ([Collection.ts:266](app/types/Collection.ts:266)). So the public card
       path has nothing to key the strip on; it is not an oversight that can be fixed in the frontend. That
       is almost certainly WHY the strip only ever existed on `collectionToContentModel`.
 
@@ -514,9 +538,14 @@ Found 2026-08-23 while researching the email strategy (H4). The "Send" button un
       `/api/read/user/share/email` (base constant at [share.ts:16](app/lib/api/share.ts:16)).
 - [ ] The backend has no such route. `UserShareControllerProd`
       (`controller/prod/UserShareControllerProd.java:39`) declares exactly four mappings:
-      `@GetMapping` `:50`, `@PostMapping("/rotate")` `:67`,
-      `@PutMapping("/collections/{collectionId}")` `:86`,
-      `@DeleteMapping("/collections/{collectionId}")` `:107`.
+      `@GetMapping` `:50`, `@PostMapping("/rotate")` `:64`,
+      `@PutMapping("/collections/{collectionId}")` `:80`,
+      `@DeleteMapping("/collections/{collectionId}")` `:98`.
+      **Re-verified against backend `origin/main` 2026-08-24: still four mappings, and
+      `git grep` for any `@*Mapping(…email…)` under `controller/**` returns nothing.** Three of
+    the four refs above had drifted (`:67→:64`, `:86→:80`, `:107→:98`) and are corrected here.
+      Cross-repo refs on this board are not covered by the frontend drift sweep — re-check them
+      by hand whenever the item is picked up.
 - [ ] The UI is fully built and reachable: input and Send button at
       [ShareCard.tsx:183-200](app/components/Personal/ShareCard.tsx:183), handler `handleEmail` at
       `:112-121`. The 404 surfaces as the generic "Could not send that email" at `:121`, so it reads
@@ -750,9 +779,9 @@ lines collapsing to ~55, but the shared module needs its own docblocks and `Enti
 need declaring, and those exceed what the wrappers gave back. The win is one copy of the mechanic
 instead of two, not a smaller tree — the same lesson E3 taught, in the same direction.
 
-### ☐ E5 · Filter/sort/date duplication
+### ◐ E5 · Filter/sort/date duplication — PR #299; 4 bullets open
 
-- [ ] `FILTER_PARAM_KEYS` in `useFilterUrlState.ts` hand-mirrors `serializeFilterToParams`; the "MUST mirror" comment is a drift warning. Export the key list from `contentFilter.ts`.
+- [x] `FILTER_PARAM_KEYS` in `useFilterUrlState.ts` hand-mirrors `serializeFilterToParams`; the "MUST mirror" comment is a drift warning. Export the key list from `contentFilter.ts`.
 - [x] ~~`sortContent.ts` / `sortByDate.ts` mirror `contentFilter`'s merge/sort pair~~ — STRUCK
       2026-08-22: false. `sortContent.ts` _imports_ `isDateable`/`mergeDateSortedImages` from
       `contentFilter` and `sortByDate` from `sortByDate.ts`; its own docblock documents the
@@ -791,7 +820,7 @@ instead of two, not a smaller tree — the same lesson E3 taught, in the same di
 - [ ] `CollectionContentRenderer` — `ReorderOverlay` JSX is duplicated verbatim in the GIF and image branches; the two placeholder blocks share construction; `isSelected` is recomputed inline twice; seven no-op `key={contentId}` on root returns.
 - [ ] `MenuDropdown` — eight copies of the menu-item block → one config array (~60 lines). The `pageType` union has two values that decide nothing.
 
-### ☐ E10 · Admin panel dedup — found reviewing PR #253, 2026-08-22 — UNBLOCKED (#253 merged)
+### ◐ E10 · Admin panel dedup — PR #304; late-added bullets 6–7 unswept
 
 All four panels are on main as of 79fbca5, so every bullet below is now startable — the former
 branch-only refs (CollectionsPanel) are main refs. Verified byte-identical by `diff` (re-hashed
@@ -831,9 +860,9 @@ branch-only refs (CollectionsPanel) are main refs. Verified byte-identical by `d
       `--color-danger` for a button hover where the other three panels use `--color-danger-text`.
       A visible design change, so it needs a call rather than a sweep.
 
-### ☐ E9 · Download icon/hook, auth-card SCSS, `.srOnly`
+### ◐ E9 · Download icon/hook, auth-card SCSS, `.srOnly` — PR #300; srOnly ⛔
 
-- [ ] `ClientGalleryDownload` and `FullScreenDownloadButton` share an identical SVG and an identical download-navigate/reset-timer pattern → `DownloadIcon` plus a small hook.
+- [x] `ClientGalleryDownload` and `FullScreenDownloadButton` share an identical SVG and an identical download-navigate/reset-timer pattern → `DownloadIcon` plus a small hook.
 - [x] The login and invite `page.module.scss` files → one shared auth-card style — PR #300.
       **Not byte-identical, as this item claimed.** They differ on line 1, the header comment, which
       is why the rename shows 62% similarity rather than 100%. Lines 2–29 match
@@ -888,7 +917,7 @@ second template-keyed tag that would use it.
 
 ---
 
-### ☐ E13 · Trigger `collections-location-${slug}` from the image-metadata save path
+### ☐ E13 · Trigger `collections-location-${slug}` from the image-metadata save path — COLD
 
 _Split out of E12 (PR #301) once the backend question E12 could not answer got answered._
 
@@ -904,10 +933,45 @@ revalidate the tag too.
 - [ ] Call `revalidateLocationCaches(previous, next)` from the image-metadata save path. The helper
       already exists in `collectionEditUtils.ts` and already handles the union, the dedup and the
       slug-less case — this is a second caller, not new logic.
-- [ ] Confirm with the backend that `findOrphanImagesByLocationName` is the only image-side input to
-      that page before building. If there is a second one, this item is bigger than it looks.
+- [x] ~~Confirm with the backend that `findOrphanImagesByLocationName` is the only image-side
+      input.~~ **ANSWERED 2026-08-24 by reading backend `origin/main`, no backend session needed.**
+      `CollectionService.getLocationPage` (`services/CollectionService.java:232`) makes exactly six
+      repository reads. Three are collection-side (`countListedByLocationName`,
+      `findListedByLocationName`, `findListedIdsByLocationName`) and are E12's territory. One is the
+      location record itself (`locationRepository.findByLocationName`). The image side is a
+      find/count PAIR — `contentRepository.findOrphanImagesByLocationName` and
+      `countOrphanImagesByLocationName` — but both take the same `(locationName, allCollectionIds)`
+      key, so there is **one image-side matching rule**, not two. The premise holds and the item is
+      COLD.
+
+**One thing the answer added.** The orphan queries take `allCollectionIds` and exclude images
+already inside a listed collection at that location. So an image appears on `/location/{slug}` only
+while it is an orphan there, and a COLLECTION-side change can move an image on or off the page
+without the image being touched. E12 already revalidates on the collection side, so the pair is
+complete once this lands — but do not describe this item as "the image half" in code; it is the
+image-side TRIGGER for a page whose contents both sides feed.
+
+- [ ] **Check before building: what happens on a location RENAME?** The frontend tag is
+      `collections-location-${slug}` while the backend matches on location NAME, and `slugify` keeps
+      the two in step — so renaming a location changes both, and nothing ever revalidates the OLD
+      slug's tag. `/location/{old-slug}` would then serve stale content until `TIMING.revalidateCache`
+      expires. This is unverified: confirm the frontend even exposes a location rename before
+      sizing it. If it does, that is a third caller, not a change to the helper.
 
 Sizing: +30 src, +60 test, assuming the helper needs no changes.
+
+**Guardrail — `buildAssociationDiff` is one file away and is NOT a duplicate.** This item puts you
+in `Metadata/metadataUtils.ts`, where `buildAssociationDiff` (`:305`) sits beside the now-shared
+`buildEntityDiff` that E4 extracted. It reads like the same function and is not one: it emits a diff
+whenever the edited set holds ANY unsaved name, where `buildEntityDiff` compares unsaved names on
+both sides and returns `undefined` when they match, and its ids are optional. Unifying them changes
+which saves fire. See the table in E4, and the warning pinned in `entityUtils.ts`'s own docblock.
+Leave it alone and report what changing it would do.
+
+**Second guardrail: do not grow `revalidateLocationCaches`.** Its docblock says `handleUpdate` is
+the only caller — that sentence becomes wrong when this lands, and the correct fix is to update the
+sentence, not to generalize the helper. It already handles the union, the dedup and the slug-less
+case. This is a second call site.
 
 ### ✅ E14 · `createHeaderRow`'s `_chunkSize` is dead but receives a live value — PR #307
 
@@ -1033,7 +1097,7 @@ Bigger, optional, sequenced last. Do each individually and verify on :3000.
 
 ## Group G — Decisions and docs
 
-### ☐ G1 · Docs corrections
+### ✅ G1 · Docs corrections — PR #303
 
 The book is wrong in six places.
 
@@ -1229,7 +1293,7 @@ Where the data comes from:
   by `toCollectionBlocks` at [:87](app/components/UserSpace/userSpaceData.ts:87).
 - Chip labels are data, not literals: `Collections` `userSpaceData.ts:302`, `Images` `:308`,
   `Saved` `:314`, `Following` `:321`. Mapped to `ToolbarSection[]` at
-  [UserSpace.tsx:108](app/components/UserSpace/UserSpace.tsx:108), rendered at
+  [UserSpace.tsx:117](app/components/UserSpace/UserSpace.tsx:117), rendered at
   [FilterToolbar.tsx:219](app/components/ui/FilterToolbar/FilterToolbar.tsx:219).
 
 Work:
@@ -1400,6 +1464,23 @@ unification** — settle those two together or they will produce two competing d
 _Newest first. **Dates are local (America/Los_Angeles), not UTC** — earlier entries mixed the two,
 which is why a "08-23" entry can sit between two "08-24" ones. The ordering was verified correct
 against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates._
+
+- 2026-08-24 (4) — **shipped G4's intersection pass (#310) and E4's twins half (#311)**; `main` at
+  ac3f4d0. G4: 19 long-and-historical docblocks, not the 12 the baseline predicted — the scan counts
+  file headers and one-liners (1,384 blocks vs 865), so the counts are not comparable to the
+  baseline table. Intersection cleared 19 → 0, backward-looking 63 (4.6%) → 45 (3.3%), net −50 with
+  zero non-comment lines in `git diff -U0`. E4: twins → `entityUtils.ts`; the IMAGE-guard bullet is
+  **struck** on the user's call rather than left open, and `buildAssociationDiff` turned up as a
+  THIRD non-duplicate and was left alone. Both confirm estimate bias 1 (+44 and −50 vs −80 and
+  −300/−500), and E4 exposed **bias 1b**: an extraction also buys a required test suite, which no
+  Group E estimate has ever counted — E8, F2 and F5 re-sized off it.
+  **Reconcile: all five rows reading "PR #N open" had merged** (B5/#298, E5/#299, E9/#300, G1/#303,
+  E10/#304) and their sections' checkboxes were unswept with them; rows, headings and two
+  shipped-but-unchecked bullets corrected. Five drifted refs fixed — `Collection.ts:241→266` (mine,
+  from #311) and `UserSpace.tsx:108→117` (pre-existing, outside the sweep neighborhood), plus three
+  cross-repo refs in C7 (`:67→:64`, `:86→:80`, `:107→:98`). C6 and C7 premises both re-verified and
+  still hold. **E13's blocking question answered by reading backend `origin/main`** — `getLocationPage`
+  has one image-side matching rule, so E13 is COLD. Next: E13.
 
 - 2026-08-24 (2) — **shipped E3's generics half (#306) and E14 (#307)**; merged #296 (B8's
   `collectionStorage` slice) first as E3's safety net, and #305 (this board) landed mid-session.
