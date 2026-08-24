@@ -3,9 +3,9 @@ import { redirect } from 'next/navigation';
 
 import { skipTargetProps } from '@/app/components/ui/SkipLink/SkipLink';
 import { meServer } from '@/app/lib/api/auth';
+import styles from '@/app/styles/auth-card.module.scss';
 
 import LoginForm from './LoginForm';
-import styles from './page.module.scss';
 
 export const dynamic = 'force-dynamic';
 

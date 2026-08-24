@@ -1,4 +1,6 @@
-/* Login page — returning-user sign-in landing (mirrors the invite page shell) */
+/* Shared auth-card shell — the centered card used by the /login and /invite/[token] landing pages.
+   Both pages render the same <main class=page><div class=card><h1 class=heading> structure, so the
+   rules live here rather than in two identical per-route page.module.scss files. */
 
 .page {
   display: flex;

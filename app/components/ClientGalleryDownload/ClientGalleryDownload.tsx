@@ -1,10 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { useClientGalleryDownload } from '@/app/components/ContentCollection/ClientGalleryDownloadContext';
+import DownloadIcon from '@/app/components/Icons/DownloadIcon';
 import { Button } from '@/app/components/ui/Button/Button';
+import { useDownloadNavigation } from '@/app/hooks/useDownloadNavigation';
 import {
   downloadCollectionSelectionUrl,
   downloadCollectionUrl,
@@ -19,23 +21,6 @@ interface ClientGalleryDownloadProps {
 
 /** Which set the shared quality picker will download. */
 type PickerTarget = 'all' | 'selected';
-
-const DownloadIcon = () => (
-  <svg
-    aria-hidden="true"
-    className={styles.downloadIcon}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-    <polyline points="7 10 12 15 17 10" />
-    <line x1="12" y1="15" x2="12" y2="3" />
-  </svg>
-);
 
 /**
  * Client Gallery "Download" section.
@@ -59,14 +44,13 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
   const selectedCount = selectedIds.length;
 
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
-  const [preparing, setPreparing] = useState<DownloadFormat | null>(null);
   const [mounted, setMounted] = useState(false);
-  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Portal target (document.body) is only available on the client.
   useEffect(() => setMounted(true), []);
 
   const closePicker = useCallback(() => setPickerTarget(null), []);
+  const { preparing, startDownload } = useDownloadNavigation(closePicker);
 
   // Esc closes the picker (only while open and no download is in flight).
   useEffect(() => {
@@ -89,38 +73,25 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
     if (pickerTarget === 'selected' && selectedCount === 0) setPickerTarget(null);
   }, [pickerTarget, selectedCount]);
 
-  // Clear any pending reset timer on unmount.
-  useEffect(() => {
-    return () => {
-      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
-    };
-  }, []);
-
   /**
    * Start a download for the active picker target. Ids come from the memoized context (so this
    * callback stays stable across renders), and an empty "selected" set is a no-op — the button is
-   * already disabled, and bailing also keeps the URL builder's empty-selection throw from leaving
-   * `preparing` stuck.
+   * already disabled, and bailing avoids the URL builder's empty-selection throw. The URL is built
+   * before `startDownload` is called, so even if that throw were reachable it would happen before
+   * any in-flight state was set.
    */
   const handleFormatDownload = useCallback(
     (format: DownloadFormat) => {
       const ids = download?.selectedIds ?? [];
       if (pickerTarget === 'selected' && ids.length === 0) return;
 
-      setPreparing(format);
       const url =
         pickerTarget === 'selected'
           ? downloadCollectionSelectionUrl(collectionSlug, ids, format)
           : downloadCollectionUrl(collectionSlug, format);
-      window.location.href = url;
-      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
-      resetTimerRef.current = setTimeout(() => {
-        setPreparing(null);
-        setPickerTarget(null);
-        resetTimerRef.current = null;
-      }, 4000);
+      startDownload(url, format);
     },
-    [collectionSlug, pickerTarget, download]
+    [collectionSlug, pickerTarget, download, startDownload]
   );
 
   // The shared Web / Full / Cancel picker — used by both the "All" and "Selected" flows, always in
@@ -130,7 +101,7 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
       <Button
         className={styles.ctaButton}
         size="sm"
-        leftIcon={<DownloadIcon />}
+        leftIcon={<DownloadIcon className={styles.downloadIcon} />}
         onClick={() => handleFormatDownload('web')}
         disabled={preparing !== null}
       >
@@ -139,7 +110,7 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
       <Button
         className={styles.ctaButton}
         size="sm"
-        leftIcon={<DownloadIcon />}
+        leftIcon={<DownloadIcon className={styles.downloadIcon} />}
         onClick={() => handleFormatDownload('original')}
         disabled={preparing !== null}
       >
@@ -164,7 +135,7 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
           <Button
             className={`${styles.ctaButton} ${styles.rowButton}`}
             size="sm"
-            leftIcon={<DownloadIcon />}
+            leftIcon={<DownloadIcon className={styles.downloadIcon} />}
             onClick={() => setPickerTarget('all')}
           >
             All
@@ -200,7 +171,7 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
               <Button
                 className={styles.ctaButton}
                 size="sm"
-                leftIcon={<DownloadIcon />}
+                leftIcon={<DownloadIcon className={styles.downloadIcon} />}
                 onClick={() => setPickerTarget('selected')}
                 disabled={selectedCount === 0}
               >
