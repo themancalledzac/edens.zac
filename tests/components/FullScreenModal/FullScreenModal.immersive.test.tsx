@@ -41,7 +41,6 @@ const baseProps = {
   isSwiping: { current: false },
   showMetadata: false,
   toggleMetadata: noop,
-  router: { push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() } as never,
   navigateToNext: noop,
   navigateToPrevious: noop,
 };

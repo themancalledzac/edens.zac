@@ -1,6 +1,5 @@
 'use client';
 
-import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -50,11 +49,10 @@ interface FullScreenModalProps {
   immersive?: boolean;
   /** Flips immersive mode — wired to a click on the framed photo (the touch tap does the same). */
   toggleImmersive?: () => void;
-  hideImage: (e?: MouseEvent) => void;
+  hideImage: () => void;
   isSwiping: RefObject<boolean>;
   showMetadata: boolean;
   toggleMetadata: (e: MouseEvent) => void;
-  router: AppRouterInstance;
   /** Optional collection data for location and date fallback when image fields are absent */
   collectionData?: CollectionModel;
   navigateToNext: () => void;
@@ -98,7 +96,6 @@ export function FullScreenModal({
   isSwiping,
   showMetadata,
   toggleMetadata,
-  router,
   collectionData,
   navigateToNext,
   navigateToPrevious,
@@ -147,9 +144,9 @@ export function FullScreenModal({
 
   // Resolve locations/date: image fields take priority, falling back to the collection. GIF blocks
   // carry neither, so they fall straight through to the collection.
-  const displayLocations = resolveDisplayLocations(currentImage, collectionData, isGif);
-  const displayDate = formatLongDate(resolveDisplayDate(currentImage, collectionData, isGif));
-  const displayFilmStock = resolveDisplayFilmStock(currentImage, isGif);
+  const displayLocations = resolveDisplayLocations(currentImage, collectionData);
+  const displayDate = formatLongDate(resolveDisplayDate(currentImage, collectionData));
+  const displayFilmStock = resolveDisplayFilmStock(currentImage);
 
   const currentImageLoaded = loadedImageIds.has(currentImage.id);
   const hasPrevious = fullScreenState.currentIndex > 0;
@@ -259,17 +256,9 @@ export function FullScreenModal({
                         <span key={loc.id || loc.name}>
                           {i > 0 && ', '}
                           {loc.slug ? (
-                            <a
-                              href={`/location/${loc.slug}`}
-                              onClick={e => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                router.push(`/location/${loc.slug}`);
-                              }}
-                              className={styles.metadataLink}
-                            >
+                            <Link href={`/location/${loc.slug}`} className={styles.metadataLink}>
                               {loc.name}
-                            </a>
+                            </Link>
                           ) : (
                             loc.name
                           )}

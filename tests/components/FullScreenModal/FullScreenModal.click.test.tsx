@@ -54,7 +54,6 @@ function renderModal(
       isSwiping={overrides.isSwiping ?? { current: false }}
       showMetadata={false}
       toggleMetadata={noop}
-      router={{ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() } as never}
       navigateToNext={noop}
       navigateToPrevious={noop}
     />
@@ -121,7 +120,6 @@ describe('FullScreenModal — overlay clicks', () => {
         isSwiping={{ current: false }}
         showMetadata={false}
         toggleMetadata={noop}
-        router={{ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() } as never}
         navigateToNext={noop}
         navigateToPrevious={noop}
       />

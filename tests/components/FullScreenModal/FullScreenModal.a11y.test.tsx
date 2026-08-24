@@ -47,7 +47,6 @@ function renderModal(image: ContentImageModel, showMetadata = false) {
       isSwiping={{ current: false }}
       showMetadata={showMetadata}
       toggleMetadata={noop}
-      router={{ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() } as never}
       navigateToNext={noop}
       navigateToPrevious={noop}
     />

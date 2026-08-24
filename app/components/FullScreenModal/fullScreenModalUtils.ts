@@ -19,34 +19,26 @@ export function isGifBlock(block: ViewableContent): block is ContentGifModel {
 /**
  * Resolve the locations to display: the image's own locations take priority; fall back to the
  * collection's locations when the image has none (or is a GIF, which doesn't carry locations today).
- *
- * `isGif` mirrors `isGifBlock(currentImage)` at the call site; narrowing uses the type guard so the
- * GIF (location-less) member is excluded before reading `.locations`.
  */
 export function resolveDisplayLocations(
   currentImage: ViewableContent,
-  collectionData: CollectionModel | undefined,
-  isGif: boolean
+  collectionData: CollectionModel | undefined
 ): LocationModel[] {
-  const imageLocations = !isGif && !isGifBlock(currentImage) ? currentImage.locations : undefined;
+  const imageLocations = isGifBlock(currentImage) ? undefined : currentImage.locations;
   return imageLocations?.length ? imageLocations : (collectionData?.locations ?? []);
 }
 
 /**
  * Resolve the date to display: the image's `captureDate` takes priority; fall back to the
  * collection's `collectionDate` (GIFs have no `captureDate`, so they fall back immediately).
- *
- * `isGif` mirrors `isGifBlock(currentImage)` at the call site; narrowing uses the type guard so the
- * GIF member (which has no `captureDate`) is excluded before reading it.
  */
 export function resolveDisplayDate(
   currentImage: ViewableContent,
-  collectionData: CollectionModel | undefined,
-  isGif: boolean
+  collectionData: CollectionModel | undefined
 ): string | null {
-  return !isGif && !isGifBlock(currentImage)
-    ? (currentImage.captureDate ?? collectionData?.collectionDate ?? null)
-    : (collectionData?.collectionDate ?? null);
+  return isGifBlock(currentImage)
+    ? (collectionData?.collectionDate ?? null)
+    : (currentImage.captureDate ?? collectionData?.collectionDate ?? null);
 }
 
 /**
@@ -56,8 +48,8 @@ export function resolveDisplayDate(
  *
  * `filmType` already arrives as a display name; `filmFormat` is a raw enum and is labelled here.
  */
-export function resolveDisplayFilmStock(currentImage: ViewableContent, isGif: boolean): string {
-  if (isGif || isGifBlock(currentImage) || !currentImage.isFilm) {
+export function resolveDisplayFilmStock(currentImage: ViewableContent): string {
+  if (isGifBlock(currentImage) || !currentImage.isFilm) {
     return '';
   }
   const parts = [currentImage.filmType, formatFilmFormat(currentImage.filmFormat)].filter(Boolean);

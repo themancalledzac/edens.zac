@@ -311,7 +311,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | F2  | `RendererContext` for the BoxRenderer tree                               | Medium      | −100 src, **+150–250 test** (re-sized 2026-08-24, bias 1b)                                 | ☐                                                                                            |
 | F3  | File moves and renames                                                   | Medium      | ~neutral                                                                                   | ☐                                                                                            |
 | F4  | `TaxonomyPage` ← `LocationPageClient`                                    | Medium      | −150                                                                                       | ⛔ USER DECISION                                                                             |
-| F5  | `FullScreenModal` link + resolver cleanup                                | Low         | −30 src, **+60–120 test** (re-sized 2026-08-24, bias 1b)                                   | ☐                                                                                            |
+| F5  | `FullScreenModal` link + resolver cleanup                                | Low         | **−25 src / +20 test net actual** (est. −30 src, +60–120 test)                             | ✅ PR #318 — src held; test came in UNDER, unlike E13/E16                                     |
 | G1  | Docs corrections                                                         | Trivial     | **+106 / −72 actual** (est. ±50)                                                           | ✅ PR #303                                                                                   |
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)          | Low         | ~neutral (relocation + splits)                                                             | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors                       |
 | G3  | `/user/selects` decision                                                 | —           | —                                                                                          | ⛔ USER DECISION                                                                             |
@@ -1376,6 +1376,8 @@ The src half held; the test half came in 2.3x over, the same direction and rough
 factor as E13 (+165 against +60). **Two items running now say the test estimates on this board
 are the ones that are wrong, not the src estimates** — E13, E15 and E16 all had src land at or
 near estimate. Worth re-basing the remaining test columns before F2 quotes "+150-250 test".
+**Narrowed the same day by F5, which came in UNDER on tests (+20 net against +60-120):** the
+overrun tracks items that ADD a caller or prop, not items that delete one. See F5's close-out.
 
 And the docblock lesson landed a THIRD time, harder: **22 of slice 2's 31 src lines are comment**
 (slice 1 was 6 of 9, E13 was 39 of 45). Two new props needed their own doc comments, and
@@ -1446,11 +1448,47 @@ Bigger, optional, sequenced last. Do each individually and verify on :3000.
       for the user: should tag pages gain filters, the collections strip, and follow seeding? Not
       startable until answered.
 
-### ☐ F5 · `FullScreenModal` link + resolver cleanup
+### ✅ F5 · `FullScreenModal` link + resolver cleanup — PR #318
 
-- [ ] Hand-rolled `<a>` + `router.push` → `Link`, which also removes `router` from props.
-- [ ] `fullScreenModalUtils` resolvers: drop the `isGif` param that mirrors the internal guard.
-- [ ] Fix `hideImage`'s vestigial event param in both type signatures.
+- [x] ~~Hand-rolled `<a>` + `router.push` → `Link`, which also removes `router` from props.~~ Done,
+      and the `router` cascade went further than the bullet predicted: **`useFullScreenImage` called
+      `useRouter()` and never used it.** `grep 'router\.'` in the hook returns nothing — it only
+      returned the instance, and the modal's `router.push` was the sole consumer. So the removal is
+      the prop, the pass-through in `ContentBlockWithFullScreen`, the hook's return field, the
+      `useRouter()` call, and both imports.
+- [x] ~~`fullScreenModalUtils` resolvers: drop the `isGif` param that mirrors the internal guard.~~
+      Done in all three (`resolveDisplayLocations`, `resolveDisplayDate`, `resolveDisplayFilmStock`).
+      Each already called `isGifBlock(currentImage)` alongside the param, so the guard was doing the
+      work and the boolean only had to agree with it. Dropping it also let each body collapse to a
+      single `isGifBlock(...)` ternary.
+- [x] ~~Fix `hideImage`'s vestigial event param in both type signatures.~~ Done —
+      `(e?: MouseEvent) => void` → `() => void` in `FullScreenModal.tsx` and
+      `useFullScreenImage.tsx`. The implementation is a zero-arg `useCallback`; nothing ever passed
+      an event.
+- [x] **Fourth vestigial thing, found while testing the first bullet.** The link carried
+      `onClick={e => e.stopPropagation()}`, which looked load-bearing because `handleOverlayClick`
+      on `.overlayContainer` closes the viewer. It is dead: **`.metadataOverlay` already stops every
+      click inside it** (`FullScreenModal.tsx:236`), so nothing in the metadata panel ever reaches
+      the overlay handler. Removed. **Caught only by red-checking the test** — the first assertion
+      written for it passed with the link's guard deleted, which is what exposed the parent guard.
+
+**Sizing: −25 src / +20 test net (+67 added, −47 removed), against −30 src and +60–120 test.** The
+src estimate held, the third in a row. **The test half came in UNDER, which contradicts the rule
+written into E16's close-out one item earlier** — and the contradiction is informative rather than
+noise. E13 and E16 both **added** callers, and new callers need new tests, so their test halves ran
+~2.3x over. F5 **removes parameters**, so its existing tests got shorter and the only additions were
+the three pinning the `Link`. Corrected rule: **the 2.3x test overrun applies to items that add a
+caller or a prop, not to items that delete one.** E8's `MenuDropdown` config array and F2's
+`RendererContext` are both deletions with a new indirection — expect them nearer F5 than E16, and
+re-measure rather than assuming either way.
+
+**Toolchain trap worth its own line, and it is the one CLAUDE.md already warns about.** Running
+`eslint --fix` over the resolver tests silently deleted the explicit `undefined` argument in the two
+cases whose whole point is "collectionData is absent" (`unicorn/no-useless-undefined`), turning two
+2-arg calls into 1-arg calls and breaking `tsc`. The fix is a named binding —
+`const noCollection: CollectionModel | undefined = undefined` — which satisfies both tools. This is
+the second distinct shape of that rule biting this board; the first was `mockResolvedValue(undefined)`.
+**Re-run `tsc` after `eslint --fix`, never only before.**
 
 ---
 

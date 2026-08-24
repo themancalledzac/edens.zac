@@ -28,7 +28,9 @@ const img = (id: number): ContentImageModel =>
 
 const noop = () => {};
 
-function renderModal(fullScreenState: { images: ContentImageModel[]; currentIndex: number } | null) {
+function renderModal(
+  fullScreenState: { images: ContentImageModel[]; currentIndex: number } | null
+) {
   return render(
     <FullScreenModal
       fullScreenState={fullScreenState}
@@ -42,7 +44,6 @@ function renderModal(fullScreenState: { images: ContentImageModel[]; currentInde
       isSwiping={{ current: false }}
       showMetadata={false}
       toggleMetadata={noop}
-      router={{ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() } as never}
       navigateToNext={noop}
       navigateToPrevious={noop}
     />
@@ -92,7 +93,6 @@ describe('FullScreenModal — states that render nothing', () => {
         isSwiping={{ current: false }}
         showMetadata={false}
         toggleMetadata={noop}
-        router={{ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() } as never}
         navigateToNext={noop}
         navigateToPrevious={noop}
       />

@@ -6,7 +6,7 @@
  * The metadata overlay only renders when the current image is loaded (its id is in
  * loadedImageIds) AND showMetadata is true.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { FullScreenModal } from '@/app/components/FullScreenModal/FullScreenModal';
 import type { CollectionModel } from '@/app/types/Collection';
@@ -55,7 +55,11 @@ const collection = (overrides: Partial<CollectionModel> = {}): CollectionModel =
 
 const noop = () => {};
 
-function renderModal(image: ContentImageModel | ContentGifModel, collectionData?: CollectionModel) {
+function renderModal(
+  image: ContentImageModel | ContentGifModel,
+  collectionData?: CollectionModel,
+  toggleImmersive: () => void = noop
+) {
   return render(
     <FullScreenModal
       fullScreenState={{ images: [image], currentIndex: 0 }}
@@ -65,10 +69,10 @@ function renderModal(image: ContentImageModel | ContentGifModel, collectionData?
       zoomTargetRef={{ current: null }}
       isZoomed={false}
       hideImage={noop}
+      toggleImmersive={toggleImmersive}
       isSwiping={{ current: false }}
       showMetadata
       toggleMetadata={noop}
-      router={{ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() } as never}
       collectionData={collectionData}
       navigateToNext={noop}
       navigateToPrevious={noop}
@@ -125,5 +129,38 @@ describe('FullScreenModal — location resolution (characterization)', () => {
       collection({ locations: [{ id: 9, name: 'Elsewhere', slug: 'elsewhere' }] })
     );
     expect(screen.getByText('Elsewhere')).toBeInTheDocument();
+  });
+});
+
+/**
+ * F5 turned the hand-rolled `<a href>` + `router.push` into a `next/link` `Link`. These pin the two
+ * things that change: the anchor must still carry a real href (so middle-click and open-in-new-tab
+ * work, which the old preventDefault broke), and the click must still stop propagating.
+ *
+ * The link carried its own `stopPropagation`, which F5 also dropped: `.metadataOverlay` already
+ * stops every click inside it (`FullScreenModal.tsx:236`), so the link's copy was dead. The
+ * overlay-level guard is the load-bearing one and is pinned below.
+ */
+describe('FullScreenModal — location link', () => {
+  const withLocation = () => img(1, { locations: [{ id: 5, name: 'Banff', slug: 'banff' }] });
+
+  it('renders the location as a real link to its slug page', () => {
+    renderModal(withLocation(), collection({}));
+    expect(screen.getByRole('link', { name: 'Banff' })).toHaveAttribute('href', '/location/banff');
+  });
+
+  it('keeps clicks inside the metadata overlay away from the viewer click handler', () => {
+    const toggleImmersive = jest.fn();
+    renderModal(withLocation(), collection({}), toggleImmersive);
+
+    fireEvent.click(screen.getByRole('link', { name: 'Banff' }));
+
+    expect(toggleImmersive).not.toHaveBeenCalled();
+  });
+
+  it('renders a location without a slug as plain text, not a link', () => {
+    renderModal(img(1, { locations: [{ id: 6, name: 'Nowhere' }] }), collection({}));
+    expect(screen.getByText('Nowhere')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Nowhere' })).not.toBeInTheDocument();
   });
 });

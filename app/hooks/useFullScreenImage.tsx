@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import {
   type Dispatch,
   type MouseEvent,
@@ -86,15 +85,13 @@ export function useFullScreenImage(): {
   toggleImmersive: () => void;
   isSwiping: RefObject<boolean>;
   showImage: (image: ViewableContent, allImages?: ViewableContent[]) => void;
-  hideImage: (e?: MouseEvent) => void;
+  hideImage: () => void;
   toggleMetadata: (e: MouseEvent) => void;
   setLoadedImageIds: Dispatch<SetStateAction<Set<number>>>;
-  router: ReturnType<typeof useRouter>;
   isOpen: boolean;
   navigateToNext: () => void;
   navigateToPrevious: () => void;
 } {
-  const router = useRouter();
   const [fullScreenState, setFullScreenState] = useState<FullScreenState>(null);
   const [showMetadata, setShowMetadata] = useState(false);
   // Mirror showMetadata into a ref so the touch handlers (which don't re-bind on metadata changes)
@@ -613,7 +610,6 @@ export function useFullScreenImage(): {
     hideImage,
     toggleMetadata,
     setLoadedImageIds,
-    router,
     isOpen: !!fullScreenState,
     navigateToNext,
     navigateToPrevious,

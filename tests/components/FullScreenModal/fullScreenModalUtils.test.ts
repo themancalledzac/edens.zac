@@ -57,42 +57,36 @@ describe('isGifBlock', () => {
   });
 });
 
+/** Named binding: an inline `undefined` argument is removed by unicorn/no-useless-undefined. */
+const noCollection: CollectionModel | undefined = undefined;
+
 describe('resolveDisplayLocations', () => {
   it('uses the image locations when present', () => {
     const image = img({ locations: [loc(1, 'Banff')] });
-    const result = resolveDisplayLocations(
-      image,
-      collection({ locations: [loc(2, 'Elsewhere')] }),
-      false
-    );
+    const result = resolveDisplayLocations(image, collection({ locations: [loc(2, 'Elsewhere')] }));
     expect(result).toEqual([loc(1, 'Banff')]);
   });
 
   it('falls back to collection locations when the image has an empty array', () => {
     const result = resolveDisplayLocations(
       img({ locations: [] }),
-      collection({ locations: [loc(2, 'Elsewhere')] }),
-      false
+      collection({ locations: [loc(2, 'Elsewhere')] })
     );
     expect(result).toEqual([loc(2, 'Elsewhere')]);
   });
 
   it('returns an empty array when neither the image nor the collection has locations', () => {
-    expect(
-      resolveDisplayLocations(img({ locations: [] }), collection({ locations: [] }), false)
-    ).toEqual([]);
+    expect(resolveDisplayLocations(img({ locations: [] }), collection({ locations: [] }))).toEqual(
+      []
+    );
   });
 
   it('returns an empty array when collectionData is undefined and the image has none', () => {
-    expect(resolveDisplayLocations(img({ locations: [] }), undefined, false)).toEqual([]);
+    expect(resolveDisplayLocations(img({ locations: [] }), noCollection)).toEqual([]);
   });
 
   it('GIF blocks ignore image fields and fall back to collection locations', () => {
-    const result = resolveDisplayLocations(
-      gif(),
-      collection({ locations: [loc(2, 'Elsewhere')] }),
-      true
-    );
+    const result = resolveDisplayLocations(gif(), collection({ locations: [loc(2, 'Elsewhere')] }));
     expect(result).toEqual([loc(2, 'Elsewhere')]);
   });
 });
@@ -101,8 +95,7 @@ describe('resolveDisplayDate', () => {
   it('uses the image captureDate when present', () => {
     const result = resolveDisplayDate(
       img({ captureDate: '2024-03-01' }),
-      collection({ collectionDate: '2020-01-01' }),
-      false
+      collection({ collectionDate: '2020-01-01' })
     );
     expect(result).toBe('2024-03-01');
   });
@@ -110,33 +103,32 @@ describe('resolveDisplayDate', () => {
   it('falls back to the collection collectionDate when captureDate is null', () => {
     const result = resolveDisplayDate(
       img({ captureDate: null }),
-      collection({ collectionDate: '2020-01-01' }),
-      false
+      collection({ collectionDate: '2020-01-01' })
     );
     expect(result).toBe('2020-01-01');
   });
 
   it('falls back to the collection collectionDate when captureDate is undefined', () => {
-    const result = resolveDisplayDate(img(), collection({ collectionDate: '2020-01-01' }), false);
+    const result = resolveDisplayDate(img(), collection({ collectionDate: '2020-01-01' }));
     expect(result).toBe('2020-01-01');
   });
 
   it('returns null when neither captureDate nor collectionDate is set', () => {
-    expect(resolveDisplayDate(img({ captureDate: null }), collection(), false)).toBeNull();
+    expect(resolveDisplayDate(img({ captureDate: null }), collection())).toBeNull();
   });
 
   it('returns null when collectionData is undefined and the image has no captureDate', () => {
-    expect(resolveDisplayDate(img({ captureDate: null }), undefined, false)).toBeNull();
+    expect(resolveDisplayDate(img({ captureDate: null }), noCollection)).toBeNull();
   });
 
   it('GIF blocks ignore image fields and fall back to the collection collectionDate', () => {
-    expect(resolveDisplayDate(gif(), collection({ collectionDate: '2019-06-15' }), true)).toBe(
+    expect(resolveDisplayDate(gif(), collection({ collectionDate: '2019-06-15' }))).toBe(
       '2019-06-15'
     );
   });
 
   it('GIF blocks return null when the collection has no collectionDate', () => {
-    expect(resolveDisplayDate(gif(), collection(), true)).toBeNull();
+    expect(resolveDisplayDate(gif(), collection())).toBeNull();
   });
 });
 
@@ -144,31 +136,28 @@ describe('resolveDisplayFilmStock', () => {
   it('joins the film stock and the labelled format', () => {
     expect(
       resolveDisplayFilmStock(
-        img({ isFilm: true, filmType: 'Kodak Portra 400', filmFormat: 'MM_35' }),
-        false
+        img({ isFilm: true, filmType: 'Kodak Portra 400', filmFormat: 'MM_35' })
       )
     ).toBe('Kodak Portra 400 · 35mm');
   });
 
   it('renders whichever half is present on its own', () => {
-    expect(resolveDisplayFilmStock(img({ isFilm: true, filmType: 'Ilford HP5' }), false)).toBe(
+    expect(resolveDisplayFilmStock(img({ isFilm: true, filmType: 'Ilford HP5' }))).toBe(
       'Ilford HP5'
     );
-    expect(resolveDisplayFilmStock(img({ isFilm: true, filmFormat: 'MM_120' }), false)).toBe('120');
+    expect(resolveDisplayFilmStock(img({ isFilm: true, filmFormat: 'MM_120' }))).toBe('120');
   });
 
   it('returns nothing for a digital frame, even one carrying stale film fields', () => {
-    expect(resolveDisplayFilmStock(img({ isFilm: false, filmType: 'Kodak Gold 200' }), false)).toBe(
-      ''
-    );
-    expect(resolveDisplayFilmStock(img({ filmFormat: 'MM_35' }), false)).toBe('');
+    expect(resolveDisplayFilmStock(img({ isFilm: false, filmType: 'Kodak Gold 200' }))).toBe('');
+    expect(resolveDisplayFilmStock(img({ filmFormat: 'MM_35' }))).toBe('');
   });
 
   it('returns nothing for GIF/MP4 blocks, which carry no film metadata', () => {
-    expect(resolveDisplayFilmStock(gif(), true)).toBe('');
+    expect(resolveDisplayFilmStock(gif())).toBe('');
   });
 
   it('returns nothing when the image is film but has neither field set', () => {
-    expect(resolveDisplayFilmStock(img({ isFilm: true }), false)).toBe('');
+    expect(resolveDisplayFilmStock(img({ isFilm: true }))).toBe('');
   });
 });
