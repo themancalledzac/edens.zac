@@ -113,7 +113,7 @@ async function getShareSettings(): Promise<ShareSettings | null> {
  *
  * `{ ok: true, settings: null }` is a genuine "you have no link yet"; `{ ok: false }` is "the read
  * failed, so nothing is known". Same distinction {@link FailSoftRead} draws for the list reads, and
- * for the same reason: collapsing the two would have the Share card offer "Create a link" to
+ * for the same reason: collapsing the two would have the Share card offer "Link to share" to
  * someone who already has one in circulation, which is a claim we cannot support from a failure.
  */
 export type ShareSettingsRead = { ok: true; settings: ShareSettings | null } | { ok: false };

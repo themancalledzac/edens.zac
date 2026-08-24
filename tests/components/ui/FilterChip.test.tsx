@@ -1,6 +1,29 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { type ReactNode } from 'react';
 
 import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
+
+/**
+ * `next/link` consumes `scroll` and never puts it on the anchor, so the real component leaves the
+ * prop unobservable from the DOM. This passthrough renders the same anchor and parks the value on
+ * a data attribute; every other link assertion below (href, aria-current, class) is unaffected.
+ */
+jest.mock('next/link', () => ({
+  __esModule: true,
+  default: ({
+    scroll,
+    children,
+    ...rest
+  }: {
+    scroll?: boolean;
+    children: ReactNode;
+    href: string;
+  }) => (
+    <a {...rest} data-scroll={String(scroll)}>
+      {children}
+    </a>
+  ),
+}));
 
 describe('FilterChip', () => {
   it('renders the label as a real button with type="button"', () => {
@@ -100,6 +123,21 @@ describe('FilterChip', () => {
       render(<FilterChip label="Saved" href="/user?tab=saved" state="unavailable" />);
       expect(screen.queryByRole('link')).not.toBeInTheDocument();
       expect(screen.getByText('Saved').className).toMatch(/unavailable/);
+    });
+
+    it('does not scroll by default, so a ?tab= chip keeps the reader where they were', () => {
+      render(<FilterChip label="Saved" href="/user?tab=saved" />);
+      expect(screen.getByRole('link', { name: /saved/i })).toHaveAttribute('data-scroll', 'false');
+    });
+
+    it('scrolls when asked, for a chip that leaves the page it sits on', () => {
+      // A cross-page jump that keeps the old offset lands the reader partway down a page they have
+      // never seen. AdminCard's four destinations are the callers that need this.
+      render(<FilterChip label="Admin hub" href="/admin" scroll />);
+      expect(screen.getByRole('link', { name: /admin hub/i })).toHaveAttribute(
+        'data-scroll',
+        'true'
+      );
     });
   });
 });

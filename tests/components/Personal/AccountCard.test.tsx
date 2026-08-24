@@ -37,6 +37,18 @@ describe('AccountCard', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
+  it('puts the button on the email row instead of under an explaining sentence', () => {
+    render(<AccountCard email={EMAIL} />);
+
+    expect(
+      screen.queryByText('Sign in faster with Face / Touch ID on this device.')
+    ).not.toBeInTheDocument();
+    // The button's label already says what it does, so it rides beside the email it belongs to.
+    expect(screen.getByText(EMAIL).parentElement).toBe(
+      screen.getByRole('button', { name: ADD_BUTTON }).parentElement
+    );
+  });
+
   it('disables the button while the ceremony is pending, then shows success', async () => {
     let resolveCeremony!: () => void;
     mockRegisterPasskey.mockReturnValue(

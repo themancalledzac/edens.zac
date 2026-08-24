@@ -31,15 +31,25 @@ describe('SendMessageButton', () => {
     jest.clearAllMocks();
   });
 
-  it('renders the trigger button and no modal initially', () => {
+  it('names the recipient on the trigger rather than just the action', () => {
     renderWithMe(me);
-    expect(screen.getByRole('button', { name: /send a message/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /contact the photographer/i })).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('names the same recipient on the modal heading as on the trigger', () => {
+    renderWithMe(me);
+    fireEvent.click(screen.getByRole('button', { name: /contact the photographer/i }));
+
+    expect(screen.getByRole('heading', { name: 'Contact the photographer' })).toBeInTheDocument();
+    // "Send a message" named an action, not a destination, on a page full of the viewer's own
+    // things — the one place the recipient most needed saying.
+    expect(screen.queryByText('Send a message')).not.toBeInTheDocument();
   });
 
   it('opens the modal with the contact form (email field hidden) on click', () => {
     renderWithMe(me);
-    fireEvent.click(screen.getByRole('button', { name: /send a message/i }));
+    fireEvent.click(screen.getByRole('button', { name: /contact the photographer/i }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Your message')).toBeInTheDocument();
@@ -50,7 +60,7 @@ describe('SendMessageButton', () => {
     mockSubmit.mockResolvedValue({ ok: true, id: 1, createdAt: '2026-04-19T10:00:00Z' });
     renderWithMe(me);
 
-    fireEvent.click(screen.getByRole('button', { name: /send a message/i }));
+    fireEvent.click(screen.getByRole('button', { name: /contact the photographer/i }));
     fireEvent.change(screen.getByPlaceholderText('Your message'), {
       target: { value: 'Hello!' },
     });
@@ -65,7 +75,7 @@ describe('SendMessageButton', () => {
 
   it('closes the modal via the close button', () => {
     renderWithMe(me);
-    fireEvent.click(screen.getByRole('button', { name: /send a message/i }));
+    fireEvent.click(screen.getByRole('button', { name: /contact the photographer/i }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /close/i }));

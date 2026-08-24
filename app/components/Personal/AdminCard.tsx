@@ -1,5 +1,5 @@
 import { Card } from '@/app/components/ui/Card/Card';
-import { NavLink } from '@/app/components/ui/NavLink/NavLink';
+import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
 
 import styles from './AdminCard.module.scss';
 
@@ -29,15 +29,18 @@ const DESTINATIONS: readonly AdminDestination[] = [
  *
  * Gating is the caller's job and must be the real `principal.isAdmin` — never an environment
  * check. This card renders on production too; that is the point.
+ *
+ * The destinations are {@link FilterChip}s rather than bare text links so they read as the same
+ * kind of affordance as the section chips directly below them in the rail. `scroll` is on: these
+ * leave `/user` for a page the reader has not seen, so the browser must start them at the top.
  */
 export function AdminCard() {
   return (
     <Card title="Admin">
-      <p className={styles.hint}>Manage collections, metadata, messages and access.</p>
       <ul className={styles.links}>
         {DESTINATIONS.map(({ href, label }) => (
           <li key={href}>
-            <NavLink href={href}>{label}</NavLink>
+            <FilterChip href={href} label={label} scroll />
           </li>
         ))}
       </ul>

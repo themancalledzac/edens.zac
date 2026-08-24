@@ -28,12 +28,20 @@ interface FilterChipButtonProps extends FilterChipBaseProps {
   /** Called when the chip is activated (click). Not called while unavailable. */
   onToggle: () => void;
   href?: never;
+  scroll?: never;
 }
 
 interface FilterChipLinkProps extends FilterChipBaseProps {
   /** Destination for a navigating chip. Mutually exclusive with {@link FilterChipButtonProps.onToggle}. */
   href: string;
   onToggle?: never;
+  /**
+   * Forwarded to `next/link`. Defaults to `false`, which is right for a chip that swaps a `?tab=`
+   * section of the page it already sits on — scrolling to the top there would throw the reader's
+   * position away for no reason. Pass `true` for a chip that navigates to a different page, where
+   * keeping the old scroll offset lands the reader partway down a page they have never seen.
+   */
+  scroll?: boolean;
 }
 
 /**
@@ -48,6 +56,9 @@ export type FilterChipProps = FilterChipButtonProps | FilterChipLinkProps;
  * by a search param, which are semantically links, not pressed toggles. Both variants share one
  * set of styles so a sectioned page's bar is visually indistinguishable from any other.
  *
+ * The link variant also carries plain cross-page navigation — `AdminCard`'s four destinations on
+ * `/user`. Those pass `scroll` so the jump behaves like a normal link; see the prop's docblock.
+ *
  * 'unavailable' disables the button variant; the link variant degrades to an inert span, since a
  * disabled anchor is not a thing the platform provides.
  */
@@ -59,6 +70,7 @@ export function FilterChip({
   tone = 'neutral',
   state = 'available',
   href,
+  scroll = false,
   onToggle,
 }: FilterChipProps) {
   const unavailable = state === 'unavailable';
@@ -90,7 +102,7 @@ export function FilterChip({
     return (
       <Link
         href={href}
-        scroll={false}
+        scroll={scroll}
         className={classes}
         aria-current={active ? 'page' : undefined}
       >

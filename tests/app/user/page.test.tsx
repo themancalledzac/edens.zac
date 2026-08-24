@@ -24,9 +24,9 @@ jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
   __esModule: true,
   default: () => 'SiteHeader',
 }));
-// SendMessageButton is deliberately NOT mocked: it is the component the MeProvider wrapper exists
-// for, so the real one has to run for the lockedEmail assertion below to mean anything. Its modal
-// is stubbed open and its form reduced to a probe that echoes the lockedEmail it was handed.
+// SendMessageButton is deliberately NOT mocked: the real one has to run for the lockedEmail
+// assertion below to mean anything. Its modal is stubbed open and its form reduced to a probe that
+// echoes the lockedEmail it was handed.
 jest.mock('@/app/components/ui/Modal/Modal', () => ({
   Modal: ({ children }: { children: unknown }) => children,
 }));
@@ -50,6 +50,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import { AccountCard } from '@/app/components/Personal/AccountCard';
 import { AdminCard } from '@/app/components/Personal/AdminCard';
+import { ShareCard } from '@/app/components/Personal/ShareCard';
+import { SendMessageButton } from '@/app/components/SendMessageButton/SendMessageButton';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
@@ -159,18 +161,22 @@ describe('UserPage', () => {
     expect(grid.me).toBe(authedPrincipal);
   });
 
-  it('mounts SendMessageButton inside a MeProvider so its form gets a lockedEmail', async () => {
-    // SendMessageButton is a SIBLING of CollectionPageClient, so the MeProvider that the collection
-    // stack mounts internally never reaches it. Without the page-level provider, useMe() is null and
-    // the signed-in user gets a blank, editable email field instead of their locked-in address.
-    const provider = findProps(await renderTab(), MeProvider);
-    expect(provider).not.toBeNull();
-    expect(provider.me).toBe(authedPrincipal);
+  it('still hands SendMessageButton a lockedEmail now that it rides the rail', async () => {
+    // The button used to be a SIBLING of CollectionPageClient, which is the only reason this page
+    // wrapped itself in a MeProvider. It rides `railExtras` now, so the provider CollectionPageClient
+    // mounts from the `me` asserted here is the one that reaches it. Without a principal on that
+    // path the signed-in user gets a blank, editable email field instead of their own address.
+    const result = await renderTab();
+    expect(gridProps(result).me).toBe(authedPrincipal);
 
     const markup = renderToStaticMarkup(
-      <MeProvider me={provider.me}>{provider.children}</MeProvider>
+      <MeProvider me={authedPrincipal}>{railExtras(result)}</MeProvider>
     );
     expect(markup).toContain('data-locked-email="c@x.com"');
+  });
+
+  it('mounts no MeProvider of its own — the collection stack already owns one', async () => {
+    expect(findProps(await renderTab(), MeProvider)).toBeNull();
   });
 
   it('defaults to Collections and passes only the COLLECTION blocks', async () => {
@@ -405,6 +411,19 @@ describe('UserPage — a failed personal read never claims the owner has nothing
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const railExtras = (result: unknown): any => findProps(result, UserSpace)?.railExtras ?? null;
 
+/**
+ * The rail's occupants in render order, with the `{cond && <X />}` falses dropped.
+ *
+ * Order is the whole point of the contact button's placement: it leads for a client or follower,
+ * for whom messaging the photographer is plausibly the most-used thing on the page, and trails for
+ * the owner, for whom it is close to useless. A test on presence alone would not see that swap.
+ */
+const railOrder = (result: unknown): unknown[] =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ((railExtras(result)?.props?.children ?? []) as any[])
+    .filter(Boolean)
+    .map((node: { type: unknown }) => node.type);
+
 describe('UserPage — header rail cards', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -439,5 +458,20 @@ describe('UserPage — header rail cards', () => {
   it('links to the admin hub', async () => {
     (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
     expect(renderToStaticMarkup(railExtras(await renderTab()))).toContain('href="/admin"');
+  });
+
+  it('leads the rail with the contact button for an ordinary signed-in user', async () => {
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    expect(railOrder(await renderTab())).toEqual([SendMessageButton, AccountCard, ShareCard]);
+  });
+
+  it('puts the contact button last for an admin, after the card they read messages through', async () => {
+    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
+    expect(railOrder(await renderTab())).toEqual([
+      AccountCard,
+      ShareCard,
+      AdminCard,
+      SendMessageButton,
+    ]);
   });
 });

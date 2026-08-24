@@ -61,16 +61,18 @@ describe('ShareCard', () => {
   it('does not offer to create a link when the read failed', () => {
     render(<ShareCard read={{ ok: false }} />);
 
-    // A failure says nothing about whether a link exists. Offering "Create a link" here would
+    // A failure says nothing about whether a link exists. Offering "Link to share" here would
     // read as "you have none" to someone whose link is out there working.
-    expect(screen.queryByRole('button', { name: /create a link/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /link to share/i })).not.toBeInTheDocument();
     expect(screen.getByText(/unavailable right now/i)).toBeInTheDocument();
   });
 
   it('offers to create one only when the read genuinely says there is none', () => {
     render(<ShareCard read={{ ok: true, settings: null }} />);
 
-    expect(screen.getByRole('button', { name: /create a link/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /link to share/i })).toBeInTheDocument();
+    // The paragraph that used to explain what a share link is has gone; the button carries it.
+    expect(screen.queryByText(/no account or password/i)).not.toBeInTheDocument();
   });
 
   it('emails the existing link without minting a new one', async () => {
@@ -106,9 +108,7 @@ describe('ShareCard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /reset link/i }));
 
-    expect(
-      await screen.findByText(`${window.location.origin}/s/tok-new`)
-    ).toBeInTheDocument();
+    expect(await screen.findByText(`${window.location.origin}/s/tok-new`)).toBeInTheDocument();
   });
 
   it('offers granted galleries as opt-ins, unchecked by default', async () => {

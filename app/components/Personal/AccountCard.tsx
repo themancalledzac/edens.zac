@@ -45,6 +45,10 @@ function mapEnrollError(err: unknown): string {
  * swallow). Stateless about existing credentials — the backend exposes no
  * credential-list endpoint yet — so the button is always offered; enrolling the
  * same authenticator twice is stopped by the ceremony's `excludeCredentials`.
+ *
+ * The button sits on the email row, end-aligned, rather than under a sentence of its own. The
+ * label already says what it does; the sentence that used to explain it just made the card taller
+ * than the one thing it holds.
  */
 export function AccountCard({ email }: AccountCardProps) {
   const [phase, setPhase] = useState<EnrollPhase>('idle');
@@ -64,9 +68,8 @@ export function AccountCard({ email }: AccountCardProps) {
 
   return (
     <Card title="Account">
-      <p className={styles.email}>{email}</p>
-      <div className={styles.passkeyRow}>
-        <p className={styles.hint}>Sign in faster with Face / Touch ID on this device.</p>
+      <div className={styles.emailRow}>
+        <p className={styles.email}>{email}</p>
         <Button
           type="button"
           variant="outline"

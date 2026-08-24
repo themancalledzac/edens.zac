@@ -4,20 +4,17 @@
    without either restating the other. Before that, these two modules were byte-for-byte the
    same for their first 26 lines. */
 
-.hint {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--color-on-surface-muted);
-}
-
 /* Wraps rather than scrolls: the rail is a narrow column (roughly a third of the row on
-   desktop, full width on mobile), so a single row of four links would overflow it. */
+   desktop, full width on mobile), so a single row of four chips would overflow it.
+
+   The row-gap must stay >= --space-2. Each chip hangs a coarse-pointer touch overlay ~7px above
+   and below itself; at a smaller gap a wrapped row's overlay reaches back over the chips on the
+   row above and, painting later in DOM order, takes their taps. See FilterChip.module.scss. */
 .links {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: var(--text-sm);
 }
