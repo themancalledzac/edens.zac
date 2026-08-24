@@ -62,8 +62,11 @@ jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => {
   return { __esModule: true, default: MockGrid };
 });
 
+// `useFollows` is stubbed to null because `UserSpaceGrid` calls it on every render; null is the
+// no-provider answer, which leaves the section counts exactly as the server built them.
 jest.mock('@/app/components/Personal/FollowsContext', () => ({
   FollowsProvider: ({ children }: { children: unknown }) => children,
+  useFollows: () => null,
 }));
 
 const principal: MeResponse = {
