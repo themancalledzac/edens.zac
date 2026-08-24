@@ -123,8 +123,8 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | D5 | Proxy path reject + `/cdn` matcher removal | Low | ~+30 net (−27 src, +6 reject, +40–60 test) | ✅ PR #273 |
 | D6 | Shared Origin allowlist (CSRF on `/api/revalidate`) | Low-medium | +75 src, +230 test (est. ±60) | ✅ PR #270 |
 | D7 | Wrong danger token on error text (a11y) | Trivial | 0 (rode #253) | ✅ via PR #253 |
-| D8 | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist | Trivial | ±5 src, +2 test | ☐ **NEXT** |
-| D9 | Decide: redundant localhost literals in the Origin allowlist | Trivial | −2 src or docblock only | ☐ (decision, found 08-23) |
+| D8 | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist | Trivial | +30 src, +52 test (est. ±5 src, +2 test) | ✅ PR #276 |
+| D9 | Decide: redundant localhost literals in the Origin allowlist | Trivial | −2 src or docblock only | ☐ **NEXT** (decision, found 08-23) |
 | E1 | Parallax-card builder consolidation | Medium | +98 src, +659 test (est. −120) | ✅ PR #269 |
 | E2 | `core.ts` fetch skeleton + `clientFetch` | Medium | ~0 net (−180 src, +150–200 test) | ☐ |
 | E3 | `collectionStorage.ts` generics | Low | +50–150 net (characterize first) | ☐ |
@@ -876,7 +876,7 @@ row at the same time; it had neither.)_
       for a button hover (visible design change; needs its own call). Not worth its own MR — fold
       into E10 if it happens.
 
-### ☐ D8 · Normalize `NEXT_PUBLIC_APP_URL` when building the Origin allowlist — found 2026-08-22
+### ✅ D8 · Normalize `NEXT_PUBLIC_APP_URL` when building the Origin allowlist — PR #276
 
 Found by the adversarial review of D6. `allowedOrigins()`
 ([originAllowlist.ts:21](app/utils/originAllowlist.ts:21)) puts `process.env.NEXT_PUBLIC_APP_URL`
@@ -885,9 +885,36 @@ trailing slash or path in the env var (`https://zacedens.com/`) makes every prod
 403 — silently, because revalidate failures produce no console line (see C5's note and the D6
 cost write-up). Fails closed, never open: an availability trap, not a bypass.
 
-- [ ] Normalize with `new URL(raw).origin`, guarding the throw on a malformed value (fail closed).
-- [ ] Two tests: a trailing-slash env value still allows the bare origin; a malformed env value
-      denies everything. Prove the first red against the unnormalized helper.
+- [x] Normalized in a new `configuredAppOrigin()` helper with `new URL(raw).origin`, guarding the
+      throw on a malformed value (fail closed). `allowedOrigins()` now calls it instead of reading
+      the env var directly.
+- [x] Five tests, not two — the extra three are below. Both board-specified cases went red first
+      against the unnormalized helper, as required.
+
+**The board's spec had a hole, and guarding only the throw would have opened a bypass.**
+`new URL(raw).origin` does not throw on every bad value. A non-special scheme parses fine and
+returns the *string* `"null"`: `new URL('data:text/plain,hi').origin === 'null'`, same for `file:`
+and any unknown scheme. `"null"` is also exactly what a browser sends as `Origin` from a sandboxed
+iframe or an opaque redirect. So a `try/catch` alone would have put `"null"` into the allowlist Set
+and admitted those callers — a fail-*open* introduced by the fix meant to prevent a fail-closed
+outage. The helper drops it explicitly (`origin === 'null' ? null : origin`) and the docblock says
+why, so it does not read as defensive noise. Verified against Node across twelve env-value shapes
+before writing the guard, not assumed.
+
+The three tests beyond the board's two: the env value *as written* (`https://example.com/`) is
+rejected once normalized away; an env value with a path normalizes to the bare origin; a `"null"`
+origin is denied when the env value has an opaque scheme. That last one is the only new test that
+passes on the *unfixed* code — it guards against the naive version of this fix, so it is green
+before and after by design.
+
+**Both guardrails held.** The incoming `origin` argument is untouched and still compared exactly;
+`isAllowedWriteOrigin()`'s docblock now records why the asymmetry with the env var is deliberate.
+The two `localhost` literals are untouched — see the D9 report below.
+
+Verification: 24/24 in `tests/utils/originAllowlist.test.ts`, both consuming route suites green
+(56/56 across `tests/api/proxy/route.test.ts` and `tests/api/revalidate/route.test.ts`), and the
+full suite at 4098/4098 across 224 files. `tsc --noEmit` clean, ESLint and Prettier no-ops on the
+two changed source files.
 
 **Ref re-verified 2026-08-23 after D3/D4/D5 landed: zero drift.**
 [originAllowlist.ts:21](app/utils/originAllowlist.ts:21) is still
@@ -931,6 +958,26 @@ literals are what would keep the dev server working. That makes this defense in 
 code, and the honest resolutions are "delete and note why in the docblock" or "keep and note why in
 the docblock". Either way the next reader needs the reasoning written down, because the redundancy
 reads as an oversight.
+
+**Report from D8's session (2026-08-23) — asked for, and the literals were left alone as
+instructed.** Re-verified the redundancy independently rather than trusting the board's claim, by
+running `DEV_LAN_ORIGIN` against the two strings: both `http://localhost:3000` and
+`http://localhost:3001` return `true`.
+
+What deleting them would do, precisely: **nothing observable today.** The Set is consulted first and
+the regex second, but the literals are added only under `NODE_ENV === 'development'` and the regex
+branch is gated on the same condition — so every request the literals answer, the regex also
+answers, under identical gating. Outside development neither path is reachable. All 24 tests in
+`tests/utils/originAllowlist.test.ts` and all 56 in the two route suites would still pass with the
+literals removed, which is the same blind spot the entry above already names.
+
+One asymmetry the board had not recorded, found while checking: the two are **not** equivalent in
+strictness. `DEV_LAN_ORIGIN` carries the `/i` flag, so it matches `http://LOCALHOST:3000`; the Set
+does an exact, case-sensitive match and does not. The literals are therefore a strict subset of the
+regex, not an overlapping alternative. That cuts against the "two independent expressions of the
+same intent" framing above — as written they are the *narrower* of the two, and would only become
+load-bearing if a future MR tightened the regex specifically. Worth weighing in the decision; not a
+decision in itself.
 
 - [ ] Decide delete vs keep, and put the reasoning in the `allowedOrigins()` docblock so this is not
       re-litigated a third time.
@@ -1322,6 +1369,24 @@ being avoided, not scheduled — make it real work or drop it from the board.
   (from D5). `app/(admin)/admin/layoutpreview/` is STILL untracked — third session running; it is an
   A9 bullet and nobody has deleted it.
   Next: D8.
+- 2026-08-23 — D8 shipped as PR #276; `main` was already at `eb45705` when the session opened (#275
+  had merged on its own, so "merge it" was a reconciliation, not a merge). **The board's own spec
+  was the bug this time.** "Guard the throw" is not sufficient to normalize `NEXT_PUBLIC_APP_URL`:
+  `new URL()` does not throw on a non-special scheme, it returns the literal string `"null"` — which
+  is what browsers send from sandboxed iframes — so the prescribed fix would have added `"null"` to
+  the allowlist and opened the exact class of hole D6 was built to close. Caught by checking Node's
+  actual behavior across twelve env-value shapes before writing the guard. **Second consecutive
+  session where an item specified the mechanism of its own fix and specified a broken one** (D5 was
+  the first, already hoisted into "How to use this doc"); the lesson is paying rent, so treat a
+  board item's prescribed mechanism as a hypothesis to test, never a spec to transcribe. Both
+  guardrails held — the incoming `origin` argument untouched, the D9 literals reported on rather
+  than changed. That report found something D9 had wrong: the literals are a strict *subset* of
+  `DEV_LAN_ORIGIN` (the regex is case-insensitive, the Set match is not), so "two independent
+  expressions of the same intent" overstates them. **Do not run Prettier on this file** — it is not
+  Prettier-clean on `main`, so `--write` realigns every board table and buries the real diff under
+  ~140 lines of churn. Caught and reverted here; the file has always been committed unformatted.
+  `app/(admin)/admin/layoutpreview/` is STILL untracked — fourth session running.
+  Next: D9, the decision, as its own MR.
 
 ## Verified fine — do not re-investigate
 

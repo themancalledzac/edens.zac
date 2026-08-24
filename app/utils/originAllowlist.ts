@@ -12,13 +12,41 @@
  */
 
 /**
+ * `NEXT_PUBLIC_APP_URL` reduced to a bare `scheme://host[:port]`, or `null` when it is unset,
+ * unparseable, or parses to an opaque origin.
+ *
+ * Browsers send `Origin` as a bare `scheme://host[:port]` — never with a trailing slash or a
+ * path. An env value written as `https://zacedens.com/` would therefore match no real request
+ * and 403 every production admin write, silently, because revalidate failures produce no
+ * console line. Normalizing here is what keeps a cosmetic env-var difference from becoming an
+ * outage.
+ *
+ * Both `null` returns fail closed. A value with no scheme (`zacedens.com`) throws and is
+ * dropped. A value with a non-special scheme (`data:`, `file:`) does not throw — `URL.origin`
+ * hands back the literal string `"null"`, which is also what a browser sends from a sandboxed
+ * iframe or an opaque redirect, so admitting it would let those callers through. Dropped for
+ * that reason, not for tidiness.
+ */
+function configuredAppOrigin(): string | null {
+  const raw = process.env.NEXT_PUBLIC_APP_URL;
+  if (!raw) return null;
+
+  try {
+    const { origin } = new URL(raw);
+    return origin === 'null' ? null : origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Origins allowed to send writes: the deployed app URL, plus both local dev ports when
  * running in development.
  */
 function allowedOrigins(): Set<string> {
   return new Set(
     [
-      process.env.NEXT_PUBLIC_APP_URL,
+      configuredAppOrigin(),
       process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : null,
       process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : null,
     ].filter(Boolean) as string[]
@@ -38,6 +66,13 @@ const DEV_LAN_ORIGIN =
  * A missing Origin is rejected. Browsers set the header on every POST/PUT/PATCH/DELETE
  * regardless of same-origin, so its absence means the caller is not a browser performing a
  * normal fetch or form submit.
+ *
+ * `origin` is compared exactly and is never normalized, which is the opposite of what
+ * `configuredAppOrigin()` does to the env var. The asymmetry is the point: the env var is
+ * trusted config, while this argument is attacker-influenced input. Running it through
+ * `new URL(origin).origin` for symmetry would widen the check — `https://zacedens.com/evil`
+ * would then compare equal to the allowed origin. Browsers only ever send the bare form, so
+ * anything else here is not a browser.
  */
 export function isAllowedWriteOrigin(origin: string | null): boolean {
   if (!origin) return false;
