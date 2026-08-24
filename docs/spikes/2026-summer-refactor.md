@@ -149,7 +149,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E8 | Renderer + `MenuDropdown` dedup | Medium | −120 src, +0–50 test | ☐ |
 | E9 | Download icon/hook, auth-card SCSS, `.srOnly` | Low | −100 src, +80–150 test | ☐ (srOnly bullet: user call) |
 | E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator) | Low | −60 src, +120 new | ☐ (unblocked — #253 merged) |
-| E11 | Make cache-tag register/revalidate drift detectable | Low-medium | +40 src, +60 test | ☐ **NEXT** (C4 done; must handle template tags) |
+| E11 | Make cache-tag register/revalidate drift detectable | Low-medium | +205 test, 0 src | ✅ PR #280 |
 | F1 | Decompose `useCollectionEdit.tsx` | Medium-high | ~neutral | ☐ |
 | F2 | `RendererContext` for the BoxRenderer tree | Medium | −100 | ☐ |
 | F3 | File moves and renames | Medium | ~neutral | ☐ |
@@ -1246,33 +1246,62 @@ branch-only refs (CollectionsPanel) are main refs. Verified byte-identical by `d
 
 ---
 
-### ☐ E11 · Make cache-tag register/revalidate drift detectable — found 2026-08-24
+### ✅ E11 · Make cache-tag register/revalidate drift detectable — PR #280
 
-Filed so it does not get done inside C4. While auditing C4 the obvious "elegant" fix presents
-itself: a shared tag-constants module, or a helper that registers and revalidates through one
-symbol so the two halves cannot drift. It is the right instinct and the wrong MR — C4 is a ±30 bug
-fix, and this touches every `next: { tags: [...] }` in `lib/api` plus both revalidate helpers.
+**Shipped as a test and nothing else: `tests/lib/api/cacheTagDrift.test.ts`, ~205 lines, zero source
+change.** It reads both halves out of the source at run time — the `next: { tags: [...] }` options in
+`lib/api`, and the tags named inside the two revalidate helpers — and asserts the sets agree, with an
+allowlist for tags that are one-sided on purpose.
 
-Do it AFTER C4, and only once C4 has established which tags should exist. Building the registry
-first would just freeze the current drift into a nicer-looking shape.
+- [x] What a constants module cannot do, established before designing anything: three of the six
+      registered tags are template strings, so no compile-time check can pair a registration with a
+      revalidation. The goal is detectable drift, not impossible drift, and the shipped test says so
+      in its own docblock.
+- [x] **The answer to "does the constants module earn anything on top of the test": no.** It was the
+      instinct this item was filed to slow down, and slowing it down was right. A constants module
+      moves the six tag strings into one file, but the template tags still get assembled at the call
+      site, so the two halves can still drift and the same test is still the only thing that notices.
+      It would add a layer of indirection and leave the actual check exactly where it is. If a
+      seventh tag ever arrives that is a plain literal used in three places, revisit — until then the
+      module is motion, not progress.
+- [x] Template tags handled as the central case rather than an exception. `isRegistered` matches a
+      literal against template prefixes, which is what pairs `collection-home` with
+      `collection-${slug}`. There is a dedicated test pinning that pair.
+- [x] Fails loudly. Every assertion is a set-difference rendered as a list of sentences, so the
+      failure output names the tag, the file, what is wrong, and both ways out. No bare
+      `expect(a).toEqual(b)` diffs.
+- [x] **Guarded against passing vacuously.** A text scanner that quietly stops matching would make
+      every other assertion trivially true, which is worse than no test at all. One case asserts the
+      scan floors — at least six registrations, at least four revalidations, at least one template.
 
-- [ ] Note what a constants module CANNOT do before designing one: three of the six registered tags
-      are template strings (`collection-${slug}`, `collections-location-${slug}`), so no compile-time
-      check can pair a registration with a revalidation. Anything claiming to make drift impossible
-      is overclaiming — the realistic goal is *detectable*, not impossible.
-- [ ] **The template tags are not an edge case, they are the whole difficulty — C4 proved it.** A
-      literal-grep audit called `collection-home` dead when it is `collection-${slug}` resolved for
-      the home collection. A drift test that compares two sets of literals will reproduce exactly
-      that false positive and fail the build over a working tag. It has to resolve the known
-      constant slugs (`HOME_SLUG` at minimum) before comparing, or treat template-derived tags as a
-      separate, explicitly-listed category. Get this wrong and E11 ships a check that is worse than
-      no check, because it is confidently wrong.
-- [ ] The cheapest thing that would have caught C4's findings is a test, not a type: grep
-      both sides at test time and assert the sets agree, with an explicit allowlist for tags that
-      are deliberately one-sided. That is ~60 lines and needs no source change at all. Consider
-      whether the constants module earns anything on top of it.
-- [ ] Whatever ships, it must fail loudly. The whole C4 class of bug is silent — a tag that
-      revalidates nothing throws no error and logs no line.
+**All five assertions were confirmed red before this shipped.** A drift test that has never been
+seen to fail is a decoration, and this one is aimed squarely at a silent failure mode.
+
+| Simulated drift | Assertion that caught it |
+| --- | --- |
+| Registration regex stops matching | vacuity floors |
+| `content-people` re-added to `revalidateMetadataCache` | revalidated-but-unregistered |
+| Allowlist entry for `collections-location-${slug}` deleted | registered-but-unrevalidated |
+| Allowlist entry added for a tag that is actually connected | stale-allowlist |
+| Template matching replaced with literal comparison | template pairing, plus a false orphan report |
+
+That last row is the one worth keeping. With template matching removed, the test reports
+`collection-home` as revalidating nothing and advises deleting it — reproducing C4's exact false
+positive, in a check whose whole purpose is preventing it. A drift test built on literal comparison
+would have been confidently wrong, which is why the pairing has its own test.
+
+**Known limits, stated rather than papered over.**
+
+- It is a text scan, so it is coupled to how the source is written. Splitting a `next: {}` option
+  across lines in a shape the regex misses breaks the scan — the vacuity floors turn that into a
+  loud failure rather than a silent pass, which is the trade being made.
+- It only reads the two revalidate helpers and `lib/api`. A tag registered or revalidated somewhere
+  new is invisible to it. `/api/revalidate` takes its tags from the request body and cannot be
+  scanned; `clearCacheAction` uses `revalidatePath` and has no tags at all.
+- Prefix matching means a registered `collection-${slug}` covers any revalidated tag starting with
+  `collection-`. A genuinely wrong tag like `collection-typo-here` would pass. This is the failure
+  mode C4's guardrail describes for `collections-location-${slug}`, and no static check can catch
+  it — the slug is a runtime value.
 
 ---
 
