@@ -18,19 +18,9 @@ jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
 
 import ExplorePage from '@/app/explore/page';
 import { getMetadata } from '@/app/lib/api/collections';
+import { makeMetadata } from '@/tests/fixtures/collectionEditFixtures';
 
 const mockGetMetadata = getMetadata as jest.MockedFunction<typeof getMetadata>;
-
-const emptyMetadata = {
-  tags: [],
-  people: [],
-  locations: [],
-  cameras: [],
-  lenses: [],
-  filmTypes: [],
-  filmFormats: [],
-  collections: [],
-};
 
 describe('ExplorePage', () => {
   beforeEach(() => {
@@ -38,11 +28,12 @@ describe('ExplorePage', () => {
   });
 
   it('renders a section heading and a NavLink per tag and location', async () => {
-    mockGetMetadata.mockResolvedValue({
-      ...emptyMetadata,
-      tags: [{ id: 1, name: 'Mountains', slug: 'mountains' }],
-      locations: [{ id: 3, name: 'Patagonia', slug: 'patagonia' }],
-    });
+    mockGetMetadata.mockResolvedValue(
+      makeMetadata({
+        tags: [{ id: 1, name: 'Mountains', slug: 'mountains' }],
+        locations: [{ id: 3, name: 'Patagonia', slug: 'patagonia' }],
+      })
+    );
 
     render(await ExplorePage());
 
@@ -63,17 +54,18 @@ describe('ExplorePage', () => {
   });
 
   it('renders a NavLink for every metadata entry', async () => {
-    mockGetMetadata.mockResolvedValue({
-      ...emptyMetadata,
-      tags: [
-        { id: 1, name: 'Mountains', slug: 'mountains' },
-        { id: 2, name: 'Rivers', slug: 'rivers' },
-      ],
-      locations: [
-        { id: 4, name: 'Patagonia', slug: 'patagonia' },
-        { id: 5, name: 'Dolomites', slug: 'dolomites' },
-      ],
-    });
+    mockGetMetadata.mockResolvedValue(
+      makeMetadata({
+        tags: [
+          { id: 1, name: 'Mountains', slug: 'mountains' },
+          { id: 2, name: 'Rivers', slug: 'rivers' },
+        ],
+        locations: [
+          { id: 4, name: 'Patagonia', slug: 'patagonia' },
+          { id: 5, name: 'Dolomites', slug: 'dolomites' },
+        ],
+      })
+    );
 
     render(await ExplorePage());
 
@@ -82,13 +74,14 @@ describe('ExplorePage', () => {
   });
 
   it('omits locations that have no slug (no /location/undefined links)', async () => {
-    mockGetMetadata.mockResolvedValue({
-      ...emptyMetadata,
-      locations: [
-        { id: 1, name: 'Patagonia', slug: 'patagonia' },
-        { id: 2, name: 'Nowhere' },
-      ],
-    });
+    mockGetMetadata.mockResolvedValue(
+      makeMetadata({
+        locations: [
+          { id: 1, name: 'Patagonia', slug: 'patagonia' },
+          { id: 2, name: 'Nowhere' },
+        ],
+      })
+    );
 
     render(await ExplorePage());
 
@@ -106,7 +99,7 @@ describe('ExplorePage', () => {
   });
 
   it('renders a friendly empty state when metadata has no entries', async () => {
-    mockGetMetadata.mockResolvedValue(emptyMetadata);
+    mockGetMetadata.mockResolvedValue(makeMetadata());
 
     render(await ExplorePage());
 

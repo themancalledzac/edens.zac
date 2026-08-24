@@ -11,17 +11,22 @@ import {
 import { createImages, updateGif } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
-  type CollectionListModel,
   type CollectionModel,
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
 } from '@/app/types/Collection';
-import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import {
   type AnyContentModel,
   type ContentGifModel,
   type ContentImageModel,
 } from '@/app/types/Content';
+import {
+  makeCollection,
+  makeListModel,
+  makeMetadata,
+  makeResponse,
+} from '@/tests/fixtures/collectionEditFixtures';
+import { flushEffects, renderEdit } from '@/tests/fixtures/renderCollectionEdit';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn() }),
@@ -52,73 +57,6 @@ const mockStorageGetFull = collectionStorage.getFull as jest.MockedFunction<
 const mockCreateImages = createImages as jest.MockedFunction<typeof createImages>;
 const mockUpdateGif = updateGif as jest.MockedFunction<typeof updateGif>;
 
-function makeMetadata(overrides: Partial<GeneralMetadataDTO> = {}): GeneralMetadataDTO {
-  return {
-    tags: [],
-    people: [],
-    locations: [],
-    cameras: [],
-    lenses: [],
-    filmTypes: [],
-    filmFormats: [],
-    collections: [],
-    ...overrides,
-  };
-}
-
-function makeListModel(overrides: Partial<CollectionListModel> = {}): CollectionListModel {
-  return {
-    id: 7,
-    name: 'Sibling Collection',
-    slug: 'sibling-collection',
-    ...overrides,
-  };
-}
-
-function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
-  return {
-    id: 42,
-    slug: 'smith-wedding',
-    title: 'Smith Wedding',
-    description: 'A description',
-    isClient: false,
-    isBlog: false,
-    locations: [],
-    visibility: CollectionVisibility.LISTED,
-    displayMode: 'ORDERED',
-    collectionDate: '2026-01-01',
-    rowsWide: 4,
-    content: [],
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-    ...overrides,
-  };
-}
-
-function makeResponse(overrides: Partial<CollectionModel> = {}): CollectionUpdateResponseDTO {
-  return {
-    collection: makeCollection(overrides),
-    tags: [],
-    people: [],
-    locations: [],
-    cameras: [],
-    lenses: [],
-    filmTypes: [],
-    filmFormats: [],
-    collections: [],
-  };
-}
-
-function makeResponseWith(
-  collectionOverrides: Partial<CollectionModel>,
-  metadata: Partial<CollectionUpdateResponseDTO>
-): CollectionUpdateResponseDTO {
-  return {
-    ...makeResponse(collectionOverrides),
-    ...metadata,
-  };
-}
-
 /** Mirrors tests/utils/contentFilter.test.ts's makeImage fixture. */
 function makeContentImage(overrides: Partial<ContentImageModel> = {}): ContentImageModel {
   return {
@@ -142,27 +80,6 @@ function makeContentGif(overrides: Partial<ContentGifModel> = {}): ContentGifMod
     gifUrl: 'https://example.com/test.gif',
     ...overrides,
   };
-}
-
-function renderEdit(
-  opts: { enabled?: boolean; collection?: CollectionModel; onExitManage?: () => void } = {}
-) {
-  const collection = opts.collection ?? makeCollection();
-  return renderHook(() =>
-    useCollectionEdit({
-      collection,
-      slug: collection.slug,
-      enabled: opts.enabled ?? true,
-      onExitManage: opts.onExitManage,
-    })
-  );
-}
-
-async function flushEffects() {
-  // drain the data-load + getMetadata promise chains inside act
-  await act(async () => {
-    await new Promise(resolve => setTimeout(resolve, 0));
-  });
 }
 
 describe('useCollectionEdit', () => {
@@ -679,7 +596,7 @@ describe('useCollectionEdit', () => {
   describe('locations field wiring', () => {
     it('derives currentLocations from collection + updateData diff', async () => {
       mockGetCollectionUpdateMetadata.mockResolvedValue(
-        makeResponseWith(
+        makeResponse(
           { locations: [{ id: 5, name: 'Paris', slug: 'paris' }] },
           {
             locations: [
@@ -713,7 +630,7 @@ describe('useCollectionEdit', () => {
 
     it('emits remove when a saved location is deselected', async () => {
       mockGetCollectionUpdateMetadata.mockResolvedValue(
-        makeResponseWith(
+        makeResponse(
           { locations: [{ id: 5, name: 'Paris', slug: 'paris' }] },
           { locations: [{ id: 5, name: 'Paris', slug: 'paris' }] }
         )
@@ -735,7 +652,7 @@ describe('useCollectionEdit', () => {
   describe('tags field wiring', () => {
     it('derives currentTags from collection + updateData diff', async () => {
       mockGetCollectionUpdateMetadata.mockResolvedValue(
-        makeResponseWith(
+        makeResponse(
           { tags: ['film'] },
           {
             tags: [

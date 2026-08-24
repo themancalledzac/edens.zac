@@ -9,9 +9,8 @@
  * metadata modal's Delete.
  */
 
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 
-import { useCollectionEdit } from '@/app/components/ContentCollection/edit/useCollectionEdit';
 import {
   getCollectionUpdateMetadata,
   getMetadata,
@@ -22,13 +21,14 @@ import {
 } from '@/app/lib/api/collections';
 import { deleteImages, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
-import {
-  type CollectionModel,
-  type CollectionUpdateResponseDTO,
-  type GeneralMetadataDTO,
-} from '@/app/types/Collection';
-import { CollectionVisibility } from '@/app/types/CollectionVisibility';
+import { type CollectionUpdateResponseDTO } from '@/app/types/Collection';
 import { type ContentImageModel } from '@/app/types/Content';
+import {
+  makeCollection,
+  makeMetadata,
+  makeResponse,
+} from '@/tests/fixtures/collectionEditFixtures';
+import { renderEdit } from '@/tests/fixtures/renderCollectionEdit';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: mockRouterReplace }),
@@ -83,68 +83,6 @@ jest.mock('@/app/components/ContentCollection/edit/collectionEditUtils', () => {
     revalidateMetadataCache: jest.fn(async () => {}),
   };
 });
-
-function makeMetadata(overrides: Partial<GeneralMetadataDTO> = {}): GeneralMetadataDTO {
-  return {
-    tags: [],
-    people: [],
-    locations: [],
-    cameras: [],
-    lenses: [],
-    filmTypes: [],
-    filmFormats: [],
-    collections: [],
-    ...overrides,
-  };
-}
-
-function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
-  return {
-    id: 42,
-    slug: 'smith-wedding',
-    title: 'Smith Wedding',
-    description: 'A description',
-    isClient: false,
-    isBlog: false,
-    locations: [],
-    visibility: CollectionVisibility.LISTED,
-    displayMode: 'ORDERED',
-    collectionDate: '2026-01-01',
-    rowsWide: 4,
-    content: [],
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-    ...overrides,
-  };
-}
-
-function makeResponse(overrides: Partial<CollectionModel> = {}): CollectionUpdateResponseDTO {
-  return {
-    collection: makeCollection(overrides),
-    tags: [],
-    people: [],
-    locations: [],
-    cameras: [],
-    lenses: [],
-    filmTypes: [],
-    filmFormats: [],
-    collections: [],
-  };
-}
-
-function renderEdit(
-  opts: { enabled?: boolean; collection?: CollectionModel; onExitManage?: () => void } = {}
-) {
-  const collection = opts.collection ?? makeCollection();
-  return renderHook(() =>
-    useCollectionEdit({
-      collection,
-      slug: collection.slug,
-      enabled: opts.enabled ?? true,
-      onExitManage: opts.onExitManage,
-    })
-  );
-}
 
 describe('useCollectionEdit — bulk remove from collection', () => {
   beforeEach(() => {

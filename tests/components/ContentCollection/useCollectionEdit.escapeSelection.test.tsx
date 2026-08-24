@@ -20,18 +20,17 @@
  * live against it.
  */
 
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 
-import { useCollectionEdit } from '@/app/components/ContentCollection/edit/useCollectionEdit';
 import { getCollectionUpdateMetadata, getMetadata } from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
-  type CollectionModel,
-  type CollectionUpdateResponseDTO,
-  type GeneralMetadataDTO,
-} from '@/app/types/Collection';
-import { CollectionVisibility } from '@/app/types/CollectionVisibility';
+  makeCollection,
+  makeMetadata,
+  makeResponse,
+} from '@/tests/fixtures/collectionEditFixtures';
 import { createImageContent } from '@/tests/fixtures/contentFixtures';
+import { renderEdit } from '@/tests/fixtures/renderCollectionEdit';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn() }),
@@ -66,51 +65,9 @@ const mockStorageGetFull = collectionStorage.getFull as jest.MockedFunction<
 
 const IMAGE_ID = 101;
 
-function makeMetadata(): GeneralMetadataDTO {
-  return {
-    tags: [],
-    people: [],
-    locations: [],
-    cameras: [],
-    lenses: [],
-    filmTypes: [],
-    filmFormats: [],
-    collections: [],
-  };
-}
-
 /** Carries a real IMAGE block so `handleSingleImageEdit` resolves it and opens the editor. */
-function makeCollection(): CollectionModel {
-  return {
-    id: 42,
-    slug: 'smith-wedding',
-    title: 'Smith Wedding',
-    description: 'A description',
-    isClient: false,
-    isBlog: false,
-    locations: [],
-    visibility: CollectionVisibility.LISTED,
-    displayMode: 'ORDERED',
-    collectionDate: '2026-01-01',
-    rowsWide: 4,
-    content: [createImageContent(IMAGE_ID)],
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-  };
-}
-
-function makeResponse(): CollectionUpdateResponseDTO {
-  return {
-    collection: makeCollection(),
-    tags: [],
-    people: [],
-    locations: [],
-    cameras: [],
-    lenses: [],
-    filmTypes: [],
-    filmFormats: [],
-    collections: [],
-  };
+function withImage() {
+  return { content: [createImageContent(IMAGE_ID)] };
 }
 
 function pressEscape() {
@@ -123,15 +80,12 @@ describe('useCollectionEdit — Escape closes the editor AND drops the single-cl
   beforeEach(() => {
     jest.clearAllMocks();
     mockStorageGetFull.mockReturnValue(null);
-    mockGetCollectionUpdateMetadata.mockImplementation(async () => makeResponse());
+    mockGetCollectionUpdateMetadata.mockImplementation(async () => makeResponse(withImage()));
     mockGetMetadata.mockResolvedValue(makeMetadata());
   });
 
   async function renderReady() {
-    const collection = makeCollection();
-    const view = renderHook(() =>
-      useCollectionEdit({ collection, slug: collection.slug, enabled: true })
-    );
+    const view = renderEdit({ collection: makeCollection(withImage()) });
     await waitFor(() => {
       expect(view.result.current.currentState).not.toBeNull();
     });

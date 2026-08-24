@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import { CollectionEditSheet } from '@/app/components/ContentCollection/edit/CollectionEditSheet';
-import { makeEdit, makeState, makeUpdateData } from '@/tests/fixtures/collectionEditFixtures';
+import { makeEdit, makeResponse, makeUpdateData } from '@/tests/fixtures/collectionEditFixtures';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
@@ -125,7 +125,7 @@ describe('CollectionEditSheet — InfoTab', () => {
     // a delivered gallery with no child collections would lose BOTH set and revoke.
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ isClient: true }),
+      currentState: makeResponse({ isClient: true }),
       updateData: makeUpdateData({ isClient: true }),
       isParent: false,
     });
@@ -138,7 +138,7 @@ describe('CollectionEditSheet — InfoTab', () => {
   it('shows gallery access group for isParent=true', () => {
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ isClient: false }),
+      currentState: makeResponse({ isClient: false }),
       updateData: makeUpdateData({ isClient: false }),
       isParent: true,
     });
@@ -149,7 +149,7 @@ describe('CollectionEditSheet — InfoTab', () => {
   it('does NOT show gallery access group for a non-client, non-parent collection', () => {
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ isClient: false }),
+      currentState: makeResponse({ isClient: false }),
       updateData: makeUpdateData({ isClient: false }),
       isParent: false,
     });
@@ -161,7 +161,7 @@ describe('CollectionEditSheet — InfoTab', () => {
   it('shows the Clear Password button when the gallery already has a password set', () => {
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ isClient: true, isPasswordProtected: true }),
+      currentState: makeResponse({ isClient: true, isPasswordProtected: true }),
       updateData: makeUpdateData({ isClient: true }),
       isParent: false,
     });
@@ -172,7 +172,7 @@ describe('CollectionEditSheet — InfoTab', () => {
   it('hides the Clear Password button when the gallery has no password', () => {
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ isClient: true, isPasswordProtected: false }),
+      currentState: makeResponse({ isClient: true, isPasswordProtected: false }),
       updateData: makeUpdateData({ isClient: true }),
       isParent: false,
     });
@@ -188,7 +188,7 @@ describe('CollectionEditSheet — InfoTab', () => {
   it('does not render the roles access section when the collection has no id (create flow)', () => {
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ id: undefined }),
+      currentState: makeResponse({ id: undefined }),
     });
     render(<CollectionEditSheet edit={edit} />);
     expect(screen.queryByTestId('collection-roles-section')).not.toBeInTheDocument();
@@ -198,7 +198,7 @@ describe('CollectionEditSheet — InfoTab', () => {
     const statusText = 'Password saved. No email sent.';
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ isClient: true }),
+      currentState: makeResponse({ isClient: true }),
       updateData: makeUpdateData({ isClient: true }),
       isParent: false,
       galleryStatus: statusText,
@@ -312,7 +312,7 @@ describe('CollectionEditSheet — StructureTab collection rating', () => {
   it('does NOT render the Rating section for the home collection', () => {
     render(
       <CollectionEditSheet
-        edit={makeEdit({ editTab: 'structure', currentState: makeState({ slug: 'home' }) })}
+        edit={makeEdit({ editTab: 'structure', currentState: makeResponse({ slug: 'home' }) })}
       />
     );
     expect(screen.queryByRole('heading', { name: 'Rating' })).not.toBeInTheDocument();
@@ -338,7 +338,7 @@ describe('CollectionEditSheet — StructureTab collection rating', () => {
       <CollectionEditSheet
         edit={makeEdit({
           editTab: 'structure',
-          currentState: makeState({ id: 42 }),
+          currentState: makeResponse({ id: 42 }),
           updateCollectionRating,
         })}
       />
@@ -357,7 +357,7 @@ describe('CollectionEditSheet — StructureTab danger zone', () => {
   it('hides the Delete collection button for the home collection', () => {
     render(
       <CollectionEditSheet
-        edit={makeEdit({ editTab: 'structure', currentState: makeState({ slug: 'home' }) })}
+        edit={makeEdit({ editTab: 'structure', currentState: makeResponse({ slug: 'home' }) })}
       />
     );
     expect(screen.queryByRole('button', { name: 'Delete collection' })).not.toBeInTheDocument();
