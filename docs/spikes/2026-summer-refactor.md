@@ -1565,7 +1565,8 @@ Bigger, optional, sequenced last. Do each individually and verify on :3000.
 **SHIPPED 2026-08-24 — PR #321, −47 src / +142 test.** New `app/components/Content/RendererContext.tsx`
 holds `SharedRendererProps` (the 16) once; `ContentBlockWithFullScreen` and `Component` extend it and
 forward the set as one object; `BoxRenderer` is down to `tree`/`sizes`/`isMobile`/`priority` and reads
-the rest from `useRenderer()`. 245 suites / 4398 tests pass.
+the rest from `useRenderer()`. 245 suites / 4398 tests pass, against a `main` baseline of 244 / 4381
+measured with the tree stashed — so the 17 new tests are the whole delta and nothing was lost.
 
 **The re-derived estimate was right to distrust the src number, and the src number was still high.**
 Re-deriving from the 16-prop / 3-site measurement predicted "much smaller than −100"; actual is −47,
@@ -1596,7 +1597,7 @@ JSX, none wrapped in `memo`, so they re-render with the parent regardless. Wrap 
 `memo` and that stops being true — the docblock says so.
 
 **Threading is now pinned, because it was not.** `tests/components/Content/RendererContext.threading.test.tsx`
-(+144, 24 tests) renders the real `ContentBlockWithFullScreen → Component → BoxRenderer` chain with
+(+144, 17 tests) renders the real `ContentBlockWithFullScreen → Component → BoxRenderer` chain with
 only `CollectionContentRenderer` mocked, and asserts every shared member arrives at the leaf, that
 the five caller handlers arrive by identity, that `onImageLoadError` arrives as `Component`'s
 wrapper and not the raw handler, and that `reorderMoves`/`reorderDisplayOrder` stop at `BoxRenderer`
