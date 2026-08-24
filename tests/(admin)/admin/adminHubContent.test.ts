@@ -111,6 +111,29 @@ describe('buildAdminHubContent', () => {
     }
   });
 
+  /**
+   * The four panel literals are one `PANEL_ORDER.map` now, with `id` and `orderIndex` derived from
+   * a panel's position rather than written out. These are the values the literals carried, pinned
+   * so the derivation cannot drift: an off-by-one in either base, or a `.map` that reused the same
+   * index, would still produce four panels in the right order and pass every other test here.
+   */
+  it('numbers panel ids and orderIndex from their position in the list', () => {
+    const panels = result.slice(0, PANEL_COUNT) as ContentPanelModel[];
+    expect(panels.map(p => p.id)).toEqual([1001, 1002, 1003, 1004]);
+    expect(panels.map(p => p.orderIndex)).toEqual([100, 101, 102, 103]);
+  });
+
+  /**
+   * Panel ids sit clear of the tiles' `1..n` run. `all ids are unique` below would catch a
+   * collision today, but only because there are far fewer than 1000 tiles; this says outright which
+   * range belongs to which.
+   */
+  it('keeps panel ids above every tile id', () => {
+    const panelIds = result.slice(0, PANEL_COUNT).map(item => item.id);
+    const tileIds = result.slice(PANEL_COUNT).map(item => item.id);
+    expect(Math.min(...panelIds)).toBeGreaterThan(Math.max(...tileIds));
+  });
+
   it('panels have vertical AR (width < height)', () => {
     const panels = result.slice(0, PANEL_COUNT) as ContentPanelModel[];
     for (const panel of panels) {

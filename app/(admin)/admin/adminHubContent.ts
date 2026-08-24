@@ -244,6 +244,51 @@ export function panelContentHeight(
 const FALLBACK_COUNTS: AdminPanelCounts = { users: 0, messages: 0, roles: 0, collections: 0 };
 
 /**
+ * The panels the hub renders, in the order they are handed to the packer.
+ *
+ * Order is the only thing this list decides: `id` and `orderIndex` are derived from a panel's
+ * position, so inserting a fifth panel here renumbers the ones after it rather than needing four
+ * literals kept in step by hand. The hub renders the array in the order this function returns it —
+ * nothing on the admin path sorts by `orderIndex` — so both numbers exist to stay unique and in
+ * step with position, not to place a panel.
+ *
+ * `panelType` doubles as the key into {@link AdminPanelCounts} and {@link PANEL_SHAPE}, which is
+ * what lets one `.map` build all four.
+ */
+const PANEL_ORDER: ReadonlyArray<{ panelType: PanelType; title: string }> = [
+  { panelType: 'users', title: 'Users' },
+  { panelType: 'messages', title: 'Messages' },
+  { panelType: 'roles', title: 'Roles' },
+  { panelType: 'collections', title: 'Collections' },
+];
+
+/** Panel ids start here, clear of the nav tiles' `1..n`. */
+const PANEL_ID_BASE = 1001;
+
+/**
+ * Panel `orderIndex` values start here, clear of the nav tiles' `0..n-1` run.
+ *
+ * A higher number than the tiles carry does NOT put the panels last: nothing on the admin path
+ * reads `orderIndex` to order anything, and `buildAdminHubContent` returns the panels ahead of the
+ * tiles in the array itself. These are the values the four literals carried before this list
+ * replaced them, kept so the refactor moves no pixels.
+ */
+const PANEL_ORDER_INDEX_BASE = 100;
+
+/**
+ * The width:height ratio every panel DECLARES — not the height it renders, which is the pin from
+ * {@link panelContentHeight}.
+ *
+ * NOT DEAD, despite `minHeight`/`maxHeight` overriding the rendered height. Stage-1 packing reads
+ * this ratio for width-cost, prominence and row membership, and 15 hub tests move if it changes.
+ * See this function's docblock for why it must stay strictly taller than 1:2: `prominenceFactor`
+ * steps at `EXTREMENESS_RAMP_START` (2.0), so 600×1200 would jump a panel from 5.0 to 7.0 and
+ * re-solve width allocation for the whole hub. 600×1100 is extremeness 1.83 and sits under it.
+ */
+const PANEL_DECLARED_WIDTH = 600;
+const PANEL_DECLARED_HEIGHT = 1100;
+
+/**
  * @param viewportHeight SSR-resolved viewport height, forwarded to {@link panelContentHeight} so a
  *   long list is capped rather than reserving more than the screen. Optional: omitted, every panel
  *   sizes exactly as it did before the cap existed.
@@ -282,72 +327,22 @@ export function buildAdminHubContent(
     };
   });
 
-  const usersHeight = panelContentHeight('users', counts.users, viewportHeight);
-  const messagesHeight = panelContentHeight('messages', counts.messages, viewportHeight);
-  const rolesHeight = panelContentHeight('roles', counts.roles, viewportHeight);
-  const collectionsHeight = panelContentHeight('collections', counts.collections, viewportHeight);
-
-  const usersPanel: ContentPanelModel = {
+  const panels: ContentPanelModel[] = PANEL_ORDER.map(({ panelType, title }, i) => ({
     contentType: 'PANEL',
-    panelType: 'users',
-    id: 1001,
+    panelType,
+    id: PANEL_ID_BASE + i,
     rating: 5,
-    title: 'Users',
-    width: 600,
-    height: 1100,
+    title,
+    width: PANEL_DECLARED_WIDTH,
+    height: PANEL_DECLARED_HEIGHT,
     minWidth: PANEL_MIN_WIDTH,
     maxWidth: PANEL_MAX_WIDTH,
-    ...pinnedHeight(usersHeight),
-    orderIndex: 100,
+    ...pinnedHeight(panelContentHeight(panelType, counts[panelType], viewportHeight)),
+    orderIndex: PANEL_ORDER_INDEX_BASE + i,
     visible: true,
-  };
+  }));
 
-  const messagesPanel: ContentPanelModel = {
-    contentType: 'PANEL',
-    panelType: 'messages',
-    id: 1002,
-    rating: 5,
-    title: 'Messages',
-    width: 600,
-    height: 1100,
-    minWidth: PANEL_MIN_WIDTH,
-    maxWidth: PANEL_MAX_WIDTH,
-    ...pinnedHeight(messagesHeight),
-    orderIndex: 101,
-    visible: true,
-  };
-
-  const rolesPanel: ContentPanelModel = {
-    contentType: 'PANEL',
-    panelType: 'roles',
-    id: 1003,
-    rating: 5,
-    title: 'Roles',
-    width: 600,
-    height: 1100,
-    minWidth: PANEL_MIN_WIDTH,
-    maxWidth: PANEL_MAX_WIDTH,
-    ...pinnedHeight(rolesHeight),
-    orderIndex: 102,
-    visible: true,
-  };
-
-  const collectionsPanel: ContentPanelModel = {
-    contentType: 'PANEL',
-    panelType: 'collections',
-    id: 1004,
-    rating: 5,
-    title: 'Collections',
-    width: 600,
-    height: 1100,
-    minWidth: PANEL_MIN_WIDTH,
-    maxWidth: PANEL_MAX_WIDTH,
-    ...pinnedHeight(collectionsHeight),
-    orderIndex: 103,
-    visible: true,
-  };
-
-  return [usersPanel, messagesPanel, rolesPanel, collectionsPanel, ...tileModels];
+  return [...panels, ...tileModels];
 }
 
 /**

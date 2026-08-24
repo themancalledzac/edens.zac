@@ -283,3 +283,18 @@
     border-radius: var(--radius-1);
   }
 }
+
+/* The header's trailing "N · View all" link (see `ViewAllLink`). Hoisted byte-for-byte out of
+   CollectionsPanel and MessagesPanel, which each had their own copy — the second one added under a
+   comment saying it was copying the first, which is the point at which a rule stops belonging to
+   either panel. */
+.viewAll {
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--color-on-surface);
+    text-decoration: underline;
+  }
+}

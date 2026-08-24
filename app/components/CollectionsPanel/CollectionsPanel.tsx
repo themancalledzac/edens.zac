@@ -1,21 +1,20 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useMemo } from 'react';
 
 import { useAdminPanelSeed } from '@/app/components/AdminPanel/AdminPanelSeedContext';
-import { ListPanel, ListRow, ListRows } from '@/app/components/ListPanel/ListPanel';
-import { Button } from '@/app/components/ui/Button/Button';
+import { ListPanel, ListRow, ListRows, ViewAllLink } from '@/app/components/ListPanel/ListPanel';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
+import { LoadError } from '@/app/components/ui/StatusText/LoadError';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
 import { useCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { getMetadata } from '@/app/lib/api/collections';
 import { type CollectionListModel } from '@/app/types/Collection';
 import { formatLongDate } from '@/app/utils/formatDateRange';
-import { compareNames } from '@/app/utils/sortByName';
+import { compareCollectionsNewestFirst } from '@/app/utils/sortCollections';
 
 import styles from './CollectionsPanel.module.scss';
 
@@ -42,26 +41,6 @@ const THUMBNAIL_SIZE = 32;
 async function fetchCollections(): Promise<CollectionListModel[]> {
   const metadata = await getMetadata();
   return metadata?.collections ?? [];
-}
-
-/**
- * Newest first, undated collections last, name breaking the tie between two undated ones.
- *
- * Dates are ISO `YYYY-MM-DD`, which sorts correctly as text, so no `Date` is constructed. Undated
- * collections sink rather than being dropped: some collections have no date concept at all, and a
- * list that hides them is worse than one that puts them at the end.
- *
- * `collectionDate` is optional on {@link CollectionListModel}, so both null branches stay reachable
- * whatever the backend sends. `sortGroup`'s BLOG branch in `CollectionListSelector` applies the same
- * rule to the same list; the two should be one helper.
- */
-function newestFirst(a: CollectionListModel, b: CollectionListModel): number {
-  const dateA = a.collectionDate ?? null;
-  const dateB = b.collectionDate ?? null;
-  if (dateA === null && dateB === null) return compareNames(a.name, b.name);
-  if (dateA === null) return 1;
-  if (dateB === null) return -1;
-  return dateB.localeCompare(dateA);
 }
 
 /**
@@ -97,25 +76,14 @@ export function CollectionsPanel({ collapsed, onCollapsedChange }: CollectionsPa
     seed.collections
   );
 
-  const collections = useMemo(() => [...(data ?? [])].sort(newestFirst), [data]);
+  const collections = useMemo(() => [...(data ?? [])].sort(compareCollectionsNewestFirst), [data]);
 
-  const headerRight = (
-    <Link href="/collections" className={styles.viewAll}>
-      {collections.length} · View all
-    </Link>
-  );
+  const headerRight = <ViewAllLink href="/collections" count={collections.length} />;
 
   let body: ReactNode = null;
   if (!loading) {
     if (loadError) {
-      body = (
-        <div className={styles.loadError} role="alert">
-          <p className={styles.error}>{loadError}</p>
-          <Button variant="secondary" size="sm" onClick={() => void refresh()}>
-            Retry
-          </Button>
-        </div>
-      );
+      body = <LoadError message={loadError} onRetry={() => void refresh()} />;
     } else if (collections.length === 0) {
       body = <EmptyState>No collections yet.</EmptyState>;
     } else {

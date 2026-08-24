@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { ListPanel, ListRow, ListRows } from '@/app/components/ListPanel/ListPanel';
+import { ListPanel, ListRow, ListRows, ViewAllLink } from '@/app/components/ListPanel/ListPanel';
 
 /**
  * The shell contract, inherited from `AdminPanel` when this component replaced it.
@@ -192,8 +192,7 @@ describe('ListPanel header', () => {
         </ListRows>
       </ListPanel>
     );
-    const sectionClasses = (el: Element) =>
-      [...el.children].map(c => c.className.split(' ')[0]);
+    const sectionClasses = (el: Element) => [...el.children].map(c => c.className.split(' ')[0]);
 
     const header = container.querySelector('div.header');
     const row = container.querySelector('li');
@@ -236,5 +235,41 @@ describe('ListRow', () => {
     expect(screen.getByRole('button', { name: 'Open a' })).toBeInTheDocument();
     rerender(<ListRow left={<span>a</span>} />);
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * The header's trailing "N · View all" link, hoisted here out of CollectionsPanel and
+ * MessagesPanel. Each carried a byte-identical `.viewAll` rule and the same five lines of JSX,
+ * the second under a comment saying it was copying the first.
+ */
+describe('ViewAllLink', () => {
+  it('links to the full list', () => {
+    render(<ViewAllLink href="/collections" count={12} />);
+    expect(screen.getByRole('link', { name: /view all/i })).toHaveAttribute('href', '/collections');
+  });
+
+  /**
+   * The count leads and the label follows, separated by a middle dot. Asserted as one string rather
+   * than two `getByText` calls: the order is the reason the component exists — the two panels sit
+   * side by side on the hub and their headers align on that separator.
+   */
+  it('reads as the count, then the separator, then the label', () => {
+    render(<ViewAllLink href="/comments" count={7} />);
+    expect(screen.getByRole('link', { name: /view all/i })).toHaveTextContent('7 · View all');
+  });
+
+  it('renders a zero count rather than hiding it', () => {
+    render(<ViewAllLink href="/comments" count={0} />);
+    expect(screen.getByRole('link', { name: /view all/i })).toHaveTextContent('0 · View all');
+  });
+
+  it('sits in the header when a panel passes it as headerRight', () => {
+    render(
+      <ListPanel title="Collections" headerRight={<ViewAllLink href="/collections" count={3} />}>
+        body
+      </ListPanel>
+    );
+    expect(screen.getByRole('link', { name: /view all/i })).toHaveTextContent('3 · View all');
   });
 });

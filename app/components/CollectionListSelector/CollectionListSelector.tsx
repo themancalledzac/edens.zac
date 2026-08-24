@@ -7,6 +7,8 @@ import { Disclosure } from '@/app/components/ui/Disclosure/Disclosure';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { type CollectionListModel } from '@/app/types/Collection';
 import { HOME_SLUG } from '@/app/utils/collectionSlugs';
+import { compareNames } from '@/app/utils/sortByName';
+import { compareCollectionsNewestFirst } from '@/app/utils/sortCollections';
 
 import styles from './CollectionListSelector.module.scss';
 
@@ -48,25 +50,22 @@ export function bucketOf(collection: CollectionListModel): CollectionBucket {
 }
 
 /**
- * Sort rows within a single bucket. Blog rows sort by `collectionDate` descending (newest
- * first) with null dates last, falling back to name when both dates are null; every other
- * bucket sorts alphabetically by name.
+ * Sort rows within a single bucket. Blog rows sort by `collectionDate` descending (newest first)
+ * with null dates last, falling back to name when both dates are null; every other bucket sorts
+ * alphabetically by name.
+ *
+ * The BLOG branch is {@link compareCollectionsNewestFirst} outright. It was a second copy of that
+ * algorithm over the same `CollectionListModel` list, split from it only by a raw `localeCompare`
+ * in the name tie-break where the panel used {@link compareNames}. Both branches use `compareNames`
+ * now, so the bucket a row lands in no longer decides how its name is compared — see that helper's
+ * docblock for why the base-sensitive comparison is the one that survived.
  */
 export function sortGroup(
   rows: CollectionListModel[],
   bucket: CollectionBucket
 ): CollectionListModel[] {
-  if (bucket === 'BLOG') {
-    return [...rows].sort((a, b) => {
-      const da = a.collectionDate ?? null;
-      const db = b.collectionDate ?? null;
-      if (da == null && db == null) return a.name.localeCompare(b.name);
-      if (da == null) return 1;
-      if (db == null) return -1;
-      return db.localeCompare(da);
-    });
-  }
-  return [...rows].sort((a, b) => a.name.localeCompare(b.name));
+  if (bucket === 'BLOG') return [...rows].sort(compareCollectionsNewestFirst);
+  return [...rows].sort((a, b) => compareNames(a.name, b.name));
 }
 
 type CheckboxState = 'empty' | 'saved' | 'pending-add' | 'pending-remove';

@@ -17,8 +17,8 @@ export interface EmptyStateProps {
  *
  * Use it for a genuinely empty result — never for a read that failed. An empty state tells the
  * viewer there is nothing here, which is a claim about the data; rendering one after an error says
- * something false. Failed reads get their own branch (see `UserManagementPanel`, where the two are
- * deliberately styled apart so a dead backend cannot read as an empty list).
+ * something false. Failed reads get {@link LoadError}, which is deliberately styled apart so a dead
+ * backend cannot read as an empty list.
  */
 export function EmptyState({ children, align = 'inline', className }: EmptyStateProps) {
   const classes = [styles.text, styles[align], className].filter(Boolean).join(' ');
