@@ -35,7 +35,7 @@ export default async function UserSelectsPage() {
 
   return (
     <div className={styles.container}>
-      <SiteHeader pageType="default" />
+      <SiteHeader />
       <SkipTarget>
         <h1 className={styles.heading}>Your Selects</h1>
 

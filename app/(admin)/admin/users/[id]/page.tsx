@@ -97,7 +97,7 @@ export default async function AdminUserDetailPage({
 
   if (user.status === 'PERSON') {
     return (
-      <PageShell pageType="collectionsCollection" className={styles.page}>
+      <PageShell className={styles.page}>
         <div className={styles.header}>
           <Link href="/admin" className={styles.back}>
             ← Admin
@@ -133,7 +133,7 @@ export default async function AdminUserDetailPage({
   ]);
 
   return (
-    <PageShell pageType="collectionsCollection" className={styles.page}>
+    <PageShell className={styles.page}>
       <div className={styles.header}>
         <Link href="/admin" className={styles.back}>
           ← Admin

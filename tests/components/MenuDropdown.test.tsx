@@ -204,7 +204,7 @@ describe('MenuDropdown — destinations are links, actions are buttons', () => {
     mockMe.mockResolvedValue(adminPrincipal);
 
     render(
-      <MenuDropdown isOpen onClose={jest.fn()} pageType="collection" collectionSlug="my-gallery" />
+      <MenuDropdown isOpen onClose={jest.fn()} isCollectionPage collectionSlug="my-gallery" />
     );
 
     expect(await screen.findByRole('link', { name: 'Create' })).toHaveAttribute(
@@ -223,7 +223,7 @@ describe('MenuDropdown — destinations are links, actions are buttons', () => {
   it('falls back to the create surface when Update has no collection slug', async () => {
     mockMe.mockResolvedValue(adminPrincipal);
 
-    render(<MenuDropdown isOpen onClose={jest.fn()} pageType="collection" />);
+    render(<MenuDropdown isOpen onClose={jest.fn()} isCollectionPage />);
 
     expect(await screen.findByRole('link', { name: 'Update' })).toHaveAttribute(
       'href',
@@ -443,13 +443,11 @@ describe('MenuDropdown — admin item gating (isAdmin, not isLocalEnvironment)',
     expect(screen.getByRole('link', { name: 'Comments' })).toBeInTheDocument();
   });
 
-  it('shows Update only when pageType is "collection" for an isAdmin principal', async () => {
+  it('shows Update only when isCollectionPage is set for an isAdmin principal', async () => {
     mockMe.mockResolvedValue(adminPrincipal);
     const onClose = jest.fn();
 
-    render(
-      <MenuDropdown isOpen onClose={onClose} pageType="collection" collectionSlug="my-gallery" />
-    );
+    render(<MenuDropdown isOpen onClose={onClose} isCollectionPage collectionSlug="my-gallery" />);
 
     const update = await screen.findByRole('link', { name: 'Update' });
     expect(update).toHaveAttribute('href', '/my-gallery?manage=1');
@@ -458,10 +456,10 @@ describe('MenuDropdown — admin item gating (isAdmin, not isLocalEnvironment)',
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('hides Update when pageType is not "collection", even for an isAdmin principal', async () => {
+  it('hides Update when isCollectionPage is unset, even for an isAdmin principal', async () => {
     mockMe.mockResolvedValue(adminPrincipal);
 
-    render(<MenuDropdown isOpen onClose={jest.fn()} pageType="default" />);
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
     await screen.findByRole('link', { name: 'Explore' }); // settle the me() fetch
 
     expect(screen.queryByRole('link', { name: 'Update' })).not.toBeInTheDocument();
@@ -471,7 +469,7 @@ describe('MenuDropdown — admin item gating (isAdmin, not isLocalEnvironment)',
     mockMe.mockResolvedValue(principal); // isAdmin: false
 
     render(
-      <MenuDropdown isOpen onClose={jest.fn()} pageType="collection" collectionSlug="my-gallery" />
+      <MenuDropdown isOpen onClose={jest.fn()} isCollectionPage collectionSlug="my-gallery" />
     );
     await screen.findByRole('button', { name: /log out/i }); // settle the me() fetch
 
@@ -486,7 +484,7 @@ describe('MenuDropdown — admin item gating (isAdmin, not isLocalEnvironment)',
     mockMe.mockResolvedValue(null);
 
     render(
-      <MenuDropdown isOpen onClose={jest.fn()} pageType="collection" collectionSlug="my-gallery" />
+      <MenuDropdown isOpen onClose={jest.fn()} isCollectionPage collectionSlug="my-gallery" />
     );
     await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
 

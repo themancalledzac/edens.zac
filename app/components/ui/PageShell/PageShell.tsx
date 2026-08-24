@@ -7,8 +7,6 @@ import styles from './PageShell.module.scss';
 
 export interface PageShellProps {
   children: ReactNode;
-  /** Forwarded to SiteHeader; mirrors SiteHeaderProps['pageType']. */
-  pageType?: 'default' | 'manage' | 'collection' | 'collectionsCollection';
   collectionSlug?: string;
   /** Render the site header (default true). Status pages pass false. */
   withHeader?: boolean;
@@ -24,10 +22,13 @@ export interface PageShellProps {
  * `withHeader={false}`, because the link itself is now unconditional. The link is rendered once
  * from the root layout, above the route's Suspense boundary; see {@link SkipLink} for why it
  * cannot live down here.
+ *
+ * No `isCollectionPage` prop: nothing the shell wraps is a single collection's page, so its header
+ * never shows the admin Update item. The one page that does — `CollectionPage` — renders
+ * {@link SiteHeader} directly. Add the prop back here the day a shell-wrapped page needs it.
  */
 export function PageShell({
   children,
-  pageType = 'default',
   collectionSlug,
   withHeader = true,
   className,
@@ -36,7 +37,7 @@ export function PageShell({
   return (
     <div className={styles.container}>
       <main className={mainClasses}>
-        {withHeader && <SiteHeader pageType={pageType} collectionSlug={collectionSlug} />}
+        {withHeader && <SiteHeader collectionSlug={collectionSlug} />}
         <SkipTarget>{children}</SkipTarget>
       </main>
     </div>

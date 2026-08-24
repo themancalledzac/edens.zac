@@ -107,7 +107,7 @@ export default async function CollectionsPage() {
 
   if (!collection) {
     return (
-      <PageShell pageType="collectionsCollection">
+      <PageShell>
         <header className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>Collections</h1>
         </header>
@@ -122,7 +122,7 @@ export default async function CollectionsPage() {
   const [ssrViewport, me] = await Promise.all([resolveSsrViewport(), meServer()]);
 
   return (
-    <PageShell pageType="collectionsCollection">
+    <PageShell>
       <h1 className={styles.srOnly}>Collections</h1>
 
       <CollectionPageClient
