@@ -5,29 +5,10 @@ import { useCallback, useState } from 'react';
 
 import {
   type ContentFilterCriteria,
+  FILTER_PARAM_KEYS,
   parseFilterFromParams,
   serializeFilterToParams,
 } from '@/app/utils/contentFilter';
-
-/**
- * Query keys the filter layer owns. MUST mirror serializeFilterToParams in
- * contentFilter.ts — these are the only keys syncToUrl is allowed to clear, so
- * any param it doesn't own (e.g. `image` for the fullscreen deep-link) survives.
- */
-const FILTER_PARAM_KEYS = [
-  'rating',
-  'people',
-  'location',
-  'tag',
-  'camera',
-  'date',
-  'q',
-  'from',
-  'to',
-  'isFilm',
-  'bw',
-  'collection',
-] as const;
 
 /**
  * Bridges the tested filter-URL helpers (parseFilterFromParams /

@@ -50,14 +50,8 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest(INTERACTIVE_SELECTOR) !== null;
 }
 
-/**
- * Backwards-compatible alias for the union of content types that can open in the fullscreen
- * viewer. Now includes GIF/MP4 — see {@link ViewableContent}.
- */
-export type ImageBlock = ViewableContent;
-
 export type FullScreenState = {
-  images: ImageBlock[];
+  images: ViewableContent[];
   currentIndex: number;
 } | null;
 
@@ -91,7 +85,7 @@ export function useFullScreenImage(): {
   /** Flip immersive mode. Call from a user gesture so the native fullscreen request survives. */
   toggleImmersive: () => void;
   isSwiping: RefObject<boolean>;
-  showImage: (image: ImageBlock, allImages?: ImageBlock[]) => void;
+  showImage: (image: ViewableContent, allImages?: ViewableContent[]) => void;
   hideImage: (e?: MouseEvent) => void;
   toggleMetadata: (e: MouseEvent) => void;
   setLoadedImageIds: Dispatch<SetStateAction<Set<number>>>;
@@ -178,7 +172,7 @@ export function useFullScreenImage(): {
    * clicked and always has one to render — a state carrying no renderable image blacks out the page
    * (see `FullScreenModal`).
    */
-  const showImage = useCallback((image: ImageBlock, allImages?: ImageBlock[]) => {
+  const showImage = useCallback((image: ViewableContent, allImages?: ViewableContent[]) => {
     const index = allImages?.findIndex(img => img.id === image.id) ?? -1;
     const images = index === -1 ? [image] : allImages!;
 

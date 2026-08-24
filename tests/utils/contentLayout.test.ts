@@ -1287,6 +1287,46 @@ describe('createHeaderRow', () => {
 });
 
 describe('processContentForDisplay', () => {
+  describe('Ordering', () => {
+    /**
+     * `ProcessContentOptions` carried a `displayMode` field that nothing ever read. Sorting
+     * belongs to `processContentBlocks`, which runs one layer earlier; the collection page then
+     * layers its Date chip on top and the manage grid sinks hidden blocks to the bottom. A sort
+     * added back here would silently undo both, so pin the pass-through.
+     *
+     * The fixture makes array order, `orderIndex` order and `createdAt` order three different
+     * permutations, so either sort `processContentBlocks` can apply would be visible here. `H`
+     * on its own is not enough: it sets `orderIndex` from the id but leaves `createdAt`
+     * undefined, and `sortContentByCreatedAt` then compares 0 against 0 and returns the array
+     * untouched — the assertion would pass against exactly the code it exists to catch.
+     */
+    it('emits content in the order it was given, never re-sorted', () => {
+      const dated = (id: number, createdAt: string): ContentImageModel => ({
+        ...H(id, 0),
+        createdAt,
+      });
+      const content = [
+        dated(50, '2026-01-02T00:00:00Z'),
+        dated(10, '2026-01-05T00:00:00Z'),
+        dated(30, '2026-01-01T00:00:00Z'),
+        dated(20, '2026-01-03T00:00:00Z'),
+        dated(40, '2026-01-04T00:00:00Z'),
+      ];
+      const byArrayPosition = [50, 10, 30, 20, 40];
+      const byOrderIndex = [10, 20, 30, 40, 50];
+      const byCreatedAt = [30, 50, 20, 40, 10];
+
+      const emitted = processContentForDisplay(content, 1000)
+        .flatMap(row => row.items)
+        .filter(item => !isBlankContent(item.content))
+        .map(item => item.content.id);
+
+      expect(emitted).toEqual(byArrayPosition);
+      expect(emitted).not.toEqual(byOrderIndex);
+      expect(emitted).not.toEqual(byCreatedAt);
+    });
+  });
+
   describe('Full pipeline: content array in → sized rows out', () => {
     it('should produce at least 1 row with numeric sizes for 5 horizontal images', () => {
       const content = [H(1, 0), H(2, 0), H(3, 0), H(4, 0), H(5, 0)];

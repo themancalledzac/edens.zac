@@ -114,7 +114,6 @@ export function buildContentRows(
     const rows = processContentForDisplay(content || [], viewport.contentWidth, chunkSize, {
       isMobile: viewport.isMobile,
       collectionData,
-      displayMode: collectionData?.displayMode,
       targetAR,
       mobileChunkSize,
       forceHeaderRail,

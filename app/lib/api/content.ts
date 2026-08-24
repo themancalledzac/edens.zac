@@ -60,19 +60,63 @@ export async function getAllLocations(): Promise<Array<{
 }
 
 /**
- * Search params for the image search endpoint.
+ * The filter dimensions the public search endpoint and the admin all-images endpoint share.
  * Within each dimension: OR logic (tagIds=1,2 means "tag 1 OR tag 2").
  * Across dimensions: AND logic (tagIds=1&cameraId=3 means "tag 1 AND camera 3").
  */
-export interface SearchImagesParams {
+export interface ImageFilterParams {
   tagIds?: number[];
   personIds?: number[];
   cameraId?: number;
   locationId?: number;
   lensId?: number;
+  /** Returns images with rating >= minRating (1-5). */
   minRating?: number;
   isFilm?: boolean;
   blackAndWhite?: boolean;
+}
+
+/**
+ * Build the shared filter half of the query string for the two image endpoints.
+ *
+ * `listEncoding` is the one thing the two backends disagree on: the public search endpoint reads
+ * `tagIds=1,2` as one comma-joined value, the admin endpoint reads `tagIds=1&tagIds=2` as repeats.
+ * Getting that wrong returns the wrong photos rather than erroring, so it is an explicit argument
+ * with no default.
+ *
+ * Pagination is deliberately excluded — search sends `page`/`size` only when given, admin always
+ * sends them with defaults, and folding that difference in here would hide it.
+ */
+function buildImageFilterParams(
+  params: ImageFilterParams,
+  listEncoding: 'csv' | 'repeat'
+): URLSearchParams {
+  const search = new URLSearchParams();
+
+  const appendList = (key: string, ids: number[] | undefined): void => {
+    if (!ids?.length) return;
+    if (listEncoding === 'csv') {
+      search.set(key, ids.join(','));
+      return;
+    }
+    for (const id of ids) search.append(key, String(id));
+  };
+
+  appendList('tagIds', params.tagIds);
+  appendList('personIds', params.personIds);
+
+  if (params.cameraId !== undefined) search.set('cameraId', String(params.cameraId));
+  if (params.locationId !== undefined) search.set('locationId', String(params.locationId));
+  if (params.lensId !== undefined) search.set('lensId', String(params.lensId));
+  if (params.minRating !== undefined) search.set('minRating', String(params.minRating));
+  if (params.isFilm !== undefined) search.set('isFilm', String(params.isFilm));
+  if (params.blackAndWhite !== undefined) search.set('blackAndWhite', String(params.blackAndWhite));
+
+  return search;
+}
+
+/** Search params for the image search endpoint. */
+export interface SearchImagesParams extends ImageFilterParams {
   page?: number;
   size?: number;
 }
@@ -82,17 +126,8 @@ export interface SearchImagesParams {
  * Multi-dimensional image search with optional filters
  */
 export async function searchImages(params: SearchImagesParams): Promise<ContentImageModel[]> {
-  const searchParams = new URLSearchParams();
+  const searchParams = buildImageFilterParams(params, 'csv');
 
-  if (params.tagIds?.length) searchParams.set('tagIds', params.tagIds.join(','));
-  if (params.personIds?.length) searchParams.set('personIds', params.personIds.join(','));
-  if (params.cameraId !== undefined) searchParams.set('cameraId', String(params.cameraId));
-  if (params.locationId !== undefined) searchParams.set('locationId', String(params.locationId));
-  if (params.lensId !== undefined) searchParams.set('lensId', String(params.lensId));
-  if (params.minRating !== undefined) searchParams.set('minRating', String(params.minRating));
-  if (params.isFilm !== undefined) searchParams.set('isFilm', String(params.isFilm));
-  if (params.blackAndWhite !== undefined)
-    searchParams.set('blackAndWhite', String(params.blackAndWhite));
   if (params.page !== undefined) searchParams.set('page', String(params.page));
   if (params.size !== undefined) searchParams.set('size', String(params.size));
 
@@ -244,18 +279,9 @@ export async function updateImages(updates: ContentImageUpdateRequest[]): Promis
  * All filter fields are optional; only set fields participate in the query.
  * Within each list dimension: OR logic. Across dimensions: AND logic.
  */
-export interface GetAllImagesParams {
+export interface GetAllImagesParams extends ImageFilterParams {
   page?: number;
   size?: number;
-  locationId?: number;
-  tagIds?: number[];
-  personIds?: number[];
-  cameraId?: number;
-  lensId?: number;
-  /** Returns images with rating >= minRating (1-5). */
-  minRating?: number;
-  isFilm?: boolean;
-  blackAndWhite?: boolean;
   /** ISO YYYY-MM-DD; inclusive lower bound on capture_date. */
   captureStartDate?: string;
   /** ISO YYYY-MM-DD; inclusive upper bound on capture_date. */
@@ -283,35 +309,11 @@ export interface PagedImages {
  * resilience against future shape changes.
  */
 export async function getAllImages(params: GetAllImagesParams = {}): Promise<PagedImages> {
-  const {
-    page = 0,
-    size = 50,
-    locationId,
-    tagIds,
-    personIds,
-    cameraId,
-    lensId,
-    minRating,
-    isFilm,
-    blackAndWhite,
-    captureStartDate,
-    captureEndDate,
-  } = params;
+  const { page = 0, size = 50, captureStartDate, captureEndDate } = params;
   const search = new URLSearchParams();
   search.set('page', String(page));
   search.set('size', String(size));
-  if (locationId !== undefined) search.set('locationId', String(locationId));
-  if (tagIds?.length) {
-    for (const id of tagIds) search.append('tagIds', String(id));
-  }
-  if (personIds?.length) {
-    for (const id of personIds) search.append('personIds', String(id));
-  }
-  if (cameraId !== undefined) search.set('cameraId', String(cameraId));
-  if (lensId !== undefined) search.set('lensId', String(lensId));
-  if (minRating !== undefined) search.set('minRating', String(minRating));
-  if (isFilm !== undefined) search.set('isFilm', String(isFilm));
-  if (blackAndWhite !== undefined) search.set('blackAndWhite', String(blackAndWhite));
+  for (const [key, value] of buildImageFilterParams(params, 'repeat')) search.append(key, value);
   if (captureStartDate) search.set('captureStartDate', captureStartDate);
   if (captureEndDate) search.set('captureEndDate', captureEndDate);
 
