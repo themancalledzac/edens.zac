@@ -144,12 +144,15 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | B6 | Fold in `CollectionContentRenderer` characterization | Low | −150 | ☐ |
 | B7 | `useClickOutside` spy tests | Low | −90 | ☐ |
 | B8 | Fill the required-coverage gaps | Low | +1,100–1,650 for the 4 open bullets (est. +600 for all 6) | ◐ 2 of 6 — PR #266 (clearCache), PR #267 (Escape) |
+| B9 | `useCollectionEdit.buffer.test.tsx` flakes under parallel load | Low | unknown until it reproduces | ☐ 0/13 locally — reproduce under other conditions, do not re-measure here |
 | C1 | Unsaved people/gallery-access wipe (HIGH) | Low | +73 −11 | ✅ PR #264 |
 | C2 | About portrait aspect ratio | Trivial | +99 −5 | ✅ PR #281 |
 | C3 | `SelectsContext.toggle` purity | Low | +121 −10 | ✅ PR #282 |
 | C4 | Cache tags that never connect | Low | +155 −62 | ✅ PR #279 |
 | C5 | Assorted LOW bugs | Low | +497 −101 (11 files) | ✅ PR #283 |
 | C6 | Password cover strip missing on the public card path | Low-medium | ±30 | ⛔ BACKEND-BLOCKED (split out of E1) |
+| C7 | `emailShareLink` POSTs to a route that does not exist | Low | ±40 src, +30 test | ☐ (FE built, BE missing — decide build vs hide) |
+| C8 | Unfollowing leaves the chip count stale | Low | +40 src, +80 test | ☐ (do before H1) |
 | D1 | Gate `POST /api/revalidate` (HIGH) | Low | +175 | ✅ PR #265 |
 | D2 | Gate `clearCacheAction` | Low | +212 (est. +15) | ✅ PR #266 |
 | D3 | Security headers | Low-medium | +60 src, +0–40 test | ✅ PR #274 |
@@ -179,6 +182,9 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | G1 | Docs corrections | Trivial | ±50 | ☐ |
 | G2 | Inline-comment enforcement + migration (decided: keep the rule) | Low | ~neutral (relocation + splits) | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors |
 | G3 | `/user/selects` decision | — | — | ⛔ USER DECISION |
+| H1 | Merge `Following` into `Collections` on `/user` | Medium | −60 src, ±150 test churn (6 test files) | ☐ (do C8 first) |
+| H2a | `/user` rail copy pass + chip-style the Admin links | Low | −25 src, +60–120 test (new `AdminCard` suite) | ☐ |
+| H3 | `Send a message` into the rail as a plain button | Low | ±40 | ☐ direction decided; ride H2a |
 
 Groups A and B together are ~5,000 lines removed at near-zero regression risk.
 
@@ -322,6 +328,41 @@ while you are here — that is B5, and it carries its own fixture-consolidation 
 
 - [ ] Drop the four listener-attachment-spy tests. They pin an implementation detail; the behavior tests already pin the outcomes.
 
+### ☐ B9 · `useCollectionEdit.buffer.test.tsx` flakes under parallel load
+
+Filed 2026-08-23 out of B2's run. It is a real suite defect, not a B2 artifact — the file is
+unrelated to B2's, and it passes standalone and on a clean re-run.
+
+- [ ] `tests/components/ContentCollection/useCollectionEdit.buffer.test.tsx` fails intermittently
+      when the full suite runs in parallel, and passes when run alone.
+
+**Measured 2026-08-23: 0 failures in 13 full-suite runs.** Default parallel scheduling, no
+`--runInBand`, 230 suites / 4126 tests / ~11.6s per run. Zero total failures and zero failures of the
+named file.
+
+**The instrument was validated in the same session, because a null result from an unproven detector
+is not a result.** The run loop classified pass/fail by grepping jest's stdout, which is the mistake
+that produced a false all-CAUGHT table elsewhere this session — a grep can match an unrelated line,
+or miss a crash that never prints a summary. Control: a deliberately failing test was injected into
+`tests/`, the full suite re-run, and both signals confirmed to fire — exit code 1 and the grep
+reporting FAIL, against `Tests: 1 failed, 4126 passed`. The control file was then removed and the
+tree confirmed clean. So the channel can speak, and 0/13 means what it says.
+
+**0/13 does not close this item, and that is deliberate.** An intermittent failure that hides for
+thirteen runs is worse than one that fails every time, not better — it will surface in CI on some
+unrelated PR and cost that author an afternoon. What 0/13 does establish is that it is rarer than
+~1-in-13 on this machine, which bounds the search: whoever picks it up should reproduce under
+different conditions rather than repeating this measurement, since repeating it is now known to be
+uninformative. Try a loaded machine, a cold cache, `--maxWorkers` variations, or CI itself, and
+record the conditions alongside the count. If it cannot be reproduced under any of those, close it
+as not-reproducible with the conditions listed — do not close it as fixed.
+
+Likely suspects once it does reproduce, given the file: this suite is the one C1 rewrote around
+re-seed effects and ref guards, and its fixtures were specifically noted as sharing array identities
+when built with `mockResolvedValue` instead of `mockImplementation`. Shared module state or a
+fixture object leaking across workers is the first place to look. Do not "fix" it by adding a
+retry or by moving it to `--runInBand`; both hide the defect rather than removing it.
+
 ### ☐ B8 · Fill the required-coverage gaps
 
 The project rule requires tests for these and they have none.
@@ -380,6 +421,94 @@ is almost certainly WHY the strip only ever existed on `collectionToContentModel
 - [ ] Only if the field lands: post-E1 the frontend side is a two-line change — pass a stripped
       `coverImage` into `buildParallaxCard`, exactly as `collectionToContentModel` now does.
 - [ ] Do NOT open this as a frontend MR before the field exists. There is nothing to write.
+
+### ☐ C7 · `emailShareLink` POSTs to an endpoint that does not exist
+
+Found 2026-08-23 while researching the email strategy (H4). The "Send" button under Share on `/user`
+404s on every click.
+
+- [ ] [share.ts:176](app/lib/api/share.ts:176) `emailShareLink` POSTs to `${SHARE}/email`, i.e.
+      `/api/read/user/share/email` (base constant at [share.ts:16](app/lib/api/share.ts:16)).
+- [ ] The backend has no such route. `UserShareControllerProd`
+      (`controller/prod/UserShareControllerProd.java:39`) declares exactly four mappings:
+      `@GetMapping` `:50`, `@PostMapping("/rotate")` `:67`,
+      `@PutMapping("/collections/{collectionId}")` `:86`,
+      `@DeleteMapping("/collections/{collectionId}")` `:107`.
+- [ ] The UI is fully built and reachable: input and Send button at
+      [ShareCard.tsx:183-200](app/components/Personal/ShareCard.tsx:183), handler `handleEmail` at
+      `:112-121`. The 404 surfaces as the generic "Could not send that email" at `:121`, so it reads
+      as a transient failure rather than a missing feature.
+- [ ] The `ShareEmailResult { sent, reason }` contract at
+      [share.ts:60-63](app/lib/api/share.ts:60) was written against a backend that was never built.
+
+**Three claims checked, not assumed** — the C4 lesson is that a literal grep can report a live route
+as dead when the real one is assembled from a template, so all three were run before filing:
+(1) *Reachable in production?* Yes. The Send button renders in the `settings.exists && shareUrl` arm
+of `ShareCard.tsx` (from `:167`) with no env gate, no `isAdmin` gate and no feature flag; it enables
+as soon as the input is non-empty. (2) *A mapping built from a constant or template?* No. On backend
+`origin/main` every mapping annotation under `src/main/java/**/controller/**` is a plain string
+literal; the only four that are not bare `Mapping("…")` are `@PostMapping(value = "/literal",
+consumes = …)` forms, still literals. There is nowhere for a template-assembled route to hide.
+(3) *A sibling controller that could catch it?* There is a second share controller,
+`ShareControllerProd.java` at `@RequestMapping("/api/read/share")`, but it cannot match — the
+frontend posts to `/api/read/user/share/email`, and `/api/read/share` is not a prefix of that.
+Verified against backend `origin/main`, not a working branch.
+
+The fix is a decision, not a patch: build the handler — `EmailService` already has a working send
+path to reuse — or hide the input until it exists. **Do not "fix" it by swallowing the error**; that
+converts a visible 404 into a silent no-op, which is strictly worse. Whichever way it goes, it is
+paired with H4's decision 2, since both are about whether this app sends mail on a user's behalf.
+
+### ☐ C8 · Unfollowing leaves the chip count stale
+
+Found while researching H1, filed separately because it is a bug on `main` today, independent of
+whether H1 ever ships. **Do this before H1** — see H1's second "must fix" bullet for why.
+
+- [ ] `FollowsProvider` holds a client-only `useState<Set<number>>` at
+      [FollowsContext.tsx:39](app/components/Personal/FollowsContext.tsx:39), with an optimistic
+      toggle at [:59](app/components/Personal/FollowsContext.tsx:59) and rollback at
+      [:73](app/components/Personal/FollowsContext.tsx:73).
+- [ ] The chip count is server-rendered: `userSpaceData.ts` builds the `following` section with
+      `count: followed.ok ? followedCollectionIds.length : undefined`.
+- [ ] Nothing sends the toggle back to the server, so the count cannot update until the next full
+      server render.
+
+**Verified 2026-08-23 by a parallel session, three checks, all read from `origin/main`.** Recorded
+here because the mechanism was originally asserted from an agent report and that is not evidence:
+
+1. *Is the count from the id list or the rendered blocks?* The id list — and its docblock says so
+   deliberately, because a followed collection that was deleted, or that falls outside the 500-row
+   catalog page, still counts without being renderable. **This constrains the fix:** keep the server
+   number as the base and apply a client delta. Recomputing from rendered tiles would silently
+   change what the number means.
+2. *Is the mutation client-only?* Yes. Worth noting the code is better than first described — it
+   keeps a ref mirror so two rapid clicks each observe the other's result, with a docblock
+   explaining why a functional updater cannot inform the persist direction. That is C3's lesson
+   already applied.
+3. *Does anything trigger a server re-render on toggle?* No, and this is the decisive check.
+   `addFollow` and `removeFollow` ([personal.ts:63](app/lib/api/personal.ts:63) and
+   [:77](app/lib/api/personal.ts:77)) are plain `fetch` calls returning `void`. A grep for
+   `router.refresh|revalidateTag|revalidatePath` across `app/components/Personal/`,
+   `app/components/UserSpace/` and `personal.ts` returns nothing. `FollowButton`'s `onClick` calls
+   `follows.toggle(collectionId)` and stops.
+
+**The gate is the red test.** Mount with a non-zero followed count, unfollow, assert the chip
+decrements — and confirm that fails against pre-fix `main` before the fix is written. A regression
+test that has been watched to go red is repeatable, stays in the suite, and is the evidence this
+item stands on.
+
+**Gap, stated rather than papered over: nobody has watched the badge go stale in a browser.** It
+needs a signed-in account with existing follows, which no agent session should be driving. The
+static chain closes without it — server-rendered number, client-only mutation, no path back — and
+the red test closes it further. Do not treat that as equivalent to observation, though: a test can
+encode the same wrong model as the fix and pass for the wrong reason, which is exactly how C1's
+first draft went green against buggy source. If anyone is in front of a signed-in session with
+follows, spend the minute and confirm it live.
+
+Fix constraint, carried from check 1 above: keep the server number as the base and apply a client
+delta below `FollowsProvider`. Never recompute from rendered tiles — that silently changes what the
+number means. `UserSpace.tsx` is a Server Component with no `'use client'`, so the adjustment lives
+in a client component underneath it; do not convert `UserSpace.tsx`.
 
 ---
 
@@ -593,7 +722,7 @@ Bigger, optional, sequenced last. Do each individually and verify on :3000.
 
 ### ☐ G1 · Docs corrections
 
-The book is wrong in five places.
+The book is wrong in six places.
 
 - [ ] 0204 impersonation removal, 0211 passkey fixes, and 0246 admin-panel-collapse all say "pending" — all are merged.
 - [ ] 007 still lists "Dependabot's 7 frontend vulns" — PR #254 cleared all 27.
@@ -603,6 +732,16 @@ The book is wrong in five places.
       "stops before #243" this line used to claim): it is missing #236–#252 AND the cleanup wave's
       #254–#270 — ~27 merged PRs — which violates the book's own archive rule. All five other doc
       errors above re-verified still current 2026-08-22.
+- [ ] **The email claim is stale in two places, found 2026-08-23 researching H4.** This board's own
+      roadmap item 5 below, and `docs/009-backend-and-vision.md:29`, both say invite links are
+      clipboard-only until SES ships. Invite email is **built**: `sendInviteEmail`
+      (`EmailService.java:97`) wired through `sendInviteEmailAfterCommit`
+      (`AdminUserController.java:457`, called from `:133`, `:180`, `:228`) with an `afterCommit`
+      hook so a rollback cannot mail a dead link. The remaining blocker is operational —
+      `EMAIL_ENABLED` defaults false at `EmailService.java:46` — not code. Correct both. While
+      there, note `docs/superpowers/specs/2026-07-06-email-ses-production.md` is itself partly stale:
+      it asserts one public `EmailService` method (`:20`) and "invite email doesn't exist" (`:34`,
+      `:73`), but its own C5 recommendation (`:161`) has since shipped.
 
 ### ☐ G2 · Inline-comment rule — DECIDED 2026-08-22: keep and enforce
 
@@ -643,6 +782,186 @@ too; the inventory said otherwise. USER decides: does G2b's migration (and the `
 
 ---
 
+## Group H — Feature requests
+
+Filed 2026-08-23 from a user design review of `/user` plus an annotated screenshot. Six requests came
+in; **only the three below are cleanup-board work.** H1 and H2a are startable frontend MRs with known
+test coupling. H3 is a user decision gating a small MR — the same shape as F4 and G3, which is why it
+gets a row: a board row has to be self-sufficient, so anything with a row has its section here.
+
+The other three have no rows and no sections here, because a design review, an ops project and a
+vision item are not MRs and rows for them would make this board unscannable: **H2b** (a durable
+layout for labelled metadata sections), **H4** (one email strategy), **H5** (`MenuDropdown` design
+review) and **H6** (composable page components, vision only). Their detail is in
+[group-h-features.md](2026-summer-refactor/group-h-features.md), reached from "What to build next"
+below. A bug found while researching H4 is filed as **C7** in Group C.
+
+### ☐ H1 · Merge `Following` into `Collections` on `/user`; drop the `Following` chip
+
+`Collections` should show owned, tagged and followed collections in one list. Unfollowing a
+collection that has no other association removes it from the page.
+
+**The premise checks out — there is no dedup anywhere.** It was established by reading both
+membership paths in the loader, not by comparing what renders on screen. That distinction matters
+enough to record: two sets that look identical in the browser prove nothing about whether the same
+source decides them, and a same-session review of five "duplicate" claims elsewhere on this board
+found only one that survived intact. This one is a source-level finding, so it does not need redoing.
+
+`Collections` membership is decided at
+[userSpaceData.ts:72](app/components/UserSpace/userSpaceData.ts:72) (`isContentCollection` over the
+`getUserPage()` content blocks, split at [:65](app/components/UserSpace/userSpaceData.ts:65)).
+`Following` membership is decided at
+[userSpaceData.ts:278](app/components/UserSpace/userSpaceData.ts:278), by intersecting the followed
+id list against a separate catalog read. The two sets never see each other. Own a collection and
+follow it, and it renders in both tabs today.
+
+Where the data comes from:
+
+- Followed ids: `listFollowedCollectionIdsServer()` —
+  [personal.ts:174](app/lib/api/personal.ts:174), hitting `GET /api/proxy/api/read/user/follows`
+  ([personal.ts:16](app/lib/api/personal.ts:16)). Type `FollowedCollectionIds = number[]` at
+  [Personal.ts:14](app/types/Personal.ts:14). Called at `userSpaceData.ts:248`.
+- Followed tiles: `getAllCollections(0, 500)` at `userSpaceData.ts:256`, filtered at `:278`, wrapped
+  by `toCollectionBlocks` at [:87](app/components/UserSpace/userSpaceData.ts:87).
+- Chip labels are data, not literals: `Collections` `userSpaceData.ts:302`, `Images` `:308`,
+  `Saved` `:314`, `Following` `:321`. Mapped to `ToolbarSection[]` at
+  [UserSpace.tsx:108](app/components/UserSpace/UserSpace.tsx:108), rendered at
+  [FilterToolbar.tsx:219](app/components/ui/FilterToolbar/FilterToolbar.tsx:219).
+
+Work:
+
+- [ ] Union the two sets in `userSpaceData.ts`, deduping by collection id. `collectionBlocks` (`:72`)
+      and `followedBlocks` (`:278`) are built from different sources, so the union must key on `id`,
+      never on object identity.
+- [ ] Delete the `following` section descriptor (`userSpaceData.ts:321`) and its key from the tab
+      union.
+- [ ] Decide whether the merged count includes follows (12 + 2 = 14) and whether a
+      followed-but-not-owned tile carries a visual marker. The request does not say, and the answer
+      changes the tile component, not just the loader.
+
+**Two things this item must fix rather than inherit.**
+
+1. **The catalog read is deferred, and merging un-defers it.** `getAllCollections(0, 500)` runs only
+   when `activeKey === 'following'` (`userSpaceData.ts:256`). Merging makes a 500-row catalog fetch
+   run on every `/user` load. That deferral is deliberately pinned by
+   `tests/components/UserSpace/userSpaceData.selfCatalog.test.ts:77`, so that test goes red and the
+   cost has to be accepted on purpose rather than discovered later. The cheaper path is to have the
+   backend return followed collections on the user-page read instead of intersecting client-side —
+   price that before writing the union.
+2. **The stale-count bug is C8, and C8 ships FIRST.** Unfollowing does not update the chip count on
+   `main` — mechanism and evidence are in C8, described there and not repeated here. Sequencing
+   matters and runs the opposite way to the obvious reading: H1 deletes the `Following` chip, so
+   doing H1 first does not remove the staleness, it relocates it onto the merged `Collections`
+   count. H1 also needs the tile itself to vanish on unfollow, which is strictly harder than fixing
+   a number, because tiles are server-built and the provider has no way to express a removal today.
+   C8 builds the client-delta plumbing that H1 then needs anyway. Do C8, then H1.
+
+**Claim to verify before shipping, not while shipping.** This item assumes a stale `?tab=following`
+bookmark degrades to `collections` rather than erroring, via the `resolveTabKey` fallback at
+[userSpaceData.ts:59](app/components/UserSpace/userSpaceData.ts:59) / `:31`. That is a claim about
+code that is about to change. Confirm the fallback still fires once the key is removed from the
+union — the board's record is that unverified item claims have been wrong twice.
+
+Tests that will need updating: `tests/app/user/page.test.tsx:238-262` (chip labels, counts, hrefs),
+`tests/components/UserSpace/UserSpace.sectionSwitch.test.tsx`,
+`tests/components/UserSpace/userSpaceData.test.ts:73,93,166,237`,
+`tests/components/UserSpace/userSpaceData.selfCatalog.test.ts:77`,
+`tests/components/ui/FilterToolbar.test.tsx:507`. Six files touch this chip row — distrust the
+estimate accordingly.
+
+### ☐ H2a · `/user` rail copy pass + chip-style the Admin links
+
+Copy and control changes across the three rail cards, from the annotated screenshot. Startable today
+and the smallest of the six.
+
+- [ ] Delete the passkey hint sentence at
+      [AccountCard.tsx:69](app/components/Personal/AccountCard.tsx:69) ("Sign in faster with Face /
+      Touch ID on this device."). Keep the `Add Face / Touch ID` button
+      ([:70-78](app/components/Personal/AccountCard.tsx:70), label `:77`) and move it onto the email
+      row ([:67](app/components/Personal/AccountCard.tsx:67)), right-aligned.
+- [ ] Delete the Share description sentence at
+      [ShareCard.tsx:155-158](app/components/Personal/ShareCard.tsx:155).
+- [ ] Rename `Create a link` → `Link to share` at
+      [ShareCard.tsx:160](app/components/Personal/ShareCard.tsx:160).
+- [ ] Delete the Admin description sentence at
+      [AdminCard.tsx:36](app/components/Personal/AdminCard.tsx:36).
+- [ ] Restyle the four Admin links to the filter-chip look. They render `NavLink` today
+      ([AdminCard.tsx:41](app/components/Personal/AdminCard.tsx:41), destinations as data at
+      [:16-21](app/components/Personal/AdminCard.tsx:16)), whose only styling is
+      [NavLink.module.scss:1](app/components/ui/NavLink/NavLink.module.scss:1) — colour inherit,
+      hover underline, no border, no padding, no background.
+
+**The real scope is the chip swap, not the copy edits.** `FilterChip`'s link variant
+([FilterChip.tsx:86-99](app/components/ui/FilterChip/FilterChip.tsx:86)) already renders exactly what
+`AdminCard` needs: a `next/link` anchor with chip styling and an optional count. So `AdminCard.tsx:41`
+can swap `NavLink` → `FilterChip href=…` without touching the chip component. Styling lives at
+[FilterChip.module.scss:1](app/components/ui/FilterChip/FilterChip.module.scss:1) (`.chip`), with
+`.active` `:62`, `.count` `:92`, `.trailing` `:100`.
+
+Two traps:
+
+1. `FilterChip` passes `scroll={false}`
+   ([FilterChip.tsx:93](app/components/ui/FilterChip/FilterChip.tsx:93)). That is right for `?tab=`
+   navigation and wrong for a cross-page jump to `/admin` — it will land the user mid-page. Add a
+   prop before the swap, not after.
+2. `FilterChip` is imported by exactly one file today
+   ([FilterToolbar.tsx:5](app/components/ui/FilterToolbar/FilterToolbar.tsx:5)). A second consumer
+   promotes it to a shared primitive. Budget for that and for churn in
+   `tests/components/ui/FilterChip.test.tsx:64-96`.
+
+**There is no `AdminCard` test file** — confirmed absent, not merely unfound. H2a adds one. Note the
+prove-it-fails rule needs care here: a brand-new test file has never been seen to fail, so write each
+assertion against current behaviour first, watch it pass, then change the source and watch it fail
+the other way. A new test written only against the new copy proves nothing.
+
+### ☐ H3 · `Send a message` placement — DIRECTION DECIDED 2026-08-23
+
+**Decided: keep it, move it into the metadata stack, and make it an ordinary clear button — not a
+filled or "bright" box.** The user's words: it should be "a `Button` that is clear what it's
+intended purpose is, and is in a position according to its importance or likelihood of being used."
+So this is Option A of the original pair, with the loud treatment explicitly rejected. Do it in the
+same pass as H2a, which restyles the same rail.
+
+**The two entry points already share a form, so this is placement, not plumbing.**
+`SendMessageButton` ([SendMessageButton.tsx:27](app/components/SendMessageButton/SendMessageButton.tsx:27),
+43 lines) opens `ContactForm` at
+[:38](app/components/SendMessageButton/SendMessageButton.tsx:38). The menu's Contact disclosure opens
+the same component at [MenuDropdown.tsx:343](app/components/MenuDropdown/MenuDropdown.tsx:343). On
+`/user` the email field is hidden and autofilled from the principal via `lockedEmail={me?.email}`.
+
+Why it floats top-right in the screenshot: it is not in the rail. It renders in its own top bar at
+[user/page.tsx:66-68](app/user/page.tsx:66), while the three cards ride `railExtras` at
+[:76](app/user/page.tsx:76).
+
+Work:
+
+- [ ] Move `SendMessageButton` out of the top bar (`user/page.tsx:66-68`) and into `railExtras`
+      (`:76`) with the three cards.
+- [ ] **It is currently `variant="ghost" size="sm"`** — the quietest button the design system has,
+      which is the opposite of the brief. Promote it to a normal-weight variant. `outline` matches
+      what `ShareCard` and `AccountCard` already use for their actions, so the rail stays coherent
+      without anything shouting.
+- [ ] **Reconsider the label.** "Send a message" does not say who receives it, and this sits on the
+      viewer's *own* page, which makes the recipient genuinely ambiguous. Something naming the
+      destination reads clearer. Same string appears twice — button
+      [:28](app/components/SendMessageButton/SendMessageButton.tsx:28) and modal heading
+      [:34](app/components/SendMessageButton/SendMessageButton.tsx:34) — change both.
+
+**Open sub-question the brief surfaces but does not settle: ordering by importance depends on who is
+looking.** For a signed-in client or follower, messaging the owner is plausibly the most-used thing
+on the page, which argues for first position. For the site owner viewing their own `/user`, it is
+close to useless — the form would prefill their own address, and they read incoming messages through
+Admin → Comments instead, which argues for last or hidden. A single fixed position cannot be right
+for both. Decide: one fixed slot, or order the rail on `isAdmin`. Cheapest defensible default is
+first for non-admins, last for admins, since the rail is already assembled per-viewer.
+
+The docblock at
+[SendMessageButton.tsx:13-19](app/components/SendMessageButton/SendMessageButton.tsx:13) says the
+button "sits in the collection header's filter-bar area". That stops being true the moment it moves —
+update it in the same commit rather than leaving a stale description behind.
+
+---
+
 ## What to build next (product roadmap, not cleanup)
 
 Kept here because the cleanup sequencing has to make room for it.
@@ -653,12 +972,22 @@ Kept here because the cleanup sequencing has to make room for it.
 2. Backend `blocks_per_page` fix → restore ISR on the home page (002). Every visitor pays a live Spring fetch on the hottest page today.
 3. The now-unblocked 002 perf tail (items 2, 4, 5, 7, 9) — the "after the refactor wave" condition has been met.
 4. Client-gallery BCrypt (003) — plaintext gallery passwords, real users on the other end.
-5. Email/SES go-live (009) — invite links are clipboard-only until this ships; gates client onboarding.
+5. Email/SES go-live (009) — gates client onboarding. **Corrected 2026-08-23:** invite email is
+   built and wired; the blocker is operational (`EMAIL_ENABLED` defaults false), not code. See H4 and
+   the G1 bullet. Self-serve password reset does not exist at all and is the real gap.
 6. Passkey enrollment-state UI (009) — FE and BE fixes are merged; needs the backend credentials list/remove endpoint.
 
 **Admin and internal:** staging collection (008), `/user` ↔ `/admin/users/[id]` layout unification (008, unblocked by 0204), 004 stragglers (the Breadcrumb drop is A1, chip-click verification, A3 Spot-1), CloudFlare Phase 2 (007).
 
 **Debt:** E1 first (correctness risk), then the error-tracking decision (Sentry vs CloudWatch), F1, property-based layout tests, the 001 CSS sweeps, and G1.
+
+**Feature requests (filed 2026-08-23 from a `/user` design review):** four items that are not MRs —
+a durable layout for labelled metadata sections (H2b), one email strategy (H4), a `MenuDropdown`
+design review (H5), and composable page components as vision only (H6). Detail in
+[group-h-features.md](2026-summer-refactor/group-h-features.md). The three that *are* board work —
+H1, H2a, H3 — are in `## Group H` above. Sequencing note: **H5 waits on E8**, which already owns the
+mechanical half of that component, and **H2b overlaps the 008 `/user` ↔ `/admin/users/[id]` layout
+unification** — settle those two together or they will produce two competing designs.
 
 ## Session log
 
@@ -666,6 +995,32 @@ One line per `/next` run. The newest entry is here; older entries are in
 [session-log.md](2026-summer-refactor/session-log.md). Three consecutive entries ending in the same `Next:` means
 that item is being avoided, not scheduled — make it real work or drop it from the board.
 
+- 2026-08-23 — **Not a `/next` run: six feature requests filed from a user design review of `/user`.**
+  Filed as Group H. Only H1, H2a and H3 got board rows; H2b/H4/H5/H6 are a design review, an ops
+  project, a second design review and a vision item, so they went to
+  [group-h-features.md](2026-summer-refactor/group-h-features.md) with a pointer under "What to
+  build next". **The rule that decided the split is reachability, not status** — F4 and G3 are ⛔ and
+  still carry rows because each has a self-sufficient live section, so H3 (a decision gating a ±40
+  MR) got the same treatment and the four non-MRs did not.
+  Three parallel explorers gathered the refs; **three of their claims were checked and two were
+  wrong in a way that changed the item.** H5's "should we have this menu on desktop" assumed no
+  desktop treatment exists — there are eight `@media (width >= 768px)` blocks and a JS click-outside
+  branch at `BREAKPOINTS.mobile`. H5's "make About add a component to the page" assumed About is a
+  route — there is no `app/about/`; it is already an inline `Disclosure`, and `About.tsx` is 33
+  lines, props-free and droppable anywhere. Both sub-questions changed meaning once checked.
+  Filed **C7** from the H4 research: `emailShareLink` (`share.ts:176`) POSTs to
+  `/api/read/user/share/email`, which no controller declares. The peer session pushed back on a
+  zero-hit grep as the C4 failure mode, correctly — so it was re-verified three ways before filing
+  (button reachable in prod with no gate; every controller mapping on backend `origin/main` is a
+  string literal, so no template route can hide; the sibling `ShareControllerProd` at
+  `/api/read/share` cannot match on prefix). All three are recorded in the item.
+  Also corrected the roadmap's "invite links are clipboard-only" claim — invite email is built and
+  wired, the blocker is operational — as a sixth G1 bullet.
+  Coordination: this ran alongside the #285 archive split in the SAME checkout. Nothing was written
+  until #285 merged and a branch was cut off `main`. A first draft was misfiled into the archive
+  directory and deleted once the shipped-only rule was checked at lines 120-123.
+  Next: H2a — smallest of the three and startable today, but H3 is a one-line user decision that
+  gates it, so ask first.
 - 2026-08-24 — **Group C is closed except the backend-blocked C6.** Shipped C4 (#279, +155 −62),
   E11 (#280, +277 −28), C2 (#281, +99 −5), C3 (#282, +121 −10), C5 (#283, +497 −101); all five
   merged, `main` at 2e7a184. Estimates on the board rows were replaced with measured diffs.
