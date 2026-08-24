@@ -249,6 +249,15 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   left the relevant fields `undefined`. The same mistake is available one level up. Where an
   observation is cheap — a page you can open, a button you can click — spend the minute and record
   that you did. Where it is not, say so in the item rather than implying it happened.
+- **An inventory number with no recorded method is not verifiable, only re-derivable — so record
+  the command beside the number.** Line refs can be checked by opening the file; counts cannot,
+  because the next session does not know what was being counted. Two items were found unrepairable
+  on 2026-08-24 for exactly this: F2's "twenty render-constant props copied ~10 times" (actual
+  intersection 16, actual copy sites 3) and G2c's per-file comment-block inventory, where today's
+  count differs from the recorded one by so much that it is plainly a different metric rather than
+  drift. Both had been "re-verified" at some point, which is what made them trusted. **When you
+  write a count on this board, write the command that produced it on the same line.** A count that
+  drives an estimate and cannot be re-run is worse than no count, because it gets believed.
 
 ## MR board
 
@@ -307,11 +316,12 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value       | Low         | **−3 src / −4 test net actual**, 36 call sites (est. −2 src, ~40 sites)                    | ✅ PR #307 — the one estimate on this board that held                                        |
 | E15 | `createHeaderRow`'s two trailing boolean params → options object         | Low         | **+22 src net / 14 test call sites** (est. ±15 src, ~20 sites)                             | ✅ PR #314 — stacked on #313; first call-site estimate to come in OVER                       |
 | E16 | Revalidate the OLD slug when a location is RENAMED                       | Low-medium  | **+40 src / +281 test actual** across 2 slices (est. +30 src / +120 test)                  | ✅ PR #316 (slice 1) + #317 (slice 2) — src held; test half 2.3x over                        |
+| E17 | Collapse the inert `pageType` union to a boolean                         | Low         | −15 src / ~0 test (measured, not estimated — see section)                                  | ☐ COLD — filed 2026-08-24 out of E8's guardrail, evidence attached                           |
 | F1  | Decompose `useCollectionEdit.tsx`                                        | Medium-high | ~neutral                                                                                   | ☐                                                                                            |
 | F2  | `RendererContext` for the BoxRenderer tree                               | Medium      | −100 src, **+150–250 test** (re-sized 2026-08-24, bias 1b)                                 | ☐                                                                                            |
 | F3  | File moves and renames                                                   | Medium      | ~neutral                                                                                   | ☐                                                                                            |
 | F4  | `TaxonomyPage` ← `LocationPageClient`                                    | Medium      | −150                                                                                       | ⛔ USER DECISION                                                                             |
-| F5  | `FullScreenModal` link + resolver cleanup                                | Low         | **−25 src / +20 test net actual** (est. −30 src, +60–120 test)                             | ◐ PR #318 OPEN — src held; test came in UNDER, unlike E13/E16                                |
+| F5  | `FullScreenModal` link + resolver cleanup                                | Low         | **−25 src / +20 test net actual** (est. −30 src, +60–120 test)                             | ✅ PR #318 — src held; test came in UNDER, unlike E13/E16                                    |
 | G1  | Docs corrections                                                         | Trivial     | **+106 / −72 actual** (est. ±50)                                                           | ✅ PR #303                                                                                   |
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)          | Low         | ~neutral (relocation + splits)                                                             | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors                       |
 | G3  | `/user/selects` decision                                                 | —           | —                                                                                          | ⛔ USER DECISION                                                                             |
@@ -447,7 +457,7 @@ remaining items as merges, not deletions.**
       (`makeState()` returns `CollectionUpdateResponseDTO`, a different type). One `makeMetadata()`
       export covers all of them. Est −350 to −450 net.
 
-### ☐ B6 · Fold in `CollectionContentRenderer` characterization
+### ✅ B6 · Fold in `CollectionContentRenderer` characterization — PR #294 + #297
 
 - [ ] `CollectionContentRenderer.characterization.test.tsx`'s stated purpose (pin behavior before the `getClickEligibility` extraction) is complete. Fold the ~6 unique wiring tests into the main file and delete the rest.
 
@@ -508,7 +518,7 @@ different core counts, and it is where an intermittent failure would actually co
 afternoon. If this resurfaces there, reopen with the CI run URL and go straight to the shared-state
 suspects named above; do not re-run the local measurement, which is now 22-for-22 uninformative.
 
-### ☐ B8 · Fill the required-coverage gaps
+### ◐ B8 · Fill the required-coverage gaps — 5 of 6 shipped (#266, #267, #295, #296)
 
 The project rule requires tests for these and they have none.
 
@@ -545,7 +555,7 @@ The project rule requires tests for these and they have none.
 C1–C5 merged (#264, #281, #282, #279, #283). Full write-ups:
 [group-c-bugs.md](2026-summer-refactor/group-c-bugs.md). C4's `collections-location-${slug}` report became E12.
 
-### ☐ C6 · Password cover strip is missing on the public collection-card path
+### ⛔ C6 · Password cover strip is missing on the public collection-card path — BACKEND-BLOCKED
 
 Split out of E1, which deliberately left it alone to stay a provable no-op.
 
@@ -754,7 +764,7 @@ MR, you have gone out of scope.
       After #306 the guards live in **one** place, not two — `createSlugCache`'s `get` serves both
       caches — so deleting them is now a single edit and M3 goes red on 6 tests, not 4.
 
-### ◐ E4 · Entity-diff generics — twins shipped; IMAGE-guard half struck
+### ✅ E4 · Entity-diff generics — PR #311; twins shipped, IMAGE-guard half STRUCK from scope
 
 **Why it is queued next after G4.** Both refs verified correct against `main` 2026-08-24 (`contentFilter.ts:68`,
 `contentTypeGuards.ts:23` — neither drifted). It is the same generic-collapse shape E3 just proved,
@@ -1003,7 +1013,7 @@ branch-only refs (CollectionsPanel) are main refs. Verified byte-identical by `d
 
 ---
 
-### ☐ E12 · Wire up `collections-location-${slug}`
+### ✅ E12 · Wire up `collections-location-${slug}` — PR #301 (image-path trigger split out as E13)
 
 _Moved off C4 when Group C was archived. It was scoped, sized and ready, and had no board row —
 the exact drift the board-maintenance note describes. C4 left it untouched deliberately and said
@@ -1126,7 +1136,7 @@ image-side TRIGGER for a page whose contents both sides feed.
       `location.setSlug(SlugUtil.generateSlug(locationName))` with no guard, and the DAO's UPDATE
       writes the column. So the old slug does not go stale, it **stops existing**:
       `CollectionService.getLocationPageBySlug` resolves via `locationRepository.findBySlug(...)
-    .orElseThrow(...)`, and there is no slug-history or redirect table anywhere in the backend.
+  .orElseThrow(...)`, and there is no slug-history or redirect table anywhere in the backend.
       `/location/{old-slug}` 404s while its cache tag keeps serving a snapshot of a page whose URL
       is gone. **Filed as E16 rather than folded in here** — the caller is a generic list component
       shared with tags and people, so it needs a callback prop, not a hardcoded call. That is a
@@ -1347,7 +1357,7 @@ went the other way (+22) and the call sites still read better —
 
 ---
 
-### ☐ E16 · Revalidate the OLD slug when a location is RENAMED — COLD
+### ✅ E16 · Revalidate the OLD slug when a location is RENAMED — PR #316 + #317
 
 _Split out of E13, 2026-08-24. E13's "check before building" bullet asked whether the frontend even
 exposes a location rename. It does, and the answer was worth its own item._
@@ -1502,18 +1512,107 @@ above.
 
 ---
 
+### ☐ E17 · Collapse the inert `pageType` union to a boolean — COLD
+
+Filed 2026-08-24 out of E8's guardrail. E8 was told to leave the `pageType` union alone and report
+what removing it would do; this is that report promoted to its own item, so the evidence does not
+rot inside a shipped section.
+
+**The union does one boolean's work.** `pageType?: 'default' | 'manage' | 'collection' |
+'collectionsCollection'` is declared in THREE places — `MenuDropdown.tsx:28`, `SiteHeader.tsx:12`,
+`PageShell.tsx:11`. `SiteHeader` and `PageShell` are pure pass-throughs with no styling hook. The
+only read anywhere in the repo is `isAdmin && pageType === 'collection'`, gating the Update item.
+
+**Measured 2026-08-24, method recorded** (per the new counting rule in "How to use this doc"):
+
+- `'manage'` — **zero call sites repo-wide.** Narrowing the union to drop it: `tsc --noEmit` clean.
+  Free, 3-line deletion.
+- `'collectionsCollection'` — behaviorally inert but **not free**: 6 src call sites plus 1 test
+  assertion. Narrowing produced exactly 7 `TS2322` errors, at `(admin)/admin/page.tsx:82`,
+  `(admin)/admin/users/[id]/page.tsx:100` and `:136`, `collections/page.tsx:110` and `:125`,
+  `ContentCollection/CollectionPage.tsx:150`, and `tests/components/ui/PageShell.test.tsx:29`.
+- `'default'` — explicit at 3 call sites, and the defaulted value.
+
+**Inertness was proven by perturbation, not by grep — and unlike E10, the claim held.** Flipping all
+six `'collectionsCollection'` callers to `'default'` left **4374/4374 tests and 244/244 suites
+passing, zero movement.** This is the same test E10 failed: perturbing its `width: 600` /
+`height: 1100` to 137/999 moved 15 hub tests because they fed the layout solve. Running the
+perturbation is what separates the two, and it is cheap — do it before believing any future
+"decides nothing" claim on this board.
+
+**Scope.** Replace the union with `isCollectionPage?: boolean` (or drop `pageType` from
+`SiteHeader`/`PageShell` entirely and let `MenuDropdown` take the boolean), touching the 3
+declarations plus the 10 call sites and 1 test assertion. **Sized at −15 src / ~0 test:** every
+touched surface is already pinned — `MenuDropdown.test.tsx` has 52 tests including both Update-gating
+cases, and `PageShell.test.tsx` pins the forwarding — so per E8's corrected rule this is a rare item
+whose test half really should be near zero. If it is not, the rule needs a fourth revision.
+
+**Why it was not folded into E8.** Deliberately quarantined by instruction, and correctly so: the
+board's claim was that "two values decide nothing", which is the exact shape of claim E10 got wrong.
+Doing it inside E8's diff would have buried a 10-file sweep in a dedup MR with no evidence trail.
+
 ## Group F — Structural
 
 Bigger, optional, sequenced last. Do each individually and verify on :3000.
 
-### ☐ F1 · Decompose `useCollectionEdit.tsx` (1,748 lines — C1 added the seed guard)
+### ☐ F1 · Decompose `useCollectionEdit.tsx` (1,747 lines — C1 added the seed guard)
 
 - [ ] After the A- and E-group work (~−150 lines), split along the pattern the file already established (`useContentReordering`, `useCoverImageSelection`, …): `useAdminCollectionState`, `useCollectionUpdateForm`, `useCollectionPeople` + `useGalleryAccess`, `useCollectionRelations`, `useContentOps`, `useManageBar`. The section boundaries verified 2026-08-22: state `:311–421`, update form `:438–792`, people+gallery `:471–851`, content ops `:852–1206`, relations `:1208–1392`, manage bar `:1393–1451`. Keep the existing `UseCollectionEditResult` facade so the SIX test suites (`test`, `buffer`, `handlers`, `bulkRemove`, `escapeSelection`, `delete`) plus `collectionEditFixtures.ts`'s ~70-member result builder do not churn. No file over ~450 lines.
 - [ ] This also dissolves `EditModeLayer`'s FOUR `exhaustive-deps` suppressions (`:131`, `:201`, `:208`, `:215` — was "three").
 
-### ☐ F2 · `RendererContext` for the BoxRenderer tree
+### ☐ F2 · `RendererContext` for the BoxRenderer tree — NEXT
 
-- [ ] Twenty render-constant props are copied ~10 times across `BoxRenderer`, `Component`, and `ContentBlockWithFullScreen` (count re-verified 2026-08-22; "five times" understated it). A context provided once by `Component` reduces `BoxRenderer` to `tree`/`sizes`/`isMobile`/`priority` and removes ~100 lines of plumbing — `priority` STAYS a prop, it is per-row (`priority={rowIndex <= priorityRowIndex}`, Component.tsx:284), not render-constant. Completes the context migration the codebase already chose for `SelectStar`/`SaveHeart`.
+**Why it is next (picked 2026-08-24).** The board named E8/F2/F5 as the candidates after E16.
+F5 shipped (#318), E8 shipped (#319), so F2 is the last of the three. Its context is warm twice
+over: E8 just spent a session inside `CollectionContentRenderer`, the leaf of this exact chain, and
+this close-out just re-measured F2's premise from scratch, so the item is fully specified for a
+cold start. F1 is the only larger structural item left and it should follow, not precede.
+
+**Read the re-measurement above before estimating.** Both of this item's numbers were wrong; the
+real surface is 16 shared props across 3 copy sites, not twenty across ten. **Size the test half by
+which touched surfaces are already pinned, not by the src sign** — that is the rule E8 corrected
+(see its section). Concretely: `boxRendererUtils.test.ts` already pins `computeReorderFlags`, so the
+reorder half of this tree has coverage, but check whether anything pins the prop _threading_ itself
+before assuming the test half is small. E8's went to +90 precisely because the behavior it moved
+turned out to be unpinned.
+
+**Guardrail — leave `EditModeLayer` on props and report what moving it into the context would do.**
+The measurement above found the reorder prop block copied at three sites, and the third is
+`EditModeLayer`, in the admin edit directory — outside the `BoxRenderer` chain a `Component`-provided
+context reaches. Folding it in is the tempting move, because it looks like the same duplication and
+would make the "remove all copies" story clean. It is also exactly the shape this board keeps
+getting wrong: two things that look identical and are deliberately separate. Wiring the admin edit
+layer into a context owned by the public render tree couples an editing surface to a display
+surface, and the public tree currently has no reason to know the edit layer exists. **Do the
+`BoxRenderer`/`Component`/`ContentBlockWithFullScreen` migration, leave `EditModeLayer` passing
+props, and write up what including it would cost and whether the coupling is acceptable.** If it
+turns out clean, that is a follow-up MR with the analysis attached rather than a scope expansion
+discovered mid-diff.
+
+- [ ] ~~Twenty render-constant props are copied ~10 times across~~ **Re-measured 2026-08-24 and both numbers are wrong — see below.** Render-constant props are copied across `BoxRenderer`, `Component`, and `ContentBlockWithFullScreen`. A context provided once by `Component` reduces `BoxRenderer` to `tree`/`sizes`/`isMobile`/`priority` and removes plumbing — `priority` STAYS a prop, it is per-row (`priority={rowIndex <= priorityRowIndex}`, Component.tsx:284 — **ref re-verified 2026-08-24, still correct**), not render-constant. Completes the context migration the codebase already chose for `SelectStar`/`SaveHeart`.
+
+**The two numbers this item's estimate rests on are both wrong, and the second one badly.**
+Measured on 2026-08-24 against `main` + E8:
+
+- **Props present in all three prop interfaces: 16, not twenty.** The exact set is
+  `currentCollectionId`, `currentCoverImageId`, `enableFullScreenView`, `isReorderMode`,
+  `isSelectingCoverImage`, `justClickedImageId`, `onArrowMove`, `onCancelImageMove`, `onImageClick`,
+  `onImageLoadError`, `onPickUp`, `onPlace`, `pickedUpImageId`, `reorderDisplayOrder`,
+  `reorderMoves`, `selectedIds`. Interface sizes: `BoxRenderer` 23, `Component` 27,
+  `ContentBlockWithFullScreen` 28. F5 accounts for at most one of the missing four — it removed
+  `router` from `ContentBlockWithFullScreen` — so the 2026-08-22 "re-verified" count was already
+  wrong when it was written, or it counted a different set.
+- **Copy sites: 3, not "~10".** `grep -rl 'onCancelImageMove={' app/` returns exactly
+  `Component.tsx`, `ContentBlockWithFullScreen.tsx`, `EditModeLayer.tsx`. Note the third — the
+  block is also copied into the **admin edit layer**, which is outside the `BoxRenderer` chain this
+  item describes, so a context provided by `Component` does not reach it. Whether `EditModeLayer`
+  can join the context or has to keep passing props is an open design question for whoever picks
+  this up; it is the difference between removing two copies and removing three.
+
+**Consequence: the "~100 lines of plumbing" estimate is unverified and probably high.** 3 JSX
+sites + 3 interface declarations is a much smaller surface than "~10 times" implied. Re-derive the
+estimate from the 16-prop / 3-site measurement before quoting a number, and record the counting
+method this time — neither prior count recorded one, which is why they could not be checked.
 
 ### ☐ F3 · File moves and renames
 
@@ -1539,7 +1638,7 @@ Bigger, optional, sequenced last. Do each individually and verify on :3000.
       for the user: should tag pages gain filters, the collections strip, and follow seeding? Not
       startable until answered.
 
-### ◐ F5 · `FullScreenModal` link + resolver cleanup — PR #318 OPEN, not yet merged
+### ✅ F5 · `FullScreenModal` link + resolver cleanup — PR #318, merged 2026-08-24 (fd74870)
 
 - [x] ~~Hand-rolled `<a>` + `router.push` → `Link`, which also removes `router` from props.~~ Done,
       and the `router` cascade went further than the bullet predicted: **`useFullScreenImage` called
@@ -1608,7 +1707,7 @@ The book is wrong in six places.
       it asserts one public `EmailService` method (`:20`) and "invite email doesn't exist" (`:34`,
       `:73`), but its own C5 recommendation (`:161`) has since shipped.
 
-### ☐ G2 · Inline-comment rule — DECIDED 2026-08-22: keep and enforce
+### ◐ G2 · Inline-comment rule — DECIDED 2026-08-22: keep and enforce; G2a COLD, G2b/G2c ⛔
 
 The review recommended relaxing the rule; the user overruled it. The standard: no why-comments inline. The why belongs in the docblock of the function it explains. If a function's docblock would get too big because there is too much going on in the function, split the function — do not comment inline. CLAUDE.md now carries this wording. Do not propose relaxing the rule again.
 
@@ -1637,6 +1736,17 @@ too; the inventory said otherwise. USER decides: does G2b's migration (and the `
       COLD — startable today.
 - [ ] **G2b · Mechanical migration — light files (~45 files with 1–5 blocks).** Hoist each comment into the docblock of the function it explains. A comment explaining a mid-function statement with no declaration to attach to is the split signal: extract a named helper/hook so the docblock has a home.
 - [ ] **G2c · Heavy files ride their refactors — do NOT migrate standalone.** Their comment volume is itself the too-big-function evidence, and the split gives every extracted function a docblock home: `useFullScreenImage.tsx` (~86 lines — needs its own decomposition; pair with F5), `CollectionPageClient.tsx` (24 blocks → E7), `useCollectionEdit.tsx` (19 → F1; was 18, C1 added one), `CollectionContentRenderer.tsx` (16 + 4 JSX → E8/F2), `EditModeLayer.tsx` (13 → F1), `CollectionPageWrapper.tsx` (9), `ClientGalleryDownload.tsx` (8 → E9), `CameraSettingsSection.tsx` (7), `MenuDropdown.tsx` (7 → E8; was 6), `UserManagementPanel.tsx` (5), `Component.tsx` (5 → F2). Plus the ten `.ts` heavies listed under G2b if the user rules `.ts` in scope.
+
+  > **⚠ This inventory is stale as of 2026-08-24 and cannot be repaired as written.** Three of the
+  > files listed have since been edited by the very items they were tagged to: `useFullScreenImage.tsx`
+  > and `CollectionContentRenderer.tsx` + `MenuDropdown.tsx` (F5 and E8 respectively). Worse, **the
+  > counting method was never recorded**, so the numbers cannot be re-taken comparably — a naive
+  > contiguous-comment-run count today gives `useFullScreenImage` 50, `CollectionContentRenderer` 21,
+  > `MenuDropdown` 14, `Component` 21, `useCollectionEdit` 43, which is nowhere near the recorded
+  > 86/16+4/7/5/19 and is obviously a different metric, not a delta. **Whoever picks up G2 must
+  > re-take the whole inventory in one pass and write the command down beside it.** Do not trust or
+  > partially patch these numbers. Same failure as F2's prop count directly above: an inventory
+  > number with no recorded method is not verifiable, only re-derivable.
 
 ### ⛔ G3 · `/user/selects` — delete or rebuild — USER DECISION
 
@@ -1832,7 +1942,7 @@ Tests that will need updating: `tests/app/user/page.test.tsx:252-276` (chip labe
 `tests/components/ui/FilterToolbar.test.tsx:507`. Six files touch this chip row — distrust the
 estimate accordingly.
 
-### ☐ H2a · `/user` rail copy pass + chip-style the Admin links
+### ✅ H2a · `/user` rail copy pass + chip-style the Admin links — PR #302
 
 Copy and control changes across the three rail cards, from the annotated screenshot. Startable today
 and the smallest of the six.
@@ -1877,7 +1987,7 @@ prove-it-fails rule needs care here: a brand-new test file has never been seen t
 assertion against current behaviour first, watch it pass, then change the source and watch it fail
 the other way. A new test written only against the new copy proves nothing.
 
-### ☐ H3 · `Send a message` placement — DIRECTION DECIDED 2026-08-23
+### ✅ H3 · `Send a message` placement — PR #302; direction decided 2026-08-23
 
 **Decided: keep it, move it into the metadata stack, and make it an ordinary clear button — not a
 filled or "bright" box.** The user's words: it should be "a `Button` that is clear what it's
@@ -1889,7 +1999,8 @@ same pass as H2a, which restyles the same rail.
 `SendMessageButton` ([SendMessageButton.tsx:27](app/components/SendMessageButton/SendMessageButton.tsx:27),
 43 lines) opens `ContactForm` at
 [:38](app/components/SendMessageButton/SendMessageButton.tsx:38). The menu's Contact disclosure opens
-the same component at [MenuDropdown.tsx:343](app/components/MenuDropdown/MenuDropdown.tsx:343). On
+the same component at [MenuDropdown.tsx:373](app/components/MenuDropdown/MenuDropdown.tsx:373)
+(the `Disclosure` wrapping it opens at `:369`; was `:343` before E8 reshaped the menu). On
 `/user` the email field is hidden and autofilled from the principal via `lockedEmail={me?.email}`.
 
 Why it floats top-right in the screenshot: it is not in the rail. It renders in its own top bar at
@@ -1948,7 +2059,8 @@ Kept here because the cleanup sequencing has to make room for it.
 a durable layout for labelled metadata sections (H2b), one email strategy (H4), a `MenuDropdown`
 design review (H5), and composable page components as vision only (H6). Detail in
 [group-h-features.md](2026-summer-refactor/group-h-features.md). The three that _are_ board work —
-H1, H2a, H3 — are in `## Group H` above. Sequencing note: **H5 waits on E8**, which already owns the
+H1, H2a, H3 — are in `## Group H` above. Sequencing note: **H5 is UNBLOCKED as of 2026-08-24** — it
+waited on E8, which shipped as #319. E8 already owns the
 mechanical half of that component, and **H2b overlaps the 008 `/user` ↔ `/admin/users/[id]` layout
 unification** — settle those two together or they will produce two competing designs.
 
@@ -1958,6 +2070,40 @@ _Newest first. **Dates are local (America/Los_Angeles), not UTC** — earlier en
 which is why a "08-23" entry can sit between two "08-24" ones. The ordering was verified correct
 against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates._
 
+- 2026-08-24 (9) — **merged F5 (#318) and shipped E8 (#319); filed E17; F2 is next.** E8 came in at
+  −49 src / +90 test against −120 / +150–250. **The src estimate missed for the first time in four
+  items**, and both causes were stale bullet premises rather than bad estimating: it budgeted for
+  extracting `ReorderOverlay` into a file that already existed, and quoted the `MenuDropdown` config
+  array at ~60 lines saved when an array entry per item costs most of that back (28 net). The bullet
+  also undercounted the menu items (nine, not eight) and the shared `buildWrapperClassName` sites
+  (three, not two). **The test half contradicts F5's rule and the reason is the useful part:** the
+  +90 has nothing to do with E8 being a deletion — the reorder overlay's render gates had no
+  coverage at all, so lifting a shared node out of two branches with differing gates was untested in
+  both directions. **Third revision of the sizing rule, now in "how to use this doc": the test half
+  tracks whether the touched behavior was already pinned, not the sign of the src diff.** Both new
+  gate tests were red-checked (deleting the cover gate fails exactly 1; neutralizing the shared node
+  fails exactly 4). **`pageType` quarantine paid off** — it is inert, but proving it took an
+  E10-style perturbation (all six `'collectionsCollection'` callers → `'default'`, zero of 4374
+  tests moved), and removing it is a 10-file sweep, not the two-liner the board implied. Promoted to
+  **E17** with the evidence rather than left inside a shipped section. **Reconcile pass: 6 drifted
+  claims + 1 board/section contradiction, all in the neighborhood of what merged** — third principle
+  held again. B6's section was still `☐` while its own board row said ✅ and its file is deleted;
+  F5's row and section both still said "#318 OPEN"; H3's `MenuDropdown.tsx:343` → `:373` (E8 moved
+  it); `useCollectionEdit` 1,748 → 1,747. **Two inventory claims found unrepairable, not just
+  stale** — F2's "twenty props copied ~10 times" is really 16 across 3 sites, and G2c's comment
+  inventory has no recorded counting method, so it can only be re-derived. New rule hoisted: write
+  the command beside any count that drives an estimate. Verified still-correct: `Component.tsx:284`,
+  `MetadataList.tsx:74`. **H5 unblocked** — it waited on E8. **Separately: 8 row/section status
+  contradictions found and fixed** (B8, C6, E12, E16, E4, G2, H2a, H3), every one a section marker
+  that was never updated when its row was — all eight PRs confirmed merged via `gh` before flipping.
+  The worst was **C6 reading `☐` while its row said ⛔ BACKEND-BLOCKED**, i.e. a blocked item
+  advertising itself as available. **Trap worth its own line: the first two integrity checks I wrote
+  silently passed.** Both extracted the row marker with a regex that missed, so section and row both
+  compared as empty-equals-empty and the sweep reported a clean board. It only surfaced because a
+  hand spot-check of six items disagreed with the sweep. **A verification that can pass by matching
+  nothing is worse than no verification** — the same failure shape as a test that passes because the
+  fixture left the field `undefined`. Assert the check found something before trusting that it found
+  nothing. Next: **F2**, with `EditModeLayer` quarantined out of the context migration.
 - 2026-08-24 (8) — **shipped E16 in two slices, #316 and #317, both merged; F5 (#318) is open.**
   E16 slice 1 put one unconditional `revalidateMetadataCache()` on `MetadataList`'s rename AND
   delete paths (+9 src / +72 test); slice 2 added `onRenamed`/`onDeleted` callbacks wired by
