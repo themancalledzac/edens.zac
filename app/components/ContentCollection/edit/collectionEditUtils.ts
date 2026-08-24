@@ -241,15 +241,27 @@ export async function revalidateCollectionCache(slug: string): Promise<void> {
  * Locations with no slug are dropped here for the same reason.
  *
  * Kept separate from {@link revalidateCollectionCache}, which takes one collection slug and has no
- * location data in scope at most of its call sites. `handleUpdate` in `useCollectionEdit` is the
- * path that saves collection locations, and it is the only caller.
+ * location data in scope at most of its call sites.
  *
- * Image-level location edits do not revalidate these tags.
+ * Two call sites, because `/location/{slug}` is fed from two sides. `CollectionService.getLocationPage`
+ * lists the collections at that location AND the orphan images matched by image location name, so
+ * either kind of edit changes what the page shows:
+ *  - `handleUpdate` in `useCollectionEdit` — the collection side (E12);
+ *  - `submitImageEdits` in `useMetadataSubmit` — the image side (E13).
  *
- * @param previous - Locations the collection was in before this save. In `handleUpdate` that is
+ * Add a third call site rather than generalizing this helper. It already handles the union, the
+ * dedup and the slug-less case, and every caller has the same two-sets-of-locations shape.
+ *
+ * Renaming a location is NOT covered by either caller and is a known gap: the admin `/metadata`
+ * page PUTs a new name by id, the slug moves with the name, and nothing revalidates the OLD slug's
+ * tag. Tracked on the refactor board, not here.
+ *
+ * @param previous - Locations the subject was in before this save. In `handleUpdate` that is
  *   `collection.locations`, the same baseline `buildUpdatePayload` diffed the payload against, so
- *   the tags revalidated match the change actually sent. Duplicates across the two sets collapse.
- * @param next - Locations on the saved response.
+ *   the tags revalidated match the change actually sent. In `submitImageEdits` it is the locations
+ *   on the pre-save selection. Duplicates across the two sets collapse.
+ * @param next - Locations on the saved response. Never the edit buffer: a location added during an
+ *   edit has `slug: ''` until the backend assigns one.
  */
 export async function revalidateLocationCaches(
   previous: LocationModel[],

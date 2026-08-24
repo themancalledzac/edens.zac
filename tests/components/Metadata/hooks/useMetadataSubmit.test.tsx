@@ -420,3 +420,168 @@ describe('useMetadataSubmit', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// E13 — location cache revalidation from the image save path
+// ---------------------------------------------------------------------------
+/**
+ * `/location/{slug}` is fed from two sides: the collections at that location, and the orphan
+ * images matched by image location name. E12 wired the collection side; these pin the image side.
+ *
+ * `revalidateLocationCaches` runs for real against a mocked `fetch`, so these assert the POST
+ * bodies actually sent rather than a spy call — the same choice E12's suite made, and the reason
+ * the slug-source case below is meaningful rather than tautological.
+ */
+type RevalidateBody = { tag?: string; tags?: string[] };
+
+const mockFetchOk = () => {
+  globalThis.fetch = jest.fn(() => Promise.resolve({ ok: true } as Response));
+};
+
+/** Every cache tag posted to /api/revalidate across all fetch calls so far. */
+function postedTags(): string[] {
+  return (globalThis.fetch as jest.Mock).mock.calls.flatMap(([, init]) => {
+    const body = JSON.parse(String(init?.body ?? '{}')) as RevalidateBody;
+    return body.tags ?? (body.tag === undefined ? [] : [body.tag]);
+  });
+}
+
+const SEATTLE = { id: 1, name: 'Seattle', slug: 'seattle' };
+const PORTLAND = { id: 2, name: 'Portland', slug: 'portland' };
+
+describe('useMetadataSubmit — location cache revalidation on image save', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(window, 'confirm').mockReturnValue(false);
+    mockFetchOk();
+  });
+
+  it('revalidates the union of the pre-save and saved locations, not just the saved ones', async () => {
+    mockUpdateImages.mockResolvedValueOnce({
+      updatedImages: [img(1, { locations: [PORTLAND] })],
+    });
+
+    const { result } = renderSubmit({
+      selectedImages: [img(1, { locations: [SEATTLE] })],
+      updateState: { id: 1, contentType: 'IMAGE', collections: [] },
+      hasChanges: true,
+    });
+
+    await submitForm(result);
+
+    expect(postedTags().sort()).toEqual([
+      'collections-location-portland',
+      'collections-location-seattle',
+    ]);
+  });
+
+  it('builds the tag from the saved response, so a location added during the edit still posts a real slug', async () => {
+    mockUpdateImages.mockResolvedValueOnce({
+      updatedImages: [img(1, { locations: [PORTLAND] })],
+    });
+
+    const { result } = renderSubmit({
+      selectedImages: [img(1, { locations: [] })],
+      updateState: {
+        id: 1,
+        contentType: 'IMAGE',
+        collections: [],
+        locations: [{ id: 0, name: 'Portland', slug: '' }],
+      },
+      hasChanges: true,
+    });
+
+    await submitForm(result);
+
+    expect(postedTags()).toEqual(['collections-location-portland']);
+    expect(postedTags()).not.toContain('collections-location-');
+  });
+
+  it('covers the pre-save locations of every image in a bulk edit, not just the first', async () => {
+    mockUpdateImages.mockResolvedValueOnce({
+      updatedImages: [img(1, { locations: [] }), img(2, { locations: [] })],
+    });
+
+    const { result } = renderSubmit({
+      selectedImages: [img(1, { locations: [SEATTLE] }), img(2, { locations: [PORTLAND] })],
+      selectedIds: [1, 2],
+      updateState: { id: 1, contentType: 'IMAGE', collections: [] },
+      hasChanges: true,
+    });
+
+    await submitForm(result);
+
+    expect(postedTags().sort()).toEqual([
+      'collections-location-portland',
+      'collections-location-seattle',
+    ]);
+  });
+
+  it('posts one tag for a location present both before and after the save', async () => {
+    mockUpdateImages.mockResolvedValueOnce({
+      updatedImages: [img(1, { locations: [SEATTLE] })],
+    });
+
+    const { result } = renderSubmit({
+      selectedImages: [img(1, { locations: [SEATTLE] })],
+      updateState: { id: 1, contentType: 'IMAGE', collections: [] },
+      hasChanges: true,
+    });
+
+    await submitForm(result);
+
+    expect(postedTags()).toEqual(['collections-location-seattle']);
+  });
+
+  it('posts nothing when no location is involved on either side', async () => {
+    mockUpdateImages.mockResolvedValueOnce({ updatedImages: [img(1, { locations: [] })] });
+
+    const { result } = renderSubmit({
+      selectedImages: [img(1, { locations: [] })],
+      updateState: { id: 1, contentType: 'IMAGE', title: 'Changed', collections: [] },
+      hasChanges: true,
+    });
+
+    await submitForm(result);
+
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not revalidate when the save itself returns null', async () => {
+    mockUpdateImages.mockResolvedValueOnce(null);
+
+    const { result } = renderSubmit({
+      selectedImages: [img(1, { locations: [SEATTLE] })],
+      updateState: { id: 1, contentType: 'IMAGE', collections: [] },
+      hasChanges: true,
+    });
+
+    await submitForm(result);
+
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('completes the save when revalidation rejects, rather than surfacing a network error', async () => {
+    globalThis.fetch = jest.fn().mockRejectedValue(new Error('network down'));
+    const onSaveSuccess = jest.fn();
+    const onClose = jest.fn();
+
+    mockUpdateImages.mockResolvedValueOnce({
+      updatedImages: [img(1, { locations: [SEATTLE] })],
+    });
+
+    const { result } = renderSubmit({
+      selectedImages: [img(1, { locations: [SEATTLE] })],
+      updateState: { id: 1, contentType: 'IMAGE', collections: [] },
+      hasChanges: true,
+      onSaveSuccess,
+      onClose,
+    });
+
+    await submitForm(result);
+
+    expect(onSaveSuccess).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toBeNull();
+  });
+});
