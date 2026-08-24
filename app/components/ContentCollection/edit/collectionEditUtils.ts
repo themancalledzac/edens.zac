@@ -240,28 +240,15 @@ export async function revalidateCollectionCache(slug: string): Promise<void> {
  * this before the save resolves would build `collections-location-` and revalidate nothing.
  * Locations with no slug are dropped here for the same reason.
  *
- * Kept separate from {@link revalidateCollectionCache}, which takes one collection slug and has no
- * location data in scope at most of its call sites.
+ * Two call sites, because `CollectionService.getLocationPage` lists both the collections at that
+ * location and the orphan images matched by image location name — so a collection edit
+ * (`handleUpdate`) and an image edit (`submitImageEdits`) each change what the page shows. Give a
+ * new caller its own call rather than generalizing this helper; every caller has the same
+ * two-sets-of-locations shape.
  *
- * Two call sites, because `/location/{slug}` is fed from two sides. `CollectionService.getLocationPage`
- * lists the collections at that location AND the orphan images matched by image location name, so
- * either kind of edit changes what the page shows:
- *  - `handleUpdate` in `useCollectionEdit` — the collection side (E12);
- *  - `submitImageEdits` in `useMetadataSubmit` — the image side (E13).
- *
- * Add a third call site rather than generalizing this helper. It already handles the union, the
- * dedup and the slug-less case, and every caller has the same two-sets-of-locations shape.
- *
- * Renaming a location is NOT covered by either caller and is a known gap: the admin `/metadata`
- * page PUTs a new name by id, the slug moves with the name, and nothing revalidates the OLD slug's
- * tag. Tracked on the refactor board, not here.
- *
- * @param previous - Locations the subject was in before this save. In `handleUpdate` that is
- *   `collection.locations`, the same baseline `buildUpdatePayload` diffed the payload against, so
- *   the tags revalidated match the change actually sent. In `submitImageEdits` it is the locations
- *   on the pre-save selection. Duplicates across the two sets collapse.
- * @param next - Locations on the saved response. Never the edit buffer: a location added during an
- *   edit has `slug: ''` until the backend assigns one.
+ * @param previous - Locations the subject was in before this save: `collection.locations` in
+ *   `handleUpdate`, the pre-save selection's in `submitImageEdits`. Duplicates collapse.
+ * @param next - Locations on the saved response.
  */
 export async function revalidateLocationCaches(
   previous: LocationModel[],

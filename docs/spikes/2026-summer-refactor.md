@@ -47,6 +47,24 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   E10/#304 — had merged hours earlier, and their sections' checkboxes had gone unswept with them,
   so bullets that had shipped still read as work remaining. Close the row AND the boxes in the same
   pass as the merge.
+- **`MERGED` is not a claim about `main`.** A stacked PR merges into its BASE, and if that base has
+  already been merged and retired, the child lands on a dead branch and `main` never sees it.
+  `gh pr view` still says `MERGED`. This happened on 2026-08-24 with E15/#314: it was based on
+  `0313-…`, #313 merged to `main` at 21:17:42, and #314 merged into the now-retired `0313-…` branch
+  33 seconds later — inside the window before GitHub's auto-retarget fires. `createHeaderRow` still
+  had its two boolean params on `main` while the board read ✅. **The check is
+  `git merge-base --is-ancestor <commit> origin/main`, not the badge**, and it is the only one that
+  answers the question the board actually asks. Run it for every stacked PR. Better still, merge a
+  stack base-first and confirm each child re-targeted to `main` before merging it.
+- **A `file:line` ref written during the session that edits that file is born stale.** The obvious
+  drift risk is refs aging across sessions; the quieter one is writing a ref from a read taken
+  BEFORE your own edit, or from a subagent that read the file while you were editing it. Both
+  happened on 2026-08-24: E15 added a 20-line interface near the top of `contentLayout.ts` and the
+  two refs written later in that same session pointed 5–6 lines past their targets, and a
+  concurrent subagent's refs were taken against the pre-edit file. **Re-resolve every ref you write
+  against the tree as it stands when you commit, not as it stood when you read it** — and prefer
+  anchoring on a declaration line over a line inside a body, because a body line moves for reasons
+  the declaration does not.
 - **Cross-repo `file:line` refs are not covered by any drift sweep here.** The per-session sweep
   scopes to files this repo's merges touched, so a ref into `edens.zac.backend` can rot for weeks
   unseen. C7's backend refs had drifted three-of-four when re-checked. Re-verify them by hand
@@ -288,7 +306,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E13 | Trigger `collections-location-${slug}` from the image-metadata save path | Low-medium  | **+36 src net / +165 test actual** (est. +30 src, +60 test)                                | ✅ PR #313 — src estimate held; location-RENAME gap split out as E16                         |
 | E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value       | Low         | **−3 src / −4 test net actual**, 36 call sites (est. −2 src, ~40 sites)                    | ✅ PR #307 — the one estimate on this board that held                                        |
 | E15 | `createHeaderRow`'s two trailing boolean params → options object         | Low         | **+22 src net / 14 test call sites** (est. ±15 src, ~20 sites)                             | ✅ PR #314 — stacked on #313; first call-site estimate to come in OVER                       |
-| E16 | Revalidate the OLD slug when a location is RENAMED                       | Low-medium  | +25 src, +60 test                                                                          | ☐ **COLD** — E13's pre-build check; rename confirmed real and it 404s, not just goes stale   |
+| E16 | Revalidate the OLD slug when a location is RENAMED                       | Low-medium  | **+25 src / +120 test** (test half re-sized off E13 actual)                                | ☐ **COLD, NEXT** — 2 slices; slice 1 is ~+5 src and helps all 3 entity types                |
 | F1  | Decompose `useCollectionEdit.tsx`                                        | Medium-high | ~neutral                                                                                   | ☐                                                                                            |
 | F2  | `RendererContext` for the BoxRenderer tree                               | Medium      | −100 src, **+150–250 test** (re-sized 2026-08-24, bias 1b)                                 | ☐                                                                                            |
 | F3  | File moves and renames                                                   | Medium      | ~neutral                                                                                   | ☐                                                                                            |
@@ -442,7 +460,11 @@ unrelated to B2's, and it passes standalone and on a clean re-run.
       when the full suite runs in parallel, and passes when run alone.
 
 **Measured 2026-08-23: 0 failures in 13 full-suite runs.** Default parallel scheduling, no
-`--runInBand`, ~11.6s per run. **The suite counts quoted here were wrong and misled a later run** —
+`--runInBand`, ~11.6s per run. **Three more clean full-suite runs 2026-08-24 during E13/E15**
+(243 suites / 4356 tests, ~12s each), bringing the standing tally to **0 failures in 16 runs**. Not
+proof of a fix — nothing was changed to fix it — but at 16 clean runs the cost of chasing this
+exceeds the evidence that it is still live. **Recommend closing it as unreproducible** unless it
+resurfaces, rather than carrying it a fourth time. **The suite counts quoted here were wrong and misled a later run** —
 the real baseline on `53aaac4` is **229 suites / 4086 tests**, measured independently by four agents.
 A further 5 standalone runs of the named file on 2026-08-24 gave 10/10 passes. Zero total failures and zero failures of the
 named file.
@@ -476,7 +498,7 @@ The project rule requires tests for these and they have none.
 
 - [x] **First slice — the A7 Escape-path regression test — PR #267.**
       `tests/components/ContentCollection/useCollectionEdit.escapeSelection.test.tsx`, 4 tests,
-      test-only. The effect is now at `useCollectionEdit.tsx:432-436` (drifted +1 when C1 landed).
+      test-only. The effect is now at `useCollectionEdit.tsx:433-437` (drifted +1 when C1 landed, then +1 again by 2026-08-24).
       Verified against two separate mutations, not one: deleting the effect fails the two
       Escape-teardown tests, and dropping its `!isMultiSelectMode` guard fails the multi-select
       preservation test. The reasoning is out of the scratchpad and into the repo.
@@ -542,11 +564,13 @@ Found 2026-08-23 while researching the email strategy (H4). The "Send" button un
       `@GetMapping` `:50`, `@PostMapping("/rotate")` `:64`,
       `@PutMapping("/collections/{collectionId}")` `:80`,
       `@DeleteMapping("/collections/{collectionId}")` `:98`.
-      **Re-verified against backend `origin/main` 2026-08-24: still four mappings, and
-      `git grep` for any `@*Mapping(…email…)` under `controller/**` returns nothing.** Three of
-    the four refs above had drifted (`:67→:64`, `:86→:80`, `:107→:98`) and are corrected here.
+      **Re-verified TWICE on 2026-08-24, the second time against backend `origin/main` at
+      `32f0451` (the repo moved from `4abb28e` between the two checks): still exactly those four
+      mappings at those four lines, and no `/email` route anywhere under `src/`.** Three of the four
+      refs above had drifted (`:67→:64`, `:86→:80`, `:107→:98`) and are corrected here; they did
+      NOT drift again across the backend's own advance, so the anchors are stable.
       Cross-repo refs on this board are not covered by the frontend drift sweep — re-check them
-      by hand whenever the item is picked up.
+      by hand whenever the item is picked up, and pin the backend SHA you checked against.
 - [ ] The UI is fully built and reachable: input and Send button at
       [ShareCard.tsx:183-200](app/components/Personal/ShareCard.tsx:183), handler `handleEmail` at
       `:112-121`. The 404 surfaces as the generic "Could not send that email" at `:121`, so it reads
@@ -591,6 +615,13 @@ disagree in a way that reads more like an oversight than a decision, and nothing
       refactor can flip one without failing anything.
 
 Est ±20 src, +40 test. It needs an answer before it needs code.
+
+**Premise re-verified 2026-08-24 after E15 changed `createHeaderRow`'s signature.** E15 converted
+the trailing booleans to an options object and touched nothing else: the `!collection.coverImage →
+createTextOnlyHeaderRow` branch and the `!coverBlock.imageWidth || !coverBlock.imageHeight → null`
+branch are byte-identical. Both bullets above still describe the code. The ~20 call sites E15
+rewrote are all in the test file, so C9's estimate is unaffected — but any C9 test written now must
+use the new `{ isMobile, forceRail }` call shape.
 
 ---
 
@@ -949,6 +980,20 @@ the call and re-running, rather than assuming. The three that pass either way ar
 cases (no locations, null response, revalidation rejects) — they are guards, not proof, and are
 labelled as such here so a future reader does not mistake the count for coverage.
 
+**E13 grew the exact docblock that G4 was filed about, and the next session caught it.** G4's origin
+story is "#301's 30-line `revalidateLocationCaches` docblock". Rewriting that docblock for E13's
+second caller took it to **37 lines** — and one of the added paragraphs described the location-rename
+gap, which is G4's precisely named anti-pattern: a tracked item (E16) copied into a docblock, going
+false the day that item ships. Trimmed to **24 lines** on 2026-08-24, below the 30 it started at, by
+cutting the rename paragraph entirely and folding the two-call-sites explanation into one. E16 owns
+that content.
+
+**The generalizable part: an item that adds a caller to a documented helper will grow that helper's
+docblock, and nobody budgets for it.** E13's own docblock accounting says 39 of its 45 added src
+lines were comment. Any remaining item that wires a second caller into an already-documented helper
+(E16 most immediately) should expect the same and should re-measure the docblock rather than assume
+the addition was small.
+
 _Split out of E12 (PR #301) once the backend question E12 could not answer got answered._
 
 E12 wired the tag from the collection-edit save paths, which is correct regardless of what the
@@ -1050,7 +1095,7 @@ anyway, for a different reason than this board gave.** Investigated 2026-08-24 w
   `buildEntityDiff` emits `{prev}`. (2) `prev` is built from a raw array in one
   (`metadataUtils.ts:324`) and a `Set` in the other (`entityUtils.ts:95`), so duplicates survive
   only in the former. **(2) is the sole divergence with a reachable trigger**: bulk edit merges
-  `updateState.tags` with `imageSpecificTags` (`metadataUtils.ts:611-640`), which can repeat an id
+  `updateState.tags` with `imageSpecificTags` (`metadataUtils.ts:635-640`), which can repeat an id
   and ship `prev: [5, 5]`. `buildEntityDiff` would ship `prev: [5]` — a fix, not a regression,
   though the backend's tolerance for the duplicate was not verified.
 - **Unifying would pass the suite silently.** All six cases in the `describe.each` block at
@@ -1159,9 +1204,23 @@ _Split out of E14, 2026-08-24. E14 raised this as the alternative to a straight 
 deletion; #307 shipped the deletion without weighing it, because E14's section was still sitting in
 the unmerged #305 board PR and was invisible from `main`._
 
-**#314 is stacked on #313, deliberately, for exactly that reason.** E15 and E13 both edit this
+**#314 was stacked on #313, deliberately, for exactly that reason.** E15 and E13 both edit this
 board, so branching E15 off `main` would have conflicted here AND re-created the trap E14 named — a
-session working from `main` cannot see an item that lives in an open board PR. Merge #313 first.
+session working from `main` cannot see an item that lives in an open board PR.
+
+**The stacking then cost more than the conflict would have. #314 merged and E15 still did not reach
+`main`.** #313 merged to `main` at 21:17:42; #314 merged into `0313-e13-image-location-revalidate`
+at 21:18:15 — a branch `main` had already absorbed and that nobody would merge again. GitHub
+auto-retargets a stacked PR when its base merges, but not inside a 33-second window. `gh pr view
+314` reported `MERGED`, this board read ✅, and `createHeaderRow` on `main` still had both boolean
+params. Caught the next session by `git merge-base --is-ancestor 1d48581 origin/main` returning
+false, and re-landed as **#315**, which merges onto `main` with no conflicts.
+
+**The lesson is not "don't stack" — the reasoning for stacking was sound and the doc conflict was
+real.** It is that a stack has a merge PROTOCOL, and skipping it is silent. Merge base-first,
+confirm the child re-targeted to `main`, and verify with `merge-base --is-ancestor` rather than the
+badge. Hoisted into "how to use this doc", because every future two-item session on this board has
+the same board-conflict pressure that produced the stack.
 
 After #307 the signature is `createHeaderRow(collection, componentWidth, isMobile = false,
 forceRail = false)` — two trailing positional booleans. This is the boolean-trap shape: the call
@@ -1179,7 +1238,7 @@ sites now read `createHeaderRow(bare(), 375, true, true)`, where nothing at the 
       the scan did not balance parentheses.**
 
 **Two sibling functions have the same shape and were deliberately left alone.**
-`createTextOnlyHeaderRow` (`contentLayout.ts:557`) and `createMetadataTextBlock` (`:511`) each take
+`createTextOnlyHeaderRow` (`contentLayout.ts:552`) and `createMetadataTextBlock` (`:505`) each take
 a single trailing `forceRail: boolean = false`. They are not the boolean-trap shape this item
 targets — one trailing boolean next to clearly-typed arguments is readable, and both are
 module-private with a handful of callers. Converting them would be churn. Named here so the next
@@ -1228,15 +1287,43 @@ guessing:
       call is wrong. Add a per-list callback prop — `onRenamed?: (previous, next) => void` — and let
       `MetadataPageClient` pass the location-specific one. Do NOT special-case entity type inside
       `MetadataList`.
-- [ ] **Tags need the same treatment; people do not.** `MetadataService.java:95` re-slugs tags
-      exactly like locations. People do not: `updatePerson` (`:160-161`) sets only the name, and
-      `Records.java:44` has no slug field at all, so a renamed person keeps their original slug.
-      A callback keyed off "the returned slug differs" therefore works for locations and tags and
-      correctly no-ops for people. Check whether any `content-tag-${slug}`-shaped tag exists before
-      wiring the tag half — if nothing registers one, the tag half is a no-op today and should be
-      left out rather than written speculatively.
+- [x] ~~**Tags need the same treatment; people do not.**~~ **SETTLED 2026-08-24 — the tag half is a
+      no-op and is now OUT of scope.** The backend halves are as described: `MetadataService.java:95`
+      re-slugs tags exactly like locations, while `updatePerson` (`:160-161`) sets only the name and
+      `Records.java:44` has no slug field at all. But the frontend decides it: grepping every
+      `next: { tags: [...] }` registration in `app/lib/api/` returns exactly six tags —
+      `collections-index`, `content-locations`, `content-tags`, `search-images`,
+      `collection-${slug}` and `collections-location-${slug}`. **`collections-location-${slug}` is
+      the only slug-keyed one.** Nothing registers a `collections-tag-${slug}`, so a tag rename
+      cannot strand a cache tag. Build the location half only.
+- [ ] **New, found while settling the above: the rename path revalidates NOTHING, not even the flat
+      tags.** `MetadataList.handleUpdate` posts no `/api/revalidate` at all, so renaming any of the
+      three entity types leaves `content-tags` / `content-locations` stale as well — a plain
+      staleness bug that is separate from the old-slug 404 and applies to people too. The fix is one
+      unconditional `revalidateMetadataCache()` on the rename path, which already exists in
+      `collectionEditUtils.ts` and covers `content-tags`, `content-locations` and `search-images`.
+      Do this first: it is smaller than the slug half, needs no callback prop, and helps all three
+      entity types. `handleDelete` needs the same call.
 - [ ] `MetadataList.handleDelete` (`:74`) has the same exposure and is a cheaper case: on delete the
       slug is unambiguously gone. Decide it with this item rather than filing a third row.
+
+**Guardrail — leave `MetadataList`'s generic shape alone.** This item puts you in
+`app/components/ui/MetadataList/MetadataList.tsx`, which renders tags, people AND locations from one
+component and deliberately knows nothing about which it holds. The tempting change is an
+`entityType` prop plus a branch inside `handleUpdate` — it is three lines and it looks like the
+direct route. It is the wrong seam: it puts location-specific cache knowledge inside a generic list,
+and the next entity type pays for it again. Pass a callback from `MetadataPageClient`, which already
+knows which list it is rendering. **If you conclude the branch really is better, report what
+changing it would do rather than making the edit** — the generic shape is load-bearing for tags and
+people, and this board has a standing habit of obeying a guardrail whose stated reason turns out to
+be wrong (see E13's `buildAssociationDiff` report), so the reasoning here deserves the same
+scepticism.
+
+**Second guardrail: do not add `collections-location-*` to `revalidateMetadataCache`.** Slice 1
+calls that helper, and its docblock carries a standing rule — a tag goes in it only in the same
+change that adds the `next: { tags: [...] }` registering it. `collections-location-${slug}` is
+registered per-slug by `getCollectionsByLocation` and is already served by
+`revalidateLocationCaches`. Two helpers, two jobs.
 
 **Backend bug found in passing, NOT part of this item and not fixed here.** `updateLocation` checks
 uniqueness on the NAME only (`MetadataService.java:403-407`), while `V8` put a UNIQUE index on
@@ -1245,8 +1332,16 @@ pass the name check and then hit a constraint violation on the UPDATE. The creat
 `findBySlug` first; the admin update path does not. That is a backend 500, and it belongs on the
 backend's board, not this one.
 
-Sizing: +25 src, +60 test. The src is a callback prop and one wiring line; the test half is sized
-off E13's actual (+165 for a simpler change), so treat +60 as the floor, not the estimate.
+Sizing: **+25 src, +120 test** (test half re-sized 2026-08-24 off E13's actual +165 for a simpler
+change — the original +60 was the same bias 1b every estimate on this board has hit). The src is a
+callback prop and two wiring lines.
+
+**Two slices, and the cheap one is not the headline one.** Slice 1 is the unconditional
+`revalidateMetadataCache()` on rename and delete: no callback prop, helps tags/locations/people
+alike, and is roughly +5 src. Slice 2 is the old-slug revalidation, which needs the callback prop
+and is location-only. **Ship slice 1 even if slice 2 gets deferred** — it is close to free and fixes
+a real staleness bug on its own. Do NOT bundle the tag half into either; it is settled as a no-op
+above.
 
 ---
 
@@ -1665,6 +1760,40 @@ _Newest first. **Dates are local (America/Los_Angeles), not UTC** — earlier en
 which is why a "08-23" entry can sit between two "08-24" ones. The ordering was verified correct
 against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates._
 
+- 2026-08-24 (7) — **close-out run: E13 (#313) confirmed in `main`, E15 re-landed as #315.**
+  **The headline is a merge failure, not an item.** #314 reported `MERGED` and E15 was NOT in
+  `main`: it had been stacked on `0313-…`, #313 merged to `main` at 21:17:42, and #314 merged into
+  the retired `0313-…` branch 33 seconds later, inside GitHub's auto-retarget window. The board read
+  ✅ while `createHeaderRow` still had both boolean params. Caught by
+  `git merge-base --is-ancestor`, re-landed as **#315** (clean merge, no conflicts). Hoisted into
+  "how to use this doc": **a `MERGED` badge is not a claim about `main`.**
+  **Drift sweep, scoped to the five files E13/E15 touched: 17 refs checked, 4 wrong, all fixed.**
+  Two were mine from the same session — E15's new 20-line interface shifted `contentLayout.ts`
+  refs I had written from a pre-edit read (`:557→:552`, `:511→:505`) — one was a subagent's ref
+  taken while I was editing (`metadataUtils.ts:611→635`), and one was pre-existing
+  (`useCollectionEdit.tsx:432→433`, which a prior session had already corrected once). Second
+  lesson hoisted: **a ref written during the session that edits that file is born stale**; anchor on
+  declarations, not body lines.
+  **E13 grew the docblock G4 was filed about, 30 → 37 lines, and re-introduced G4's named
+  anti-pattern** by describing E16 inside it. Trimmed to 24 — below where it started. Named the
+  general case: an item that adds a caller to a documented helper grows that helper's docblock, and
+  no estimate on this board budgets for it (39 of E13's 45 src lines were comment).
+  **Two cheap questions closed by looking.** E16's tag half is settled OUT of scope — grepping every
+  `next: { tags: [...] }` shows `collections-location-${slug}` is the only slug-keyed tag, so a tag
+  rename cannot strand one. And a new finding fell out: the rename path revalidates **nothing**, not
+  even flat `content-tags`, so E16 gains a near-free slice 1 that helps all three entity types.
+  C7's premise re-verified against backend `32f0451` (moved from `4abb28e` mid-session) — still no
+  `/email` route, and its refs did not drift across the backend's advance. C9's premise re-verified
+  against E15's new signature: unchanged.
+  **B9 is at 0 failures in 16 full-suite runs** (3 more today). Recommend closing it as
+  unreproducible rather than carrying it a fourth time.
+  **Fixed the log itself:** the E13 entry and the G4/E4 entry were both numbered `(4)`; the E13 and
+  E15 entries are now `(5)` and `(6)`. The apparent date disorder further down is NOT a defect — the
+  header already explains it (local dates, ordering verified against merge timestamps), so it was
+  left alone. Note for future entries: the `(N)` labels do not track position, since `(3)` sits
+  below `(2)`. They disambiguate same-day entries, nothing more.
+  Next: **E16**, slice 1 first.
+
 - 2026-08-24 (4) — **shipped G4's intersection pass (#310) and E4's twins half (#311)**; `main` at
   ac3f4d0. G4: 19 long-and-historical docblocks, not the 12 the baseline predicted — the scan counts
   file headers and one-liners (1,384 blocks vs 865), so the counts are not comparable to the
@@ -1682,7 +1811,7 @@ against real merge timestamps on 2026-08-24; only the labels were inconsistent. 
   still hold. **E13's blocking question answered by reading backend `origin/main`** — `getLocationPage`
   has one image-side matching rule, so E13 is COLD. Next: E13.
 
-- 2026-08-24 (4) — **shipped E13 (#313)**. `main` at 0b0f255. +36 src net / +165 test; the src
+- 2026-08-24 (5) — **shipped E13 (#313)**. `main` at 0b0f255. +36 src net / +165 test; the src
   estimate held at +30, the test estimate was 2.75× under. **Six of the 45 added src lines are
   executable** — the rest is docblock, which is worth knowing before reading the next "+N src"
   estimate on this board as if it meant code.
@@ -1710,7 +1839,7 @@ against real merge timestamps on 2026-08-24; only the labels were inconsistent. 
   do; the other 3 are guards and are labelled as such rather than counted as coverage.
   Next: **E15**, as its own MR.
 
-- 2026-08-24 (5) — **shipped E15 (#314)**, stacked on #313. +22 src net / 14 test call sites.
+- 2026-08-24 (6) — **shipped E15 (#314)**, stacked on #313. +22 src net / 14 test call sites.
   Suite unchanged at 243 / 4356, which is the right result for a pure refactor.
   **First call-site estimate on this board to come in OVER** (est. ~20, actual 14). The estimate
   followed the grep-first rule and still missed 30%, because the scan did not balance parentheses —
