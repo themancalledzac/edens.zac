@@ -272,7 +272,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | B6  | Fold in `CollectionContentRenderer` characterization                     | Low         | **0 actual** (est. −150)                                                                   | ✅ PR #294 + #297 (restore)                                                                  |
 | B7  | `useClickOutside` spy tests                                              | Low         | −37 (est. −90)                                                                             | ✅ PR #286                                                                                   |
 | B8  | Fill the required-coverage gaps                                          | Low         | +1,545 actual for the 3 slices shipped                                                     | ◐ 5 of 6 — #266 (clearCache), #267 (Escape), #295 (share+messages), #296 (collectionStorage) |
-| B9  | `useCollectionEdit.buffer.test.tsx` flakes under parallel load           | Low         | unknown until it reproduces                                                                | ☐ 0/13 + 10/10 standalone — reproduce under other conditions, do not re-measure here         |
+| B9  | `useCollectionEdit.buffer.test.tsx` flakes under parallel load           | Low         | 0 repro in 22 runs across 3 worker configs                                                 | ✅ CLOSED not-reproducible 2026-08-24 — NOT fixed; CI still untried                           |
 | C1  | Unsaved people/gallery-access wipe (HIGH)                                | Low         | +73 −11                                                                                    | ✅ PR #264                                                                                   |
 | C2  | About portrait aspect ratio                                              | Trivial     | +99 −5                                                                                     | ✅ PR #281                                                                                   |
 | C3  | `SelectsContext.toggle` purity                                           | Low         | +121 −10                                                                                   | ✅ PR #282                                                                                   |
@@ -311,12 +311,12 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | F2  | `RendererContext` for the BoxRenderer tree                               | Medium      | −100 src, **+150–250 test** (re-sized 2026-08-24, bias 1b)                                 | ☐                                                                                            |
 | F3  | File moves and renames                                                   | Medium      | ~neutral                                                                                   | ☐                                                                                            |
 | F4  | `TaxonomyPage` ← `LocationPageClient`                                    | Medium      | −150                                                                                       | ⛔ USER DECISION                                                                             |
-| F5  | `FullScreenModal` link + resolver cleanup                                | Low         | **−25 src / +20 test net actual** (est. −30 src, +60–120 test)                             | ✅ PR #318 — src held; test came in UNDER, unlike E13/E16                                     |
+| F5  | `FullScreenModal` link + resolver cleanup                                | Low         | **−25 src / +20 test net actual** (est. −30 src, +60–120 test)                             | ◐ PR #318 OPEN — src held; test came in UNDER, unlike E13/E16                                |
 | G1  | Docs corrections                                                         | Trivial     | **+106 / −72 actual** (est. ±50)                                                           | ✅ PR #303                                                                                   |
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)          | Low         | ~neutral (relocation + splits)                                                             | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors                       |
 | G3  | `/user/selects` decision                                                 | —           | —                                                                                          | ⛔ USER DECISION                                                                             |
 | G4  | Docblock standard — length, structure, and no history                    | Low         | **−50 net actual across 19 blocks** (est. −300 to −500 across ~53); 0 src                  | ◐ intersection pass done — 19 long+historical blocks rewritten; remaining 45 historical open |
-| H1  | Merge `Following` into `Collections` on `/user`                          | Medium      | −60 src, ±150 test churn (6 test files)                                                    | ☐ (do C8 first)                                                                              |
+| H1  | Merge `Following` into `Collections` on `/user`                          | Medium      | −60 src, ±150 test churn (6 test files)                                                    | ☐ COLD — C8 shipped, so its stated blocker has cleared                                       |
 | H2a | `/user` rail copy pass + chip-style the Admin links                      | Low         | **+319 / −117 actual** (est. −25 src)                                                      | ✅ PR #302                                                                                   |
 | H3  | `Send a message` into the rail as a plain button                         | Low         | rode H2a                                                                                   | ✅ PR #302                                                                                   |
 
@@ -451,7 +451,7 @@ remaining items as merges, not deletions.**
 
 - [ ] `CollectionContentRenderer.characterization.test.tsx`'s stated purpose (pin behavior before the `getClickEligibility` extraction) is complete. Fold the ~6 unique wiring tests into the main file and delete the rest.
 
-### ☐ B9 · `useCollectionEdit.buffer.test.tsx` flakes under parallel load
+### ✅ B9 · `useCollectionEdit.buffer.test.tsx` flakes under parallel load — CLOSED not-reproducible
 
 Filed 2026-08-23 out of B2's run. It is a real suite defect, not a B2 artifact — the file is
 unrelated to B2's, and it passes standalone and on a clean re-run.
@@ -491,6 +491,22 @@ re-seed effects and ref guards, and its fixtures were specifically noted as shar
 when built with `mockResolvedValue` instead of `mockImplementation`. Shared module state or a
 fixture object leaking across workers is the first place to look. Do not "fix" it by adding a
 retry or by moving it to `--runInBand`; both hide the defect rather than removing it.
+
+**CLOSED 2026-08-24 as NOT-REPRODUCIBLE — not as fixed. Nothing was changed.** This item asked for
+a reproduction under *different conditions*, on the explicit grounds that repeating the default-run
+measurement had become uninformative. That was done: **6 full-suite runs across three worker
+configurations — `--maxWorkers=100%`, `=2` and `=1` — all 244 suites / 4374 tests green, with
+`useCollectionEdit.buffer.test.tsx` passing in every one.** Serial (`=1`) matters most: it removes
+parallelism entirely, so a cross-worker fixture leak could not hide there.
+
+Counting the four default-scheduling runs this session as well, the standing tally is 0 failures in
+**22 runs**. Per this item's own rule those four add nothing — logged for honesty, not as evidence.
+
+**Conditions NOT tried, and they are where a future reproduction should start: CI itself**, a
+loaded machine, and a cold cache. CI is the one that matters — it is different hardware with
+different core counts, and it is where an intermittent failure would actually cost someone an
+afternoon. If this resurfaces there, reopen with the CI run URL and go straight to the shared-state
+suspects named above; do not re-run the local measurement, which is now 22-for-22 uninformative.
 
 ### ☐ B8 · Fill the required-coverage gaps
 
@@ -856,7 +872,33 @@ instead of two, not a smaller tree — the same lesson E3 taught, in the same di
 
 - [ ] `CollectionPageClient` and `EditModeLayer` both run the full filter → process → sort pipeline, so it runs twice per filter change while editing. Extract one hook.
 
-### ☐ E8 · Renderer + `MenuDropdown` dedup
+### ☐ E8 · Renderer + `MenuDropdown` dedup — NEXT
+
+**Why it is next (picked 2026-08-24).** The board named E8/F2/F5 as the candidates after E16; F5
+shipped this session, so E8 and F2 remain. E8 first because it is the smaller of the two and
+because F5 just re-warmed the exact reasoning its first bullet needs — the GIF-vs-image branch
+split, which F5 proved is real rather than incidental (`isGifBlock` guards a `<video>` branch
+against an `<Image>` branch). F2 is the larger architectural change and should follow.
+
+**Estimate note carried from F5.** This item is quoted at **−120 src, +150–250 test**. F5's
+close-out narrowed the overrun rule: the ~2.3x test blowout tracks items that ADD a caller or prop
+(E13, E16), not items that DELETE one. E8 is a deletion with a new indirection, so expect its test
+half nearer F5's than E16's — but **measure rather than assume in either direction**, since one
+data point on each side is not a trend.
+
+**Guardrail — leave the `pageType` union alone and report what removing it would do.** The second
+bullet's claim that its "two values decide nothing" is exactly the shape of claim this board has
+been wrong about before: E10 asserted `width: 600` / `height: 1100` were dead, and perturbing them
+to 137/999 moved **15 hub tests** — they feed the layout solve. So `pageType` may well be inert,
+but it is a claim written by a past session and not yet checked against callers. Do the config-array
+dedup, leave the union in place, and report what its removal would touch. If it really is inert,
+that is a two-line follow-up with evidence behind it rather than a silent deletion inside a larger diff.
+
+**Second guardrail: extract `ReorderOverlay`, do NOT merge the GIF and image branches.** The
+duplicated overlay JSX is genuinely identical and should be lifted. The branches around it are not:
+they render different elements for different content types, and F5 spent this session removing a
+redundant `isGif` boolean precisely because `isGifBlock` is the real discriminator. Lifting the
+shared overlay is the scoped change; collapsing the branches is the tempting overreach past it.
 
 - [ ] `CollectionContentRenderer` — `ReorderOverlay` JSX is duplicated verbatim in the GIF and image branches; the two placeholder blocks share construction; `isSelected` is recomputed inline twice; seven no-op `key={contentId}` on root returns.
 - [ ] `MenuDropdown` — eight copies of the menu-item block → one config array (~60 lines). The `pageType` union has two values that decide nothing.
@@ -1030,7 +1072,7 @@ image-side TRIGGER for a page whose contents both sides feed.
 - [x] ~~**Check before building: what happens on a location RENAME?**~~ **CHECKED 2026-08-24, both
       sides. The rename is real, and the consequence is worse than this bullet guessed.** The
       frontend exposes it at `/metadata`: `MetadataList.handleUpdate`
-      (`app/components/ui/MetadataList/MetadataList.tsx:53`) PUTs `{ name }` to
+      (`app/components/ui/MetadataList/MetadataList.tsx:74`) PUTs `{ name }` to
       `/metadata/locations/{id}`, and that surface does not revalidate anything at all. The backend
       then **recomputes the slug unconditionally** — `MetadataService.java:410` does
       `location.setSlug(SlugUtil.generateSlug(locationName))` with no guard, and the DAO's UPDATE
@@ -1266,7 +1308,7 @@ exposes a location rename. It does, and the answer was worth its own item._
 guessing:
 
 - **Frontend.** `/metadata` renders `MetadataList` per entity type. `handleUpdate`
-  (`app/components/ui/MetadataList/MetadataList.tsx:53`) PUTs `{ name: newName }` to
+  (`app/components/ui/MetadataList/MetadataList.tsx:74`) PUTs `{ name: newName }` to
   `/metadata/locations/{id}` via `fetchAdminPutJsonApi`, splices the response into local state, and
   **revalidates nothing** — grep for `revalidate` in that file returns zero hits.
 - **Backend.** `MetadataService.java:410` runs `location.setSlug(SlugUtil.generateSlug(locationName))`
@@ -1315,7 +1357,8 @@ guessing:
       the comment that justifies the call, and no estimate on this board budgets for it.** Budget
       it in slice 2. No branch was needed — the call is correct unconditionally, so the generic
       shape was never under pressure in this slice.
-- [x] ~~`MetadataList.handleDelete` (`:74`) has the same exposure and is a cheaper case:~~ on delete
+- [x] ~~`MetadataList.handleDelete` (`:97`, was `:74` before E16 grew the file) has the same
+      exposure and is a cheaper case:~~ on delete
       the slug is unambiguously gone. Decide it with this item rather than filing a third row.
       **DONE across both slices.** Slice 1 gave it the unconditional `revalidateMetadataCache()`;
       slice 2 gave it `onDeleted`, wired to `revalidateLocationCaches([item], [])`. It was the
@@ -1448,7 +1491,7 @@ Bigger, optional, sequenced last. Do each individually and verify on :3000.
       for the user: should tag pages gain filters, the collections strip, and follow seeding? Not
       startable until answered.
 
-### ✅ F5 · `FullScreenModal` link + resolver cleanup — PR #318
+### ◐ F5 · `FullScreenModal` link + resolver cleanup — PR #318 OPEN, not yet merged
 
 - [x] ~~Hand-rolled `<a>` + `router.push` → `Link`, which also removes `router` from props.~~ Done,
       and the `router` cascade went further than the bullet predicted: **`useFullScreenImage` called
@@ -1663,6 +1706,11 @@ below. A bug found while researching H4 is filed as **C7** in Group C.
 
 ### ☐ H1 · Merge `Following` into `Collections` on `/user`; drop the `Following` chip
 
+**UNBLOCKED 2026-08-24 — the board row still said "do C8 first" after C8 had shipped.** C8
+(the stale Following-chip count) is merged, so H1's only stated dependency is gone and the item
+is COLD. Caught by the standing check for a blocker that cleared without anyone clearing the
+row; worth repeating each run, because a row that reads blocked is skipped rather than read.
+
 `Collections` should show owned, tagged and followed collections in one list. Unfollowing a
 collection that has no other association removes it from the page.
 
@@ -1861,6 +1909,36 @@ unification** — settle those two together or they will produce two competing d
 _Newest first. **Dates are local (America/Los_Angeles), not UTC** — earlier entries mixed the two,
 which is why a "08-23" entry can sit between two "08-24" ones. The ordering was verified correct
 against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates._
+
+- 2026-08-24 (8) — **shipped E16 in two slices, #316 and #317, both merged; F5 (#318) is open.**
+  E16 slice 1 put one unconditional `revalidateMetadataCache()` on `MetadataList`'s rename AND
+  delete paths (+9 src / +72 test); slice 2 added `onRenamed`/`onDeleted` callbacks wired by
+  `MetadataPageClient` to fix the old-slug 404 (+31 src / +209 test). The generic shape survived:
+  the `entityType` branch was reported instead of built, and the report found a **stronger reason
+  than the guardrail's own** — a string prop cannot narrow `T`, so the branch needs a double cast
+  while a callback keeps the generic binding. Slice 2 then proved it by type-checking with no cast.
+  F5 cleared all three of its bullets plus a fourth found while testing: the location link's
+  `stopPropagation` was dead because `.metadataOverlay` already stops every click inside it.
+  **That one is a process lesson, not a code one — the first test written for the guard PASSED with
+  the guard deleted.** Red-checking is what exposed it. A guard test that was never watched failing
+  is not known to test anything.
+  **Estimate rule from (7) narrowed the same day, by its own next item.** E16 came in 2.3x over on
+  tests and I generalized that to the whole board; F5 then came in UNDER (+20 net against +60–120).
+  The corrected rule: the overrun tracks items that ADD a caller or prop, not items that DELETE
+  one. Both halves are now recorded, because the wrong generalization is the more useful artifact.
+  **Reconcile pass: 3 drifted refs, all inside the neighborhood of what merged** — the third
+  principle held exactly. `MetadataList.handleUpdate` moved 53 → 74 (two refs) and `handleDelete`
+  74 → 97, the last being the nastiest kind: `:74` still resolved to real code, just to the wrong
+  function. **Also corrected a row I had written myself this session** — F5 was marked ✅ while
+  #318 is still open.
+  **Two items settled by looking rather than by deciding.** B9 is **CLOSED not-reproducible** (not
+  fixed, nothing changed): it asked for a repro under different conditions, so the suite was run
+  across `--maxWorkers=100%`, `=2` and `=1`, 6 runs, all green — serial being the telling one,
+  since a cross-worker fixture leak cannot hide without workers. CI remains untried and is named in
+  the item as where to restart. And **H1 was unblocked** — its row still said "do C8 first" after
+  C8 had merged, so it had been reading as unavailable for nothing.
+  Next: **E8**, with the `pageType` union quarantined — "decides nothing" is the same shape of
+  claim E10 got wrong about `width: 600` / `height: 1100`, which moved 15 tests when perturbed.
 
 - 2026-08-24 (7) — **close-out run: E13 (#313) confirmed in `main`, E15 re-landed as #315.**
   **The headline is a merge failure, not an item.** #314 reported `MERGED` and E15 was NOT in
