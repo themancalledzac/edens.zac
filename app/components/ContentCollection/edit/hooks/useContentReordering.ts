@@ -4,7 +4,7 @@ import { type Dispatch, type SetStateAction, useCallback, useMemo, useState } fr
 
 import { getCollectionUpdateMetadata } from '@/app/lib/api/collections';
 import { type CollectionModel, type CollectionUpdateResponseDTO } from '@/app/types/Collection';
-import { type AnyContentModel } from '@/app/types/Content';
+import { type AnyContentModel, type ReorderMove } from '@/app/types/Content';
 import { handleApiError } from '@/app/utils/apiUtils';
 
 import {
@@ -14,7 +14,6 @@ import {
   buildReorderChangesFromFinalOrder,
   cancelImageMoves,
   executeReorderOperation,
-  type ReorderMove,
   replayMoves,
 } from '../collectionEditUtils';
 

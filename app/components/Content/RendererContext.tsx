@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from 'react';
 
-import { type ReorderMove } from '@/app/components/ContentCollection/edit/collectionEditUtils';
+import { type ReorderMove } from '@/app/types/Content';
 import { type ViewableContent } from '@/app/types/Content';
 
 /**
