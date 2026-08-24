@@ -360,6 +360,10 @@ const pageHeight = (collapsed: Record<PanelType, boolean>, width = DESKTOP.conte
  *
  * The list is meant to shrink to `[]` and be deleted, not topped up. It held at one entry
  * (`messages+roles`) before the ListPanel density pass, at zero after it, and at three now.
+ *
+ * Compared whole rather than skipped from inside the sweep, so it is pinned in both directions: an
+ * entry that stops being true fails just as loudly as a new break. The exact heights below assert
+ * the same three states, and the whole-list compare is what keeps the two in step.
  */
 const TALLER_THAN_OPEN_TODAY = [
   'messages+collections',
@@ -382,21 +386,29 @@ describe('admin hub page height against the all-open baseline', () => {
   const openHeight = pageHeight(ALL_OPEN);
 
   /**
-   * Filtered again, by {@link TALLER_THAN_OPEN_TODAY}. It was unfiltered before the fourth panel,
-   * but only because the ALL-OPEN baseline had itself regressed to 3078.6 — a state cannot fail to
-   * run shorter than a baseline that is already stranding a cover. The baseline recovered to
-   * 2009.5 with the fourth panel, and three states now stand above it for real.
+   * Excepted by {@link TALLER_THAN_OPEN_TODAY}. It was unfiltered before the fourth panel, but only
+   * because the ALL-OPEN baseline had itself regressed to 3078.6 — a state cannot fail to run
+   * shorter than a baseline that is already stranding a cover. The baseline recovered to 2009.5
+   * with the fourth panel, and three states now stand above it for real.
    *
-   * Read this with the block below, not on its own: an `it.each` comparing states to a baseline
-   * cannot see a baseline that moved, which is why the baseline is pinned to the pixel there.
+   * Collected whole and compared whole, the discipline {@link WIDTH_SPREAD_BREAKS_TODAY} uses. This
+   * was an `it.each` that skipped the listed states from inside the parameterized body, which
+   * enforced the rule in one direction only: a NEW break failed, but fixing a listed one left the
+   * suite green and the entry sitting in the list forever. Worse, the exact pins below and the skip
+   * list were free to name different states — nothing compared the two, so an entry added here
+   * without a pin would have been silently exempt from both tests. Comparing the whole list closes
+   * both gaps at once: the list is now the complete set of states that run taller, asserted as such.
+   *
+   * Read this with the block below, not on its own: comparing states to a baseline cannot see a
+   * baseline that moved, which is why the baseline is pinned to the pixel there.
    */
-  it.each(STATES.slice(1))(
-    'runs shorter than the all-open page in the %s state',
-    (name, collapsed) => {
-      if (TALLER_THAN_OPEN_TODAY.includes(name)) return;
-      expect(pageHeight(collapsed)).toBeLessThan(openHeight);
-    }
-  );
+  it('runs shorter than the all-open page in every state but the known-taller ones', () => {
+    const taller = STATES.slice(1)
+      .filter(([, collapsed]) => pageHeight(collapsed) >= openHeight)
+      .map(([name]) => name);
+
+    expect(taller).toEqual(TALLER_THAN_OPEN_TODAY);
+  });
 
   /**
    * REGRESSION, pinned at its measured size — and note WHICH STATE it now lands in.

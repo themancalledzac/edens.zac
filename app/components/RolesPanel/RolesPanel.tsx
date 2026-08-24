@@ -20,6 +20,7 @@ import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
+import { LoadError } from '@/app/components/ui/StatusText/LoadError';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
 import { useCachedPanelData } from '@/app/hooks/useCachedPanelData';
@@ -202,14 +203,7 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
   let listBody: ReactNode = null;
   if (!loading) {
     if (loadError) {
-      listBody = (
-        <div className={styles.loadError} role="alert">
-          <p className={styles.error}>{loadError}</p>
-          <Button variant="secondary" size="sm" onClick={() => void refresh()}>
-            Retry
-          </Button>
-        </div>
-      );
+      listBody = <LoadError message={loadError} onRetry={() => void refresh()} />;
     } else if (sortedRoles.length === 0) {
       listBody = <EmptyState>No roles yet. Use “+ New Role” to create one.</EmptyState>;
     } else {

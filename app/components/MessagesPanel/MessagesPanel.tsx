@@ -1,12 +1,11 @@
 'use client';
 
-import Link from 'next/link';
 import { type Dispatch, type ReactNode, type SetStateAction, useCallback } from 'react';
 
-import { ListPanel, ListRow, ListRows } from '@/app/components/ListPanel/ListPanel';
+import { ListPanel, ListRow, ListRows, ViewAllLink } from '@/app/components/ListPanel/ListPanel';
 import { MessageRowLeft, MessageRowRight } from '@/app/components/messages/MessageRow';
-import { Button } from '@/app/components/ui/Button/Button';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
+import { LoadError } from '@/app/components/ui/StatusText/LoadError';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
 import { type AdminMessagesPayload, useCachedPanelData } from '@/app/hooks/useCachedPanelData';
@@ -88,23 +87,12 @@ export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelPro
   );
   const { deletingId, error, handleDelete } = useMessageDelete(messages, setMessages, setTotal);
 
-  const headerRight = (
-    <Link href="/comments" className={styles.viewAll}>
-      {total} · View all
-    </Link>
-  );
+  const headerRight = <ViewAllLink href="/comments" count={total} />;
 
   let body: ReactNode = null;
   if (!loading) {
     if (loadError) {
-      body = (
-        <div className={styles.loadError} role="alert">
-          <p className={styles.error}>{loadError}</p>
-          <Button variant="secondary" size="sm" onClick={() => void refresh()}>
-            Retry
-          </Button>
-        </div>
-      );
+      body = <LoadError message={loadError} onRetry={() => void refresh()} />;
     } else if (messages.length === 0) {
       body = <EmptyState>No comments yet.</EmptyState>;
     } else {

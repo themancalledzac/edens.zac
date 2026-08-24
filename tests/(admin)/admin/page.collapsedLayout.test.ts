@@ -108,6 +108,9 @@ const COLLAPSE_STATES: Array<[string, Record<PanelType, boolean>]> = Array.from(
  *
  * The list is meant to shrink to `[]` and be deleted, not topped up. It was empty on this fixture
  * until a fourth panel joined the hub.
+ *
+ * Compared whole rather than skipped from inside the sweep, so an entry that stops being true fails
+ * as loudly as a new break, and the exact pin below cannot come to name a different state than this.
  */
 const TALLER_THAN_OPEN_TODAY = ['messages'];
 
@@ -302,6 +305,11 @@ describe('admin hub collapsed layout', () => {
    * no exception list at all, and `page.collapseStates.test.ts` was the only place the invariant
    * broke.
    *
+   * The breaks are collected and compared as a whole list, matching the collapse-states suite. This
+   * loop used to `continue` past the listed states, which held the rule one way only — a new break
+   * failed, but fixing the listed one left the test green and the entry here forever — and left
+   * nothing asserting that the list and the exact pin below name the same states.
+   *
    * The metric is `measureRow`, the same ruler the collapse-state suite and the development console
    * use. It used to be a bespoke tree walk here, which is the same arithmetic — but two earlier
    * metrics in this spot each inverted an assertion (`max(item.height)` reports a stacked row far
@@ -324,13 +332,13 @@ describe('admin hub collapsed layout', () => {
    * collection page, so the behaviour is documented rather than tuned away. The height half of the
    * same phenomenon is pinned at exact values in `page.collapseStates.test.ts`.
    */
-  it('never renders a collapsed state taller than the all-open page', () => {
+  it('renders no collapsed state taller than the all-open page, but the known one', () => {
     const expanded = pageHeight(NONE);
+    const taller = COLLAPSE_STATES.filter(([, collapsed]) => pageHeight(collapsed) >= expanded).map(
+      ([name]) => name
+    );
 
-    for (const [name, collapsed] of COLLAPSE_STATES) {
-      if (TALLER_THAN_OPEN_TODAY.includes(name)) continue;
-      expect(pageHeight(collapsed)).toBeLessThan(expanded);
-    }
+    expect(taller).toEqual(TALLER_THAN_OPEN_TODAY);
   });
 
   /**

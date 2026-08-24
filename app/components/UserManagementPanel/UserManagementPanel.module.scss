@@ -1,21 +1,6 @@
 /* UserManagementPanel — the content inside this panel's ListPanel slots. The shell, the list
    surface and the row grid are ListPanel's; nothing here may re-declare them. */
 
-/* Load failure — deliberately unlike the shared <EmptyState> the empty branch renders, so a dead
-   backend never reads as an empty list. */
-.loadError {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-}
-
-.error {
-  margin: 0;
-  color: var(--color-danger-text);
-  font-size: var(--text-sm);
-}
-
 /* The list surface, the row grid and both row sections now belong to ListPanel — .list, .row,
    .rowMain, .rowStatic and .rowActions all lived here and are gone. What stays is the content
    INSIDE the identity slot, which is this panel's own and nobody else's. */

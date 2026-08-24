@@ -1,8 +1,10 @@
 import '@testing-library/jest-dom';
 
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
+import { LoadError } from '@/app/components/ui/StatusText/LoadError';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
 
@@ -152,5 +154,52 @@ describe('StaleNotice', () => {
   it('adds a caller className alongside its own, rather than replacing them', () => {
     render(<StaleNotice className="caller" />);
     expect(screen.getByRole('status')).toHaveClass('text', 'inline', 'caller');
+  });
+});
+
+describe('LoadError', () => {
+  it('renders the message it is handed, verbatim', () => {
+    render(<LoadError message="Failed to load users." onRetry={jest.fn()} />);
+    expect(screen.getByText('Failed to load users.')).toBeInTheDocument();
+  });
+
+  /**
+   * The one member of the family that is `role="alert"` rather than `role="status"` or no role at
+   * all. A failed read is a dead end the viewer has to act on, and unlike the pending and
+   * cached-data messages it always arrives as a change to an already-mounted subtree — the panel
+   * was loading a moment ago — which is the insertion case that announces reliably.
+   */
+  it('announces assertively via role=alert, unlike its three siblings', () => {
+    render(<LoadError message="Failed to load users." onRetry={jest.fn()} />);
+    const node = screen.getByRole('alert');
+    expect(node).toHaveTextContent('Failed to load users.');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  /**
+   * The Retry control is the component's, not a slot. All four admin panels passed the same
+   * `secondary`/`sm` Button with the same label, and a recovery affordance that differs per panel
+   * reads as a bug on a hub where the panels sit side by side.
+   */
+  it('offers a Retry control that runs the caller handler once per click', async () => {
+    const onRetry = jest.fn();
+    const user = userEvent.setup();
+    render(<LoadError message="Failed to load users." onRetry={onRetry} />);
+
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The loud/muted split, asserted rather than left to the stylesheet. `.text` is the muted rule
+   * EmptyState, LoadingText and StaleNotice share; this message must NOT pick it up, because the
+   * whole reason the other three are muted is so a failed read can carry the danger colour alone.
+   */
+  it('does not wear the muted .text class its three siblings share', () => {
+    render(<LoadError message="Failed to load users." onRetry={jest.fn()} />);
+    const message = screen.getByText('Failed to load users.');
+    expect(message).toHaveClass('loadErrorMessage');
+    expect(message).not.toHaveClass('text');
+    expect(screen.getByRole('alert')).toHaveClass('loadError');
   });
 });

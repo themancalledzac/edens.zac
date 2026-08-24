@@ -2,15 +2,9 @@
    role-detail editor that share the panel body. The shell, the list surface and the row grid are
    ListPanel's. */
 
-/* Load failure — deliberately unlike the shared <EmptyState> the empty branch renders, so a dead
-   backend never reads as an empty list. */
-.loadError {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-}
-
+/* The delete failure, rendered under the roles list when removing a role fails. Its one remaining
+   caller: the LOAD failures that used to share this class — the panel's and RoleDetailView's —
+   are both <LoadError> now, which carries its own message rule. */
 .error {
   margin: 0;
   color: var(--color-danger-text);

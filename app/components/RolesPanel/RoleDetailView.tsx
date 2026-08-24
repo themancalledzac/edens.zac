@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/app/components/ui/Button/Button';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
+import { LoadError } from '@/app/components/ui/StatusText/LoadError';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { getAllCollectionsAdmin } from '@/app/lib/api/collections';
 import {
@@ -175,14 +176,7 @@ export function RoleDetailView({ role, onDeleted }: RoleDetailViewProps) {
     <div className={styles.detail}>
       <LoadingText isLoading={loading}>Loading role…</LoadingText>
 
-      {!loading && loadError && (
-        <div className={styles.loadError} role="alert">
-          <p className={styles.error}>{loadError}</p>
-          <Button variant="secondary" size="sm" onClick={() => void load()}>
-            Retry
-          </Button>
-        </div>
-      )}
+      {!loading && loadError && <LoadError message={loadError} onRetry={() => void load()} />}
 
       {!loading && !loadError && detail && (
         <>

@@ -17,8 +17,8 @@ export interface StaleNoticeProps {
  * last known user list as fact, indefinitely, across reloads.
  *
  * Muted rather than alarming, and deliberately the same weight as {@link EmptyState}: the data is
- * probably still right, and the panel's own `loadError` branch already owns the loud case where
- * there is nothing to show at all.
+ * probably still right, and {@link LoadError} already owns the loud case where there is nothing to
+ * show at all.
  *
  * `role="status"` announces the change politely. The insertion caveat in {@link LoadingText}'s
  * docblock applies — a live region that arrives with its text already in it is not reliably

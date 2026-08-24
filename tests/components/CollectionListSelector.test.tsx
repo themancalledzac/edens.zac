@@ -429,6 +429,38 @@ describe('sortGroup', () => {
     );
     expect(sorted.map(c => c.id)).toEqual([2, 1]);
   });
+
+  /**
+   * REGRESSION. The BLOG branch used to break its name tie with a raw `localeCompare`, which orders
+   * a pure case difference; it is `compareNames` now, which ties it. The two tests above cannot see
+   * the change because every name in them differs in its base letter, where both comparators agree.
+   *
+   * The tie matters because this selector and `CollectionsPanel` show the SAME collections to the
+   * same admin, off the same `getMetadata()` read — a hub panel and a manage-page selector that
+   * disagree on where "alpha" sits was the actual defect.
+   */
+  it('ties two BLOG names that differ only in case, rather than ordering them', () => {
+    const rows = [
+      { id: 1, name: 'Alpha', collectionDate: null },
+      { id: 2, name: 'alpha', collectionDate: null },
+    ];
+    expect(sortGroup(rows, 'BLOG').map(c => c.id)).toEqual([1, 2]);
+    expect(sortGroup([...rows].reverse(), 'BLOG').map(c => c.id)).toEqual([2, 1]);
+  });
+
+  /**
+   * The same rule in a non-blog bucket. Both branches were raw `localeCompare` before; leaving this
+   * one alone would have made the bucket a row lands in decide how its name is compared, inside a
+   * single component, which is a worse split than the one being removed.
+   */
+  it('ties a case-only name difference in a non-blog bucket too', () => {
+    const rows = [
+      { id: 1, name: 'Bravo' },
+      { id: 2, name: 'bravo' },
+    ];
+    expect(sortGroup(rows, 'COLLECTION').map(c => c.id)).toEqual([1, 2]);
+    expect(sortGroup([...rows].reverse(), 'COLLECTION').map(c => c.id)).toEqual([2, 1]);
+  });
 });
 
 describe('three-column accordion mode', () => {

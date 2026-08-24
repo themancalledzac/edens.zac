@@ -1,10 +1,14 @@
-/* Shared look for the three "what you are looking at is not the whole story" messages —
-   EmptyState, LoadingText and StaleNotice. One visual, three semantics: an empty result is static
+/* The four "what you are looking at is not the whole story" messages — EmptyState, LoadingText,
+   StaleNotice and LoadError.
+
+   The first three share `.text` below: one visual, three semantics. An empty result is static
    prose, a pending read is a live region, and a cached-after-failure list is a live region making
    a claim about content that IS on screen. Keeping them in one module is what stops them drifting
    apart again; before this there were five different empty-state styles and six loading ones,
-   including two magic 0.9375rem font sizes and a hard-coded 3rem padding. Deliberately the same
-   weight for all three: the loud case belongs to each panel's own error branch, not here. */
+   including two magic 0.9375rem font sizes and a hard-coded 3rem padding.
+
+   LoadError is the exception and has its own block at the foot of the file. The muted weight the
+   other three share is what lets the failed read be the only loud one. */
 
 .text {
   margin: 0;
@@ -32,4 +36,31 @@
    when they have something to say — so this only ever matches LoadingText. */
 .text:empty {
   padding: 0;
+}
+
+/* LoadError is the loud member of the family and the only one that does not use `.text` above:
+   a failed read is the one case where the muted weight would be wrong. Its own block rather than a
+   modifier on `.text`, because it shares none of that rule's properties — it is a column holding a
+   message over a Retry button, not a line of prose.
+
+   Hoisted byte-for-byte out of CollectionsPanel, RolesPanel and UserManagementPanel, where the same
+   two rules were copied three times, plus a fourth copy in MessagesPanel that carried an extra
+   nested reset because `.error` was shared there with the delete failure below the list. That reset
+   is what the split into `.loadErrorMessage` removes: this message is no longer the same class as
+   any panel's other error text, so nothing has a margin to undo.
+
+   RolesPanel's copy had two readers, not one — RoleDetailView imports the same stylesheet and used
+   the same pair of classes. `panelStyleReferences.test.ts` is what now fails if a rule is hoisted
+   out from under a caller like that. */
+.loadError {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.loadErrorMessage {
+  margin: 0;
+  color: var(--color-danger-text);
+  font-size: var(--text-sm);
 }

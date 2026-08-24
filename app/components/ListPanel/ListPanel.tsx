@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { type ReactNode } from 'react';
 
 import { Disclosure } from '@/app/components/ui/Disclosure/Disclosure';
@@ -174,6 +175,32 @@ export function ListRow({ left, middle, right, onActivate, ariaLabel }: ListRowP
       <div className={styles.rowMiddle}>{middle}</div>
       <div className={styles.rowRight}>{right}</div>
     </li>
+  );
+}
+
+interface ViewAllLinkProps {
+  /** Where the full list lives — `/collections`, `/comments`. */
+  href: string;
+  /** How many rows exist in total, which is usually more than the panel shows. */
+  count: number;
+}
+
+/**
+ * The "N · View all" link a panel puts in its header's trailing slot.
+ *
+ * Declared here for the same reason {@link ListRows} is: CollectionsPanel and MessagesPanel each
+ * carried a byte-identical `.viewAll` rule and the same five lines of JSX, under a comment in
+ * CollectionsPanel saying it copied MessagesPanel rather than inventing a second treatment. A rule
+ * that has to be copied to stay correct belongs to the shell.
+ *
+ * The count sits before the label, not after it, so the two panels' headers align on the same
+ * separator when they stand side by side on the hub.
+ */
+export function ViewAllLink({ href, count }: ViewAllLinkProps) {
+  return (
+    <Link href={href} className={styles.viewAll}>
+      {count} · View all
+    </Link>
   );
 }
 

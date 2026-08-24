@@ -1,36 +1,11 @@
 /* MessagesPanel — the content inside this panel's ListPanel slots, in the compact arrangement a
    narrow admin column wants. The shell, the list surface and the row grid are ListPanel's. */
 
-.viewAll {
-  font-size: var(--text-sm);
-  color: var(--color-on-surface-muted);
-  text-decoration: none;
-
-  &:hover {
-    color: var(--color-on-surface);
-    text-decoration: underline;
-  }
-}
-
+/* The delete failure below the list, where the top margin is the separation from the last row. The
+   LOAD failure that used to share this class is <LoadError> now, which is why the nested
+   `margin: 0` reset that lived here is gone with it. */
 .error {
   margin: var(--space-2) 0 0;
   font-size: var(--text-sm);
   color: var(--color-danger-text);
-}
-
-/* Load failure — deliberately unlike the shared <EmptyState> the empty branch renders, so a dead
-   backend never reads as "no comments yet". Mirrors `.loadError` in UserManagementPanel, because
-   the two panels sit side by side on /admin and a recovery affordance that differs between them
-   reads as a bug. The nested reset is needed because `.error` is shared with the delete failure
-   below the list, where its top margin is the separation from the last row; here the flex `gap`
-   already supplies it and the margin would double up. */
-.loadError {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-
-  .error {
-    margin: 0;
-  }
 }

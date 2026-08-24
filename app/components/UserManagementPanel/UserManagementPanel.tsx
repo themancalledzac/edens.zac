@@ -10,6 +10,7 @@ import { ListPanel, ListRow, ListRows } from '@/app/components/ListPanel/ListPan
 import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIdentityModal';
 import { Button } from '@/app/components/ui/Button/Button';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
+import { LoadError } from '@/app/components/ui/StatusText/LoadError';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
 import { UpgradeUserModal } from '@/app/components/UpgradeUserModal/UpgradeUserModal';
@@ -125,14 +126,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
   let listBody: ReactNode = null;
   if (!loading) {
     if (loadError) {
-      listBody = (
-        <div className={styles.loadError} role="alert">
-          <p className={styles.error}>{loadError}</p>
-          <Button variant="secondary" size="sm" onClick={() => void refresh()}>
-            Retry
-          </Button>
-        </div>
-      );
+      listBody = <LoadError message={loadError} onRetry={() => void refresh()} />;
     } else if (sortedUsers.length === 0) {
       listBody = <EmptyState>No users yet. Use “+ New User” to create one.</EmptyState>;
     } else {
@@ -146,9 +140,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
               // whole of the old .rowStatic / .rowMain fork — the identity markup itself was
               // duplicated across both arms and is written once here.
               onActivate={
-                user.status === 'PERSON'
-                  ? undefined
-                  : () => router.push(`/admin/users/${user.id}`)
+                user.status === 'PERSON' ? undefined : () => router.push(`/admin/users/${user.id}`)
               }
               left={
                 <span className={styles.identity}>
