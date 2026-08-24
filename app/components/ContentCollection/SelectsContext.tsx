@@ -1,6 +1,15 @@
 'use client';
 
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { addSelect, removeSelect } from '@/app/lib/api/selects';
 import { logger } from '@/app/utils/logger';
@@ -46,11 +55,30 @@ export function SelectsProvider({
 
   const isSelected = useCallback((contentId: number) => selectedIds.has(contentId), [selectedIds]);
 
+  /**
+   * Notifies the owner from the committed value rather than from inside the state updaters.
+   *
+   * Updaters must be pure. StrictMode double-invokes them in development, so calling `onChange`
+   * inside one fired it twice per toggle. Firing here instead means exactly one call per committed
+   * change, and it leaves both updaters as functional `prev => next` forms — which the rollback
+   * needs, because it has to inverse-apply against whatever the set is when the persist rejects,
+   * not against a snapshot taken when the toggle started.
+   *
+   * The guard compares the previous set by identity rather than tracking a first-run flag. Mount
+   * must not notify, and StrictMode double-invokes effects on mount too, so a flag would fire on
+   * the second run — reintroducing the bug at the one moment it is hardest to see.
+   */
+  const notifiedIdsRef = useRef(selectedIds);
+  useEffect(() => {
+    if (notifiedIdsRef.current === selectedIds) return;
+    notifiedIdsRef.current = selectedIds;
+    onChange?.([...selectedIds]);
+  }, [selectedIds, onChange]);
+
   const toggle = useCallback(
     (contentId: number) => {
       const wasSelected = selectedIds.has(contentId);
 
-      // Optimistic update.
       setSelectedIds(prev => {
         const next = new Set(prev);
         if (wasSelected) {
@@ -58,13 +86,11 @@ export function SelectsProvider({
         } else {
           next.add(contentId);
         }
-        onChange?.([...next]);
         return next;
       });
 
       const persist = wasSelected ? removeSelect(contentId) : addSelect(collectionId, contentId);
       persist.catch((error: unknown) => {
-        // Roll back to the pre-toggle membership for this id.
         setSelectedIds(prev => {
           const next = new Set(prev);
           if (wasSelected) {
@@ -72,7 +98,6 @@ export function SelectsProvider({
           } else {
             next.delete(contentId);
           }
-          onChange?.([...next]);
           return next;
         });
         logger.error('SelectsContext', 'toggle failed; rolled back', error, {
@@ -82,7 +107,7 @@ export function SelectsProvider({
         });
       });
     },
-    [collectionId, selectedIds, onChange]
+    [collectionId, selectedIds]
   );
 
   const value = useMemo<SelectsContextValue>(

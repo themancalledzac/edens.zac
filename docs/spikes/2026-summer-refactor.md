@@ -126,7 +126,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | B8 | Fill the required-coverage gaps | Low | +1,100–1,650 for the 4 open bullets (est. +600 for all 6) | ◐ 2 of 6 — PR #266 (clearCache), PR #267 (Escape) |
 | C1 | Unsaved people/gallery-access wipe (HIGH) | Low | +73 −11 | ✅ PR #264 |
 | C2 | About portrait aspect ratio | Trivial | ±1 src, +75 test | ✅ PR #281 |
-| C3 | `SelectsContext.toggle` purity | Low | ±20 | ☐ |
+| C3 | `SelectsContext.toggle` purity | Low | ±35 src, +56 test | ✅ PR #282 |
 | C4 | Cache tags that never connect | Low | ±66 (4 dead tags + tests) | ✅ PR #279 |
 | C5 | Assorted LOW bugs | Low | ±55 src, +100–200 test | ☐ |
 | C6 | Password cover strip missing on the public card path | Low-medium | ±30 | ⛔ BACKEND-BLOCKED (split out of E1) |
@@ -533,9 +533,39 @@ describes still passes.
       defect is a pre-load reflow that a static screenshot cannot show. The declared attribute is the
       whole fix, and the test asserts it against the file.
 
-### ☐ C3 · `SelectsContext.toggle` runs side effects inside a state updater
+### ✅ C3 · `SelectsContext.toggle` runs side effects inside a state updater — PR #282
 
-- [ ] [SelectsContext.tsx:54](app/components/ContentCollection/SelectsContext.tsx:54) and `:68` call `onChange?.([...next])` inside `setSelectedIds(prev => …)`. Updaters must be pure — StrictMode double-invokes them, so dev `onChange` fires twice per toggle. Compute `next` outside, then call the setter and the callback sequentially.
+- [x] Confirmed: `onChange?.([...next])` sat inside both `setSelectedIds(prev => …)` updaters
+      ([SelectsContext.tsx](app/components/ContentCollection/SelectsContext.tsx)). StrictMode
+      double-invokes updaters in development, so every toggle notified the owner twice. Reproduced
+      before fixing — the new StrictMode spec reported 2 calls for one toggle, and 4 across a
+      toggle plus its rollback.
+- [x] **The item's prescribed mechanism was wrong, and following it literally would have introduced
+      a worse bug.** "Compute `next` outside, then call the setter and the callback sequentially"
+      is right for the optimistic update but breaks the rollback. The rollback's functional updater
+      is load-bearing: it inverse-applies against whatever the set is *when the persist rejects*.
+      Computing `next` outside would capture the set as it was when the toggle started, so a
+      rollback landing after an unrelated second toggle would discard that second toggle. Verified
+      by reading the closure, not assumed — `toggle` is rebuilt per render, but the pending
+      `persist.catch` still holds the older one.
+- [x] Fix keeps both updaters as pure `prev => next` forms and moves the notifier to an effect keyed
+      on the committed `selectedIds`. Purity and rollback correctness both hold, and the owner still
+      gets exactly one call per change.
+- [x] The mount guard compares the previous set by identity rather than tracking a first-run flag.
+      StrictMode double-invokes effects on mount too, so a flag fires on the second run — which
+      would have reintroduced the same double-notify at the one moment it is hardest to notice.
+      There is a spec for this: mount must not notify at all.
+- [x] Coverage gap closed on the way past. The existing suite never passed `onChange`, so the
+      notifier had no test of any kind — which is why a duplicate call survived. The owner is
+      `setPinnedSelectedIds` ([CollectionPageClient.tsx:560](app/components/ContentCollection/CollectionPageClient.tsx:560)),
+      a plain setState, so the duplicate was idempotent and invisible. The new specs assert call
+      counts rather than payloads for exactly that reason.
+- [x] Dropped the two inline comments in the function body while rewriting those lines, per G2.
+
+**Behavioral change worth knowing.** `onChange` now fires after the commit rather than during the
+update phase, so the owner's state lands one render later than the Set does. It is immaterial for
+the only consumer — a setState feeding a pinned prepend — but a future consumer that needs the
+notification inside the same commit would have to be built differently.
 
 ### ✅ C4 · Cache tags that never connect — PR #279
 
