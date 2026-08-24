@@ -8,6 +8,7 @@ import {
   type CollectionModel,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
+  type LocationModel,
 } from '@/app/types/Collection';
 import {
   type AnyContentModel,
@@ -221,6 +222,72 @@ export async function revalidateCollectionCache(slug: string): Promise<void> {
   } catch (error) {
     if (isLocalEnvironment()) {
       logger.warn('manageUtils', 'Failed to revalidate cache', { error });
+    }
+  }
+}
+
+/**
+ * POSTs to /api/revalidate for the `collections-location-${slug}` tag of every location the
+ * collection was in and every location it is in now. Fails silently in production.
+ *
+ * Takes both sets because a removal is invisible in the new one. Moving a collection from Seattle
+ * to Portland has to refresh /location/seattle too — revalidating only the post-save locations
+ * leaves the Seattle page listing a collection that is no longer there until
+ * `TIMING.revalidateCache` expires.
+ *
+ * Slugs must come from the saved response, never from the edit buffer. A location added during an
+ * edit is `{ id: 0, name, slug: '' }` on the frontend until the backend assigns a slug, so calling
+ * this before the save resolves would build `collections-location-` and revalidate nothing.
+ * Locations with no slug are dropped here for the same reason.
+ *
+ * This deliberately does not live inside {@link revalidateCollectionCache}. That helper takes one
+ * collection slug and is called from eight places, including `CreateCollectionForm` and
+ * `useCaptureDateSelection`, which have no location data in scope. Growing it a second argument
+ * most callers cannot fill would be worse than the trade this makes: location freshness depends on
+ * which code path did the edit. `handleUpdate` in `useCollectionEdit` is the path that saves
+ * collection locations, and it is the only caller.
+ *
+ * Image-level location edits are not covered, and that is a known gap rather than a decision. The
+ * backend's `CollectionService.getLocationPage` builds its response from two queries, not one: the
+ * collections at that location, plus orphan images found by
+ * `ContentRepository.findOrphanImagesByLocationName`. Retagging a single image therefore changes
+ * what the location page shows, and nothing here revalidates the tag for it. Wiring that up means
+ * a trigger on the image-metadata save path, which is separate work.
+ *
+ * @param previous - Locations the collection was in before this save. In `handleUpdate` that is
+ *   `collection.locations`, the same baseline `buildUpdatePayload` diffed the payload against, so
+ *   the tags revalidated always match the change actually sent. Two saves in a row need nothing
+ *   extra: each save's `previous` is the previous save's `next`, so a location left behind two
+ *   edits ago was already revalidated by the edit that left it. Duplicates across the two sets
+ *   collapse.
+ * @param next - Locations on the saved response.
+ */
+export async function revalidateLocationCaches(
+  previous: LocationModel[],
+  next: LocationModel[]
+): Promise<void> {
+  const slugs = [
+    ...new Set(
+      [...previous, ...next]
+        .map(location => location.slug)
+        .filter((slug): slug is string => Boolean(slug))
+    ),
+  ];
+  if (slugs.length === 0) return;
+
+  try {
+    await Promise.all(
+      slugs.map(slug =>
+        fetch('/api/revalidate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tag: `collections-location-${slug}` }),
+        })
+      )
+    );
+  } catch (error) {
+    if (isLocalEnvironment()) {
+      logger.warn('manageUtils', 'Failed to revalidate location caches', { error });
     }
   }
 }

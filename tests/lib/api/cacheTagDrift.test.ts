@@ -31,19 +31,20 @@ const REGISTRATION_SOURCES = ['app/lib/api/collections.ts', 'app/lib/api/content
 const REVALIDATION_SOURCE = 'app/components/ContentCollection/edit/collectionEditUtils.ts';
 
 /** Functions inside {@link REVALIDATION_SOURCE} that POST tags. Scoped so unrelated `tags:` keys are not scanned. */
-const REVALIDATION_FUNCTIONS = ['revalidateCollectionCache', 'revalidateMetadataCache'] as const;
+const REVALIDATION_FUNCTIONS = [
+  'revalidateCollectionCache',
+  'revalidateLocationCaches',
+  'revalidateMetadataCache',
+] as const;
 
 /**
  * Tags that are deliberately one-sided. Every entry needs a reason and a route out — an allowlist
  * without either becomes a place to hide drift.
+ *
+ * Empty since E12. `collections-location-${slug}` was the last entry: registered by
+ * `getCollectionsByLocation` and revalidated by nothing until `revalidateLocationCaches` shipped.
  */
-const ONE_SIDED_BY_DESIGN: Record<string, string> = {
-  'collections-location-${slug}':
-    'Registered by getCollectionsByLocation, revalidated by nothing. Location pages serve stale ' +
-    'lists for up to TIMING.revalidateCache after a collection edit. Wiring it up needs the ' +
-    'previous-union-next location slugs at edit time; see the C4 report in ' +
-    'docs/spikes/2026-summer-refactor.md.',
-};
+const ONE_SIDED_BY_DESIGN: Record<string, string> = {};
 
 /** A cache tag exactly as it is written in source. */
 interface SourceTag {
