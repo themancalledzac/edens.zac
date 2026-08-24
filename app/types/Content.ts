@@ -566,3 +566,15 @@ export interface ContentImageUpdateResponse {
   /** List of error messages if any updates failed */
   errors?: string[];
 }
+
+/**
+ * A single reorder-mode move: the image being moved and the index it lands on.
+ *
+ * Lives here rather than in the admin edit directory because the public render tree consumes it —
+ * `RendererContext` and `boxRendererUtils` both type `reorderMoves` with it, and neither should
+ * import from `app/components/ContentCollection/edit/`.
+ */
+export interface ReorderMove {
+  imageId: number;
+  toIndex: number;
+}

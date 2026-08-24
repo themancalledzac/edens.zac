@@ -16,6 +16,7 @@ import {
   type ContentGifModel,
   type ContentImageModel,
   type ContentImageUpdateResponse,
+  type ReorderMove,
 } from '@/app/types/Content';
 import { toggleRelation } from '@/app/utils/collectionToggle';
 import { isContentCollection, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
@@ -423,11 +424,6 @@ export function updateBlockOrderIndex(
 }
 
 // ===================== Reorder Mode Utilities =====================
-
-export interface ReorderMove {
-  imageId: number;
-  toIndex: number;
-}
 
 /**
  * Replay a list of moves against an original order to produce the current display order.
