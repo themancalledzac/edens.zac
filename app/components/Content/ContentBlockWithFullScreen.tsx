@@ -101,7 +101,6 @@ export default function ContentBlockWithFullScreen({
     isSwiping,
     showMetadata,
     toggleMetadata,
-    router,
     navigateToNext,
     navigateToPrevious,
   } = useFullScreenImage();
@@ -257,7 +256,6 @@ export default function ContentBlockWithFullScreen({
           isSwiping={isSwiping}
           showMetadata={showMetadata}
           toggleMetadata={toggleMetadata}
-          router={router}
           collectionData={collectionData}
           navigateToNext={navigateToNext}
           navigateToPrevious={navigateToPrevious}

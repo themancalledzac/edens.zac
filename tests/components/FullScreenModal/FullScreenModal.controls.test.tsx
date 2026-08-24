@@ -65,7 +65,6 @@ function renderModal(
       isSwiping={{ current: false }}
       showMetadata={overrides.showMetadata ?? false}
       toggleMetadata={toggleMetadata}
-      router={{ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() } as never}
       navigateToNext={navigateToNext}
       navigateToPrevious={navigateToPrevious}
     />
