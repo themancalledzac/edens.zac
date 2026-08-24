@@ -47,34 +47,27 @@ const PANEL_COMPONENTS: Record<
  * `box-sizing`/`position` contract. Reusing the atomic wrapper rather than a parallel one is the
  * point: a panel that styles its own box is a panel that drifts from the grid it sits in.
  *
- * `height` is applied as a HEIGHT, not a `max-height`. The packer's number is now the panel's true
+ * `height` is applied as a HEIGHT, not a `max-height`. The packer's number is the panel's true
  * content height — `chrome + rowCount × rowHeight`, pinned in `adminHubContent` — so the box and
- * its reservation are the same box. The old `max-height` + `align-self: flex-start` pair is gone
- * with it: together they made a panel CLAIM a 1100-ratio column and then OCCUPY only its content,
- * which is where the blank well in Zac's 2026-08-10 screenshots came from (763px reserved, 249px
- * rendered). A block may do one or the other; doing both is what broke the layout.
+ * its reservation are the same box. A block may claim a slot or size to its own content; doing
+ * both leaves a blank well wherever the claim exceeds the content.
  *
  * If a panel's real content exceeds the reservation — a chrome constant drifting a pixel or two, or
  * a list past the height cap — `.body`'s `overflow-y: auto` absorbs it. `.box` must stay a flex
  * column for that: as a block box it would clip at the height instead of handing the overflow to
  * the scrollable body, and no scrollbar would ever appear.
  *
- * The box must NOT feed its own rendered size back into the packer. A measured-height path was
- * tried (2026-08-10, Phase C of the shape-model spec) and reverted the same day: the packer's
- * width allocation depends on every panel's shape, so measuring width → re-packing → new width →
- * new wrapped height → re-pack oscillates and never converges, and because a re-pack remounts
- * every panel (rows are keyed by membership) each cycle re-fired all three admin fetches until the
- * browser ran out of sockets (`ERR_INSUFFICIENT_RESOURCES`). The height used here is COMPUTED from
- * a row count on the server, never measured, which is what severs that cycle: a count cannot change
- * when the packer changes a panel's width.
+ * The box must NOT feed its own rendered size back into the packer. Width allocation depends on
+ * every panel's shape, so measuring width → re-packing → new width → new wrapped height → re-pack
+ * oscillates and never converges, and because a re-pack remounts every panel (rows are keyed by
+ * membership) each cycle re-fires every admin fetch until the browser runs out of sockets. The
+ * height used here is COMPUTED from a row count on the server, never measured, which is what
+ * severs that cycle: a count cannot change when the packer changes a panel's width.
  *
  * That severance rests on CSS, so these rules are layout correctness and not styling — a panel row
- * must never become width-dependent. What guarantees it is now structural: `ListPanel`'s `.row` is
- * a CSS GRID with fixed tracks (`1fr auto auto`), and a grid row cannot wrap. Its three sections
- * are placed in three columns whatever the width, so the row is always exactly one line of
- * sections tall. That replaced a wrapping flex row whose safety depended on the ABSENCE of a
- * `flex-wrap` declaration and on a `flex: 1 1 220px` basis acting as the wrap threshold — a
- * guarantee made of two things nobody had written down, either of which a plausible edit restores.
+ * must never become width-dependent. `ListPanel`'s `.row` is a CSS GRID with fixed tracks
+ * (`1fr auto auto`), and a grid row cannot wrap: its three sections sit in three columns whatever
+ * the width, so the row is always exactly one line of sections tall.
  *
  * Within that frame three rules still carry weight, because a grid track cannot stop its own
  * CONTENTS from growing taller:
@@ -85,9 +78,8 @@ const PANEL_COMPONENTS: Record<
  *   min-content width, so without it the `1fr` track refuses to shrink and pushes the right rail
  *   out of the panel rather than letting its text ellipsise.
  * - No control may exceed the slot height its shape declares in `listPanelShape.ts`. Nothing
- *   enforces this at compile time: the Roles `x` glyph was a 32px square in a 27px `button` slot
- *   and rendered a 49px row against a 36.5px reservation, in silence. It reads `--lp-slot-button`
- *   now, which is that slot published as a custom property.
+ *   enforces this at compile time, and an oversized control grows its row in silence. Controls
+ *   read their slot as a custom property — `--lp-slot-button` for the button slot.
  *
  * No `@media` or `@container` may enter this subtree — a breakpoint reintroduces exactly the
  * width-dependence the grid removes. That rule and the rail definitions are pinned by
@@ -95,10 +87,10 @@ const PANEL_COMPONENTS: Record<
  *
  * Those rules bind the LIST view, which is the only view the height model describes. A panel that
  * is loading, errored, or showing a role's detail has no row count, reserves the model's floor, and
- * renders whatever it needs inside that box — its text is free to wrap. That is deliberate rather
- * than an oversight: because the reservation is never derived from rendered text, text that reflows
- * with width cannot feed back into layout, so the error string is left readable instead of being
- * ellipsised to protect a number that does not depend on it.
+ * renders whatever it needs inside that box — its text is free to wrap. Because the reservation is
+ * never derived from rendered text, text that reflows with width cannot feed back into layout, so
+ * the error string stays readable instead of being ellipsised to protect a number that does not
+ * depend on it.
  *
  * Collapsed state is READ here but OWNED upstream by `AdminHubClient`, because collapsing has to
  * change the panel's content model before layout runs: the packer sizes every row from those

@@ -240,14 +240,14 @@ export default function CollectionPageClient({
    * alternative — `key={activeSectionKey}` at the call site — tears the whole grid down and
    * rebuilds it, and the intermediate frame where the DOM holds no grid collapses the document
    * height to the header. The browser clamps `scrollY` to that height and never restores it, so
-   * every section switch threw the viewer toward the top of the page even though the section
+   * every section switch throws the viewer toward the top of the page even though the section
    * chips navigate with `scroll={false}`.
    *
-   * Staying mounted fixes that, but it also means this state would otherwise carry over: a camera
-   * facet chosen on Images would still be filtering Collections, and a selection made in one
-   * section would still be armed in the next against ids that are no longer on screen. Density is
-   * deliberately NOT reset — photo size is a viewer preference about how they want to read the
-   * page, not a fact about one section's contents.
+   * Staying mounted means this state would otherwise carry over: a camera facet chosen on Images
+   * would still be filtering Collections, and a selection made in one section would still be armed
+   * in the next against ids that are not on screen. Density is deliberately NOT reset — photo size
+   * is a viewer preference about how they want to read the page, not a fact about one section's
+   * contents.
    *
    * Written as a render-phase reset keyed on the previous value (React's documented pattern for
    * adjusting state on prop change) rather than an effect, so the section renders once with the

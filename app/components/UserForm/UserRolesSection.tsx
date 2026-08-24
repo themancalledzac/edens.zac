@@ -50,20 +50,20 @@ export interface UserRolesSectionProps {
  * Every role name here is a link. A role is a real place in this admin — `/admin?role=[roleId]`
  * opens it on the hub, showing its members and the collections it grants — and membership is only
  * half the question an admin auditing access is asking. The section's own "Roles" label links to
- * the index for the same reason. This replaced a trailing "Manage roles and grants" link, which
- * was a third control pointing at a destination the surrounding text already named.
+ * the index for the same reason, so no trailing "manage roles" link is needed: it would be a third
+ * control pointing at a destination the surrounding text already names.
  *
  * Adding a role commits on `change` rather than behind a second "Add" button. The select has no
- * draft state worth confirming — picking a name in a list of joinable roles *is* the intent, and
- * the separate button meant every add was two taps, with a dead-end state in between where a role
- * was chosen but not applied. Failure is still reported (`actionError`), and the list refetches
- * from the server rather than being patched locally, so what is shown is what the backend stored.
+ * draft state worth confirming — picking a name in a list of joinable roles *is* the intent, and a
+ * separate button would make every add two taps, with a dead-end state in between where a role is
+ * chosen but not applied. Failure is still reported (`actionError`), and the list refetches from
+ * the server rather than being patched locally, so what is shown is what the backend stored.
  *
  * A failed read surfaces as `rolesError` rather than an empty list, and this is the one thing here
  * that must not regress: both reads throw `ApiError` out of `fetchAdminGetApi` on any non-OK
  * response, and substituting `[]` would tell an admin auditing permissions that the user is "Not
  * in any roles yet." — a confident, wrong answer about who can see what. Unknown membership is
- * reported as unknown. (Carried over from `UserForm`, where this block used to live.)
+ * reported as unknown.
  *
  * `readOnly` skips the `listRoles` catalog read entirely. It only ever fed the add-select, so
  * fetching it for a view with no add-select would be a second round trip bought for nothing.

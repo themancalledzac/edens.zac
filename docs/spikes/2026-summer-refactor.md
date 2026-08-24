@@ -274,7 +274,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E9  | Download icon/hook, auth-card SCSS, `.srOnly`                            | Low         | **+16 src / +393 test actual** (est. −100 src)                                             | ◐ PR #300 open; srOnly bullet still ⛔ user call                                             |
 | E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator)        | Low         | **−79 src code-only / +176 test code-only** (est. −60 src)                                 | ◐ PR #304 open                                                                               |
 | E11 | Make cache-tag register/revalidate drift detectable                      | Low-medium  | +277 −28                                                                                   | ✅ PR #280                                                                                   |
-| E12 | Wire up `collections-location-${slug}`                                   | Low-medium  | **+72 src / +293 test actual** (est. +30 src)                                              | ◐ PR #301 open; image-path trigger split out as E13                                          |
+| E12 | Wire up `collections-location-${slug}`                                   | Low-medium  | **+72 src / +293 test actual** (est. +30 src)                                              | ✅ PR #301; image-path trigger split out as E13                                              |
 | E13 | Trigger `collections-location-${slug}` from the image-metadata save path | Low-medium  | +30 src, +60 test                                                                          | ☐ NEW — split out of E12, backend question answered                                          |
 | E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value       | Low         | **−3 src / −4 test net actual**, 36 call sites (est. −2 src, ~40 sites)                    | ✅ PR #307 — the one estimate on this board that held                                        |
 | E15 | `createHeaderRow`'s two trailing boolean params → options object         | Low         | ±15 src, ~20 test call sites                                                               | ☐ NEW — E14 raised it; #307 shipped without seeing it (E14 was in unmerged #305)             |
@@ -286,7 +286,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | G1  | Docs corrections                                                         | Trivial     | **+106 / −72 actual** (est. ±50)                                                           | ◐ PR #303 open                                                                               |
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)          | Low         | ~neutral (relocation + splits)                                                             | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors                       |
 | G3  | `/user/selects` decision                                                 | —           | —                                                                                          | ⛔ USER DECISION                                                                             |
-| G4  | Docblock standard — length, structure, and no history                    | Low         | −300 to −500 doc lines across ~53 blocks; 0 src                                            | ☐ **NEXT** — user-raised from #301; baseline measured, docs-only                             |
+| G4  | Docblock standard — length, structure, and no history                    | Low         | **−50 net actual across 19 blocks** (est. −300 to −500 across ~53); 0 src                  | ◐ intersection pass done — 19 long+historical blocks rewritten; remaining 45 historical open |
 | H1  | Merge `Following` into `Collections` on `/user`                          | Medium      | −60 src, ±150 test churn (6 test files)                                                    | ☐ (do C8 first)                                                                              |
 | H2a | `/user` rail copy pass + chip-style the Admin links                      | Low         | **+319 / −117 actual** (est. −25 src)                                                      | ✅ PR #302                                                                                   |
 | H3  | `Send a message` into the rail as a plain button                         | Low         | rode H2a                                                                                   | ✅ PR #302                                                                                   |
@@ -1066,7 +1066,7 @@ too; the inventory said otherwise. USER decides: does G2b's migration (and the `
 
 ---
 
-### ☐ G4 · Docblock standard — length, structure, and no history — **NEXT**
+### ◐ G4 · Docblock standard — length, structure, and no history — intersection pass done
 
 _Raised by the user 2026-08-24 off PR #301's `revalidateLocationCaches` docblock: 30 lines of prose
 for a function that maps two location arrays to a set of tags._
@@ -1087,6 +1087,30 @@ It is not a decision log, not a changelog, and not a place to record what the co
 Separately, **57 blocks (6.6%) contain backward-looking language**: "used to" ×23, "no longer" ×11,
 a bare date ×9, "previously" ×6, "the old" ×5, "PR #N" ×2. **Twelve are both long and historical**,
 and that intersection is the priority list — start there, not with the whole 6%.
+
+**Re-measured 2026-08-24 after the intersection pass** (PR #310). The scan script counts every
+`/** … */` in `app/`, including file headers and one-liners, and finds **1,384** blocks rather than
+865 — so the raw counts below are not comparable to the baseline table, only to each other. The
+intersection came out at **19**, not 12, for that same width-of-scan reason. All 19 were done; the
+difference is measurement, not scope creep.
+
+| Measure                 | Before    | After     | Note                       |
+| ----------------------- | --------- | --------- | -------------------------- |
+| 21–30 lines             | 39        | 38        |                            |
+| 31+ lines               | 17        | 16        |                            |
+| Backward-looking        | 63 (4.6%) | 45 (3.3%) |                            |
+| **Long AND historical** | **19**    | **0**     | the priority list, cleared |
+
+Net −50 lines across 17 files, and `git diff -U0` carries **zero non-comment lines** — the docs-only
+claim is checked, not asserted. Full suite 4,325 passed.
+
+**What is left.** 45 blocks still carry backward-looking language, all of them short enough that the
+line-count smell never fires on them: "used to" ×20, "no longer" ×11, "previously" ×7, a bare date
+×6, "the old" ×2, "PR #N" ×1. Several are false positives of the scan — `collectionEditUtils`'
+"listing a collection that is not there" and `CollectionPageClient`'s "ids that are not on screen"
+describe DATA state, not code history, and a regex cannot tell those apart. That is the same reason
+the no-lint-rule decision below holds. Sweeping the remainder is a separate sitting and a separate
+MR; it is not blocking anything.
 
 **Why this is happening, and why the existing rule does not catch it.** `CLAUDE.md` already forbids
 inline comments and sends every "why" into the docblock, with one escape hatch: _if the docblock

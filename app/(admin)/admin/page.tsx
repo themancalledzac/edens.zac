@@ -21,8 +21,7 @@ export const dynamic = 'force-dynamic';
  * inherits `LAYOUT.mobileSlotWidth`, a row budget calibrated for PHOTOS, and the packer fits
  * two items per row: the two panels land at ~212px each on a 430px phone, which is too narrow for
  * a user list (the header controls collapse and every row ellipsizes), and portrait-covered tiles
- * pair up as well. The pre-pipeline `AdminHubGrid` was explicitly `grid-template-columns: 1fr` on
- * mobile; this restores that. Desktop is unaffected — the option is read only on the mobile branch.
+ * pair up as well. Desktop is unaffected — the option is read only on the mobile branch.
  *
  * Panels render through `AdminHubClient`, which owns their collapsed state: collapsing one swaps
  * its content model for a bar-shaped footprint, so the packer re-runs and the panels and tiles
@@ -32,21 +31,22 @@ export const dynamic = 'force-dynamic';
  * `chrome + rowCount × rowHeight` of layout height and the packer needs that before it can place
  * anything. Fetching them server-side is what makes the first pack the only pack: a count supplied
  * after paint would rewrite the panels' footprints, re-pack the page, change row membership and so
- * remount every panel — the loop that ended in `ERR_INSUFFICIENT_RESOURCES` on 2026-08-10.
- * Here there is no second pack to converge, rather than a second pack argued to be harmless.
+ * remount every panel, whose fetches would fire again and re-enter the same loop until the browser
+ * runs out of sockets. There is no second pack to converge, rather than a second pack argued to be
+ * harmless.
  *
  * Messages exposes a real count (`total`), so it is fetched one row deep. Users, roles and
  * collections have no count endpoint and return their full lists; all are small admin collections
  * and every request shares one wall-clock round-trip. Each falls back independently, matching the
- * tiles' existing posture — a backend blip degrades a panel to its minimum reserved height instead
- * of failing the hub.
+ * tiles' posture — a backend blip degrades a panel to its minimum reserved height instead of
+ * failing the hub.
  *
  * Those three full lists are then handed to the panels as `seed`, so a list the server already
  * holds is painted rather than re-requested — the single-fetch rule, which keeping only `.length`
- * broke. `listUsers()` takes no options, which is exactly the `users:base` variant the panel opens
- * on; its "show tag-only people" variant is a different fetch and is left to load on demand. A
- * failed server fetch seeds `null`, not `[]`, so the panel loads for itself instead of announcing
- * an empty account list, and the count falls back to the layout floor as before.
+ * would break. `listUsers()` takes no options, which is exactly the `users:base` variant the panel
+ * opens on; its "show tag-only people" variant is a different fetch and is left to load on demand.
+ * A failed server fetch seeds `null`, not `[]`, so the panel loads for itself instead of announcing
+ * an empty account list, and the count falls back to the layout floor.
  *
  * `getMetadata()` carries more than the collection list — tags, people, cameras — and only the
  * collections are read here. It is still the right call: it is the endpoint that already returns

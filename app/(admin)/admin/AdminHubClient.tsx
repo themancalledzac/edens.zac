@@ -29,13 +29,13 @@ const NO_SEED: AdminPanelSeed = {};
  *
  * This sits above `Component` on purpose. Layout is a pure function of the content models, so
  * swapping a collapsed panel's footprint here is what makes the whole hub re-pack — the panels
- * still standing widen, and the nav tiles grow with them. State held any lower (it used to live in
- * `AdminPanelRenderer`) can only shrink one panel's own box; its row stays as tall as its tallest
- * sibling and nothing else moves.
+ * still standing widen, and the nav tiles grow with them. State held any lower, in
+ * `AdminPanelRenderer` for instance, can only shrink one panel's own box; its row stays as tall as
+ * its tallest sibling and nothing else moves.
  *
- * Collapse is the ONLY thing that rewrites a footprint. Feeding each panel's *measured* size back
- * in was tried and reverted on 2026-08-10 — see the `AdminPanelRenderer` docblock for why it
- * cannot converge, and what a future attempt has to prove first.
+ * Collapse is the ONLY thing that may rewrite a footprint. A panel's *measured* size must not feed
+ * back in — see the `AdminPanelRenderer` docblock for why it cannot converge, and what an attempt
+ * at it would have to prove first.
  *
  * Panels that force themselves open — `UserManagementPanel` entering create/edit, `RolesPanel`
  * opening a role from `?role=[id]` — do it through the same `onCollapsedChange`, so they re-pack

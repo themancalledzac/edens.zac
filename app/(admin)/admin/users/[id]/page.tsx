@@ -34,23 +34,22 @@ interface AdminUserDetailPageProps {
  * as `/user` (`UserPageAssembler.assembleForUser`), so they are byte-identical to what this user
  * sees on their own page.
  *
- * This replaces the old "Log in as" impersonation button (removed in PR #204), which minted an
- * `ezac_session` for the target and overwrote the admin's own — so the admin stopped being admin.
- * Here the acting session stays the admin's throughout; only the data being rendered is the
- * target's. `UserSpace` receives `me={null}`, which disarms every personal-action control — see
- * its docblock for why that matters (a save heart here would write to the ADMIN's bookmarks).
+ * The acting session stays the admin's throughout; only the data being rendered is the target's.
+ * `UserSpace` receives `me={null}`, which disarms every personal-action control — see its docblock
+ * for why that matters (a save heart here would write to the ADMIN's bookmarks). Do not reach for
+ * an impersonation flow to get the same view: minting an `ezac_session` for the target overwrites
+ * the admin's own, and the admin stops being admin.
  *
  * Editing a user happens INSIDE the space's header rail, via {@link AdminUserSpaceEditor}. The
  * rail already renders this person's description — literally the field being edited, since
  * `UserPageAssembler` feeds it from the same column — so a separate profile card above the space
- * displayed the same value twice and pushed the actual page down by a screenful. Email, status,
- * description and role membership all live in the rail now; the only thing left above it is the
- * breadcrumb.
+ * would show the same value twice and push the actual page down by a screenful. Email, status,
+ * description and role membership all live in the rail; the only thing above it is the breadcrumb.
  *
- * The display NAME is not editable here. The space's cover carries it as its overlay, and a second
- * copy in the rail was one name on screen twice; the overlay itself cannot host the editor, since
- * it sits inside the parallax tile whose click opens the fullscreen viewer. Renaming is done from
- * the Users panel on `/admin`, which mounts the full `UserForm`.
+ * The display NAME is not editable here. The space's cover carries it as its overlay, and a copy
+ * in the rail would be the same name on screen twice; the overlay itself cannot host the editor,
+ * since it sits inside the parallax tile whose click opens the fullscreen viewer. Renaming is done
+ * from the Users panel on `/admin`, which mounts the full `UserForm`.
  *
  * The GRID stays read-only, which is a different question from the rail. The collection is a
  * synthetic aggregation (slug "user", no backing row), so mounting the collection edit layer on it

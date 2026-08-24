@@ -34,12 +34,12 @@ const UNLOCKING_FAILSAFE_MS = 5000;
  * which re-runs the wrapper server-side and unmounts the gate in favor of the
  * page. The brief in-between window shows a "Loading gallery…" state.
  *
- * That window used to be a second `return` with its own card, which meant the "Loading gallery…"
- * live region was created at the same moment it got its text — the case screen readers routinely
- * miss (see {@link LoadingText}). The card is now one tree: the region is always mounted below the
- * form, empty and zero-height until unlocking swaps the form out and fills it in. The empty node
- * costs no layout because `.gateCard` is a plain block with no `gap` for it to claim a slot in.
- * The message itself moves up 1rem into the slot the form vacates — see `.gateLoading`.
+ * The card is one tree, not a second `return` with its own card: the live region is always mounted
+ * below the form, empty and zero-height until unlocking swaps the form out and fills it in. A
+ * region created at the same moment it gets its text is the case screen readers routinely miss
+ * (see {@link LoadingText}). The empty node costs no layout because `.gateCard` is a plain block
+ * with no `gap` for it to claim a slot in. The message itself moves up 1rem into the slot the form
+ * vacates — see `.gateLoading`.
  *
  * ## Neither control is `disabled` while verifying
  *

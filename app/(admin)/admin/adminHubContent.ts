@@ -12,14 +12,12 @@
  * panel widths 400 → 610px: every row measures the same at every width (see the row heights in
  * {@link PANEL_SHAPE}). The one thing that would break it is a row wrapping to a second line, and
  * the Users row — the tightest of them — wraps at a panel width of **350px**, which
- * {@link PANEL_MIN_WIDTH} keeps 50px clear of. (An earlier revision of this docblock put that cliff
- * at "roughly 430-450px". That was an estimate, it was wrong, and it would have made this feature
- * unshippable had it been true.)
+ * {@link PANEL_MIN_WIDTH} keeps 50px clear of.
  *
- * Width-independence is what separates this from the measured-footprint path that was reverted on
- * 2026-08-10: a row COUNT cannot change when the packer changes a panel's width, so there is no
- * measure → re-pack → re-measure cycle to converge. Counts are resolved server-side in `page.tsx`
- * before the first pack, so the first pack is the only pack.
+ * Width-independence is also what keeps the pack single-pass: a row COUNT cannot change when the
+ * packer changes a panel's width, so there is no measure → re-pack → re-measure cycle to converge.
+ * Counts are resolved server-side in `page.tsx` before the first pack, so the first pack is the
+ * only pack.
  *
  * The declared `width`/`height` ratio still drives Stage-1 packing — width-cost, prominence and row
  * membership all read it — and only the rendered height comes from the pin. Keep that ratio
@@ -39,16 +37,10 @@
  * share a row" starts being true. The composer can STACK panels into one column, so they fit a row
  * far narrower than four 400px columns would need, and the pinned-row predicates can reject a WIDER
  * arrangement that a narrower one satisfies. It depends on the panels' content heights and the nav
- * tiles' cover shapes as much as on the width.
- *
- * Earlier revisions of this docblock carried measured transition widths for that — 1232.0px, then
- * 903.23 / 1134.72 / 712.80 / 1045.48 — and a set of measured panel widths beside them. Every one
- * was measured on a THREE-panel hub and none survives the fourth. They are removed rather than
- * re-swept, because the compositions they described are not the ones this hub produces: with four
- * panels, the default-cover fixture no longer groups them at all and strands Users across the full
- * body at both desktop widths. `page.collapsedLayout.test.ts` and `page.collapseStates.test.ts`
- * carry the current measured picture, pinned as assertions rather than restated as prose here,
- * which is the only form that fails when it goes stale.
+ * tiles' cover shapes as much as on the width. Do not restate measured transition widths here —
+ * they are specific to a panel count and go stale in silence. `page.collapsedLayout.test.ts` and
+ * `page.collapseStates.test.ts` carry the measured picture as assertions, which is the only form
+ * that fails when it drifts.
  *
  * Do NOT recompute any threshold as 4 × 400 + 3 × gap. That is the width at which four
  * SIDE-BY-SIDE 400px columns would first fit, and a flat four-column row is not an arrangement the
@@ -371,11 +363,9 @@ export const COLLAPSED_PANEL_HEIGHT =
  * Footprint a COLLAPSED panel reports to the layout packer: an ordinary small block.
  *
  * A collapsed panel is NOT a special case — open, a panel is a tall content block; closed, it is a
- * small one (Zac's framing: "think a '0-1 star horizontal' image"), and neither state gets its own
- * layout mechanism. An earlier revision declared 1200×56 here precisely so the ≈21:1 ratio would
- * clear both `isSoloHero` gates and claim the bar its own row, with `maxWidth` capping the render
- * at 400px. Review (Zac, 2026-08-10) rejected that: the bar sat alone in a full-width row with
- * ~874px of dead space to its right. The solo row WAS the bug, so nothing here may re-trip it.
+ * small one (think a "0-1 star horizontal" image), and neither state gets its own layout mechanism.
+ * Nothing here may give the bar a solo row: alone in a full-width row it leaves ~874px of dead
+ * space to its right, which is the failure this shape exists to avoid.
  *
  * Each field enforces one piece of "just a small block":
  *
@@ -385,14 +375,13 @@ export const COLLAPSED_PANEL_HEIGHT =
  * - `rating: 1` — the "0-1 star" half. The point-balance split and the equity tiebreak read
  *   prominence, and a bar of chrome has almost none; rated 5 it would claim leaf area it cannot
  *   fill.
- * - `minWidth`, and deliberately NO `maxWidth` — a bar spans whatever column it lands in (Zac's
- *   round-3 review: bars rendering narrower than the tile stacked beneath them left a notch of
- *   dead space — "just make them the right width"). The floor is load-bearing twice over: a row
- *   holding any pinned member runs with the fill-cap stopping rules disabled (see
- *   `hasPinnedMember` in `buildRows`), so a declared minimum is the only thing stopping the
- *   packer squeezing the bar's still-visible header controls to nothing — the same reason nav
- *   tiles carry `TILE_MIN_WIDTH`. The expanded form's 700px legibility cap protects list ROWS
- *   from stretching into a sparse table; a bar has no list rows, so it has no cap to inherit.
+ * - `minWidth`, and deliberately NO `maxWidth` — a bar spans whatever column it lands in, because
+ *   one rendering narrower than the tile stacked beneath it leaves a notch of dead space. The floor
+ *   matters because a row holding any pinned member runs with the fill-cap stopping rules disabled
+ *   (see `hasPinnedMember` in `buildRows`), so a declared minimum is the only thing stopping the
+ *   packer squeezing the bar's still-visible header controls to nothing — the same reason nav tiles
+ *   carry `TILE_MIN_WIDTH`. The expanded form's 700px legibility cap protects list ROWS from
+ *   stretching into a sparse table; a bar has no list rows, so it has no cap to inherit.
  * - `pinnedHeight(COLLAPSED_PANEL_HEIGHT)` — the pin. The sizer reads that equal pair
  *   as `a = 0` in `H(W) = a·W + b`, so the bar renders at exactly this height at every viewport
  *   regardless of its declared AR. The pin, not the ratio, is what makes it a bar.

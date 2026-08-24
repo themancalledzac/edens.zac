@@ -43,9 +43,9 @@ interface UserPageProps {
  * viewer already, so ordering on the principal costs one condition.
  *
  * No `MeProvider` here: `railExtras` renders inside `CollectionPageClient`, which mounts its own
- * provider from the same principal this page passes it as `me`. `SendMessageButton` used to sit in
- * a top bar OUTSIDE that stack, which is what the page-level provider existed for — moving it into
- * the rail made the button a descendant and the wrapper redundant.
+ * provider from the same principal this page passes it as `me`. Every consumer on this page,
+ * `SendMessageButton` included, is a descendant of that stack, so a page-level wrapper would be a
+ * second provider over the same value.
  */
 export default async function UserPage({ searchParams }: UserPageProps) {
   const principal = await meServer();
