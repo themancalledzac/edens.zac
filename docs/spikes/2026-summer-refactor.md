@@ -64,6 +64,13 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   test red at once. The entry had mistaken tests that pass *because the reasoning is right* for
   tests that cannot tell the difference. Cost of checking: one sed, one jest run. **Refs on this
   board have been drift-checked every session; claims never had been.** Both need it.
+- **An audit's METHOD is a claim too — state what its pattern cannot match.** The rule above covers
+  a spec'd fact; this one covers how the fact was gathered. C4 is the worked example: its
+  register-vs-revalidate table was built by grepping literal tag strings, every ref in it was
+  correct, and it still reported a live tag (`collection-home`) as dead — because that tag is
+  assembled from a template, `collection-${slug}`, and no grep for the literal can see it. A
+  pattern-match audit should name the set its pattern is blind to and walk that set by hand. Here
+  the blind set was the three template tags, and `HOME_SLUG = 'home'` settled it in one look.
 - **Work in the primary checkout.** PR #253 merged 2026-08-23, so the two-branches-at-once case is
   over: branch off `main` in `/Users/themancalledzac/Code/edens.zac` directly, no worktree. If a
   second concurrent branch ever becomes necessary again, the worktree traps are: `git worktree add`
@@ -120,7 +127,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | C1 | Unsaved people/gallery-access wipe (HIGH) | Low | +73 −11 | ✅ PR #264 |
 | C2 | About portrait aspect ratio | Trivial | ±1 | ☐ |
 | C3 | `SelectsContext.toggle` purity | Low | ±20 | ☐ |
-| C4 | Cache tags that never connect | Low | ±30 (dead-tag half only) | ☐ **NEXT** |
+| C4 | Cache tags that never connect | Low | ±66 (4 dead tags + tests) | ✅ PR #279 |
 | C5 | Assorted LOW bugs | Low | ±55 src, +100–200 test | ☐ |
 | C6 | Password cover strip missing on the public card path | Low-medium | ±30 | ⛔ BACKEND-BLOCKED (split out of E1) |
 | D1 | Gate `POST /api/revalidate` (HIGH) | Low | +175 | ✅ PR #265 |
@@ -142,7 +149,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E8 | Renderer + `MenuDropdown` dedup | Medium | −120 src, +0–50 test | ☐ |
 | E9 | Download icon/hook, auth-card SCSS, `.srOnly` | Low | −100 src, +80–150 test | ☐ (srOnly bullet: user call) |
 | E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator) | Low | −60 src, +120 new | ☐ (unblocked — #253 merged) |
-| E11 | Make cache-tag register/revalidate drift detectable | Low-medium | +40 src, +60 test | ☐ (found 08-24; do AFTER C4) |
+| E11 | Make cache-tag register/revalidate drift detectable | Low-medium | +40 src, +60 test | ☐ **NEXT** (C4 done; must handle template tags) |
 | F1 | Decompose `useCollectionEdit.tsx` | Medium-high | ~neutral | ☐ |
 | F2 | `RendererContext` for the BoxRenderer tree | Medium | −100 | ☐ |
 | F3 | File moves and renames | Medium | ~neutral | ☐ |
@@ -513,61 +520,85 @@ describes still passes.
 
 - [ ] [SelectsContext.tsx:54](app/components/ContentCollection/SelectsContext.tsx:54) and `:68` call `onChange?.([...next])` inside `setSelectedIds(prev => …)`. Updaters must be pure — StrictMode double-invokes them, so dev `onChange` fires twice per toggle. Compute `next` outside, then call the setter and the callback sequentially.
 
-### ☐ C4 · Cache tags that never connect
+### ✅ C4 · Cache tags that never connect — PR #279
 
-- [ ] `collections-location-${slug}` is registered at [collections.ts:151](app/lib/api/collections.ts:151) but nothing ever revalidates it. Location pages serve stale lists for up to an hour after an edit while the collection page updates immediately.
-- [ ] FOUR of `revalidateMetadataCache`'s seven tags are now no-ops ([collectionEditUtils.ts:220](app/components/ContentCollection/edit/collectionEditUtils.ts:220)):
+**Shipped: four dead revalidate targets, not five.** The fifth, `collection-home`, was not dead —
+the audit below was wrong about it, and the fix was to keep it and write down why. The
+`collections-location-${slug}` half was left alone as scoped; the report on it is at the end.
+
+- [x] FOUR dead tags removed from `revalidateMetadataCache` ([collectionEditUtils.ts:220](app/components/ContentCollection/edit/collectionEditUtils.ts:220)).
       `content-people` was never registered, and A2 (PR #256) deleted the fetches that registered
-      `content-cameras`, `content-lenses`, `content-film-metadata`. Only `content-tags`,
-      `content-locations`, `search-images` still connect. Decide per tag: delete, or re-register on
-      the live `getMetadata` fetch. (Re-verified 2026-08-22 — the item understated itself by three.)
-- [ ] **FIFTH dead tag, in the OTHER function — found 2026-08-24, and this item had missed it
-      because it only ever audited `revalidateMetadataCache`.** `revalidateCollectionCache`
-      ([collectionEditUtils.ts:210](app/components/ContentCollection/edit/collectionEditUtils.ts:210))
-      revalidates `collection-home`, which is registered by no fetch anywhere in `app/`. Same
-      decision as the other four: delete, or register it on whatever the home page actually fetches.
-      **That makes it five dead revalidate targets across two functions, not four in one** — so a
-      fix scoped from the bullet above alone leaves one behind.
+      `content-cameras`, `content-lenses`, `content-film-metadata`. Deleting them is safe, not just
+      tidy: the only surviving metadata read is `getMetadata` ([collections.ts:329](app/lib/api/collections.ts:329))
+      and it is `cache: 'no-store'`, so no cached data sits behind those tags waiting to go stale.
+      `content-tags`, `content-locations` and `search-images` stay.
+- [x] **`collection-home` is NOT a dead tag. The table below was wrong.** `HOME_SLUG = 'home'` and
+      `app/page.tsx` renders `CollectionPageWrapper slug="home"`, so `getCollectionBySlug('home')`
+      registers `collection-${slug}` as exactly the string `collection-home`
+      ([collections.ts:108](app/lib/api/collections.ts:108)). The audit missed it because it grepped
+      for literal tag strings and this registration is a template — the precise blind spot E11 was
+      filed to describe. Two independent checks before keeping it, both run rather than reasoned:
+      deleting the revalidate call turns two existing cases in `manageUtils.test.ts` red, and both
+      `app/page.tsx` and `app/[slug]/page.tsx` carry `force-dynamic` as an explicitly TEMPORARY
+      workaround with a written restore plan (`revalidate = 3600; dynamic = 'error'`), so removing
+      the tag would have planted a bug that only appears when that `@todo` is cleared. A docblock on
+      `revalidateCollectionCache` now says this, because the next person to grep for the literal will
+      reach the same wrong conclusion.
+- [x] Regression tests added for `revalidateMetadataCache`, which had none — nothing asserted its
+      POST body at all. Both new cases were confirmed red against the unfixed source before the fix
+      went in.
+- [ ] `collections-location-${slug}` — untouched, as scoped. Report below.
 
-**Full register-vs-revalidate audit, 2026-08-24 (grepped, not estimated).** Six tags are registered
-on `next` fetches; ten are revalidated. This is the whole picture — the next MR should not need to
-re-derive it.
+**Corrected register-vs-revalidate audit.** Re-grepped 2026-08-25. The line numbers in the previous
+version of this table were off by one on every `revalidateMetadataCache` row.
 
 | Tag | Registered | Revalidated | State |
 | --- | --- | --- | --- |
 | `collections-index` | `collections.ts:84` | `collectionEditUtils.ts:209` | connected |
 | `collection-${slug}` | `collections.ts:108` | `collectionEditUtils.ts:208` | connected |
-| `content-tags` | `content.ts:42` | `collectionEditUtils.ts:228` | connected |
-| `content-locations` | `content.ts:58` | `collectionEditUtils.ts:231` | connected |
-| `search-images` | `content.ts:104` | `collectionEditUtils.ts:234` | connected |
-| `collections-location-${slug}` | `collections.ts:151` | — | **orphan registration** |
-| `collection-home` | — | `collectionEditUtils.ts:210` | **dead revalidate** |
-| `content-people` | — | `collectionEditUtils.ts:229` | **dead revalidate** |
-| `content-cameras` | — | `collectionEditUtils.ts:230` | **dead revalidate** |
-| `content-lenses` | — | `collectionEditUtils.ts:232` | **dead revalidate** |
-| `content-film-metadata` | — | `collectionEditUtils.ts:233` | **dead revalidate** |
+| `collection-home` | `collections.ts:108`, as `collection-${slug}` with slug = `home` | `collectionEditUtils.ts:210` | **connected — was misfiled as dead** |
+| `content-tags` | `content.ts:42` | `collectionEditUtils.ts:227` | connected |
+| `content-locations` | `content.ts:58` | `collectionEditUtils.ts:230` | connected |
+| `search-images` | `content.ts:104` | `collectionEditUtils.ts:233` | connected |
+| `collections-location-${slug}` | `collections.ts:151` | — | **orphan registration — left alone** |
+| `content-people` | — | — | **deleted by this MR** |
+| `content-cameras` | — | — | **deleted by this MR** |
+| `content-lenses` | — | — | **deleted by this MR** |
+| `content-film-metadata` | — | — | **deleted by this MR** |
 
-**Scope for the next MR: the dead-revalidate half only (the five).** Per tag, decide delete vs
-register — and the decision is not cosmetic either way. Deleting a tag whose data is still fetched
-but untagged leaves that data stale behind `TIMING.revalidateCache` forever, silently, which is the
-same failure class D6 and D8 were about. Registering a tag nothing reads is dead weight. Grep the
-live fetch for each before choosing.
+**Report — what wiring up `collections-location-${slug}` would actually take.**
 
-**Guardrail — leave `collections-location-${slug}` alone in that MR, and report what wiring it up
-would take.** It is the orphan-registration half and it is not symmetrical with the other five. The
-tempting fix is one line next to the existing three in `revalidateCollectionCache`:
+The guardrail written when C4 was set up said the collection's locations and its previous locations
+are "neither plumbed through today". That is not right, and the real obstacle is elsewhere. Both
+halves of the data are already in `useCollectionEdit`: `collection.locations` gives the pre-edit set
+(there is already an `originalLocations` memo built from it), and the save path already reads
+`response.collection.locations` into a `resolvedLocations` local. `CollectionModel.locations` is a
+`LocationModel[]` and `LocationModel` carries `slug`. What actually blocks it:
 
-```ts
-revalidate({ tag: `collections-location-${slug}` }),   // WRONG
-```
+1. **The helper's signature, and its call sites.** `revalidateCollectionCache(slug)` takes one
+   collection slug and is called from eight places, including `CreateCollectionForm` and
+   `useCaptureDateSelection`, which have no location data in scope. Either the helper grows a second
+   argument most callers cannot fill, or location revalidation moves out of it and into the save
+   paths in `useCollectionEdit` that do know about locations. The second is the honest shape, and it
+   means location freshness depends on which code path did the edit — which needs saying out loud.
+2. **New locations have no slug until the backend assigns one.** A location added during an edit is
+   `{ id: 0, name, slug: '' }` on the frontend. Revalidating from `updateData` would build
+   `collections-location-` and hit nothing. It has to come from the post-save
+   `response.collection.locations`, so it can only run after the save resolves, not optimistically
+   alongside the other three.
+3. **Removals need the union, not the new set.** Moving a collection from Seattle to Portland has to
+   revalidate both location pages. Revalidating only the post-save locations leaves the Seattle page
+   listing a collection that is no longer there for up to `TIMING.revalidateCache`. So the call needs
+   previous ∪ next, which is why the pre-edit set matters and why this is not a one-liner.
+4. **Unverified: whether the backend keys that endpoint off collection locations alone.**
+   `/collections/location/{slug}` is a backend query. Whether an IMAGE-level location change can move
+   a collection in or out of that list is not knowable from this repo, and it decides whether image
+   edits need to trigger this too. Worth one question to the backend before building.
 
-That is wrong, and it fails silently in the way that looks fixed. **The `slug` in scope there is the
-COLLECTION slug; the tag is keyed by LOCATION slug** — `collections.ts:147` literally throws
-`'location slug is required'`, and the fetch path is `/collections/location/${slug}`. So that line
-would revalidate `collections-location-<collection-slug>`, a tag nothing registers, creating a SIXTH
-dead tag while the real location tags stay exactly as stale as before. Doing it properly needs the
-collection's locations at edit time, plus the *previous* locations when a location changes, and
-neither is plumbed through today. That is its own item, not a bullet on this one.
+Sizing: small if it lands as a `revalidateLocationCaches(previous, next)` helper called from the
+`useCollectionEdit` save paths — roughly +30 source, +60 test. Do it after E11, not before: E11
+decides how a template-keyed tag gets registered and revalidated through one place, and this is the
+second template-keyed tag that would use it.
 
 ### ☐ C5 · Assorted LOW bugs
 
@@ -1229,7 +1260,14 @@ first would just freeze the current drift into a nicer-looking shape.
       are template strings (`collection-${slug}`, `collections-location-${slug}`), so no compile-time
       check can pair a registration with a revalidation. Anything claiming to make drift impossible
       is overclaiming — the realistic goal is *detectable*, not impossible.
-- [ ] The cheapest thing that would have caught all six of C4's findings is a test, not a type: grep
+- [ ] **The template tags are not an edge case, they are the whole difficulty — C4 proved it.** A
+      literal-grep audit called `collection-home` dead when it is `collection-${slug}` resolved for
+      the home collection. A drift test that compares two sets of literals will reproduce exactly
+      that false positive and fail the build over a working tag. It has to resolve the known
+      constant slugs (`HOME_SLUG` at minimum) before comparing, or treat template-derived tags as a
+      separate, explicitly-listed category. Get this wrong and E11 ships a check that is worse than
+      no check, because it is confidently wrong.
+- [ ] The cheapest thing that would have caught C4's findings is a test, not a type: grep
       both sides at test time and assert the sets agree, with an explicit allowlist for tags that
       are deliberately one-sided. That is ~60 lines and needs no source change at all. Consider
       whether the constants module earns anything on top of it.
