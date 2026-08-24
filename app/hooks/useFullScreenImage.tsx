@@ -272,47 +272,32 @@ export function useFullScreenImage(): {
     );
   }, [fullScreenState]);
 
+  /**
+   * Marks GIF/MP4 blocks as loaded as soon as they become the current item. They render as
+   * `<video>`, not `<img>`, so the modal's `onLoad` never fires for them and its loaded-state UI
+   * would stall forever waiting for an image that never appears.
+   *
+   * Images are deliberately not handled here. This effect used to carry a fallback that looked up
+   * `img[src="<raw CloudFront URL>"]` and marked the image loaded when it was already `complete`.
+   * That selector could never match: the modal renders `next/image` without `unoptimized`, so the
+   * DOM `src` is a `/_next/image?url=…` rewrite rather than the raw URL it searched for. The
+   * modal's own `onLoad` is the live path, and always was.
+   *
+   * Keyed to `currentIndex` only, deliberately. It re-runs when the viewer moves to a different
+   * item, not on every `fullScreenState` mutation such as a scroll-position change. It reads the
+   * current item through `fullScreenState` and calls the stable `setLoadedImageIds` dispatcher, so
+   * listing either would only cause redundant re-runs.
+   */
   useEffect(() => {
-    if (!fullScreenState) return;
-    const currentImage = fullScreenState.images[fullScreenState.currentIndex];
-    if (!currentImage) return;
+    const currentImage = fullScreenState?.images[fullScreenState.currentIndex];
+    if (currentImage?.contentType !== 'GIF') return;
 
-    const checkImageLoaded = () => {
-      // GIF/MP4 blocks render as <video>, not <img> — mark them loaded immediately so the
-      // modal's loaded-state UI doesn't stall waiting for an image that never appears.
-      if (currentImage.contentType === 'GIF') {
-        setLoadedImageIds(prev => {
-          if (prev.has(currentImage.id)) return prev;
-          const newSet = new Set(prev);
-          newSet.add(currentImage.id);
-          return newSet;
-        });
-        return;
-      }
-
-      const imgSrc = 'imageUrl' in currentImage ? currentImage.imageUrl : undefined;
-      if (!imgSrc) return;
-      const imgElement = document.querySelector(`img[src="${imgSrc}"]`) as HTMLImageElement;
-
-      if (imgElement?.complete && imgElement?.naturalHeight !== 0) {
-        setLoadedImageIds(prev => {
-          if (prev.has(currentImage.id)) return prev;
-          const newSet = new Set(prev);
-          newSet.add(currentImage.id);
-          return newSet;
-        });
-      }
-    };
-
-    checkImageLoaded();
-    const timeoutId = setTimeout(checkImageLoaded, 100);
-
-    return () => clearTimeout(timeoutId);
-    // Intentionally keyed to currentIndex only. This effect re-checks whether the
-    // newly-shown image has finished loading; it should re-run when the viewer moves
-    // to a different image, not on every fullScreenState mutation (e.g. scrollPosition
-    // changes). It reads the current image via fullScreenState and calls the stable
-    // setLoadedImageIds dispatcher — listing either would only cause redundant re-runs.
+    setLoadedImageIds(prev => {
+      if (prev.has(currentImage.id)) return prev;
+      const next = new Set(prev);
+      next.add(currentImage.id);
+      return next;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullScreenState?.currentIndex]);
 

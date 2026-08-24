@@ -158,7 +158,8 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
     backendRes = await fetch(targetUrl, init);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    logger.error('proxy', message, error);
+    const code = error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined;
+    logger.error('proxy', message, undefined, { code });
     return NextResponse.json({ error: 'Bad gateway' }, { status: 502 });
   }
 

@@ -643,12 +643,32 @@ export default function CollectionContentRenderer({
 
   const isNotVisible = contentType === 'IMAGE' && notVisible;
 
+  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    logger.error('CollectionContentRenderer', 'NaN detected in props', undefined, {
+      contentId,
+      contentType,
+      width,
+      height,
+      imageWidth,
+      imageHeight,
+      isMobile,
+      enableParallax,
+    });
+  }
+
+  const { width: validWidth, height: validHeight } = resolveValidDimensions({
+    width,
+    height,
+    imageWidth,
+    imageHeight,
+  });
+
   const imageProps = {
     src: imageUrl,
     alt: mediaAlt,
     width: imageWidth,
     height: imageHeight,
-    sizes: `(max-width: 768px) 100vw, ${Math.round(width)}px`,
+    sizes: `(max-width: 768px) 100vw, ${Math.round(validWidth)}px`,
     loading: priority ? ('eager' as const) : ('lazy' as const),
     priority: priority ?? false,
     fetchPriority: priority ? ('high' as const) : undefined,
@@ -673,27 +693,6 @@ export default function CollectionContentRenderer({
       {cardTypeBadge && <Badge label={cardTypeBadge} tone={isCollection ? 'card' : 'date'} />}
     </>
   );
-
-  // Guard: log and recover from NaN dimensions before rendering
-  if (!Number.isFinite(width) || !Number.isFinite(height)) {
-    logger.error('CollectionContentRenderer', 'NaN detected in props', undefined, {
-      contentId,
-      contentType,
-      width,
-      height,
-      imageWidth,
-      imageHeight,
-      isMobile,
-      enableParallax,
-    });
-  }
-
-  const { width: validWidth, height: validHeight } = resolveValidDimensions({
-    width,
-    height,
-    imageWidth,
-    imageHeight,
-  });
 
   const wrapperProps = {
     className: enableParallax

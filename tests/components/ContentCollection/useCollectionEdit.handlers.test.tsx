@@ -9,7 +9,13 @@ import {
   updateCollection,
   updateCollectionRating,
 } from '@/app/lib/api/collections';
-import { createGif, createImages, updateGif, updateImages } from '@/app/lib/api/content';
+import {
+  createGif,
+  createImages,
+  createTextContent,
+  updateGif,
+  updateImages,
+} from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionListModel,
@@ -52,6 +58,7 @@ const mockUpdateImages = updateImages as jest.MockedFunction<typeof updateImages
 const mockUpdateGif = updateGif as jest.MockedFunction<typeof updateGif>;
 const mockCreateImages = createImages as jest.MockedFunction<typeof createImages>;
 const mockCreateGif = createGif as jest.MockedFunction<typeof createGif>;
+const mockCreateTextContent = createTextContent as jest.MockedFunction<typeof createTextContent>;
 const mockStorageGetFull = collectionStorage.getFull as jest.MockedFunction<
   typeof collectionStorage.getFull
 >;
@@ -136,6 +143,16 @@ function makeListModel(overrides: Partial<CollectionListModel> = {}): Collection
     ...overrides,
   };
 }
+
+/** A response whose every metadata list is populated, so a truncated DTO is visible. */
+const metadataRich: Partial<CollectionUpdateResponseDTO> = {
+  tags: [{ id: 1, name: 'wedding', slug: 'wedding' }],
+  people: [{ id: 2, name: 'Alice' }],
+  locations: [{ id: 3, name: 'Seattle', slug: 'seattle' }],
+  cameras: [{ id: 4, name: 'Leica M6', isFilm: true }],
+  lenses: [{ id: 5, name: 'Summicron 35' }],
+  filmTypes: [{ id: 6, name: 'Portra 400', defaultIso: 400 }],
+};
 
 /** Build an array-backed FileList stand-in (jsdom has no FileList constructor). */
 function makeFileList(files: File[]): FileList {
@@ -740,6 +757,72 @@ describe('useCollectionEdit — handler tests', () => {
       await waitFor(() => expect(result.current.error).toContain('two.jpg'));
       expect(result.current.error).not.toContain('one.jpg');
       expect(result.current.error).not.toContain('three.jpg');
+    });
+
+    /**
+     * The upload path must adopt the whole refreshed DTO, not just its `collection`.
+     *
+     * It used to merge with `setCurrentState(prev => ({ ...prev!, collection: response.collection }))`.
+     * When the initial admin fetch returns null, `prev` is null, `{ ...null! }` spreads to `{}`, and
+     * the result is a DTO carrying only `collection` — tags, people, cameras, lenses, filmTypes and
+     * locations all gone. The refresh response already carries the server's freshest metadata, so
+     * dropping it was wrong even when `prev` was non-null.
+     */
+    it('adopts the whole refreshed DTO after upload when the initial fetch returned null', async () => {
+      mockCreateImages.mockResolvedValue({ successful: [], failed: [], skipped: [] });
+      mockGetCollectionUpdateMetadata.mockResolvedValueOnce(null);
+      const refreshed = makeResponse({}, metadataRich);
+      mockGetCollectionUpdateMetadata.mockResolvedValue(refreshed);
+
+      const { result } = renderEdit({ enabled: true });
+      await waitFor(() => expect(result.current.isLoadingState).toBe(false));
+      expect(result.current.currentState).toBeNull();
+
+      await uploadViaAddCell(result, makeImageFiles(['one.jpg']));
+
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+      expect(result.current.currentState?.tags).toEqual(metadataRich.tags);
+      expect(result.current.currentState?.people).toEqual(metadataRich.people);
+      expect(result.current.currentState?.locations).toEqual(metadataRich.locations);
+      expect(result.current.currentState?.cameras).toEqual(metadataRich.cameras);
+      expect(result.current.currentState?.lenses).toEqual(metadataRich.lenses);
+      expect(result.current.currentState?.filmTypes).toEqual(metadataRich.filmTypes);
+      expect(result.current.currentState).toEqual(refreshed);
+    });
+  });
+
+  describe('handleTextBlockSubmit', () => {
+    /** Same truncated-DTO trap as the upload path: the refresh response replaces state wholesale. */
+    it('adopts the whole refreshed DTO after a text block create when the initial fetch returned null', async () => {
+      mockGetCollectionUpdateMetadata.mockResolvedValueOnce(null);
+      const refreshed = makeResponse({}, metadataRich);
+      mockGetCollectionUpdateMetadata.mockResolvedValue(refreshed);
+
+      const { result } = renderEdit({ enabled: true });
+      await waitFor(() => expect(result.current.isLoadingState).toBe(false));
+      expect(result.current.currentState).toBeNull();
+
+      await act(async () => {
+        await result.current.handleTextBlockSubmit({
+          content: 'A caption',
+          format: 'markdown',
+          align: 'left',
+        });
+      });
+
+      expect(mockCreateTextContent).toHaveBeenCalledWith({
+        collectionId: 42,
+        content: 'A caption',
+        format: 'markdown',
+        align: 'left',
+      });
+      expect(result.current.currentState?.tags).toEqual(metadataRich.tags);
+      expect(result.current.currentState?.people).toEqual(metadataRich.people);
+      expect(result.current.currentState?.locations).toEqual(metadataRich.locations);
+      expect(result.current.currentState?.cameras).toEqual(metadataRich.cameras);
+      expect(result.current.currentState?.lenses).toEqual(metadataRich.lenses);
+      expect(result.current.currentState?.filmTypes).toEqual(metadataRich.filmTypes);
+      expect(result.current.currentState).toEqual(refreshed);
     });
   });
 
