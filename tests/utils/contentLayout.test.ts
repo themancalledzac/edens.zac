@@ -800,7 +800,7 @@ describe('createHeaderRow', () => {
   describe('Desktop row shape', () => {
     it('should return a single row with rowType "header" on desktop', () => {
       const collection = createCollectionModel(1);
-      const result = createHeaderRow(collection, 1200, false);
+      const result = createHeaderRow(collection, 1200, { isMobile: false });
       const row = asSingleRow(result);
       expect(row).not.toBeNull();
       expect(row?.rowType).toBe('header');
@@ -808,7 +808,7 @@ describe('createHeaderRow', () => {
 
     it('should include cover image as first item on desktop', () => {
       const collection = createCollectionModel(1);
-      const result = createHeaderRow(collection, 1200, false);
+      const result = createHeaderRow(collection, 1200, { isMobile: false });
       const row = asSingleRow(result);
       expect(row?.items.length).toBeGreaterThanOrEqual(1);
       expect(row?.items[0]?.content.contentType).toBe('IMAGE');
@@ -818,7 +818,7 @@ describe('createHeaderRow', () => {
   describe('Mobile rows', () => {
     it('should return an array of rows on mobile (isMobile=true)', () => {
       const collection = createCollectionModel(1);
-      const result = createHeaderRow(collection, 375, true);
+      const result = createHeaderRow(collection, 375, { isMobile: true });
       expect(Array.isArray(result)).toBe(true);
       const rows = result as RowWithPatternAndSizes[];
       expect(rows.length).toBeGreaterThanOrEqual(1);
@@ -826,7 +826,9 @@ describe('createHeaderRow', () => {
 
     it('should give each mobile row rowType "header"', () => {
       const collection = createCollectionModel(1);
-      const result = createHeaderRow(collection, 375, true) as RowWithPatternAndSizes[];
+      const result = createHeaderRow(collection, 375, {
+        isMobile: true,
+      }) as RowWithPatternAndSizes[];
       for (const row of result) {
         expect(row.rowType).toBe('header');
       }
@@ -834,7 +836,9 @@ describe('createHeaderRow', () => {
 
     it('should include a metadata row on mobile when collection has description', () => {
       const collection = createCollectionModel(1, { description: 'Some description' });
-      const result = createHeaderRow(collection, 375, true) as RowWithPatternAndSizes[];
+      const result = createHeaderRow(collection, 375, {
+        isMobile: true,
+      }) as RowWithPatternAndSizes[];
       // Should have cover row + metadata row
       expect(result.length).toBeGreaterThanOrEqual(2);
     });
@@ -853,7 +857,7 @@ describe('createHeaderRow', () => {
       });
 
     it('builds a cover-only header when there is no metadata and no rail is forced', () => {
-      const row = asSingleRow(createHeaderRow(bare(), 1200, false));
+      const row = asSingleRow(createHeaderRow(bare(), 1200, { isMobile: false }));
       expect(row?.items).toHaveLength(1);
       expect(row?.items[0]?.content.contentType).toBe('IMAGE');
     });
@@ -862,21 +866,24 @@ describe('createHeaderRow', () => {
       // The rail is where the filter toolbar and the download row mount, so a page that shows
       // either needs it even with no metadata text. Gating it on items alone is what dropped the
       // filter bar from /user, which has no date, locations or siblings.
-      const row = asSingleRow(createHeaderRow(bare(), 1200, false, true));
+      const row = asSingleRow(createHeaderRow(bare(), 1200, { isMobile: false, forceRail: true }));
       expect(row?.items).toHaveLength(2);
       expect(row?.items[1]?.content.contentType).toBe('TEXT');
       expect((row?.items[1]?.content as ContentTextModel).items).toEqual([]);
     });
 
     it('gives the forced rail real width so the toolbar has somewhere to render', () => {
-      const row = asSingleRow(createHeaderRow(bare(), 1200, false, true));
+      const row = asSingleRow(createHeaderRow(bare(), 1200, { isMobile: false, forceRail: true }));
       expect(row?.items[1]?.width).toBeGreaterThan(0);
       expect(row?.items[1]?.height).toBeGreaterThan(0);
     });
 
     it('still emits a header row when forced on a cover-less collection with no metadata', () => {
       const row = asSingleRow(
-        createHeaderRow({ ...bare(), coverImage: undefined }, 1200, false, true)
+        createHeaderRow({ ...bare(), coverImage: undefined }, 1200, {
+          isMobile: false,
+          forceRail: true,
+        })
       );
       expect(row).not.toBeNull();
       expect(row?.items).toHaveLength(1);
@@ -884,7 +891,10 @@ describe('createHeaderRow', () => {
     });
 
     it('leaves the mobile header stacked, with the forced rail as its own row', () => {
-      const rows = createHeaderRow(bare(), 375, true, true) as RowWithPatternAndSizes[];
+      const rows = createHeaderRow(bare(), 375, {
+        isMobile: true,
+        forceRail: true,
+      }) as RowWithPatternAndSizes[];
       expect(Array.isArray(rows)).toBe(true);
       expect(rows).toHaveLength(2);
       expect(rows[1]?.items[0]?.content.contentType).toBe('TEXT');
@@ -892,8 +902,10 @@ describe('createHeaderRow', () => {
 
     it('does not change a collection that already has metadata', () => {
       const withMeta = createCollectionModel(1);
-      const unforced = asSingleRow(createHeaderRow(withMeta, 1200, false));
-      const forced = asSingleRow(createHeaderRow(withMeta, 1200, false, true));
+      const unforced = asSingleRow(createHeaderRow(withMeta, 1200, { isMobile: false }));
+      const forced = asSingleRow(
+        createHeaderRow(withMeta, 1200, { isMobile: false, forceRail: true })
+      );
       expect(forced?.items).toHaveLength(unforced?.items.length ?? 0);
       expect(forced?.items[1]?.width).toBe(unforced?.items[1]?.width);
     });
@@ -902,7 +914,7 @@ describe('createHeaderRow', () => {
   describe('date metadata item', () => {
     /** The metadata text block is the second desktop header item. */
     function dateItemValue(collection: CollectionModel): string | undefined {
-      const row = asSingleRow(createHeaderRow(collection, 1200, false));
+      const row = asSingleRow(createHeaderRow(collection, 1200, { isMobile: false }));
       const metadataBlock = row?.items[1]?.content as ContentTextModel | undefined;
       return metadataBlock?.items?.find(item => item.type === 'date')?.value;
     }
@@ -1262,7 +1274,7 @@ describe('createHeaderRow', () => {
         locations: [],
         description: 'A short bio',
       });
-      const row = asSingleRow(createHeaderRow(collection, 1200, false));
+      const row = asSingleRow(createHeaderRow(collection, 1200, { isMobile: false }));
       expect(row).not.toBeNull();
       expect(row?.rowType).toBe('header');
       expect(row?.items).toHaveLength(1);
