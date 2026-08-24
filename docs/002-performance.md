@@ -23,7 +23,7 @@ One ordered Performance epic, roughly highest-leverage first:
 3. ~~**SSR the hero**~~ — ✅ **shipped via the SSR-BoxTree work above** (#161 took the §1b "seed layout server-side" path: the whole first paint is now server HTML, not just a dedicated hero image).
 4. **Narrow `priority`/preload scope** — stop spreading `fetchpriority="high"` + preload to every leaf in row 0; target the single LCP candidate. Now actionable since the hero reaches the HTML.
 5. **Blur placeholder** — `placeholder="blur"` / `blurDataURL` generated server-side via sharp. _The blank-load **gap** is already closed by the SSR skeleton (#161); this remains as a quality polish for streaming-in images._
-6. **GIF poster** — use the unused `ContentGifModel.thumbnailUrl` as a poster/placeholder (currently never read in `contentRendererUtils.ts`).
+6. ~~**GIF poster**~~ — ✅ **shipped.** `ContentGifModel.thumbnailUrl` is read: `contentRendererUtils.ts:375` carries it onto the render props, and it lands as `poster=` on all three video sites — `CollectionContentRenderer.tsx:511` (in-row), `FullScreenModal.tsx:207` (fullscreen), and `MediaPreview.tsx:35` (the metadata editor's preview).
 7. **Scope `will-change: transform`** — currently applied globally to parallax images; restrict to near-viewport only to avoid memory pressure.
 8. **Verify Amplify serves AVIF/WebP** — `formats` config is active but untested after deploy.
 9. **Render micro-opts** — memoize `handleFullScreenImageClick` (`useCallback`), share an IntersectionObserver, drop the redundant `document.querySelector` DOM probe in `useFullScreenImage`, and the admin-only inline-arrow callbacks in `ReorderOverlay`.
