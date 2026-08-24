@@ -57,7 +57,7 @@ export default async function SharePage({ params, searchParams }: SharePageProps
   const safeKey = data.visibleKeys.includes(activeKey) ? activeKey : data.visibleKeys[0];
 
   return (
-    <PageShell pageType="default" collectionSlug={data.collection.slug}>
+    <PageShell collectionSlug={data.collection.slug}>
       <ShareSession token={token} />
 
       <div className={styles.sections}>

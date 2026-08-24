@@ -9,7 +9,8 @@ import { MenuDropdown } from '@/app/components/MenuDropdown/MenuDropdown';
 import styles from './SiteHeader.module.scss';
 
 interface SiteHeaderProps {
-  pageType?: 'default' | 'manage' | 'collection' | 'collectionsCollection';
+  /** True on a single collection's page; forwarded to {@link MenuDropdown} to gate Update. */
+  isCollectionPage?: boolean;
   collectionSlug?: string;
 }
 
@@ -23,7 +24,7 @@ interface SiteHeaderProps {
  * the overlay is mounted — pointing it at an id that is not in the document would be an invalid
  * ARIA reference.
  */
-export function SiteHeader({ pageType = 'default', collectionSlug }: SiteHeaderProps) {
+export function SiteHeader({ isCollectionPage = false, collectionSlug }: SiteHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuId = useId();
 
@@ -58,7 +59,7 @@ export function SiteHeader({ pageType = 'default', collectionSlug }: SiteHeaderP
         id={menuId}
         isOpen={isMenuOpen}
         onClose={closeMenu}
-        pageType={pageType}
+        isCollectionPage={isCollectionPage}
         collectionSlug={collectionSlug}
       />
     </>

@@ -119,7 +119,7 @@ export default function CollectionPage({
     return (
       <div className={styles.container}>
         <main className={styles.main}>
-          <SiteHeader pageType="collection" collectionSlug={collection.slug} />
+          <SiteHeader isCollectionPage collectionSlug={collection.slug} />
           <SkipTarget>
             <h1 className={styles.srOnly}>{headingText}</h1>
             <CollectionPageClient
@@ -147,7 +147,7 @@ export default function CollectionPage({
   return (
     <div className={styles.container}>
       <main className={styles.main}>
-        <SiteHeader pageType="collectionsCollection" />
+        <SiteHeader />
         <SkipTarget>
           {contentBlocks.length > 0 ? (
             <ContentBlockWithFullScreen

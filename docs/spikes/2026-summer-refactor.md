@@ -316,7 +316,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value       | Low         | **−3 src / −4 test net actual**, 36 call sites (est. −2 src, ~40 sites)                    | ✅ PR #307 — the one estimate on this board that held                                        |
 | E15 | `createHeaderRow`'s two trailing boolean params → options object         | Low         | **+22 src net / 14 test call sites** (est. ±15 src, ~20 sites)                             | ✅ PR #314 — stacked on #313; first call-site estimate to come in OVER                       |
 | E16 | Revalidate the OLD slug when a location is RENAMED                       | Low-medium  | **+40 src / +281 test actual** across 2 slices (est. +30 src / +120 test)                  | ✅ PR #316 (slice 1) + #317 (slice 2) — src held; test half 2.3x over                        |
-| E17 | Collapse the inert `pageType` union to a boolean                         | Low         | −15 src / ~0 test (measured, not estimated — see section)                                  | ☐ COLD — filed 2026-08-24 out of E8's guardrail, evidence attached                           |
+| E17 | Collapse the inert `pageType` union to a boolean                         | Low         | est −15 src / ~0 test → **actual +3 src (−2 code, +5 comment) / +9 test** (PR #322)        | ✅                                                                                           |
 | F1  | Decompose `useCollectionEdit.tsx`                                        | Medium-high | ~neutral                                                                                   | ☐                                                                                            |
 | F2  | `RendererContext` for the BoxRenderer tree                               | Medium      | est −100 src / +150–250 test → **actual −47 src / +142 test** (PR #321)                    | ✅                                                                                           |
 | F3  | File moves and renames                                                   | Medium      | ~neutral                                                                                   | ☐                                                                                            |
@@ -1512,7 +1512,44 @@ above.
 
 ---
 
-### ☐ E17 · Collapse the inert `pageType` union to a boolean — COLD
+### ✅ E17 · Collapse the inert `pageType` union to a boolean — SHIPPED
+
+**SHIPPED 2026-08-24 — PR #322, +3 src (−2 code, +5 comment) / +9 test.** `pageType` is gone
+repo-wide. `MenuDropdown` and `SiteHeader` take `isCollectionPage?: boolean`; `PageShell` lost the
+prop entirely. 244 suites / 4382 tests pass.
+
+**The board offered two shapes and the deeper one was available.** The section proposed either
+`isCollectionPage?: boolean` on all three, or dropping `pageType` from `SiteHeader`/`PageShell` and
+letting `MenuDropdown` take the boolean. The second is not quite possible as written — the value
+originates at the page and has to reach `MenuDropdown` through whichever of the two renders the
+header — but a hybrid is: **all seven `PageShell` call sites pass a value meaning "not a collection
+page"** (five `collectionsCollection`, two `default`), and the only `'collection'` call site,
+`CollectionPage.tsx:122`, renders `SiteHeader` directly. So `PageShell` does not need the prop at
+all. It now has one fewer prop, and a docblock saying why and when to add it back.
+
+**The −15 src estimate was wrong in an instructive way: it assumed shorter lines are fewer lines.**
+Swapping a union for a boolean is a same-line edit at all 3 declarations and all 10 call sites —
+`<PageShell pageType="collectionsCollection">` becomes `<PageShell>`, which is 1 line before and 1
+line after. The only line deletions available were `PageShell`'s three (prop declaration,
+destructure entry, JSX attribute), and Prettier gave one back by collapsing the signature. Net
+**−2 src code**, plus **+5 comment** for the two new prop docblocks and `PageShell`'s "no
+`isCollectionPage` prop, and here is why" paragraph. **New counting caution for this board: an item
+whose win is narrower types rather than deleted code will score ~0 on a line count, and that is not
+a failed item.** E17 removed a four-value union that could express three states nothing read; the
+line count cannot see that.
+
+**The near-zero test half held, so the E8 rule does not need a fourth revision.** The section said
+"every touched surface is already pinned … If it is not, the rule needs a fourth revision." It was
+right: `MenuDropdown.test.tsx`'s 52 tests already covered both Update-gating cases and needed only
+the prop rename; `PageShell.test.tsx` already pinned the forwarding. The +9 is one new test plus a
+richer mock stub — `PageShell` can no longer be asked for a collection header, so a test now pins
+that its header is never one. That is new behavior worth a test, not churn.
+
+**Board correction found while measuring: this section's "4374/4374 tests, 244/244 suites" is
+stale.** `main` at `1fe82a5` measures **4381 tests / 244 suites**. The perturbation result itself is
+unaffected — "zero of them moved" is a delta, not a total — but the total should not be quoted
+forward. Both numbers on this page were re-measured with a clean `jest` run on `main` with the
+working tree stashed, which is the cheap check that catches this class of drift.
 
 Filed 2026-08-24 out of E8's guardrail. E8 was told to leave the `pageType` union alone and report
 what removing it would do; this is that report promoted to its own item, so the evidence does not

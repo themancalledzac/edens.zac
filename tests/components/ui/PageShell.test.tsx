@@ -2,15 +2,22 @@ import { render, screen } from '@testing-library/react';
 
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 
-jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
-  __esModule: true,
-  default: ({ pageType }: { pageType?: string }) => (
-    <div data-testid="site-header" data-page-type={pageType} />
-  ),
-  SiteHeader: ({ pageType }: { pageType?: string }) => (
-    <div data-testid="site-header" data-page-type={pageType} />
-  ),
-}));
+jest.mock('@/app/components/SiteHeader/SiteHeader', () => {
+  const stub = ({
+    isCollectionPage,
+    collectionSlug,
+  }: {
+    isCollectionPage?: boolean;
+    collectionSlug?: string;
+  }) => (
+    <div
+      data-testid="site-header"
+      data-collection-page={String(Boolean(isCollectionPage))}
+      data-collection-slug={collectionSlug}
+    />
+  );
+  return { __esModule: true, default: stub, SiteHeader: stub };
+});
 
 describe('PageShell', () => {
   it('renders SiteHeader, a <main>, and its children', () => {
@@ -24,16 +31,20 @@ describe('PageShell', () => {
     expect(screen.getByText('page body')).toBeInTheDocument();
   });
 
-  it('forwards pageType and collectionSlug to SiteHeader', () => {
-    render(
-      <PageShell pageType="collectionsCollection" collectionSlug="abc">
-        x
-      </PageShell>
-    );
-    expect(screen.getByTestId('site-header')).toHaveAttribute(
-      'data-page-type',
-      'collectionsCollection'
-    );
+  it('forwards collectionSlug to SiteHeader', () => {
+    render(<PageShell collectionSlug="abc">x</PageShell>);
+    expect(screen.getByTestId('site-header')).toHaveAttribute('data-collection-slug', 'abc');
+  });
+
+  /**
+   * E17 removed `pageType` from the shell rather than converting it to a boolean: nothing the shell
+   * wraps is a single collection's page. This pins the consequence — the shell's header is never a
+   * collection header, which is what keeps the admin Update item off these pages now that no caller
+   * can ask for it.
+   */
+  it('never marks its header as a collection page', () => {
+    render(<PageShell collectionSlug="abc">x</PageShell>);
+    expect(screen.getByTestId('site-header')).toHaveAttribute('data-collection-page', 'false');
   });
 
   it('omits SiteHeader when withHeader={false}', () => {

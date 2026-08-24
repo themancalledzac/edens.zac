@@ -25,7 +25,8 @@ import styles from './MenuDropdown.module.scss';
 interface MenuDropdownProps {
   isOpen: boolean;
   onClose: () => void;
-  pageType?: 'default' | 'manage' | 'collection' | 'collectionsCollection';
+  /** True on a single collection's page, where an admin gets the Update item. */
+  isCollectionPage?: boolean;
   collectionSlug?: string;
   /** Applied to the overlay root so the trigger can point `aria-controls` at it. */
   id?: string;
@@ -125,7 +126,7 @@ function restoreFocus(previous: HTMLElement | null) {
 export function MenuDropdown({
   isOpen,
   onClose,
-  pageType = 'default',
+  isCollectionPage = false,
   collectionSlug,
   id,
 }: MenuDropdownProps) {
@@ -296,7 +297,7 @@ export function MenuDropdown({
     {
       label: 'Update',
       href: collectionSlug ? manageHref(collectionSlug) : '/collection/manage',
-      show: isAdmin && pageType === 'collection',
+      show: isAdmin && isCollectionPage,
     },
     { label: 'Metadata', href: '/metadata', show: isAdmin },
     { label: 'Comments', href: '/comments', show: isAdmin },

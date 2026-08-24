@@ -66,7 +66,7 @@ export default async function UserPage({ searchParams }: UserPageProps) {
   const contact = <SendMessageButton />;
 
   return (
-    <PageShell pageType="default" collectionSlug={data.collection.slug}>
+    <PageShell collectionSlug={data.collection.slug}>
       <h1 className={styles.srOnly}>Your Space</h1>
 
       <div className={styles.sections}>

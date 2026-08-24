@@ -79,7 +79,7 @@ export default async function AdminHubPage() {
   );
 
   return (
-    <PageShell pageType="collectionsCollection">
+    <PageShell>
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Admin</h1>
         <span className={styles.subtitle}>local dev console</span>
