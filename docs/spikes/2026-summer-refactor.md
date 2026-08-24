@@ -306,7 +306,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E13 | Trigger `collections-location-${slug}` from the image-metadata save path | Low-medium  | **+36 src net / +165 test actual** (est. +30 src, +60 test)                                | ✅ PR #313 — src estimate held; location-RENAME gap split out as E16                         |
 | E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value       | Low         | **−3 src / −4 test net actual**, 36 call sites (est. −2 src, ~40 sites)                    | ✅ PR #307 — the one estimate on this board that held                                        |
 | E15 | `createHeaderRow`'s two trailing boolean params → options object         | Low         | **+22 src net / 14 test call sites** (est. ±15 src, ~20 sites)                             | ✅ PR #314 — stacked on #313; first call-site estimate to come in OVER                       |
-| E16 | Revalidate the OLD slug when a location is RENAMED                       | Low-medium  | **+25 src / +120 test** (test half re-sized off E13 actual)                                | ☐ **COLD, NEXT** — 2 slices; slice 1 is ~+5 src and helps all 3 entity types                |
+| E16 | Revalidate the OLD slug when a location is RENAMED                       | Low-medium  | **slice 1 actual +9 src / +72 test**; slice 2 est. +25 src / +120 test                     | ◐ **slice 1 SHIPPED** (#316) — flat half done for all 3 entity types; slice 2 next          |
 | F1  | Decompose `useCollectionEdit.tsx`                                        | Medium-high | ~neutral                                                                                   | ☐                                                                                            |
 | F2  | `RendererContext` for the BoxRenderer tree                               | Medium      | −100 src, **+150–250 test** (re-sized 2026-08-24, bias 1b)                                 | ☐                                                                                            |
 | F3  | File moves and renames                                                   | Medium      | ~neutral                                                                                   | ☐                                                                                            |
@@ -1296,16 +1296,28 @@ guessing:
       `collection-${slug}` and `collections-location-${slug}`. **`collections-location-${slug}` is
       the only slug-keyed one.** Nothing registers a `collections-tag-${slug}`, so a tag rename
       cannot strand a cache tag. Build the location half only.
-- [ ] **New, found while settling the above: the rename path revalidates NOTHING, not even the flat
-      tags.** `MetadataList.handleUpdate` posts no `/api/revalidate` at all, so renaming any of the
-      three entity types leaves `content-tags` / `content-locations` stale as well — a plain
+- [x] ~~**New, found while settling the above: the rename path revalidates NOTHING, not even the
+      flat tags.**~~ **SHIPPED 2026-08-24 as slice 1 (#316).** `MetadataList.handleUpdate` posts
+      no `/api/revalidate` at all, so renaming any of the three entity types leaves
+      `content-tags` / `content-locations` stale as well — a plain
       staleness bug that is separate from the old-slug 404 and applies to people too. The fix is one
       unconditional `revalidateMetadataCache()` on the rename path, which already exists in
       `collectionEditUtils.ts` and covers `content-tags`, `content-locations` and `search-images`.
       Do this first: it is smaller than the slug half, needs no callback prop, and helps all three
       entity types. `handleDelete` needs the same call.
-- [ ] `MetadataList.handleDelete` (`:74`) has the same exposure and is a cheaper case: on delete the
-      slug is unambiguously gone. Decide it with this item rather than filing a third row.
+      **Actual +9 src / +72 test against an estimate of ~+5 src.** One import and two
+      `void revalidateMetadataCache()` lines — but 6 of the 9 src lines are the component
+      docblock explaining why a deliberately generic list calls a metadata-cache helper. That is
+      E13's lesson landing a second time (39 of 45 there): **an item that adds a caller pays for
+      the comment that justifies the call, and no estimate on this board budgets for it.** Budget
+      it in slice 2. No branch was needed — the call is correct unconditionally, so the generic
+      shape was never under pressure in this slice.
+- [ ] `MetadataList.handleDelete` (`:74`) has the same exposure and is a cheaper case: on delete
+      the slug is unambiguously gone. Decide it with this item rather than filing a third row.
+      **Half done: the flat-cache call shipped in slice 1** — `handleDelete` got the same
+      unconditional `revalidateMetadataCache()` as the rename path. The slug half is slice 2 and
+      is the easier of the two callbacks: delete has no response to diff against, so it needs
+      only the removed item, not a before/after pair. Box stays unchecked until that lands.
 
 **Guardrail — leave `MetadataList`'s generic shape alone.** This item puts you in
 `app/components/ui/MetadataList/MetadataList.tsx`, which renders tags, people AND locations from one
@@ -1318,6 +1330,36 @@ changing it would do rather than making the edit** — the generic shape is load
 people, and this board has a standing habit of obeying a guardrail whose stated reason turns out to
 be wrong (see E13's `buildAssociationDiff` report), so the reasoning here deserves the same
 scepticism.
+
+**Report on the `entityType` branch, per the guardrail — obeyed, and the stated reason turns out to
+be the weaker of two.** Slice 1 never tested the guardrail: its call is correct unconditionally, so
+no branch was tempting. This report is about slice 2, where the branch genuinely is the tempting
+three-line route.
+
+The stated reason is a design argument — location knowledge does not belong in a generic list, and
+the next entity type pays again. True, but soft, and this board has been burned by soft reasons
+before. There is a harder one underneath it, and it is a type error:
+
+- `MetadataList` is generic over `T extends MetadataListItem`, whose `slug` is
+  `string | undefined`. `revalidateLocationCaches(previous: LocationModel[], next: LocationModel[])`
+  wants `LocationModel`.
+- **An `entityType` prop is a string, and a string cannot narrow `T`.** Inside
+  `if (entityType === 'locations')`, `item` is still `T` — TypeScript has learned nothing about
+  it. So the branch needs `item as unknown as LocationModel` (a double cast: `T` and
+  `LocationModel` have no overlap TypeScript accepts singly), or it needs
+  `revalidateLocationCaches` widened to `{ slug?: string }[]` — which that helper's own docblock
+  forbids: "Give a new caller its own call rather than generalizing this helper."
+- A callback prop has neither problem. `MetadataPageClient` renders `items={locations}`, so `T`
+  infers as `LocationModel` at that call site. `onRenamed?: (previous: T, next: T) => void` then
+  hands it two `LocationModel`s and `revalidateLocationCaches([previous], [next])` type-checks with
+  no cast. **The generic binding does the narrowing the string prop cannot.**
+
+So the branch costs a double cast or a forbidden helper change, and the callback costs a prop. Take
+the callback — not because the design is tidier, but because it is the only one of the two that
+type-checks under this repo's no-`any` rule. Second-order cost worth naming: `entityType` would
+duplicate a fact `basePath` already carries (`/metadata/locations`), giving two sources of truth
+that can silently disagree. **No edit made. The guardrail holds, on a stronger reason than the one
+it was written with.**
 
 **Second guardrail: do not add `collections-location-*` to `revalidateMetadataCache`.** Slice 1
 calls that helper, and its docblock carries a standing rule — a tag goes in it only in the same
