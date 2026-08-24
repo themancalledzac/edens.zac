@@ -318,7 +318,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E16 | Revalidate the OLD slug when a location is RENAMED                       | Low-medium  | **+40 src / +281 test actual** across 2 slices (est. +30 src / +120 test)                  | ✅ PR #316 (slice 1) + #317 (slice 2) — src held; test half 2.3x over                        |
 | E17 | Collapse the inert `pageType` union to a boolean                         | Low         | −15 src / ~0 test (measured, not estimated — see section)                                  | ☐ COLD — filed 2026-08-24 out of E8's guardrail, evidence attached                           |
 | F1  | Decompose `useCollectionEdit.tsx`                                        | Medium-high | ~neutral                                                                                   | ☐                                                                                            |
-| F2  | `RendererContext` for the BoxRenderer tree                               | Medium      | −100 src, **+150–250 test** (re-sized 2026-08-24, bias 1b)                                 | ☐                                                                                            |
+| F2  | `RendererContext` for the BoxRenderer tree                               | Medium      | est −100 src / +150–250 test → **actual −47 src / +142 test** (PR #321)                    | ✅                                                                                           |
 | F3  | File moves and renames                                                   | Medium      | ~neutral                                                                                   | ☐                                                                                            |
 | F4  | `TaxonomyPage` ← `LocationPageClient`                                    | Medium      | −150                                                                                       | ⛔ USER DECISION                                                                             |
 | F5  | `FullScreenModal` link + resolver cleanup                                | Low         | **−25 src / +20 test net actual** (est. −30 src, +60–120 test)                             | ✅ PR #318 — src held; test came in UNDER, unlike E13/E16                                    |
@@ -1136,7 +1136,7 @@ image-side TRIGGER for a page whose contents both sides feed.
       `location.setSlug(SlugUtil.generateSlug(locationName))` with no guard, and the DAO's UPDATE
       writes the column. So the old slug does not go stale, it **stops existing**:
       `CollectionService.getLocationPageBySlug` resolves via `locationRepository.findBySlug(...)
-  .orElseThrow(...)`, and there is no slug-history or redirect table anywhere in the backend.
+.orElseThrow(...)`, and there is no slug-history or redirect table anywhere in the backend.
       `/location/{old-slug}` 404s while its cache tag keeps serving a snapshot of a page whose URL
       is gone. **Filed as E16 rather than folded in here** — the caller is a generic list component
       shared with tags and people, so it needs a callback prop, not a hardcoded call. That is a
@@ -1560,9 +1560,106 @@ Bigger, optional, sequenced last. Do each individually and verify on :3000.
 - [ ] After the A- and E-group work (~−150 lines), split along the pattern the file already established (`useContentReordering`, `useCoverImageSelection`, …): `useAdminCollectionState`, `useCollectionUpdateForm`, `useCollectionPeople` + `useGalleryAccess`, `useCollectionRelations`, `useContentOps`, `useManageBar`. The section boundaries verified 2026-08-22: state `:311–421`, update form `:438–792`, people+gallery `:471–851`, content ops `:852–1206`, relations `:1208–1392`, manage bar `:1393–1451`. Keep the existing `UseCollectionEditResult` facade so the SIX test suites (`test`, `buffer`, `handlers`, `bulkRemove`, `escapeSelection`, `delete`) plus `collectionEditFixtures.ts`'s ~70-member result builder do not churn. No file over ~450 lines.
 - [ ] This also dissolves `EditModeLayer`'s FOUR `exhaustive-deps` suppressions (`:131`, `:201`, `:208`, `:215` — was "three").
 
-### ☐ F2 · `RendererContext` for the BoxRenderer tree — NEXT
+### ✅ F2 · `RendererContext` for the BoxRenderer tree — SHIPPED
 
-**Why it is next (picked 2026-08-24).** The board named E8/F2/F5 as the candidates after E16.
+**SHIPPED 2026-08-24 — PR #321, −47 src / +142 test.** New `app/components/Content/RendererContext.tsx`
+holds `SharedRendererProps` (the 16) once; `ContentBlockWithFullScreen` and `Component` extend it and
+forward the set as one object; `BoxRenderer` is down to `tree`/`sizes`/`isMobile`/`priority` and reads
+the rest from `useRenderer()`. 245 suites / 4398 tests pass.
+
+**The re-derived estimate was right to distrust the src number, and the src number was still high.**
+Re-deriving from the 16-prop / 3-site measurement predicted "much smaller than −100"; actual is −47,
+so the board's −100 was over by roughly 2×. The test half landed at +142, just under the +150–250
+band — close enough that bias 1b is not indicted here. Counting method, per the new rule:
+`git diff --cached --numstat -- app/` and `-- tests/`, summed. Src is 157 added / 204 removed across
+four files; test is 148 added / 6 removed across two.
+
+**What actually shrank, and what did not.** The savings are concentrated in `BoxRenderer` (−42) and
+`Component` (−39), because both carried the set twice — once in an interface, once in JSX — and
+`BoxRenderer` carried it a third time in its `childProps` recursion object, which is now gone
+entirely. `ContentBlockWithFullScreen` gave up −47 by collapsing its 16 destructured names and 16
+JSX lines into `...shared` / `{...shared}`. Against that, the new context file is +81. The reason
+the net is not larger is that the 16 declarations did not disappear — they moved into
+`SharedRendererProps`, which is the point of the item, but it means the win is "declared once
+instead of three times", not "deleted".
+
+**Defaults moved down, not away.** `Component` used to default `enableFullScreenView`,
+`isSelectingCoverImage`, `isReorderMode` to `false` and `selectedIds` to `[]` on the way in. Those
+defaults are now applied in `BoxRenderer`'s context destructure, so the leaf sees exactly the values
+it saw before. `CollectionContentRenderer` defaults three of the four itself, so this is
+belt-and-braces — but it is the difference between a refactor that provably changes nothing and one
+that changes `false` to `undefined` in four places and asks you to trust that nothing reads it.
+
+**The context value is deliberately not memoized**, and the reasoning is in the docblock on
+`RendererProvider` rather than here: the only consumers are `BoxRenderer` trees in `Component`'s own
+JSX, none wrapped in `memo`, so they re-render with the parent regardless. Wrap `BoxRenderer` in
+`memo` and that stops being true — the docblock says so.
+
+**Threading is now pinned, because it was not.** `tests/components/Content/RendererContext.threading.test.tsx`
+(+144, 24 tests) renders the real `ContentBlockWithFullScreen → Component → BoxRenderer` chain with
+only `CollectionContentRenderer` mocked, and asserts every shared member arrives at the leaf, that
+the five caller handlers arrive by identity, that `onImageLoadError` arrives as `Component`'s
+wrapper and not the raw handler, and that `reorderMoves`/`reorderDisplayOrder` stop at `BoxRenderer`
+as the derived flags. This is the E8 rule paying off a second time: `boxRendererUtils.test.ts` pinned
+`computeReorderFlags`, and `Component.reflowOnError.test.tsx` pinned the `onImageLoadError` wrapper,
+but nothing pinned the other fifteen props' threading — which is precisely the behavior being moved.
+The only other test churn was `BoxRenderer.visibility.test.tsx`, which passed `currentCollectionId`
+as a prop and now wraps in a provider (−6/+4).
+
+**Browser verification did NOT run.** The Spring backend was not up (`ECONNREFUSED` on
+`/api/auth/me`), so every page that renders the grid died in its error boundary before reaching
+`Component`. The grid path is covered by the threading test above, which exercises the real chain,
+but the "verify on :3000" step Group F asks for is outstanding and should be done next time the
+stack is up. Unrelated find while looking for a backend-free page: the `tsc` error at
+`.next-verify/dev/types/validator.ts` is a stale generated type for a deleted
+`app/(admin)/admin/layoutpreview/page.tsx`; `.next-verify/` is gitignored, so this is build-artifact
+rot, not a code defect. Deleting the directory clears it.
+
+#### The `EditModeLayer` question, answered
+
+Per the guardrail, `EditModeLayer` was left passing props. The measurement that decides the
+follow-up:
+
+**Thirteen of the sixteen shared props have exactly ONE caller, and it is `EditModeLayer`.**
+Measured with `awk '/<ContentBlockWithFullScreen/,/\/>/'` over each of the seven call sites.
+`TaxonomyPage`, `CollectionPage`, `LocationPageClient` and `AdminHubClient` pass only
+`enableFullScreenView`; `CollectionPageClient` adds `onImageClick` and `selectedIds`;
+`CollectionRailContext` passes none. `EditModeLayer` passes all eight reorder props plus
+`isSelectingCoverImage`, `currentCoverImageId`, `justClickedImageId` and `currentCollectionId`.
+
+**So the prize is bigger than "removing a third copy".** If `EditModeLayer` provided those thirteen
+through the context, `ContentBlockWithFullScreen` and `Component` could stop declaring them at all —
+`SharedRendererProps` would shrink to three members. That is a genuine simplification of the public
+render path, not a cosmetic one.
+
+**The cost is that `Component` becomes both consumer and provider of the same context.** It cannot
+stop providing: it owns the `onImageLoadError` wrapper, `canDownload` and `collectionSlug`. So it
+would have to read the ambient value and re-provide it merged with its own. Done carelessly that
+creates two live paths for the same prop with invisible precedence — a caller passing
+`isReorderMode` while an ancestor provides it, and nothing at either site showing which wins. **The
+follow-up is only worth doing if it REMOVES the props rather than adding a second path**: the
+thirteen come out of both interfaces, `EditModeLayer` becomes their sole source, and `Component`
+augments an opaque value it never reads. Then there is exactly one path and the hazard does not
+exist.
+
+**Is the coupling acceptable? Yes, and the board's instinct was half wrong here.** The stated worry
+was wiring an editing surface into a context owned by the public render tree. But the dependency
+already runs the other way and worse: `RendererContext.tsx` imports `ReorderMove` from
+`app/components/ContentCollection/edit/collectionEditUtils`, exactly as `BoxRenderer` did before it.
+The public tree already knows the edit layer exists, at the type level, today. Having the edit layer
+_provide_ values the public tree consumes opaquely is the cleaner direction of the two, because
+`Component` would never import anything from `edit/` to read them.
+
+**Sequencing: do F3's `ReorderMove` move first.** F3 already lists "`ReorderMove` type →
+`app/types/Content.ts`; the public tree currently imports it from the admin edit directory." Doing
+that first leaves the follow-up with a clean one-way edge instead of trading one direction of
+coupling for another. **Sized at roughly −20 src** (−13 interface lines in
+`ContentBlockWithFullScreen`, −13 JSX lines in `EditModeLayer`, +~5 provider lines there, +~5 merge
+lines in `Component`) **and +40–60 test** — `CollectionPageClient.editMode.test.tsx` and anything
+else mounting `EditModeLayer` needs the provider, and the merge precedence in `Component` is new
+behavior that nothing pins. Filed as a follow-up MR with this analysis, not a scope expansion.
+
+**Why it was next (picked 2026-08-24).** The board named E8/F2/F5 as the candidates after E16.
 F5 shipped (#318), E8 shipped (#319), so F2 is the last of the three. Its context is warm twice
 over: E8 just spent a session inside `CollectionContentRenderer`, the leaf of this exact chain, and
 this close-out just re-measured F2's premise from scratch, so the item is fully specified for a
@@ -1577,6 +1674,10 @@ before assuming the test half is small. E8's went to +90 precisely because the b
 turned out to be unpinned.
 
 **Guardrail — leave `EditModeLayer` on props and report what moving it into the context would do.**
+**Honored in #321; the report is "The `EditModeLayer` question, answered" above, and it upgrades the
+follow-up from "removes a third copy" to "shrinks the shared set from 16 members to 3".** The
+original text follows.
+
 The measurement above found the reorder prop block copied at three sites, and the third is
 `EditModeLayer`, in the admin edit directory — outside the `BoxRenderer` chain a `Component`-provided
 context reaches. Folding it in is the tempting move, because it looks like the same duplication and
@@ -1589,7 +1690,7 @@ props, and write up what including it would cost and whether the coupling is acc
 turns out clean, that is a follow-up MR with the analysis attached rather than a scope expansion
 discovered mid-diff.
 
-- [ ] ~~Twenty render-constant props are copied ~10 times across~~ **Re-measured 2026-08-24 and both numbers are wrong — see below.** Render-constant props are copied across `BoxRenderer`, `Component`, and `ContentBlockWithFullScreen`. A context provided once by `Component` reduces `BoxRenderer` to `tree`/`sizes`/`isMobile`/`priority` and removes plumbing — `priority` STAYS a prop, it is per-row (`priority={rowIndex <= priorityRowIndex}`, Component.tsx:284 — **ref re-verified 2026-08-24, still correct**), not render-constant. Completes the context migration the codebase already chose for `SelectStar`/`SaveHeart`.
+- [x] ~~Twenty render-constant props are copied ~10 times across~~ **Re-measured 2026-08-24 and both numbers are wrong — see below.** **Done in #321.** Render-constant props are copied across `BoxRenderer`, `Component`, and `ContentBlockWithFullScreen`. A context provided once by `Component` reduces `BoxRenderer` to `tree`/`sizes`/`isMobile`/`priority` and removes plumbing — `priority` STAYS a prop, it is per-row (`priority={rowIndex <= priorityRowIndex}`, Component.tsx:284 — **ref re-verified 2026-08-24, still correct**), not render-constant. Completes the context migration the codebase already chose for `SelectStar`/`SaveHeart`.
 
 **The two numbers this item's estimate rests on are both wrong, and the second one badly.**
 Measured on 2026-08-24 against `main` + E8:
@@ -1621,7 +1722,7 @@ method this time — neither prior count recorded one, which is why they could n
 - [ ] `fullscreen-image.module.scss` → `FullScreenModal.module.scss`, which leaves `app/styles/` holding only `globals.css`.
 - [ ] `getUserPage` from the one-function `user.ts` into `personal.ts`, killing the `user.ts` vs `users.ts` naming trap.
 - [ ] Invite functions from `users.ts` → `auth.ts`.
-- [ ] `ReorderMove` type → `app/types/Content.ts`; the public tree currently imports it from the admin edit directory.
+- [ ] `ReorderMove` type → `app/types/Content.ts`; the public tree currently imports it from the admin edit directory. **Now blocks F2's `EditModeLayer` follow-up** — see F2's close-out; doing this first leaves that MR a one-way dependency edge instead of trading one direction of coupling for another. As of #321 the importer is `RendererContext.tsx`, not `BoxRenderer.tsx`.
 - [ ] Rename the lowercase `auth/` and `messages/` component directories.
 - [ ] Fold the `AdminPanel/` fossil (now only contexts) into `ListPanel/`.
 - [ ] Two `logger.warn('manageUtils', …)` labels in `collectionEditUtils.ts` still name a module

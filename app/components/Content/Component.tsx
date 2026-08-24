@@ -3,7 +3,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useMe } from '@/app/components/auth/MeProvider';
-import { type ReorderMove } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { LAYOUT } from '@/app/constants';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel } from '@/app/types/Collection';
@@ -24,27 +23,22 @@ import {
   resolveEffectiveViewport,
 } from './componentUtils';
 import cbStyles from './ContentComponent.module.scss';
+import {
+  type RendererContextValue,
+  RendererProvider,
+  type SharedRendererProps,
+} from './RendererContext';
 
-export interface ContentComponentProps {
+export interface ContentComponentProps extends SharedRendererProps {
   content: AnyContentModel[];
-  isSelectingCoverImage?: boolean;
-  currentCoverImageId?: number;
-  onImageClick?: (imageId: number) => void;
-  justClickedImageId?: number | null;
   /**
    * Fallback priority row when the layout is header-only. Normally the layout auto-extends eager
    * loading through the first content row (see {@link computePriorityRowIndex}), so the true LCP
    * grid image — not just the height-constrained cover — loads eagerly.
    */
   priorityIndex?: number;
-  /** Enable full-screen image viewing on click */
-  enableFullScreenView?: boolean;
   /** Accepts any viewable content (image, parallax image, or GIF/MP4 — normalized in renderer) */
   onFullScreenImageClick?: (image: ViewableContent) => void;
-  /** Array of selected image IDs for bulk editing */
-  selectedIds?: number[];
-  /** ID of current collection (for checking collection-specific visibility) */
-  currentCollectionId?: number;
   /** Number of images per row (default: 2) */
   chunkSize?: number;
   /**
@@ -65,16 +59,6 @@ export interface ContentComponentProps {
    * every photo. See `ProcessContentOptions.widthCostBaseline`.
    */
   widthCostBaseline?: number;
-  /** Reorder mode props */
-  isReorderMode?: boolean;
-  reorderMoves?: ReorderMove[];
-  pickedUpImageId?: number | null;
-  reorderDisplayOrder?: number[];
-  onArrowMove?: (contentId: number, direction: -1 | 1) => void;
-  onPickUp?: (contentId: number) => void;
-  onPlace?: (targetId: number) => void;
-  onCancelImageMove?: (contentId: number) => void;
-  onImageLoadError?: (contentId: number) => void;
   /** SSR fallback viewport. Used when `useViewport()` hasn't measured yet. */
   serverContentWidth?: number;
   serverViewportHeight?: number;
@@ -129,33 +113,19 @@ function useLayoutRowLog(rows: RowWithPatternAndSizes[], contentWidth: number): 
  */
 export default function Component({
   content,
-  isSelectingCoverImage = false,
-  currentCoverImageId,
-  onImageClick,
-  justClickedImageId,
   priorityIndex = 0,
-  enableFullScreenView = false,
   onFullScreenImageClick,
-  selectedIds = [],
-  currentCollectionId,
   chunkSize = LAYOUT.defaultChunkSize,
   mobileChunkSize,
   collectionData,
   forceHeaderRail = false,
   widthCostBaseline,
-  isReorderMode = false,
-  reorderMoves,
-  pickedUpImageId,
-  reorderDisplayOrder,
-  onArrowMove,
-  onPickUp,
-  onPlace,
-  onCancelImageMove,
-  onImageLoadError,
   serverContentWidth,
   serverViewportHeight,
   serverIsMobile,
+  ...shared
 }: ContentComponentProps) {
+  const { currentCollectionId, onImageLoadError } = shared;
   const measured = useViewport();
 
   // Download UI is a capability gate (backend authorizes by CLIENT role on any collection), not a
@@ -185,6 +155,14 @@ export default function Component({
     },
     [onImageLoadError]
   );
+
+  const rendererValue: RendererContextValue = {
+    ...shared,
+    onImageLoadError: handleImageLoadError,
+    onFullScreenImageClick,
+    canDownload,
+    collectionSlug: collectionData?.slug,
+  };
 
   // Note: a failed id is not cleared if `content` is later refetched with a fixed URL — the image
   // stays hidden until this Component remounts (e.g. navigation). Keying a reset on the `content`
@@ -265,53 +243,36 @@ export default function Component({
           tree={tree}
           sizes={sizesMap}
           isMobile={viewport.isMobile}
-          onImageClick={onImageClick}
-          enableFullScreenView={enableFullScreenView}
-          onFullScreenImageClick={onFullScreenImageClick}
-          selectedIds={selectedIds}
-          currentCollectionId={currentCollectionId}
-          isSelectingCoverImage={isSelectingCoverImage}
-          currentCoverImageId={currentCoverImageId}
-          justClickedImageId={justClickedImageId}
-          isReorderMode={isReorderMode}
-          reorderMoves={reorderMoves}
-          pickedUpImageId={pickedUpImageId}
-          reorderDisplayOrder={reorderDisplayOrder}
-          onArrowMove={onArrowMove}
-          onPickUp={onPickUp}
-          onPlace={onPlace}
-          onCancelImageMove={onCancelImageMove}
           priority={rowIndex <= priorityRowIndex}
-          onImageLoadError={handleImageLoadError}
-          canDownload={canDownload}
-          collectionSlug={collectionData?.slug}
         />
       </div>
     );
   };
 
   return (
-    <div className={cbStyles.wrapper}>
-      <div className={cbStyles.inner}>
-        {rows.map((row, rowIndex) => {
-          const shouldShowSeparator =
-            firstNonVisibleRowIndex !== -1 && rowIndex === firstNonVisibleRowIndex;
-          const rowKey = `row-${rowIndex}-${row.items.map(i => itemKeyFragment(i.content)).join('-')}`;
+    <RendererProvider value={rendererValue}>
+      <div className={cbStyles.wrapper}>
+        <div className={cbStyles.inner}>
+          {rows.map((row, rowIndex) => {
+            const shouldShowSeparator =
+              firstNonVisibleRowIndex !== -1 && rowIndex === firstNonVisibleRowIndex;
+            const rowKey = `row-${rowIndex}-${row.items.map(i => itemKeyFragment(i.content)).join('-')}`;
 
-          return (
-            <Fragment key={rowKey}>
-              {shouldShowSeparator && (
-                <div className={cbStyles.visibilitySeparator}>
-                  <div className={cbStyles.separatorLine} />
-                  <div className={cbStyles.separatorLabel}>Non-Visible Content</div>
-                  <div className={cbStyles.separatorLine} />
-                </div>
-              )}
-              {renderRow(row, rowIndex)}
-            </Fragment>
-          );
-        })}
+            return (
+              <Fragment key={rowKey}>
+                {shouldShowSeparator && (
+                  <div className={cbStyles.visibilitySeparator}>
+                    <div className={cbStyles.separatorLine} />
+                    <div className={cbStyles.separatorLabel}>Non-Visible Content</div>
+                    <div className={cbStyles.separatorLine} />
+                  </div>
+                )}
+                {renderRow(row, rowIndex)}
+              </Fragment>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </RendererProvider>
   );
 }

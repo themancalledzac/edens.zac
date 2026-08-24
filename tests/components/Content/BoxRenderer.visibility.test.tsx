@@ -12,6 +12,7 @@ import '@testing-library/jest-dom';
 import { render } from '@testing-library/react';
 
 import { BoxRenderer } from '@/app/components/Content/BoxRenderer';
+import { RendererProvider } from '@/app/components/Content/RendererContext';
 import type { ChildCollection } from '@/app/types/Collection';
 import type { ContentImageModel } from '@/app/types/Content';
 import { createImageContent } from '@/tests/fixtures/contentFixtures';
@@ -35,12 +36,9 @@ const childCollection = (overrides?: Partial<ChildCollection>): ChildCollection 
 const renderLeaf = (content: ContentImageModel, currentCollectionId?: number) => {
   const sizes = new Map([[content.id, { width: 400, height: 300 }]]);
   return render(
-    <BoxRenderer
-      tree={{ type: 'leaf', content }}
-      sizes={sizes}
-      isMobile={false}
-      currentCollectionId={currentCollectionId}
-    />
+    <RendererProvider value={{ currentCollectionId }}>
+      <BoxRenderer tree={{ type: 'leaf', content }} sizes={sizes} isMobile={false} />
+    </RendererProvider>
   );
 };
 

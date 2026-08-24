@@ -1,7 +1,5 @@
 'use client';
 
-import { type ReorderMove } from '@/app/components/ContentCollection/edit/collectionEditUtils';
-import type { ViewableContent } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import { isContentVisibleInCollection } from '@/app/utils/contentLayout';
 import { determineContentRendererProps } from '@/app/utils/contentRendererUtils';
@@ -14,34 +12,17 @@ import styles from './BoxRenderer.module.scss';
 import { computeReorderFlags } from './boxRendererUtils';
 import CollectionContentRenderer from './CollectionContentRenderer';
 import cbStyles from './ContentComponent.module.scss';
+import { useRenderer } from './RendererContext';
 
 interface BoxRendererProps {
   tree: BoxTree;
   sizes: Map<number, { width: number; height: number }>;
   isMobile: boolean;
-  /** Pass-through props for child renderers */
-  onImageClick?: (imageId: number) => void;
-  enableFullScreenView?: boolean;
-  onFullScreenImageClick?: (image: ViewableContent) => void;
-  selectedIds?: number[];
-  currentCollectionId?: number;
-  isSelectingCoverImage?: boolean;
-  currentCoverImageId?: number;
-  justClickedImageId?: number | null;
-  /** Reorder mode props */
-  isReorderMode?: boolean;
-  reorderMoves?: ReorderMove[];
-  pickedUpImageId?: number | null;
-  reorderDisplayOrder?: number[];
-  onArrowMove?: (contentId: number, direction: -1 | 1) => void;
-  onPickUp?: (contentId: number) => void;
-  onPlace?: (targetId: number) => void;
-  onCancelImageMove?: (contentId: number) => void;
+  /**
+   * Eager-load flag for this row (`rowIndex <= priorityRowIndex`). Stays a prop because it is the
+   * one value in this chain that is per-row rather than render-constant.
+   */
   priority?: boolean;
-  onImageLoadError?: (contentId: number) => void;
-  /** Client gallery props */
-  canDownload?: boolean;
-  collectionSlug?: string;
 }
 
 /**
@@ -57,32 +38,34 @@ interface BoxRendererProps {
  * (`isPublicView` in `Component.tsx`, the early return in `computeFirstNonVisibleRowIndex`). Public
  * views already drop hidden blocks via `filterVisibleBlocks`, so the gray tint would be both
  * unreachable and wrong there; manage deliberately keeps hidden blocks in place and marks them.
+ *
+ * Everything except `tree`/`sizes`/`isMobile`/`priority` arrives through {@link useRenderer}. The
+ * defaults applied below are the ones `Component` used to apply on the way in, kept here so the
+ * leaf sees the same values it always has.
  */
-export function BoxRenderer({
-  tree,
-  sizes,
-  isMobile,
-  onImageClick,
-  enableFullScreenView,
-  onFullScreenImageClick,
-  selectedIds = [],
-  currentCollectionId,
-  isSelectingCoverImage,
-  currentCoverImageId,
-  justClickedImageId,
-  isReorderMode,
-  reorderMoves,
-  pickedUpImageId,
-  reorderDisplayOrder,
-  onArrowMove,
-  onPickUp,
-  onPlace,
-  onCancelImageMove,
-  priority,
-  onImageLoadError,
-  canDownload,
-  collectionSlug,
-}: BoxRendererProps) {
+export function BoxRenderer({ tree, sizes, isMobile, priority }: BoxRendererProps) {
+  const {
+    onImageClick,
+    enableFullScreenView = false,
+    onFullScreenImageClick,
+    selectedIds = [],
+    currentCollectionId,
+    isSelectingCoverImage = false,
+    currentCoverImageId,
+    justClickedImageId,
+    isReorderMode = false,
+    reorderMoves,
+    pickedUpImageId,
+    reorderDisplayOrder,
+    onArrowMove,
+    onPickUp,
+    onPlace,
+    onCancelImageMove,
+    onImageLoadError,
+    canDownload,
+    collectionSlug,
+  } = useRenderer();
+
   if (tree.type === 'leaf') {
     const size = sizes.get(tree.content.id);
     if (!size) {
@@ -171,35 +154,10 @@ export function BoxRenderer({
 
   const containerClass = tree.direction === 'horizontal' ? styles.hbox : styles.vbox;
 
-  const childProps = {
-    sizes,
-    isMobile,
-    onImageClick,
-    enableFullScreenView,
-    onFullScreenImageClick,
-    selectedIds,
-    currentCollectionId,
-    isSelectingCoverImage,
-    currentCoverImageId,
-    justClickedImageId,
-    isReorderMode,
-    reorderMoves,
-    pickedUpImageId,
-    reorderDisplayOrder,
-    onArrowMove,
-    onPickUp,
-    onPlace,
-    onCancelImageMove,
-    priority,
-    onImageLoadError,
-    canDownload,
-    collectionSlug,
-  };
-
   return (
     <div className={containerClass}>
-      <BoxRenderer tree={tree.children[0]} {...childProps} />
-      <BoxRenderer tree={tree.children[1]} {...childProps} />
+      <BoxRenderer tree={tree.children[0]} sizes={sizes} isMobile={isMobile} priority={priority} />
+      <BoxRenderer tree={tree.children[1]} sizes={sizes} isMobile={isMobile} priority={priority} />
     </div>
   );
 }
