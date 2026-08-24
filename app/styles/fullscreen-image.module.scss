@@ -20,7 +20,7 @@
   overscroll-behavior: none;
   touch-action: pan-x;
 
-  @media (width > 768px) and (height >= 600px) {
+  @media (width >= 768px) and (height >= 600px) {
     flex-direction: row;
   }
 
@@ -221,7 +221,7 @@
   user-select: none; /* Prevents text selection on mobile */
   -webkit-tap-highlight-color: transparent; /* Removes iOS tap highlight */
 
-  @media (width > 768px) and (height >= 600px) {
+  @media (width >= 768px) and (height >= 600px) {
     width: 40px;
     height: 40px;
     font-size: 20px;
@@ -257,7 +257,7 @@
   margin-bottom: 0;
   margin-right: 0;
 
-  @media (width > 768px) and (height >= 600px) {
+  @media (width >= 768px) and (height >= 600px) {
     padding: 16px 56px 16px 16px;
     font-size: 13px;
     max-height: 60vh;
@@ -281,7 +281,7 @@
   margin-bottom: 8px;
   color: white;
 
-  @media (width > 768px) and (height >= 600px) {
+  @media (width >= 768px) and (height >= 600px) {
     font-size: 17px;
     margin-bottom: 10px;
   }
@@ -291,7 +291,7 @@
   margin-bottom: 6px;
   color: var(--scrim-light-90);
 
-  @media (width > 768px) and (height >= 600px) {
+  @media (width >= 768px) and (height >= 600px) {
     margin-bottom: 8px;
   }
 }
@@ -326,7 +326,7 @@
   font-style: italic;
   line-height: 1.4;
 
-  @media (width > 768px) and (height >= 600px) {
+  @media (width >= 768px) and (height >= 600px) {
     margin-bottom: 10px;
   }
 }
@@ -344,7 +344,7 @@
   padding-top: 8px;
   border-top: 1px solid var(--scrim-light-20);
 
-  @media (width > 768px) and (height >= 600px) {
+  @media (width >= 768px) and (height >= 600px) {
     gap: 16px;
     margin-bottom: 16px;
     padding-top: 10px;
@@ -360,7 +360,7 @@
   padding-top: 12px;
   border-top: 1px solid var(--scrim-light-20);
 
-  @media (width > 768px) and (height >= 600px) {
+  @media (width >= 768px) and (height >= 600px) {
     margin-top: 16px;
     padding-top: 16px;
   }
@@ -372,7 +372,7 @@
   align-items: center;
   gap: 8px;
 
-  @media (width > 768px) and (height >= 600px) {
+  @media (width >= 768px) and (height >= 600px) {
     gap: 10px;
   }
 }
@@ -386,7 +386,7 @@
   margin-bottom: 0;
   flex-shrink: 0;
 
-  @media (width > 768px) and (height >= 600px) {
+  @media (width >= 768px) and (height >= 600px) {
     font-size: 12px;
     margin-bottom: 0;
   }
@@ -398,7 +398,7 @@
   gap: 8px;
   align-items: center;
 
-  @media (width > 768px) and (height >= 600px) {
+  @media (width >= 768px) and (height >= 600px) {
     gap: 10px;
   }
 }
@@ -411,7 +411,7 @@
   color: var(--scrim-light-90);
   user-select: none;
 
-  @media (width > 768px) and (height >= 600px) {
+  @media (width >= 768px) and (height >= 600px) {
     padding: 6px 10px;
     font-size: 12px;
   }

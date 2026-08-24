@@ -128,7 +128,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | C2 | About portrait aspect ratio | Trivial | ±1 src, +75 test | ✅ PR #281 |
 | C3 | `SelectsContext.toggle` purity | Low | ±35 src, +56 test | ✅ PR #282 |
 | C4 | Cache tags that never connect | Low | ±66 (4 dead tags + tests) | ✅ PR #279 |
-| C5 | Assorted LOW bugs | Low | ±55 src, +100–200 test | ☐ |
+| C5 | Assorted LOW bugs | Low | −30 src, +230 test | ✅ PR #283 |
 | C6 | Password cover strip missing on the public card path | Low-medium | ±30 | ⛔ BACKEND-BLOCKED (split out of E1) |
 | D1 | Gate `POST /api/revalidate` (HIGH) | Low | +175 | ✅ PR #265 |
 | D2 | Gate `clearCacheAction` | Low | +212 (est. +15) | ✅ PR #266 |
@@ -647,22 +647,55 @@ Sizing: small if it lands as a `revalidateLocationCaches(previous, next)` helper
 decides how a template-keyed tag gets registered and revalidated through one place, and this is the
 second template-keyed tag that would use it.
 
-### ☐ C5 · Assorted LOW bugs
+### ✅ C5 · Assorted LOW bugs — PR #283
 
-- [ ] `sizes` can render `"…, NaNpx"`: `imageProps` is built at [CollectionContentRenderer.tsx:646](app/components/Content/CollectionContentRenderer.tsx:646)
-      (the `sizes` template is `:651`) before the NaN guard at `:678`. Move `resolveValidDimensions`
-      (`:692`) above it and use `validWidth`. (Refs re-verified 2026-08-22 — A5 reshaped this
-      function; the old `:661` now lands inside an unrelated ternary.)
-- [ ] Upload and text-block success can fabricate a truncated DTO via `{...prev!}` when the initial admin fetch failed ([useCollectionEdit.tsx:891](app/components/ContentCollection/edit/useCollectionEdit.tsx:891), `:934` — drifted +18 when C1 landed). Use `response` outright.
-- [ ] `useFullScreenImage.tsx:293-307` — the cached-image fallback queries `img[src="<raw CloudFront URL>"]`, but Next's optimizer rewrites `src`, so it never matches in production. React 18 `onLoad` covers cached images. Delete the ~20-line fallback — but spare the GIF-marking branch at the top of the same `checkImageLoaded` effect.
-- [ ] `fullscreen-image.module.scss` uses `width > 768px` in 12 blocks against the repo-wide `width >= 768px` (~84 uses). At exactly 768px the wrapper is mobile while image sizing is desktop. Normalize to `>=`.
-- [ ] Log hygiene only — the token-leak premise was DISPROVEN 2026-08-22. The proxy 502 path
-      ([route.ts:140](app/api/proxy/[...path]/route.ts:140)) does log the raw error object, but no
-      token can reach it on current main: share/invite tokens ride the URL *path*, the handler never
-      logs `targetUrl`, and a Node fetch-failure `cause` chain carries only `host:port` (verified
-      empirically on the repo's Node at inspect depth 6). Logs go to platform server logs only.
-      Harden to `error.message`/`error.code` as defense-in-depth against future error shapes — a
-      nice-to-have, not a security item. Do NOT promote to Group D.
+**All five bullets verified true as written.** This is the first item this session whose claims
+survived checking unchanged — C4's audit method and C3's prescribed mechanism both turned out wrong.
+Worth recording, because the doc's verification rules only look like overhead until they are not.
+
+- [x] `sizes` rendered the literal `"(max-width: 768px) 100vw, NaNpx"`. `imageProps` was built before
+      the NaN recovery ran, so the template interpolated the raw `width`. Reproduced before fixing.
+      `resolveValidDimensions` is now hoisted above `imageProps` and `sizes` uses `validWidth`; the
+      hoist is safe because that function is pure with no logging of its own. The diagnostic
+      `logger.error` moved with it, so validation now sits together above first use.
+      Tests: `tests/components/Content/CollectionContentRenderer.nanSizes.test.tsx`.
+- [x] `{...prev!}` fabricated a truncated DTO on upload and text-block success. Both sites are now
+      `setCurrentState(response)`. Two things the bullet did not say and that make the fix stronger:
+      these were the **only two** of eleven `setCurrentState` call sites not passing a whole DTO, and
+      the spread was discarding fresh metadata lists even when `prev` was non-null — `response` comes
+      back from the server with current `tags`/`people`/`cameras`/`lenses`/`filmTypes`, and the old
+      code kept the stale ones and swapped only `collection`. The null-`prev` case is reachable, not
+      theoretical: when the initial admin fetch resolves null the load effect does not retry — its
+      deps are `[enabled, slug, currentState?.collection.slug]`, none of which change on a null
+      response — so `currentState` stays null until some other operation writes it.
+      Tests: `tests/components/ContentCollection/useCollectionEdit.handlers.test.tsx`. Writing them
+      turned up a second gap: `handleTextBlockSubmit` had **no test anywhere in `tests/`** before
+      this. The handler is `handleMediaUpload`, not the `handleImageUpload` named in stale docblocks.
+- [x] Deleted the cached-image fallback in `useFullScreenImage`, kept the GIF branch as instructed.
+      The bullet's reasoning was confirmed at the source rather than taken on trust: the modal renders
+      `next/image` with **no `unoptimized` prop**, so the DOM `src` is always a `/_next/image?url=…`
+      rewrite and `img[src="<raw CloudFront URL>"]` could never match — in production or in dev. The
+      `setTimeout`/`clearTimeout` polling went with it, since it existed only to retry that lookup.
+      Tests: `tests/hooks/useFullScreenImage.gifLoaded.test.tsx`.
+- [x] Normalized 12 `width > 768px` blocks in `app/styles/fullscreen-image.module.scss` to `>=`,
+      matching the 83 other declarations. Guarded by a repo-wide scan rather than a fixed count, so
+      the next file to drift fails too: `tests/styles/breakpointConsistency.test.ts`.
+- [x] Proxy 502 log hardened to `error.message` plus `error.code`. The token-leak premise stays
+      disproven and this stays out of Group D. **But the raw-error log was empirically worse than the
+      bullet claimed:** a test asserting the serialised log call contains no `host`/`port` goes red
+      against the old code, because passing the raw error does serialise its `cause` chain including
+      the upstream address. Not a token, so not a security item — but it is a real leak of internal
+      topology into platform logs, which is exactly what defence in depth is for.
+      Tests: `tests/api/proxy/route.logHygiene.test.ts`.
+
+**Every one of these was proved red before the fix went in.** None of the 4,112 tests already on the
+branch failed against any of the five bugs, which is the whole reason the item existed.
+
+**Carried forward, not fixed here.** The surviving GIF effect in `useFullScreenImage` keys only on
+`[fullScreenState?.currentIndex]`. Swapping the images array while holding the same index would not
+mark a GIF loaded. That dependency list is unchanged from before this MR and there is no code path
+that does it today, so it is noted rather than fixed — but the new test does not cover it either,
+and a future sectioned-viewer change could reach it.
 
 ### ☐ C6 · Password cover strip is missing on the public collection-card path
 

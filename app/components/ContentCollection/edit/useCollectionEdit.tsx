@@ -887,10 +887,7 @@ export function useCollectionEdit({
           collectionStorage
         );
 
-        setCurrentState(prev => ({
-          ...prev!,
-          collection: response.collection,
-        }));
+        setCurrentState(response);
 
         if (uploadFailures.length > 0) {
           setError(`Some files failed to upload:\n${uploadFailures.join('\n')}`);
@@ -930,10 +927,7 @@ export function useCollectionEdit({
           collectionStorage
         );
 
-        setCurrentState(prev => ({
-          ...prev!,
-          collection: response.collection,
-        }));
+        setCurrentState(response);
 
         setIsTextBlockModalOpen(false);
       } catch (error_) {
