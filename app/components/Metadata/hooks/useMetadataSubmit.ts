@@ -2,6 +2,7 @@
 
 import { type SubmitEvent, useState } from 'react';
 
+import { revalidateLocationCaches } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { deleteGif, deleteImages, updateGif, updateImages } from '@/app/lib/api/content';
 import {
   type ContentGifModel,
@@ -107,16 +108,39 @@ export function useMetadataSubmit({
     }
   };
 
+  /**
+   * Saves the IMAGE-typed selection and revalidates the location pages the save can have changed.
+   *
+   * `imageSubset` (the IMAGE-typed selection) is reused for both paths so the filter + narrowing
+   * happens once. `updateState` (ImageUpdateState) already satisfies the builders'
+   * `Partial<ContentImageModel> & { id }` param, so no casts are needed.
+   *
+   * The `revalidateLocationCaches` call is the image-side trigger for `/location/{slug}`, whose
+   * contents BOTH sides feed: `CollectionService.getLocationPage` lists the collections at that
+   * location and, separately, the orphan images matched by image location name. Retagging one
+   * image therefore changes what a location page shows. E12 wired the collection side; this is the
+   * other half, and it is a second call site rather than a change to the helper — the union, the
+   * dedup and the slug-less case are already handled there.
+   *
+   * `previous` reads off `imageSubset`, which still holds the pre-save images because the response
+   * has not been applied to state yet. `next` reads off `response.updatedImages` and must: a
+   * location added during the edit is `{ id: 0, name, slug: '' }` until the backend assigns a slug,
+   * so building tags from the edit buffer would post a bare `collections-location-` and revalidate
+   * nothing.
+   */
   const submitImageEdits = async () => {
-    // `imageSubset` (the IMAGE-typed selection) is reused for both paths so the filter +
-    // narrowing happens once. `updateState` (ImageUpdateState) already satisfies the builders'
-    // `Partial<ContentImageModel> & { id }` param, so no casts are needed.
     const imageUpdates: ContentImageUpdateRequest[] = isBulkEdit
       ? buildImageUpdatesForBulkEdit(updateState, imageSubset, selectedIds, availableFilmTypes)
       : [buildImageUpdateDiff(updateState, imageSubset[0]!, availableFilmTypes)];
 
+    const previousLocations = imageSubset.flatMap(image => image.locations ?? []);
+
     const response = await updateImages(imageUpdates);
     if (response !== null) {
+      void revalidateLocationCaches(
+        previousLocations,
+        response.updatedImages.flatMap(image => image.locations ?? [])
+      );
       onSaveSuccess?.(mapUpdateResponseToFrontend(response));
       onClose();
     }

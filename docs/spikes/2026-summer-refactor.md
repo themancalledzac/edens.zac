@@ -285,9 +285,10 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator)        | Low         | **−79 src code-only / +176 test code-only** (est. −60 src)                                 | ◐ PR #304; late-added bullets 6–7 unswept                                                    |
 | E11 | Make cache-tag register/revalidate drift detectable                      | Low-medium  | +277 −28                                                                                   | ✅ PR #280                                                                                   |
 | E12 | Wire up `collections-location-${slug}`                                   | Low-medium  | **+72 src / +293 test actual** (est. +30 src)                                              | ✅ PR #301; image-path trigger split out as E13                                              |
-| E13 | Trigger `collections-location-${slug}` from the image-metadata save path | Low-medium  | +30 src, +60 test                                                                          | ☐ **COLD, NEXT** — backend question answered 2026-08-24 by reading `origin/main`             |
+| E13 | Trigger `collections-location-${slug}` from the image-metadata save path | Low-medium  | **+36 src net / +165 test actual** (est. +30 src, +60 test)                                | ✅ PR #313 — src estimate held; location-RENAME gap split out as E16                         |
 | E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value       | Low         | **−3 src / −4 test net actual**, 36 call sites (est. −2 src, ~40 sites)                    | ✅ PR #307 — the one estimate on this board that held                                        |
 | E15 | `createHeaderRow`'s two trailing boolean params → options object         | Low         | ±15 src, ~20 test call sites                                                               | ☐ NEW — E14 raised it; #307 shipped without seeing it (E14 was in unmerged #305)             |
+| E16 | Revalidate the OLD slug when a location is RENAMED                       | Low-medium  | +25 src, +60 test                                                                          | ☐ **COLD** — E13's pre-build check; rename confirmed real and it 404s, not just goes stale   |
 | F1  | Decompose `useCollectionEdit.tsx`                                        | Medium-high | ~neutral                                                                                   | ☐                                                                                            |
 | F2  | `RendererContext` for the BoxRenderer tree                               | Medium      | −100 src, **+150–250 test** (re-sized 2026-08-24, bias 1b)                                 | ☐                                                                                            |
 | F3  | File moves and renames                                                   | Medium      | ~neutral                                                                                   | ☐                                                                                            |
@@ -762,16 +763,25 @@ absorb a new required field on `ContentTagModel`, where the factory breaks at th
 `buildAssociationDiff` ([metadataUtils.ts:305](app/components/Metadata/metadataUtils.ts:305)) is a
 THIRD prev/newValue/remove implementation and reads like the same function. It is not:
 
-|                   | `buildEntityDiff`                 | `buildAssociationDiff`                    |
-| ----------------- | --------------------------------- | ----------------------------------------- |
-| Emits a diff when | new names differ **positionally** | the edited set holds **any** unsaved name |
-| `id` type         | `number` (required)               | `number \| undefined`                     |
-| Shape             | returns a value                   | mutates `diff[field]` in place            |
+|                     | `buildEntityDiff`                 | `buildAssociationDiff`                    |
+| ------------------- | --------------------------------- | ----------------------------------------- |
+| Emits a diff when   | new names differ **positionally** | the edited set holds **any** unsaved name |
+| ~~`id` type~~       | ~~`number` (required)~~           | ~~`number \| undefined`~~                 |
+| `prev` built from   | a `Set` — duplicates collapse     | a raw array — duplicates survive          |
+| Shape               | returns a value                   | mutates `diff[field]` in place            |
 
 Given identical unsaved names on both sides, `buildEntityDiff` returns `undefined` and
-`buildAssociationDiff` emits a write. Moving its callers onto the shared helper changes which saves
-fire. Same failure mode as the IMAGE guards and as B3. The warning is pinned in `entityUtils.ts`'s
-own docblock, not only here.
+`buildAssociationDiff` emits a write. Same failure mode as the IMAGE guards and as B3. The warning
+is pinned in `entityUtils.ts`'s own docblock, not only here.
+
+**Two rows of this table were wrong, corrected 2026-08-24 while doing E13.** The `id` row is struck:
+`buildAssociationDiff`'s signature says `id?: number` but every model reaching it declares
+`id: number` required, so the loose branch is unreachable. The `prev`-dedup row was missing and is
+the only divergence with a reachable trigger. **And the sentence that used to close this paragraph
+— "Moving its callers onto the shared helper changes which saves fire" — was overstated and is
+deleted.** It does not: the image save path calls `updateImages` unconditionally, so a diff decides
+payload contents, not whether a save happens. The full report, including why the both-sides check
+is nevertheless load-bearing on the COLLECTION path, is in E13.
 
 **Estimate, measured after the fact.** Board said −80 (which included the now-struck guard half).
 Actual for the twins half: **source +44 lines**, +177 test. The duplicated region really was ~105
@@ -917,7 +927,27 @@ second template-keyed tag that would use it.
 
 ---
 
-### ☐ E13 · Trigger `collections-location-${slug}` from the image-metadata save path — COLD
+### ✅ E13 · Trigger `collections-location-${slug}` from the image-metadata save path — PR #313
+
+**SHIPPED 2026-08-24 — PR #313, +36 src net / +165 test, 7 new tests.**
+
+**The src estimate held; the test estimate was 2.75× under.** Estimated +30 src / +60 test, actual
++36 / +165. The src half held for the reason the item itself gave — "a second caller, not new
+logic" — and that framing is checkable before building, which is why it worked. Of the +45 src
+lines added, **six are executable**: the import, the `previousLocations` binding, and the four-line
+`void revalidateLocationCaches(...)` call. Everything else is docblock. The test half missed for the
+usual reason (bias 1b): a second call site still needs its own suite, and pinning the union, the
+slug source and the bulk case takes more setup than the one-line call suggests.
+
+**Where it landed:** `submitImageEdits` in `app/components/Metadata/hooks/useMetadataSubmit.ts`.
+`previous` reads off `imageSubset` (still the pre-save images at that point), `next` off
+`response.updatedImages`. Both guardrails held — `revalidateLocationCaches` was not touched except
+for its docblock, and `buildAssociationDiff` was not touched at all.
+
+**Four of the seven new tests fail without the change; three pass either way.** Verified by removing
+the call and re-running, rather than assuming. The three that pass either way are the negative
+cases (no locations, null response, revalidation rejects) — they are guards, not proof, and are
+labelled as such here so a future reader does not mistake the count for coverage.
 
 _Split out of E12 (PR #301) once the backend question E12 could not answer got answered._
 
@@ -930,9 +960,10 @@ images from `ContentRepository.findOrphanImagesByLocationName`, matched by image
 retagging a single image changes what a location page shows, and an image-level location edit has to
 revalidate the tag too.
 
-- [ ] Call `revalidateLocationCaches(previous, next)` from the image-metadata save path. The helper
+- [x] Call `revalidateLocationCaches(previous, next)` from the image-metadata save path. The helper
       already exists in `collectionEditUtils.ts` and already handles the union, the dedup and the
-      slug-less case — this is a second caller, not new logic.
+      slug-less case — this is a second caller, not new logic. **Done in #313, exactly as written —
+      the helper's body is byte-identical.**
 - [x] ~~Confirm with the backend that `findOrphanImagesByLocationName` is the only image-side
       input.~~ **ANSWERED 2026-08-24 by reading backend `origin/main`, no backend session needed.**
       `CollectionService.getLocationPage` (`services/CollectionService.java:232`) makes exactly six
@@ -951,27 +982,99 @@ without the image being touched. E12 already revalidates on the collection side,
 complete once this lands — but do not describe this item as "the image half" in code; it is the
 image-side TRIGGER for a page whose contents both sides feed.
 
-- [ ] **Check before building: what happens on a location RENAME?** The frontend tag is
-      `collections-location-${slug}` while the backend matches on location NAME, and `slugify` keeps
-      the two in step — so renaming a location changes both, and nothing ever revalidates the OLD
-      slug's tag. `/location/{old-slug}` would then serve stale content until `TIMING.revalidateCache`
-      expires. This is unverified: confirm the frontend even exposes a location rename before
-      sizing it. If it does, that is a third caller, not a change to the helper.
+- [x] ~~**Check before building: what happens on a location RENAME?**~~ **CHECKED 2026-08-24, both
+      sides. The rename is real, and the consequence is worse than this bullet guessed.** The
+      frontend exposes it at `/metadata`: `MetadataList.handleUpdate`
+      (`app/components/ui/MetadataList/MetadataList.tsx:53`) PUTs `{ name }` to
+      `/metadata/locations/{id}`, and that surface does not revalidate anything at all. The backend
+      then **recomputes the slug unconditionally** — `MetadataService.java:410` does
+      `location.setSlug(SlugUtil.generateSlug(locationName))` with no guard, and the DAO's UPDATE
+      writes the column. So the old slug does not go stale, it **stops existing**:
+      `CollectionService.getLocationPageBySlug` resolves via `locationRepository.findBySlug(...)
+      .orElseThrow(...)`, and there is no slug-history or redirect table anywhere in the backend.
+      `/location/{old-slug}` 404s while its cache tag keeps serving a snapshot of a page whose URL
+      is gone. **Filed as E16 rather than folded in here** — the caller is a generic list component
+      shared with tags and people, so it needs a callback prop, not a hardcoded call. That is a
+      different change from this item, and this item's premise ("a third caller, not a change to
+      the helper") survives.
 
-Sizing: +30 src, +60 test, assuming the helper needs no changes.
+Sizing: +30 src, +60 test, assuming the helper needs no changes. **Actual +36 src / +165 test.**
+
+**Two adjacent paths deliberately NOT wired, both verified rather than assumed:**
+
+1. **The GIF save path (`submitGifEdit`) needs nothing.** `ContentGifModel` does carry `locations`,
+   so this looked like a symmetric gap. It is not: `findOrphanImagesByLocationName` and its count
+   twin build on `SELECT_CONTENT_IMAGE` and `JOIN content_image ci ON c.id = ci.id`
+   (`ContentRepository.java:390-450`), which structurally drops every non-image row — there is no
+   `content_type` predicate doing it. GIFs live in `content_gif`. So a location-tagged GIF can
+   never appear on `/location/{slug}`, and revalidating on GIF save would be a no-op.
+   **Backend footnote worth its own eyes later:** `content_image_locations` is content-level keyed
+   (`cil.content_id`, generalized by V27), so GIFs *can* be location-tagged and simply never
+   surface. That reads like an unintentional gap on the backend, not a deliberate exclusion. Not
+   filed here because it is a backend item, not a frontend one.
+
+2. **`handleRemoveFromCollection` is a real gap and is NOT covered.** It sits in the same hook and
+   also calls `updateImages`, but it changes collection membership, not locations. That still moves
+   a location page: the orphan queries take `allCollectionIds` and exclude images already inside a
+   listed collection at that location, so dropping an image out of a collection can flip it INTO
+   orphan status and onto `/location/{slug}`. Left alone because this item is scoped to the
+   location-editing save path, and the fix is three lines in a different function. **Confirm the
+   scope call before filing it** — it may belong to E16's MR rather than its own row.
 
 **Guardrail — `buildAssociationDiff` is one file away and is NOT a duplicate.** This item puts you
 in `Metadata/metadataUtils.ts`, where `buildAssociationDiff` (`:305`) sits beside the now-shared
-`buildEntityDiff` that E4 extracted. It reads like the same function and is not one: it emits a diff
-whenever the edited set holds ANY unsaved name, where `buildEntityDiff` compares unsaved names on
-both sides and returns `undefined` when they match, and its ids are optional. Unifying them changes
-which saves fire. See the table in E4, and the warning pinned in `entityUtils.ts`'s own docblock.
-Leave it alone and report what changing it would do.
+`buildEntityDiff` that E4 extracted. It reads like the same function and is not one. Held in #313:
+it was not touched. See the table in E4, and the warning pinned in `entityUtils.ts`'s own docblock.
+
+**Report as asked: unifying them would change nothing a user can trigger — but keep them separate
+anyway, for a different reason than this board gave.** Investigated 2026-08-24 without editing.
+
+- **The mechanism the board describes is real.** `buildAssociationDiff` emits whenever the edited
+  set holds any unsaved name (`metadataUtils.ts:315,319,321`); `buildEntityDiff` compares unsaved
+  names on both sides and returns `undefined` when they match (`entityUtils.ts:82,88-92`).
+- **The consequence it draws does not follow, and the sentence is now corrected in E4.** Every
+  divergent case needs `current` to hold an `id === 0` entry, and no `buildAssociationDiff` call
+  site can produce one: both callers (`metadataUtils.ts:459-460`, `:490`) take backend-sourced
+  models, and post-save state is re-read from `response.updatedImages`. The only code writing
+  `{id: 0}` into a current-side list (`useCollectionEdit.tsx:1194`, `:1232`) already feeds
+  `buildEntityDiff`. **And "which saves fire" is wrong even where the outputs differ**: the image
+  path calls `updateImages` unconditionally (`useMetadataSubmit.ts:138`), gated only by
+  `hasChanges`. A diff controls payload CONTENTS, not whether a save happens. The one path where an
+  empty diff does suppress the request is the GIF path (`useMetadataSubmit.ts:104`), and it routes
+  only `people`/`locations` against a server model.
+- **"Its ids are optional" describes an unreachable branch.** The signature says `id?: number`
+  (`metadataUtils.ts:305`), but every concrete model — `ContentTagModel`, `ContentPersonModel`,
+  `LocationModel` — declares `id: number` required. Struck from E4's table.
+- **Two divergences neither the board nor the docblock names.** (1) The reverse case: current holds
+  an unsaved name and the update drops it — `buildAssociationDiff` emits nothing,
+  `buildEntityDiff` emits `{prev}`. (2) `prev` is built from a raw array in one
+  (`metadataUtils.ts:324`) and a `Set` in the other (`entityUtils.ts:95`), so duplicates survive
+  only in the former. **(2) is the sole divergence with a reachable trigger**: bulk edit merges
+  `updateState.tags` with `imageSpecificTags` (`metadataUtils.ts:611-640`), which can repeat an id
+  and ship `prev: [5, 5]`. `buildEntityDiff` would ship `prev: [5]` — a fix, not a regression,
+  though the backend's tolerance for the duplicate was not verified.
+- **Unifying would pass the suite silently.** All six cases in the `describe.each` block at
+  `tests/components/Metadata/metadataUtils.test.ts:298-396` use real ids or empty arrays on the
+  current side, and produce byte-identical output from either function. Nothing pins the divergent
+  behavior of `buildAssociationDiff`. The untested case is untested because it is unreachable — but
+  that is an argument from call-site analysis, not from the green suite.
+- **Where the both-sides check genuinely earns its keep is the COLLECTION path, not the image one.**
+  There `originalTags` comes from `convertTagsToModels(collection.tags, ...)` over bare names, so
+  unresolved entries really are `{id: 0}` via `createUnknown` (`entityUtils.ts:56`), and
+  `isUpdateDirty` (`useCollectionEdit.tsx:658-663`) diffs the built payload to decide whether Save
+  lights up. Drop the check there and the button is dirty on load. That is the real reason the two
+  behaviors both exist.
+- **Recommendation: leave them separate.** Not because unifying breaks a save — it does not — but
+  because the merge is mechanical churn (`buildAssociationDiff` mutates `diff[field]` in place and
+  takes a `field` discriminator; both call sites would need rewriting to a return-a-value shape) in
+  exchange for one payload dedup that no one has reported. If it is ever revisited, the dedup is
+  the reason to do it, and this paragraph is the sizing.
 
 **Second guardrail: do not grow `revalidateLocationCaches`.** Its docblock says `handleUpdate` is
 the only caller — that sentence becomes wrong when this lands, and the correct fix is to update the
 sentence, not to generalize the helper. It already handles the union, the dedup and the slug-less
-case. This is a second call site.
+case. This is a second call site. **Held in #313: the helper's body is unchanged and only the
+docblock moved.**
 
 ### ✅ E14 · `createHeaderRow`'s `_chunkSize` is dead but receives a live value — PR #307
 
@@ -1047,6 +1150,58 @@ paid once.
 **Do this one for the readability, not the line count — it is roughly net-neutral and may be net
 positive.** If that is not worth an MR right now, say so on the row and close it rather than leaving
 it to be re-derived a third time.
+
+---
+
+### ☐ E16 · Revalidate the OLD slug when a location is RENAMED — COLD
+
+_Split out of E13, 2026-08-24. E13's "check before building" bullet asked whether the frontend even
+exposes a location rename. It does, and the answer was worth its own item._
+
+**This is not a stale-cache bug. The old URL 404s.** Both halves verified by reading source, no
+guessing:
+
+- **Frontend.** `/metadata` renders `MetadataList` per entity type. `handleUpdate`
+  (`app/components/ui/MetadataList/MetadataList.tsx:53`) PUTs `{ name: newName }` to
+  `/metadata/locations/{id}` via `fetchAdminPutJsonApi`, splices the response into local state, and
+  **revalidates nothing** — grep for `revalidate` in that file returns zero hits.
+- **Backend.** `MetadataService.java:410` runs `location.setSlug(SlugUtil.generateSlug(locationName))`
+  unconditionally on update, and the DAO's `UPDATE location SET location_name = :locationName,
+  slug = :slug` writes it. There is no `@PreUpdate` to worry about — `LocationEntity` is a plain
+  POJO with hand-written JDBC, so that one line is the whole story.
+- **Consequence.** `CollectionService.getLocationPageBySlug` resolves through
+  `locationRepository.findBySlug(slug).orElseThrow(...)`. No slug-history table, no redirects. After
+  a rename the old slug throws, while `collections-location-${oldSlug}` keeps serving a cached
+  snapshot of a page whose URL no longer resolves.
+
+- [ ] Revalidate the old slug's tag on rename. The old slug is only in scope BEFORE the PUT
+      resolves, as `item.slug`; `handleUpdate` overwrites `items` with the response and discards it.
+      `revalidateLocationCaches([item], [response])` fits the existing signature as-is — this is a
+      **third call site, not a change to the helper**, same as E13 was a second.
+- [ ] **The obstacle that makes this bigger than E13: `MetadataList` is generic.** It renders tags,
+      people and locations from one component and does not know which it is holding. A hardcoded
+      call is wrong. Add a per-list callback prop — `onRenamed?: (previous, next) => void` — and let
+      `MetadataPageClient` pass the location-specific one. Do NOT special-case entity type inside
+      `MetadataList`.
+- [ ] **Tags need the same treatment; people do not.** `MetadataService.java:95` re-slugs tags
+      exactly like locations. People do not: `updatePerson` (`:160-161`) sets only the name, and
+      `Records.java:44` has no slug field at all, so a renamed person keeps their original slug.
+      A callback keyed off "the returned slug differs" therefore works for locations and tags and
+      correctly no-ops for people. Check whether any `content-tag-${slug}`-shaped tag exists before
+      wiring the tag half — if nothing registers one, the tag half is a no-op today and should be
+      left out rather than written speculatively.
+- [ ] `MetadataList.handleDelete` (`:74`) has the same exposure and is a cheaper case: on delete the
+      slug is unambiguously gone. Decide it with this item rather than filing a third row.
+
+**Backend bug found in passing, NOT part of this item and not fixed here.** `updateLocation` checks
+uniqueness on the NAME only (`MetadataService.java:403-407`), while `V8` put a UNIQUE index on
+`location.slug`. Two distinct names that slugify identically — `"St. Moritz"` and `"St Moritz"` —
+pass the name check and then hit a constraint violation on the UPDATE. The create path consults
+`findBySlug` first; the admin update path does not. That is a backend 500, and it belongs on the
+backend's board, not this one.
+
+Sizing: +25 src, +60 test. The src is a callback prop and one wiring line; the test half is sized
+off E13's actual (+165 for a simpler change), so treat +60 as the floor, not the estimate.
 
 ---
 
@@ -1481,6 +1636,34 @@ against real merge timestamps on 2026-08-24; only the labels were inconsistent. 
   cross-repo refs in C7 (`:67→:64`, `:86→:80`, `:107→:98`). C6 and C7 premises both re-verified and
   still hold. **E13's blocking question answered by reading backend `origin/main`** — `getLocationPage`
   has one image-side matching rule, so E13 is COLD. Next: E13.
+
+- 2026-08-24 (4) — **shipped E13 (#313)**. `main` at 0b0f255. +36 src net / +165 test; the src
+  estimate held at +30, the test estimate was 2.75× under. **Six of the 45 added src lines are
+  executable** — the rest is docblock, which is worth knowing before reading the next "+N src"
+  estimate on this board as if it meant code.
+  **Both guardrails held.** `revalidateLocationCaches`'s body is byte-identical; only its docblock
+  changed, exactly as the item instructed. `buildAssociationDiff` was not touched.
+  **The pre-build check was worth more than the item.** E13's rename bullet asked whether the
+  frontend even exposes a location rename. It does — `/metadata` → `MetadataList.handleUpdate` — and
+  the backend re-slugs unconditionally (`MetadataService.java:410`), so **the old URL 404s rather
+  than going stale**: `getLocationPageBySlug` does `findBySlug(...).orElseThrow(...)` and there is
+  no slug-history table. Filed as **E16**, sized, and NOT folded in — the caller is a component
+  shared with tags and people, so it needs a callback prop rather than a hardcoded call.
+  **The `buildAssociationDiff` report contradicts this board in two places, and the board is now
+  corrected.** The mechanism it describes is real, but "moving its callers onto the shared helper
+  changes which saves fire" does not follow — the image path calls `updateImages` unconditionally,
+  so a diff decides payload contents, not whether a save happens. And "its ids are optional"
+  describes an unreachable branch. Both struck in E4's table. Two divergences the board never named
+  were added, one of which (duplicate ids surviving in `prev`) is the only one with a reachable
+  trigger. **Generalizable lesson: a guardrail can be right to obey and wrong about why**, and this
+  board had been re-copying the reason into new items each time it was cited.
+  **Two adjacent paths checked and deliberately not wired**, both settled by reading rather than
+  assuming: the GIF save path needs nothing, because the orphan query joins `content_image` and
+  structurally cannot return GIFs; `handleRemoveFromCollection` IS a real gap and was left out of
+  scope with the finding written down rather than silently fixed.
+  Suite 243 suites / 4356 tests green. **Verified the new tests fail without the change** — 4 of 7
+  do; the other 3 are guards and are labelled as such rather than counted as coverage.
+  Next: **E15**, as its own MR.
 
 - 2026-08-24 (2) — **shipped E3's generics half (#306) and E14 (#307)**; merged #296 (B8's
   `collectionStorage` slice) first as E3's safety net, and #305 (this board) landed mid-session.
