@@ -1,15 +1,123 @@
 /**
- * Unit tests for buildUpdatePayload's date clear-flag derivation.
+ * Unit tests for collectionEditUtils.ts — the collection edit surface's utility layer.
  *
- * When a previously-set collectionDate / collectionEndDate is removed, the payload must
- * carry `clearCollectionDate` / `clearCollectionEndDate: true` (and NOT the value key)
- * rather than sending `null` — this is the wire contract the backend expects. `''` is
- * treated as equivalent to `null` (clearing).
+ * Merged from tests/(admin)/collection/manage/[[...slug]]/manageUtils.test.ts (B1). That file
+ * tested this same module under the module's old name, from a route-shaped path whose regex
+ * metacharacters made `jest <path>` match zero files.
+ *
+ * Two fixture factories coexist here because the merged suites depend on different defaults:
+ * `createCollectionModel` omits `description`/`rowsWide`/`content`, `makeCollection` sets them.
+ * buildUpdatePayload derives its output by diffing against those defaults, so the two are not
+ * interchangeable.
  */
 
-import { buildUpdatePayload } from '@/app/components/ContentCollection/edit/collectionEditUtils';
-import { type CollectionModel, type CollectionUpdateRequest } from '@/app/types/Collection';
+// Mock the collections API module
+jest.mock('@/app/lib/api/collections');
+
+import {
+  applyArrowMove,
+  applyPickAndPlace,
+  applyReorderChangesOptimistically,
+  buildReorderChangesFromFinalOrder,
+  buildUpdatePayload,
+  cancelImageMoves,
+  executeReorderOperation,
+  findImageBlockById,
+  handleCollectionNavigation,
+  handleCoverImageSelection,
+  handleMultiSelectToggle,
+  handleSingleImageEdit,
+  mergeNewMetadata,
+  refreshCollectionAfterOperation,
+  replayMoves,
+  revalidateCollectionCache,
+  revalidateMetadataCache,
+  toggleRelation,
+  updateBlockOrderIndex,
+  validateCoverImageSelection,
+} from '@/app/components/ContentCollection/edit/collectionEditUtils';
+import * as collectionsApi from '@/app/lib/api/collections';
+import {
+  type CollectionListModel,
+  type CollectionModel,
+  type CollectionUpdate,
+  type CollectionUpdateRequest,
+  type CollectionUpdateResponseDTO,
+} from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
+import {
+  type AnyContentModel,
+  type ContentCollectionModel,
+  type ContentImageModel,
+  type ContentImageUpdateResponse,
+  type ContentTextModel,
+} from '@/app/types/Content';
+import { isContentImage } from '@/app/utils/contentTypeGuards';
+import { logger } from '@/app/utils/logger';
+import { createImageContent } from '@/tests/fixtures/contentFixtures';
+
+// Test fixtures
+
+const createTextContent = (
+  id: number,
+  overrides?: Partial<ContentTextModel>
+): ContentTextModel => ({
+  id,
+  contentType: 'TEXT',
+  orderIndex: id,
+  items: [{ type: 'text', value: `Text content ${id}` }],
+  format: 'plain',
+  align: 'left',
+  ...overrides,
+});
+
+const createCollectionContent = (
+  id: number,
+  slug: string,
+  overrides?: Partial<ContentCollectionModel>
+): ContentCollectionModel => ({
+  id,
+  contentType: 'COLLECTION',
+  orderIndex: id,
+  slug,
+  title: `Collection ${id}`,
+  referencedCollectionId: id * 100,
+  ...overrides,
+});
+
+const createCollectionModel = (overrides?: Partial<CollectionModel>): CollectionModel => ({
+  id: 1,
+  isClient: false,
+  isBlog: false,
+  title: 'Test Collection',
+  slug: 'test-collection',
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-01T00:00:00Z',
+  visibility: CollectionVisibility.LISTED,
+  displayMode: 'CHRONOLOGICAL',
+  locations: [],
+  ...overrides,
+});
+
+const createCollectionUpdateResponse = (
+  overrides?: Partial<CollectionUpdateResponseDTO>
+): CollectionUpdateResponseDTO => ({
+  collection: createCollectionModel(),
+  tags: [],
+  people: [],
+  cameras: [],
+  lenses: [],
+  filmTypes: [],
+  ...overrides,
+});
+
+const createContentImageUpdateResponse = (
+  overrides?: Partial<ContentImageUpdateResponse>
+): ContentImageUpdateResponse => ({
+  updatedImages: [],
+  newMetadata: {},
+  ...overrides,
+});
 
 function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
   return {
@@ -36,6 +144,602 @@ function makeForm(overrides: Partial<CollectionUpdateRequest> = {}): CollectionU
     ...overrides,
   };
 }
+
+describe('handleCoverImageSelection', () => {
+  const image1 = createImageContent(1);
+  const image2 = createImageContent(2);
+  const text1 = createTextContent(3);
+  const collection1 = createCollectionContent(4, 'child-collection');
+
+  describe('passing cases', () => {
+    it('should return success when valid image ID exists in content', () => {
+      const content: AnyContentModel[] = [image1, image2, text1];
+      const result = handleCoverImageSelection(1, content);
+
+      expect(result).toEqual({
+        success: true,
+        coverImageId: 1,
+      });
+    });
+  });
+
+  describe('failing cases', () => {
+    it('should return error when image ID does not exist in collection content', () => {
+      const content: AnyContentModel[] = [image1, image2];
+      const result = handleCoverImageSelection(999, content);
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid cover image selection. Please try again.',
+      });
+    });
+
+    it('should return error when image ID points to non-image content (TEXT)', () => {
+      const content: AnyContentModel[] = [image1, text1];
+      const result = handleCoverImageSelection(3, content);
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid cover image selection. Please try again.',
+      });
+    });
+
+    it('should return error when image ID points to non-image content (COLLECTION)', () => {
+      const content: AnyContentModel[] = [image1, collection1];
+      const result = handleCoverImageSelection(4, content);
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid cover image selection. Please try again.',
+      });
+    });
+
+    it('should return error when content is undefined', () => {
+      // @ts-expect-error should return error when content is undefined
+      const result = handleCoverImageSelection(1);
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid cover image selection. Please try again.',
+      });
+    });
+
+    it('should return error when content is empty array', () => {
+      const result = handleCoverImageSelection(1, []);
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid cover image selection. Please try again.',
+      });
+    });
+
+    it('should return error when image ID is 0', () => {
+      const content: AnyContentModel[] = [image1];
+      const result = handleCoverImageSelection(0, content);
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid cover image selection. Please try again.',
+      });
+    });
+
+    it('should return error when image ID is negative', () => {
+      const content: AnyContentModel[] = [image1];
+      const result = handleCoverImageSelection(-1, content);
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid cover image selection. Please try again.',
+      });
+    });
+
+    it('should return error when image ID is NaN', () => {
+      const content: AnyContentModel[] = [image1];
+      const result = handleCoverImageSelection(Number.NaN, content);
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid cover image selection. Please try again.',
+      });
+    });
+  });
+});
+
+describe('handleCollectionNavigation', () => {
+  const image1 = createImageContent(1);
+  const collection1 = createCollectionContent(2, 'child-collection-1');
+  const text1 = createTextContent(4);
+
+  describe('passing cases', () => {
+    it('should return collection slug when valid collection block ID exists', () => {
+      const content: AnyContentModel[] = [image1, collection1];
+      const result = handleCollectionNavigation(2, content);
+
+      expect(result).toBe('child-collection-1');
+    });
+
+    it('should return slug even if title is missing', () => {
+      const collectionNoTitle = createCollectionContent(5, 'slug-only', { title: undefined });
+      const content: AnyContentModel[] = [collectionNoTitle];
+      const result = handleCollectionNavigation(5, content);
+
+      expect(result).toBe('slug-only');
+    });
+  });
+
+  describe('failing cases', () => {
+    it('should return null when image ID does not exist in collection content', () => {
+      const content: AnyContentModel[] = [image1, collection1];
+      const result = handleCollectionNavigation(999, content);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when image ID points to non-collection content (IMAGE)', () => {
+      const content: AnyContentModel[] = [image1, collection1];
+      const result = handleCollectionNavigation(1, content);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when image ID points to non-collection content (TEXT)', () => {
+      const content: AnyContentModel[] = [text1, collection1];
+      const result = handleCollectionNavigation(4, content);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when content is undefined', () => {
+      // @ts-expect-error should return null when content is undefined
+      const result = handleCollectionNavigation(1);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when content is empty array', () => {
+      const result = handleCollectionNavigation(1, []);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when collection block exists but has no slug', () => {
+      const collectionNoSlug = createCollectionContent(5, '', { slug: '' });
+      const content: AnyContentModel[] = [collectionNoSlug];
+      const result = handleCollectionNavigation(5, content);
+
+      expect(result).toBeNull();
+    });
+  });
+});
+
+describe('handleMultiSelectToggle', () => {
+  describe('passing cases', () => {
+    it('should add imageId to array when not in currentSelectedIds (toggle select)', () => {
+      const currentSelectedIds = [1, 2];
+      const result = handleMultiSelectToggle(3, currentSelectedIds);
+
+      expect(result).toEqual([1, 2, 3]);
+    });
+
+    it('should remove imageId from array when in currentSelectedIds (toggle deselect)', () => {
+      const currentSelectedIds = [1, 2, 3];
+      const result = handleMultiSelectToggle(2, currentSelectedIds);
+
+      expect(result).toEqual([1, 3]);
+    });
+
+    it('should work with empty array (selects first image)', () => {
+      const result = handleMultiSelectToggle(1, []);
+
+      expect(result).toEqual([1]);
+    });
+
+    it('should work with single selected ID (deselects to empty array)', () => {
+      const result = handleMultiSelectToggle(1, [1]);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should preserve order of other selected IDs when adding', () => {
+      const currentSelectedIds = [1, 3, 5];
+      const result = handleMultiSelectToggle(2, currentSelectedIds);
+
+      expect(result).toEqual([1, 3, 5, 2]);
+    });
+
+    it('should preserve order of other selected IDs when removing', () => {
+      const currentSelectedIds = [1, 2, 3, 4, 5];
+      const result = handleMultiSelectToggle(3, currentSelectedIds);
+
+      expect(result).toEqual([1, 2, 4, 5]);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle invalid image ID (0) - no validation, still works', () => {
+      const result = handleMultiSelectToggle(0, [1, 2]);
+
+      expect(result).toEqual([1, 2, 0]);
+    });
+
+    it('should handle negative image ID - no validation, still works', () => {
+      const result = handleMultiSelectToggle(-1, [1, 2]);
+
+      expect(result).toEqual([1, 2, -1]);
+    });
+
+    it('should handle duplicate IDs in currentSelectedIds gracefully', () => {
+      // This shouldn't happen in practice, but test that it doesn't break
+      const currentSelectedIds = [1, 1, 2, 2];
+      const result = handleMultiSelectToggle(1, currentSelectedIds);
+
+      // Should remove all occurrences
+      expect(result).toEqual([2, 2]);
+    });
+  });
+});
+
+describe('handleSingleImageEdit', () => {
+  const image1 = createImageContent(1);
+  const image2 = createImageContent(2);
+  const text1 = createTextContent(3);
+  const collection1 = createCollectionContent(4, 'child-collection');
+
+  describe('passing cases', () => {
+    it('should return ImageContentModel when valid image ID exists in content array', () => {
+      const content: AnyContentModel[] = [image1, image2];
+      const processedContent: AnyContentModel[] = [];
+      const result = handleSingleImageEdit(1, content, processedContent);
+
+      expect(result).toEqual(image1);
+    });
+
+    it('should return ImageContentModel when valid image ID exists in processedContent array', () => {
+      const content: AnyContentModel[] = [];
+      const processedContent: AnyContentModel[] = [image1, image2];
+      const result = handleSingleImageEdit(1, content, processedContent);
+
+      expect(result).toEqual(image1);
+    });
+
+    it('should prioritize content over processedContent when image exists in both', () => {
+      const image1InContent = createImageContent(1, { imageUrl: 'content-url.jpg' });
+      const image1InProcessed = createImageContent(1, { imageUrl: 'processed-url.jpg' });
+      const content: AnyContentModel[] = [image1InContent];
+      const processedContent: AnyContentModel[] = [image1InProcessed];
+      const result = handleSingleImageEdit(1, content, processedContent);
+
+      expect(result).toEqual(image1InContent);
+    });
+
+    it('should find image in processedContent when not in content', () => {
+      const content: AnyContentModel[] = [text1];
+      const processedContent: AnyContentModel[] = [image1];
+      const result = handleSingleImageEdit(1, content, processedContent);
+
+      expect(result).toEqual(image1);
+    });
+
+    it('should return correct ImageContentModel with all properties', () => {
+      const fullImage = createImageContent(1, {
+        imageUrl: 'test.jpg',
+        imageWidth: 1920,
+        imageHeight: 1080,
+        rating: 5,
+      });
+      const content: AnyContentModel[] = [fullImage];
+      const processedContent: AnyContentModel[] = [];
+      const result = handleSingleImageEdit(1, content, processedContent);
+
+      expect(result).toEqual(fullImage);
+      // Narrow to the IMAGE branch — handleSingleImageEdit now returns
+      // ContentImageModel | ContentGifModel | null so image-only fields require a guard.
+      if (result && isContentImage(result)) {
+        expect(result.imageUrl).toBe('test.jpg');
+        expect(result.imageWidth).toBe(1920);
+        expect(result.rating).toBe(5);
+      } else {
+        throw new Error('expected result to be a ContentImageModel');
+      }
+    });
+  });
+
+  describe('failing cases', () => {
+    it('should return null when image ID does not exist in either content or processedContent', () => {
+      const content: AnyContentModel[] = [image1];
+      const processedContent: AnyContentModel[] = [image2];
+      const result = handleSingleImageEdit(999, content, processedContent);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when image ID points to non-image content (TEXT)', () => {
+      const content: AnyContentModel[] = [text1];
+      const processedContent: AnyContentModel[] = [];
+      const result = handleSingleImageEdit(3, content, processedContent);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when image ID points to non-image content (COLLECTION)', () => {
+      const content: AnyContentModel[] = [collection1];
+      const processedContent: AnyContentModel[] = [];
+      const result = handleSingleImageEdit(4, content, processedContent);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when both content and processedContent are empty arrays', () => {
+      const result = handleSingleImageEdit(1, [], []);
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when image ID is 0', () => {
+      const content: AnyContentModel[] = [image1];
+      const processedContent: AnyContentModel[] = [];
+      const result = handleSingleImageEdit(0, content, processedContent);
+
+      expect(result).toBeNull();
+    });
+  });
+});
+
+describe('buildUpdatePayload', () => {
+  const originalCollection = createCollectionModel({
+    id: 1,
+    title: 'Original Title',
+    description: 'Original Description',
+    locations: [{ id: 1, name: 'Original Location', slug: 'original-location' }],
+    collectionDate: '2024-01-01',
+    visibility: CollectionVisibility.LISTED,
+    displayMode: 'CHRONOLOGICAL',
+  });
+
+  describe('passing cases', () => {
+    it('should return payload with only id when no changes', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        title: 'Original Title',
+        description: 'Original Description',
+        collectionDate: '2024-01-01',
+        visibility: CollectionVisibility.LISTED,
+        displayMode: 'CHRONOLOGICAL',
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({ id: 1 });
+    });
+
+    it('should include only id and changed title when single field changes', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        title: 'New Title',
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({
+        id: 1,
+        title: 'New Title',
+      });
+    });
+
+    it('should include id and all changed fields when multiple fields change', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        title: 'New Title',
+        description: 'New Description',
+        visibility: CollectionVisibility.UNLISTED,
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({
+        id: 1,
+        title: 'New Title',
+        description: 'New Description',
+        visibility: CollectionVisibility.UNLISTED,
+      });
+    });
+
+    it('should include coverImageId when set', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        coverImageId: 123,
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({
+        id: 1,
+        coverImageId: 123,
+      });
+    });
+
+    it('should include coverImageId when set to undefined', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        coverImageId: undefined,
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({
+        id: 1,
+        coverImageId: undefined,
+      });
+    });
+
+    it('should include collections when set', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        collections: {
+          newValue: [{ collectionId: 2, name: 'Child Collection' }],
+        },
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({
+        id: 1,
+        collections: {
+          newValue: [{ collectionId: 2, name: 'Child Collection' }],
+        },
+      });
+    });
+
+    it('should include siblings when set', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        siblings: {
+          newValue: [{ collectionId: 5, name: 'Sibling Collection' }],
+          remove: [9],
+        },
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({
+        id: 1,
+        siblings: {
+          newValue: [{ collectionId: 5, name: 'Sibling Collection' }],
+          remove: [9],
+        },
+      });
+    });
+
+    it('should include tags when set', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        tags: { prev: [1, 2], newValue: ['sunset'] },
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({
+        id: 1,
+        tags: { prev: [1, 2], newValue: ['sunset'] },
+      });
+    });
+
+    it('omits tags when formData.tags is undefined', () => {
+      const result = buildUpdatePayload({ id: 1 } as CollectionUpdateRequest, originalCollection);
+      expect(result.tags).toBeUndefined();
+    });
+
+    it('should handle empty string vs undefined distinction for description', () => {
+      const originalWithEmpty = createCollectionModel({
+        ...originalCollection,
+        description: '',
+      });
+
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        description: 'New Description',
+      };
+
+      const result = buildUpdatePayload(formData, originalWithEmpty);
+
+      expect(result).toEqual({
+        id: 1,
+        description: 'New Description',
+      });
+    });
+
+    it('should not include description when original is undefined and form is empty string', () => {
+      const originalNoDesc = createCollectionModel({
+        ...originalCollection,
+        description: undefined,
+      });
+
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        description: '',
+      };
+
+      const result = buildUpdatePayload(formData, originalNoDesc);
+
+      expect(result).toEqual({ id: 1 });
+    });
+
+    it('should include description when original is undefined and form has value', () => {
+      const originalNoDesc = createCollectionModel({
+        ...originalCollection,
+        description: undefined,
+      });
+
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        description: 'Hello',
+      };
+
+      const result = buildUpdatePayload(formData, originalNoDesc);
+
+      expect(result).toEqual({ id: 1, description: 'Hello' });
+    });
+
+    it('should include description when clearing an existing description', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        description: '',
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({ id: 1, description: '' });
+    });
+
+    it('should not include description when same value unchanged', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        description: 'Original Description',
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({ id: 1 });
+    });
+
+    it('should detect visibility change from UNLISTED to LISTED', () => {
+      const originalWithUnlisted = createCollectionModel({
+        ...originalCollection,
+        visibility: CollectionVisibility.UNLISTED,
+      });
+
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        visibility: CollectionVisibility.LISTED,
+      };
+
+      const result = buildUpdatePayload(formData, originalWithUnlisted);
+
+      expect(result).toEqual({
+        id: 1,
+        visibility: CollectionVisibility.LISTED,
+      });
+    });
+
+    it('includes parents when formData.parents is defined', () => {
+      const original = { id: 7 } as unknown as CollectionModel;
+      const formData = {
+        id: 7,
+        parents: { newValue: [{ collectionId: 42, name: 'New Parent' }] },
+      } as CollectionUpdateRequest;
+      expect(buildUpdatePayload(formData, original).parents).toEqual({
+        newValue: [{ collectionId: 42, name: 'New Parent' }],
+      });
+    });
+
+    it('omits parents when formData.parents is undefined', () => {
+      const original = { id: 7 } as unknown as CollectionModel;
+      expect(
+        buildUpdatePayload({ id: 7 } as CollectionUpdateRequest, original).parents
+      ).toBeUndefined();
+    });
+  });
+});
 
 describe('buildUpdatePayload — date clear-flag derivation', () => {
   describe('collectionDate', () => {
@@ -186,5 +890,1059 @@ describe('buildUpdatePayload — kind flags', () => {
       makeCollection({ isClient: false, isBlog: false })
     );
     expect(result.isBlog).toBe(true);
+  });
+});
+
+describe('validateCoverImageSelection', () => {
+  const image1 = createImageContent(1);
+  const image2 = createImageContent(2);
+  const text1 = createTextContent(3);
+
+  describe('passing cases', () => {
+    it('should return true when valid image ID exists in blocks', () => {
+      const blocks: AnyContentModel[] = [image1, image2];
+      const result = validateCoverImageSelection(1, blocks);
+
+      expect(result).toBe(true);
+    });
+
+    it('should return true when image is IMAGE content type', () => {
+      const blocks: AnyContentModel[] = [image1, text1];
+      const result = validateCoverImageSelection(1, blocks);
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('failing cases', () => {
+    it('should return false when image ID does not exist in blocks', () => {
+      const blocks: AnyContentModel[] = [image1, image2];
+      const result = validateCoverImageSelection(999, blocks);
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false when image ID points to non-image content', () => {
+      const blocks: AnyContentModel[] = [image1, text1];
+      const result = validateCoverImageSelection(3, blocks);
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false when blocks is undefined', () => {
+      // @ts-expect-error should return false when blocks is undefined
+      const result = validateCoverImageSelection(1);
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false when imageId is undefined', () => {
+      const blocks: AnyContentModel[] = [image1];
+      const result = validateCoverImageSelection(undefined, blocks);
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false when imageId is 0', () => {
+      const blocks: AnyContentModel[] = [image1];
+      const result = validateCoverImageSelection(0, blocks);
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false when blocks is empty array', () => {
+      const result = validateCoverImageSelection(1, []);
+
+      expect(result).toBe(false);
+    });
+  });
+});
+
+describe('findImageBlockById', () => {
+  const image1 = createImageContent(1);
+  const image2 = createImageContent(2);
+  const text1 = createTextContent(3);
+
+  describe('passing cases', () => {
+    it('should return ImageContentModel when valid image ID exists in blocks', () => {
+      const blocks: AnyContentModel[] = [image1, image2];
+      const result = findImageBlockById(blocks, 1);
+
+      expect(result).toEqual(image1);
+    });
+
+    it('should return ImageContentModel when image is IMAGE content type', () => {
+      const blocks: AnyContentModel[] = [image1, text1];
+      const result = findImageBlockById(blocks, 1);
+
+      expect(result).toEqual(image1);
+    });
+  });
+
+  describe('failing cases', () => {
+    it('should return undefined when image ID does not exist in blocks', () => {
+      const blocks: AnyContentModel[] = [image1, image2];
+      const result = findImageBlockById(blocks, 999);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when image ID points to non-image content', () => {
+      const blocks: AnyContentModel[] = [image1, text1];
+      const result = findImageBlockById(blocks, 3);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when blocks is undefined', () => {
+      const result = findImageBlockById(undefined, 1);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when imageId is undefined', () => {
+      const blocks: AnyContentModel[] = [image1];
+      // @ts-expect-error should return undefined when imageId is undefined
+      const result = findImageBlockById(blocks);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when blocks is empty array', () => {
+      const result = findImageBlockById([], 1);
+
+      expect(result).toBeUndefined();
+    });
+  });
+});
+
+describe('revalidateCollectionCache', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('should call /api/revalidate with correct tag and path, plus collections-index', async () => {
+    const slug = 'test-collection';
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+    await revalidateCollectionCache(slug);
+
+    // Should revalidate the specific collection
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: 'collection-test-collection',
+        path: '/test-collection',
+      }),
+    });
+
+    // Should also revalidate the collections index (home page)
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: 'collections-index',
+      }),
+    });
+
+    // Should also revalidate the home collection
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: 'collection-home',
+      }),
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('should resolve successfully when revalidation succeeds', async () => {
+    const slug = 'test-collection';
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+    await expect(revalidateCollectionCache(slug)).resolves.toBeUndefined();
+  });
+
+  it('should fail silently when revalidation fails', async () => {
+    const slug = 'test-collection';
+    // Mock isLocalEnvironment to return true so logger.warn is called
+    const originalEnv = process.env.NEXT_PUBLIC_ENV;
+    process.env.NEXT_PUBLIC_ENV = 'local';
+    const warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+    (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+    await expect(revalidateCollectionCache(slug)).resolves.toBeUndefined();
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+    if (originalEnv) {
+      process.env.NEXT_PUBLIC_ENV = originalEnv;
+    } else {
+      delete process.env.NEXT_PUBLIC_ENV;
+    }
+  });
+
+  it('should fail silently when API returns error status', async () => {
+    const slug = 'test-collection';
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
+
+    await expect(revalidateCollectionCache(slug)).resolves.toBeUndefined();
+
+    consoleWarnSpy.mockRestore();
+  });
+
+  it('should work with empty string slug', async () => {
+    const slug = '';
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+    await revalidateCollectionCache(slug);
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: 'collection-',
+        path: '/',
+      }),
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: 'collections-index',
+      }),
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: 'collection-home',
+      }),
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+  });
+});
+
+/**
+ * Guards C4. `revalidateMetadataCache` must post only tags that a `next` fetch actually registers.
+ * `content-people`, `content-cameras`, `content-lenses` and `content-film-metadata` are registered
+ * by nothing, so listing them revalidated nothing and disguised the fact that the data behind them
+ * is not cached at all any more. The failure is silent — `revalidateTag` on an unknown tag throws
+ * no error — so a test is the only thing that can catch a re-add.
+ */
+describe('revalidateMetadataCache', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('should post exactly the three tags that a next fetch registers', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+    await revalidateMetadataCache();
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tags: ['content-tags', 'content-locations', 'search-images'] }),
+    });
+  });
+
+  it('should post no tag that no fetch registers', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+    await revalidateMetadataCache();
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0] as [string, { body: string }];
+    const { tags } = JSON.parse(init.body) as { tags: string[] };
+
+    expect(tags).not.toContain('content-people');
+    expect(tags).not.toContain('content-cameras');
+    expect(tags).not.toContain('content-lenses');
+    expect(tags).not.toContain('content-film-metadata');
+  });
+});
+
+describe('mergeNewMetadata', () => {
+  it('should return null when newMetadata is undefined', () => {
+    const response = createContentImageUpdateResponse({ newMetadata: undefined });
+    const result = mergeNewMetadata(response);
+
+    expect(result).toBeNull();
+  });
+
+  it('should return null when newMetadata exists but all arrays are empty', () => {
+    const response = createContentImageUpdateResponse({
+      newMetadata: {
+        tags: [],
+        people: [],
+        cameras: [],
+        lenses: [],
+        filmTypes: [],
+      },
+    });
+    const result = mergeNewMetadata(response);
+
+    expect(result).toBeNull();
+  });
+
+  it('should return updater function when newMetadata has tags', () => {
+    const response = createContentImageUpdateResponse({
+      newMetadata: {
+        tags: [{ id: 1, name: 'New Tag', slug: 'new-tag' }],
+      },
+    });
+    const result = mergeNewMetadata(response);
+
+    expect(result).not.toBeNull();
+    expect(typeof result).toBe('function');
+  });
+
+  it('should return updater function when newMetadata has multiple types', () => {
+    const response = createContentImageUpdateResponse({
+      newMetadata: {
+        tags: [{ id: 1, name: 'New Tag', slug: 'new-tag' }],
+        people: [{ id: 1, name: 'New Person' }],
+        cameras: [{ id: 1, name: 'New Camera' }],
+      },
+    });
+    const result = mergeNewMetadata(response);
+
+    expect(result).not.toBeNull();
+  });
+
+  it('should merge tags correctly (appends to existing)', () => {
+    const response = createContentImageUpdateResponse({
+      newMetadata: {
+        tags: [{ id: 2, name: 'New Tag', slug: 'new-tag' }],
+      },
+    });
+    const prev = createCollectionUpdateResponse({
+      tags: [{ id: 1, name: 'Existing Tag', slug: 'existing-tag' }],
+    });
+    const updater = mergeNewMetadata(response);
+
+    expect(updater).not.toBeNull();
+    if (updater) {
+      const result = updater(prev);
+      expect(result.tags).toEqual([
+        { id: 1, name: 'Existing Tag', slug: 'existing-tag' },
+        { id: 2, name: 'New Tag', slug: 'new-tag' },
+      ]);
+    }
+  });
+
+  it('should merge people correctly (appends to existing)', () => {
+    const response = createContentImageUpdateResponse({
+      newMetadata: {
+        people: [{ id: 2, name: 'New Person' }],
+      },
+    });
+    const prev = createCollectionUpdateResponse({
+      people: [{ id: 1, name: 'Existing Person' }],
+    });
+    const updater = mergeNewMetadata(response);
+
+    expect(updater).not.toBeNull();
+    if (updater) {
+      const result = updater(prev);
+      expect(result.people).toEqual([
+        { id: 1, name: 'Existing Person' },
+        { id: 2, name: 'New Person' },
+      ]);
+    }
+  });
+
+  it('should work when prev is null', () => {
+    const response = createContentImageUpdateResponse({
+      newMetadata: {
+        tags: [{ id: 1, name: 'New Tag', slug: 'new-tag' }],
+      },
+    });
+    const updater = mergeNewMetadata(response);
+
+    expect(updater).not.toBeNull();
+    if (updater) {
+      const result = updater(null);
+      expect(result.tags).toEqual([{ id: 1, name: 'New Tag', slug: 'new-tag' }]);
+    }
+  });
+
+  it('should work when prev has no metadata', () => {
+    const response = createContentImageUpdateResponse({
+      newMetadata: {
+        tags: [{ id: 1, name: 'New Tag', slug: 'new-tag' }],
+      },
+    });
+    const prev = createCollectionUpdateResponse({
+      tags: undefined,
+      people: undefined,
+    });
+    const updater = mergeNewMetadata(response);
+
+    expect(updater).not.toBeNull();
+    if (updater) {
+      const result = updater(prev);
+      expect(result.tags).toEqual([{ id: 1, name: 'New Tag', slug: 'new-tag' }]);
+    }
+  });
+
+  it('should preserve existing metadata that is not in newMetadata', () => {
+    const response = createContentImageUpdateResponse({
+      newMetadata: {
+        tags: [{ id: 1, name: 'New Tag', slug: 'new-tag' }],
+      },
+    });
+    const prev = createCollectionUpdateResponse({
+      tags: [{ id: 0, name: 'Existing Tag', slug: 'existing-tag' }],
+      cameras: [{ id: 1, name: 'Existing Camera' }],
+    });
+    const updater = mergeNewMetadata(response);
+
+    expect(updater).not.toBeNull();
+    if (updater) {
+      const result = updater(prev);
+      expect(result.tags).toHaveLength(2);
+      expect(result.cameras).toEqual([{ id: 1, name: 'Existing Camera' }]);
+    }
+  });
+
+  it('should append duplicates (no deduplication)', () => {
+    const response = createContentImageUpdateResponse({
+      newMetadata: {
+        tags: [{ id: 1, name: 'Tag', slug: 'tag' }],
+      },
+    });
+    const prev = createCollectionUpdateResponse({
+      tags: [{ id: 1, name: 'Tag', slug: 'tag' }],
+    });
+    const updater = mergeNewMetadata(response);
+
+    expect(updater).not.toBeNull();
+    if (updater) {
+      const result = updater(prev);
+      expect(result.tags).toHaveLength(2);
+      expect(result.tags).toEqual([
+        { id: 1, name: 'Tag', slug: 'tag' },
+        { id: 1, name: 'Tag', slug: 'tag' },
+      ]);
+    }
+  });
+});
+
+/**
+ * Testing Strategy for revalidateCollectionCache
+ *
+ * Function: revalidateCollectionCache(slug: string)
+ * Returns: Promise<void>
+ *
+ * Passing test cases:
+ * - Calls /api/revalidate with correct tag and path
+ * - Request body contains correct tag format: `collection-${slug}`
+ * - Request body contains correct path format: `/${slug}`
+ * - Resolves successfully when revalidation succeeds
+ * - Fails silently when revalidation fails (catches error, logs warning)
+ *
+ * Failing test cases:
+ * - Slug is empty string -> still makes request (no validation)
+ * - Network error -> fails silently, logs warning
+ * - API returns error status -> fails silently, logs warning
+ * - fetch is not available (SSR) -> fails silently
+ */
+
+/**
+ * Testing Strategy for mergeNewMetadata
+ *
+ * Function: mergeNewMetadata(response: ContentImageUpdateResponse)
+ * Returns: ((prev: CollectionUpdateResponseDTO | null) => CollectionUpdateResponseDTO) | null
+ *
+ * Passing test cases:
+ * - Returns null when newMetadata is undefined
+ * - Returns null when newMetadata exists but all arrays are empty
+ * - Returns null when newMetadata exists but all arrays are null
+ * - Returns updater function when newMetadata has tags
+ * - Returns updater function when newMetadata has people
+ * - Returns updater function when newMetadata has cameras
+ * - Returns updater function when newMetadata has lenses
+ * - Returns updater function when newMetadata has filmTypes
+ * - Returns updater function when newMetadata has multiple types
+ * - Updater function merges tags correctly (appends to existing)
+ * - Updater function merges people correctly (appends to existing)
+ * - Updater function merges cameras correctly (appends to existing)
+ * - Updater function merges lenses correctly (appends to existing)
+ * - Updater function merges filmTypes correctly (appends to existing)
+ * - Works when prev is null -> creates new arrays with new metadata
+ * - Works when prev has existing metadata -> appends to existing arrays
+ * - Works when prev has no metadata -> creates new arrays
+ * - Preserves existing metadata that's not in newMetadata
+ *
+ * Failing test cases:
+ * - Response is null/undefined -> returns null
+ * - Response.newMetadata is null -> returns null
+ * - currentState is null -> still works (uses prev in updater)
+ * - Duplicate metadata items -> appends duplicates (no deduplication)
+ */
+
+describe('refreshCollectionAfterOperation', () => {
+  // Testing Strategy:
+  // Passing test cases:
+  // - Executes operation successfully and refreshes collection
+  // - Updates cache with refreshed collection data
+  // - Returns refreshed CollectionUpdateResponseDTO
+  // - Handles operation that returns void
+  // - Handles operation that returns a value
+  //
+  // Failing test cases:
+  // - Throws error if operation fails
+  // - Throws error if refresh fails
+  // - Error from operation is propagated correctly
+  // - Error from refresh is propagated correctly
+
+  const mockSlug = 'test-collection';
+  const mockCollectionData: CollectionUpdateResponseDTO = {
+    collection: {
+      id: 1,
+      slug: mockSlug,
+      title: 'Test Collection',
+      isClient: false,
+      isBlog: false,
+      visibility: CollectionVisibility.LISTED,
+      displayMode: 'CHRONOLOGICAL',
+      locations: [],
+      content: [],
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    },
+    tags: [],
+    people: [],
+    cameras: [],
+    lenses: [],
+    filmTypes: [],
+    filmFormats: [],
+    collections: [],
+  };
+
+  const mockGetCollectionUpdateMetadata = jest.fn();
+  const mockCollectionStorage = {
+    update: jest.fn(),
+    updateFull: jest.fn(),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetCollectionUpdateMetadata.mockResolvedValue(mockCollectionData);
+  });
+
+  it('should execute operation and refresh collection successfully', async () => {
+    const operation = jest.fn().mockResolvedValue(void 0);
+
+    const result = await refreshCollectionAfterOperation(
+      mockSlug,
+      operation,
+      mockGetCollectionUpdateMetadata,
+      mockCollectionStorage
+    );
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith(mockSlug);
+    expect(mockCollectionStorage.update).toHaveBeenCalledWith(
+      mockSlug,
+      mockCollectionData.collection
+    );
+    expect(result).toEqual(mockCollectionData);
+  });
+
+  it('should handle operation that returns a value', async () => {
+    const operation = jest.fn().mockResolvedValue('operation-result');
+
+    const result = await refreshCollectionAfterOperation(
+      mockSlug,
+      operation,
+      mockGetCollectionUpdateMetadata,
+      mockCollectionStorage
+    );
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith(mockSlug);
+    expect(result).toEqual(mockCollectionData);
+  });
+
+  it('should throw error if operation fails', async () => {
+    const operationError = new Error('Operation failed');
+    const operation = jest.fn().mockRejectedValue(operationError);
+
+    await expect(
+      refreshCollectionAfterOperation(
+        mockSlug,
+        operation,
+        mockGetCollectionUpdateMetadata,
+        mockCollectionStorage
+      )
+    ).rejects.toThrow('Operation failed');
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(mockGetCollectionUpdateMetadata).not.toHaveBeenCalled();
+    expect(mockCollectionStorage.update).not.toHaveBeenCalled();
+  });
+
+  it('should throw error if refresh fails', async () => {
+    const refreshError = new Error('Refresh failed');
+    const operation = jest.fn().mockResolvedValue(void 0);
+    mockGetCollectionUpdateMetadata.mockRejectedValue(refreshError);
+
+    await expect(
+      refreshCollectionAfterOperation(
+        mockSlug,
+        operation,
+        mockGetCollectionUpdateMetadata,
+        mockCollectionStorage
+      )
+    ).rejects.toThrow('Refresh failed');
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith(mockSlug);
+    expect(mockCollectionStorage.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('updateBlockOrderIndex', () => {
+  it('should update direct orderIndex for image content', () => {
+    const imageBlock: ContentImageModel = {
+      id: 1,
+      contentType: 'IMAGE',
+      orderIndex: 5,
+      imageUrl: 'test.jpg',
+      locations: [],
+    };
+
+    const result = updateBlockOrderIndex(imageBlock, 10);
+
+    expect(result.orderIndex).toBe(10);
+  });
+
+  it('should update direct orderIndex for text content', () => {
+    const textBlock = {
+      id: 2,
+      contentType: 'TEXT' as const,
+      orderIndex: 3,
+      items: [{ type: 'text' as const, value: 'Test' }],
+      format: 'plain' as const,
+      align: 'left' as const,
+    } as AnyContentModel;
+
+    const result = updateBlockOrderIndex(textBlock, 7);
+
+    expect(result.orderIndex).toBe(7);
+  });
+
+  it('should update direct orderIndex for collection content', () => {
+    const collectionBlock = {
+      id: 3,
+      contentType: 'COLLECTION' as const,
+      orderIndex: 0,
+      slug: 'test-collection',
+    } as AnyContentModel;
+
+    const result = updateBlockOrderIndex(collectionBlock, 5);
+
+    expect(result.orderIndex).toBe(5);
+  });
+
+  it('should preserve other properties when updating orderIndex', () => {
+    const imageBlock: ContentImageModel = {
+      id: 1,
+      contentType: 'IMAGE',
+      orderIndex: 0,
+      imageUrl: 'test.jpg',
+      title: 'Test Image',
+      rating: 5,
+      locations: [],
+    };
+
+    const result = updateBlockOrderIndex(imageBlock, 10);
+
+    expect(result.orderIndex).toBe(10);
+    expect(result.id).toBe(1);
+    expect((result as ContentImageModel).title).toBe('Test Image');
+    expect((result as ContentImageModel).rating).toBe(5);
+  });
+});
+describe('applyReorderChangesOptimistically', () => {
+  it('should update direct orderIndex for all affected blocks', () => {
+    const collection = createCollectionModel({
+      id: 1,
+      content: [
+        createImageContent(1, { orderIndex: 0 }),
+        createImageContent(2, { orderIndex: 1 }),
+        createImageContent(3, { orderIndex: 2 }),
+      ],
+    });
+
+    const reorders = [
+      { contentId: 1, newOrderIndex: 2 },
+      { contentId: 2, newOrderIndex: 0 },
+      { contentId: 3, newOrderIndex: 1 },
+    ];
+
+    const result = applyReorderChangesOptimistically(collection, reorders);
+
+    expect(result.content).toBeDefined();
+    expect(result.content![0]!.orderIndex).toBe(2);
+    expect(result.content![1]!.orderIndex).toBe(0);
+    expect(result.content![2]!.orderIndex).toBe(1);
+  });
+
+  it('should return unchanged collection when reorders is empty', () => {
+    const collection = createCollectionModel({
+      id: 1,
+      content: [createImageContent(1, { orderIndex: 0 })],
+    });
+
+    const result = applyReorderChangesOptimistically(collection, []);
+
+    expect(result).toEqual(collection);
+  });
+});
+
+describe('executeReorderOperation', () => {
+  const collectionId = 1;
+  const slug = 'test-collection';
+  const mockReorders = [
+    { contentId: 1, newOrderIndex: 2 },
+    { contentId: 2, newOrderIndex: 0 },
+  ];
+
+  beforeEach(() => {
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('should call reorder API and return updated collection', async () => {
+    const mockCollection = { id: collectionId, title: 'Test', slug } as CollectionModel;
+    jest.mocked(collectionsApi.reorderCollectionContent).mockResolvedValue(mockCollection);
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+    const result = await executeReorderOperation(collectionId, mockReorders, slug);
+
+    expect(collectionsApi.reorderCollectionContent).toHaveBeenCalledWith(collectionId, [
+      { contentId: 1, newOrderIndex: 2 },
+      { contentId: 2, newOrderIndex: 0 },
+    ]);
+    expect(result).toEqual(mockCollection);
+  });
+
+  it('should propagate error when API call fails', async () => {
+    jest.mocked(collectionsApi.reorderCollectionContent).mockRejectedValue(new Error('API Error'));
+
+    await expect(executeReorderOperation(collectionId, mockReorders, slug)).rejects.toThrow(
+      'API Error'
+    );
+  });
+
+  it('should call revalidateCollectionCache after successful reorder', async () => {
+    const mockCollection = { id: collectionId, title: 'Test', slug } as CollectionModel;
+    jest.mocked(collectionsApi.reorderCollectionContent).mockResolvedValue(mockCollection);
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+    await executeReorderOperation(collectionId, mockReorders, slug);
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', expect.any(Object));
+  });
+});
+
+// ============================================================================
+// Reorder Mode Utilities
+// ============================================================================
+
+describe('replayMoves', () => {
+  it('should return original order when moves is empty', () => {
+    const order = [1, 2, 3, 4];
+    expect(replayMoves(order, [])).toEqual([1, 2, 3, 4]);
+  });
+
+  it('should apply a single move correctly', () => {
+    // Move image 1 from index 0 to index 2
+    const result = replayMoves([1, 2, 3], [{ imageId: 1, toIndex: 2 }]);
+    expect(result).toEqual([2, 3, 1]);
+  });
+
+  it('should apply multiple moves in sequence', () => {
+    // Start: [1, 2, 3, 4]
+    // Move 1 to index 3 → [2, 3, 4, 1]
+    // Move 2 to index 0 → [2, 3, 4, 1] — 2 is already at 0
+    const result = replayMoves(
+      [1, 2, 3, 4],
+      [
+        { imageId: 1, toIndex: 3 },
+        { imageId: 3, toIndex: 0 },
+      ]
+    );
+    // After move 1: [2, 3, 4, 1]
+    // After move 3→0: [3, 2, 4, 1]
+    expect(result).toEqual([3, 2, 4, 1]);
+  });
+
+  it('should skip moves for imageId not in order', () => {
+    const result = replayMoves([1, 2, 3], [{ imageId: 99, toIndex: 0 }]);
+    expect(result).toEqual([1, 2, 3]);
+  });
+
+  it('should not mutate the original array', () => {
+    const original = [1, 2, 3];
+    replayMoves(original, [{ imageId: 1, toIndex: 2 }]);
+    expect(original).toEqual([1, 2, 3]);
+  });
+
+  it('should handle moving to same position (no-op move)', () => {
+    // Image 2 is at index 1, move to index 1
+    const result = replayMoves([1, 2, 3], [{ imageId: 2, toIndex: 1 }]);
+    expect(result).toEqual([1, 2, 3]);
+  });
+});
+
+describe('applyArrowMove', () => {
+  it('should shift image right by 1', () => {
+    const result = applyArrowMove([1, 2, 3], 1, 1);
+    expect(result).not.toBeNull();
+    expect(result!.newOrder).toEqual([2, 1, 3]);
+    expect(result!.move).toEqual({ imageId: 1, toIndex: 1 });
+  });
+
+  it('should shift image left by 1', () => {
+    const result = applyArrowMove([1, 2, 3], 3, -1);
+    expect(result).not.toBeNull();
+    expect(result!.newOrder).toEqual([1, 3, 2]);
+    expect(result!.move).toEqual({ imageId: 3, toIndex: 1 });
+  });
+
+  it('should return null when image not found', () => {
+    const result = applyArrowMove([1, 2, 3], 99, 1);
+    expect(result).toBeNull();
+  });
+
+  it('should return null when moving left from first position', () => {
+    const result = applyArrowMove([1, 2, 3], 1, -1);
+    expect(result).toBeNull();
+  });
+
+  it('should return null when moving right from last position', () => {
+    const result = applyArrowMove([1, 2, 3], 3, 1);
+    expect(result).toBeNull();
+  });
+
+  it('should not mutate the original order array', () => {
+    const order = [1, 2, 3];
+    applyArrowMove(order, 1, 1);
+    expect(order).toEqual([1, 2, 3]);
+  });
+});
+
+describe('applyPickAndPlace', () => {
+  it('should insert picked image at target position (shift semantics)', () => {
+    // Move image 1 to where image 3 is
+    // Before: [1, 2, 3, 4] — 1 at 0, 3 at 2
+    // After splice(0,1): [2, 3, 4]
+    // Insert at indexOf(3)=1: [2, 1, 3, 4]
+    const result = applyPickAndPlace([1, 2, 3, 4], 1, 3);
+    expect(result).not.toBeNull();
+    expect(result!.newOrder).toEqual([2, 1, 3, 4]);
+    expect(result!.move).toEqual({ imageId: 1, toIndex: 1 });
+  });
+
+  it('should handle moving forward (lower to higher index)', () => {
+    // Move 1 to where 4 is: [1,2,3,4] → [2,3,1,4] ... wait
+    // splice(0,1): [2,3,4], indexOf(4)=2, insert at 2: [2,3,1,4]
+    const result = applyPickAndPlace([1, 2, 3, 4], 1, 4);
+    expect(result).not.toBeNull();
+    expect(result!.newOrder).toEqual([2, 3, 1, 4]);
+  });
+
+  it('should handle moving backward (higher to lower index)', () => {
+    // Move 4 to where 2 is: [1,2,3,4]
+    // splice(3,1): [1,2,3], indexOf(2)=1, insert at 1: [1,4,2,3]
+    const result = applyPickAndPlace([1, 2, 3, 4], 4, 2);
+    expect(result).not.toBeNull();
+    expect(result!.newOrder).toEqual([1, 4, 2, 3]);
+  });
+
+  it('should return null when pickedId not found', () => {
+    const result = applyPickAndPlace([1, 2, 3], 99, 2);
+    expect(result).toBeNull();
+  });
+
+  it('should return null when targetId not found', () => {
+    const result = applyPickAndPlace([1, 2, 3], 1, 99);
+    expect(result).toBeNull();
+  });
+
+  it('should return null when pickedId equals targetId', () => {
+    const result = applyPickAndPlace([1, 2, 3], 1, 1);
+    expect(result).toBeNull();
+  });
+
+  it('should not mutate the original order array', () => {
+    const order = [1, 2, 3, 4];
+    applyPickAndPlace(order, 1, 3);
+    expect(order).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe('cancelImageMoves', () => {
+  it('should remove all moves for the given imageId', () => {
+    const moves = [
+      { imageId: 1, toIndex: 2 },
+      { imageId: 2, toIndex: 0 },
+      { imageId: 1, toIndex: 3 },
+    ];
+    const result = cancelImageMoves(moves, 1);
+    expect(result).toEqual([{ imageId: 2, toIndex: 0 }]);
+  });
+
+  it('should return empty array when all moves are for the given imageId', () => {
+    const moves = [
+      { imageId: 1, toIndex: 2 },
+      { imageId: 1, toIndex: 0 },
+    ];
+    expect(cancelImageMoves(moves, 1)).toEqual([]);
+  });
+
+  it('should return original moves when imageId has no moves', () => {
+    const moves = [{ imageId: 2, toIndex: 0 }];
+    const result = cancelImageMoves(moves, 99);
+    expect(result).toEqual([{ imageId: 2, toIndex: 0 }]);
+  });
+
+  it('should return empty array when moves is empty', () => {
+    expect(cancelImageMoves([], 1)).toEqual([]);
+  });
+
+  it('should not mutate the original moves array', () => {
+    const moves = [{ imageId: 1, toIndex: 2 }];
+    cancelImageMoves(moves, 1);
+    expect(moves).toHaveLength(1);
+  });
+});
+
+describe('buildReorderChangesFromFinalOrder', () => {
+  it('should return empty array when order is unchanged', () => {
+    const order = [1, 2, 3];
+    expect(buildReorderChangesFromFinalOrder(order, order)).toEqual([]);
+  });
+
+  it('should include only items whose position changed', () => {
+    // originalOrder: [1, 2, 3], finalOrder: [2, 1, 3]
+    // 1: was at 0, now at 1 → changed
+    // 2: was at 1, now at 0 → changed
+    // 3: was at 2, now at 2 → unchanged
+    const result = buildReorderChangesFromFinalOrder([2, 1, 3], [1, 2, 3]);
+    expect(result).toHaveLength(2);
+    expect(result).toContainEqual({ contentId: 2, newOrderIndex: 0 });
+    expect(result).toContainEqual({ contentId: 1, newOrderIndex: 1 });
+  });
+
+  it('should include all items when all positions changed', () => {
+    const result = buildReorderChangesFromFinalOrder([3, 2, 1], [1, 2, 3]);
+    expect(result).toHaveLength(2); // 2 is in same position (index 1)
+    expect(result).toContainEqual({ contentId: 3, newOrderIndex: 0 });
+    expect(result).toContainEqual({ contentId: 1, newOrderIndex: 2 });
+  });
+
+  it('should assign newOrderIndex matching position in finalOrder', () => {
+    const result = buildReorderChangesFromFinalOrder([4, 1, 2, 3], [1, 2, 3, 4]);
+    // 4 was at 3, now at 0
+    // 1 was at 0, now at 1
+    // 2 was at 1, now at 2
+    // 3 was at 2, now at 3
+    expect(result).toHaveLength(4);
+    expect(result).toContainEqual({ contentId: 4, newOrderIndex: 0 });
+    expect(result).toContainEqual({ contentId: 1, newOrderIndex: 1 });
+    expect(result).toContainEqual({ contentId: 2, newOrderIndex: 2 });
+    expect(result).toContainEqual({ contentId: 3, newOrderIndex: 3 });
+  });
+
+  it('should return empty array for empty input', () => {
+    expect(buildReorderChangesFromFinalOrder([], [])).toEqual([]);
+  });
+});
+
+describe('toggleRelation', () => {
+  const collection = (id: number, name = `Collection ${id}`): CollectionListModel => ({ id, name });
+
+  // Child rows carry visible/orderIndex; sibling rows carry only { collectionId, name }.
+  const childEntry = (c: CollectionListModel, index: number) => ({
+    collectionId: c.id,
+    name: c.name,
+    visible: true,
+    orderIndex: index,
+  });
+  const siblingEntry = (c: CollectionListModel) => ({ collectionId: c.id, name: c.name });
+
+  it('add-new: appends an unsaved collection to newValue', () => {
+    const result = toggleRelation(
+      undefined,
+      collection(5, 'Five'),
+      new Set<number>(),
+      siblingEntry
+    );
+    expect(result).toEqual({ newValue: [{ collectionId: 5, name: 'Five' }] });
+  });
+
+  it('un-add: toggling a pending addition clears it (-> undefined when nothing remains)', () => {
+    const current: CollectionUpdate = { newValue: [{ collectionId: 5, name: 'Five' }] };
+    const result = toggleRelation(current, collection(5), new Set<number>(), siblingEntry);
+    expect(result).toBeUndefined();
+  });
+
+  it('remove-saved: toggling a saved collection appends it to remove', () => {
+    const result = toggleRelation(undefined, collection(7), new Set<number>([7]), siblingEntry);
+    expect(result).toEqual({ remove: [7] });
+  });
+
+  it('un-remove: toggling a pending removal clears it (-> undefined when nothing remains)', () => {
+    const current: CollectionUpdate = { remove: [7] };
+    const result = toggleRelation(current, collection(7), new Set<number>([7]), siblingEntry);
+    expect(result).toBeUndefined();
+  });
+
+  it('child shape: newValue entry carries visible + orderIndex from buildEntry', () => {
+    const current: CollectionUpdate = {
+      newValue: [{ collectionId: 1, name: 'One', visible: true, orderIndex: 0 }],
+    };
+    const result = toggleRelation(current, collection(2, 'Two'), new Set<number>(), childEntry);
+    expect(result?.newValue).toEqual([
+      { collectionId: 1, name: 'One', visible: true, orderIndex: 0 },
+      { collectionId: 2, name: 'Two', visible: true, orderIndex: 1 },
+    ]);
+  });
+
+  it('tracks a saved removal and an unsaved addition independently', () => {
+    const originalIds = new Set<number>([7]);
+    let update = toggleRelation(undefined, collection(7), originalIds, siblingEntry);
+    update = toggleRelation(update, collection(5, 'Five'), originalIds, siblingEntry);
+    expect(update).toEqual({ remove: [7], newValue: [{ collectionId: 5, name: 'Five' }] });
+  });
+
+  it('preserves an existing prev field on the association', () => {
+    const current: CollectionUpdate = { prev: [{ collectionId: 9, name: 'Nine' }] };
+    const result = toggleRelation(current, collection(5, 'Five'), new Set<number>(), siblingEntry);
+    expect(result?.prev).toEqual([{ collectionId: 9, name: 'Nine' }]);
+    expect(result?.newValue).toEqual([{ collectionId: 5, name: 'Five' }]);
   });
 });
