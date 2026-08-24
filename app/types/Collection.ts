@@ -123,6 +123,31 @@ export interface PersonUpdate {
 }
 
 /**
+ * EntityRef - What tags, locations and people have in common. `id: 0` means "not saved
+ * yet", which is what {@link buildEntityDiff} reads to sort an item into `prev` or
+ * `newValue`. Prefer the concrete model wherever one type is actually known.
+ */
+export interface EntityRef {
+  id: number;
+  name: string;
+  slug?: string;
+}
+
+/**
+ * EntityUpdate - The prev/newValue/remove shape {@link buildEntityDiff} returns,
+ * structurally assignable to all three association updates below.
+ *
+ * Neither this nor EntityRef is a backend DTO. TagUpdate, PersonUpdate and LocationUpdate
+ * mirror named Java classes and stay separate on purpose, so one of them changing shape
+ * cannot silently change the others.
+ */
+export interface EntityUpdate {
+  prev?: number[];
+  newValue?: string[];
+  remove?: number[];
+}
+
+/**
  * TagUpdate - Update pattern for tag associations (many-to-many)
  * Matches backend TagUpdate.java
  *

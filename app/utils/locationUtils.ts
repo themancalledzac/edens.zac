@@ -1,12 +1,16 @@
 /**
  * Location Utilities
  *
- * Shared utilities for handling location conversions and updates.
- * Locations are many-to-many (array-based), matching the tags/people pattern.
- * Used by both Collection and Image metadata editing.
+ * Locations are many-to-many (array-based), matching the tags/people pattern. Used by both
+ * Collection and Image metadata editing.
+ *
+ * The conversion and diff mechanics live in `entityUtils.ts`, shared with `tagUtils.ts`.
+ * What stays here is {@link slugify}, which is not entity-specific but is the one place the
+ * backend's slug algorithm is mirrored.
  */
 
 import type { LocationModel, LocationUpdate } from '@/app/types/Collection';
+import { buildEntityDiff, convertToModels } from '@/app/utils/entityUtils';
 
 /**
  * Generate a URL-friendly slug from a display name. The single frontend mirror of backend
@@ -42,39 +46,18 @@ export function convertLocationsToModels(
   locationInput: LocationModel[] | string | { id: number; name: string } | null | undefined,
   availableLocations: LocationModel[]
 ): LocationModel[] {
-  if (!locationInput) return [];
-
-  // Normalize to array
-  const inputs: Array<string | { id: number; name: string; slug?: string }> = Array.isArray(
-    locationInput
-  )
-    ? locationInput
-    : [locationInput];
-
-  return inputs.map(input => {
-    if (typeof input === 'object' && 'id' in input && 'name' in input) {
-      if (input.id > 0) {
-        const found = availableLocations.find(loc => loc.id === input.id);
-        if (found) return found;
-      }
-      const foundByName = availableLocations.find(loc => loc.name === input.name);
-      if (foundByName) return foundByName;
-      return { id: input.id, name: input.name, slug: input.slug ?? '' };
-    }
-
-    // String input (legacy)
-    const found = availableLocations.find(loc => loc.name === input);
-    return found ?? { id: 0, name: input, slug: '' };
-  });
+  return convertToModels(locationInput, availableLocations, (id, name, slug) => ({
+    id,
+    name,
+    slug,
+  }));
 }
 
 /**
  * Build a LocationUpdate diff by comparing updated vs current location arrays.
  * Returns undefined if nothing changed.
  *
- * - prev: IDs of locations in the updated set (existing ones to keep/add)
- * - newValue: names of brand-new locations to create
- * - remove: IDs of locations in current but not in updated (to remove)
+ * See {@link buildEntityDiff} for the diff's contents and why `remove` is computed.
  *
  * @param updated - New desired locations
  * @param current - Current locations on the entity
@@ -84,28 +67,5 @@ export function buildLocationsDiff(
   updated: LocationModel[],
   current: LocationModel[] = []
 ): LocationUpdate | undefined {
-  const currentIds = new Set(current.filter(l => l.id > 0).map(l => l.id));
-  const updatedIds = new Set(updated.filter(l => l.id > 0).map(l => l.id));
-  const updatedNewNames = updated.filter(l => l.id === 0).map(l => l.name);
-  const currentNewNames = current.filter(l => l.id === 0).map(l => l.name);
-
-  // Compute removed IDs (in current but not in updated)
-  const removeIds = [...currentIds].filter(id => !updatedIds.has(id));
-
-  // Check if anything changed
-  const sameExisting =
-    currentIds.size === updatedIds.size && [...currentIds].every(id => updatedIds.has(id));
-  const sameNew =
-    updatedNewNames.length === currentNewNames.length &&
-    updatedNewNames.every((n, i) => n === currentNewNames[i]);
-
-  if (sameExisting && sameNew) return undefined;
-
-  const result: LocationUpdate = {};
-  const prevIds = [...updatedIds];
-  if (prevIds.length > 0) result.prev = prevIds;
-  if (updatedNewNames.length > 0) result.newValue = updatedNewNames;
-  if (removeIds.length > 0) result.remove = removeIds;
-
-  return result;
+  return buildEntityDiff(updated, current);
 }
