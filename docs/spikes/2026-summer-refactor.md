@@ -266,7 +266,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E1  | Parallax-card builder consolidation                                      | Medium      | +98 src, +659 test (est. −120)                                                             | ✅ PR #269                                                                                   |
 | E2  | `core.ts` fetch skeleton + `clientFetch`                                 | Medium      | ~0 net (−180 src, +150–200 test)                                                           | ☐                                                                                            |
 | E3  | `collectionStorage.ts` generics                                          | Low         | **−12 src actual** (−46 code, +39 comment); +927 test via #296 (est. +50–150 net for both) | ◐ generics ✅ PR #306; guards bullet ⛔ user call                                            |
-| E4  | Entity-diff generics + one IMAGE guard                                   | Medium      | −80 (A5 landed the guard half); re-size the twins region, not the files                    | ☐ **NEXT** — entity-diff half COLD; IMAGE-guard half ⛔ the two guards are NOT duplicates    |
+| E4  | Entity-diff generics + one IMAGE guard                                   | Medium      | −80 (A5 landed the guard half); re-size the twins region, not the files                    | ☐ queued after G4 — entity-diff half COLD; IMAGE-guard half ⛔ guards are NOT duplicates     |
 | E5  | Filter/sort/date duplication                                             | Low         | **0 src / +139 test actual** (est. −50 src)                                                | ◐ PR #299 open                                                                               |
 | E6  | `useCollectionEdit` refresh helpers                                      | Medium      | −90 src, ±100 test churn                                                                   | ☐                                                                                            |
 | E7  | `useFilteredContentBlocks` hook                                          | Medium      | +100–200 net (new hook suite)                                                              | ☐                                                                                            |
@@ -286,6 +286,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | G1  | Docs corrections                                                         | Trivial     | **+106 / −72 actual** (est. ±50)                                                           | ◐ PR #303 open                                                                               |
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)          | Low         | ~neutral (relocation + splits)                                                             | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors                       |
 | G3  | `/user/selects` decision                                                 | —           | —                                                                                          | ⛔ USER DECISION                                                                             |
+| G4  | Docblock standard — length, structure, and no history                    | Low         | −300 to −500 doc lines across ~53 blocks; 0 src                                            | ☐ **NEXT** — user-raised from #301; baseline measured, docs-only                             |
 | H1  | Merge `Following` into `Collections` on `/user`                          | Medium      | −60 src, ±150 test churn (6 test files)                                                    | ☐ (do C8 first)                                                                              |
 | H2a | `/user` rail copy pass + chip-style the Admin links                      | Low         | **+319 / −117 actual** (est. −25 src)                                                      | ✅ PR #302                                                                                   |
 | H3  | `Send a message` into the rail as a plain button                         | Low         | rode H2a                                                                                   | ✅ PR #302                                                                                   |
@@ -676,9 +677,9 @@ MR, you have gone out of scope.
       After #306 the guards live in **one** place, not two — `createSlugCache`'s `get` serves both
       caches — so deleting them is now a single edit and M3 goes red on 6 tests, not 4.
 
-### ☐ E4 · Entity-diff generics + one IMAGE guard — **NEXT**
+### ☐ E4 · Entity-diff generics + one IMAGE guard — queued after G4
 
-**Why it is next.** Both refs verified correct against `main` 2026-08-24 (`contentFilter.ts:68`,
+**Why it is queued next after G4.** Both refs verified correct against `main` 2026-08-24 (`contentFilter.ts:68`,
 `contentTypeGuards.ts:23` — neither drifted). It is the same generic-collapse shape E3 just proved,
 so the technique is warm, and the second bullet is clean subtraction with no decision attached.
 
@@ -1065,6 +1066,73 @@ too; the inventory said otherwise. USER decides: does G2b's migration (and the `
 
 ---
 
+### ☐ G4 · Docblock standard — length, structure, and no history — **NEXT**
+
+_Raised by the user 2026-08-24 off PR #301's `revalidateLocationCaches` docblock: 30 lines of prose
+for a function that maps two location arrays to a set of tags._
+
+**The standard.** A docblock says what the thing does, what its arguments mean, and any constraint a
+caller must respect. It describes the code as it is now, for someone reading it for the first time.
+It is not a decision log, not a changelog, and not a place to record what the code used to be.
+
+**Baseline, measured across `app/` 2026-08-24** (865 docblocks):
+
+| Length      | Count |            |
+| ----------- | ----- | ---------- |
+| 1–10 lines  | 643   | healthy    |
+| 11–20 lines | 169   | acceptable |
+| 21–30 lines | 37    | review     |
+| 31+ lines   | 16    | rewrite    |
+
+Separately, **57 blocks (6.6%) contain backward-looking language**: "used to" ×23, "no longer" ×11,
+a bare date ×9, "previously" ×6, "the old" ×5, "PR #N" ×2. **Twelve are both long and historical**,
+and that intersection is the priority list — start there, not with the whole 6%.
+
+**Why this is happening, and why the existing rule does not catch it.** `CLAUDE.md` already forbids
+inline comments and sends every "why" into the docblock, with one escape hatch: _if the docblock
+gets too big, split the function._ That escape hatch assumes a big docblock means the function does
+too much. Here it does not. `revalidateLocationCaches` is small and does one thing; its docblock is
+long because it is carrying **decision-record content that belongs in the PR and on this board**.
+The rule has no answer for that case, which is the gap this item closes.
+
+**Worked example, and a concrete rot prediction.** #301's docblock contains a paragraph beginning
+"Image-level location edits are not covered, and that is a known gap" — roughly six lines explaining
+`getLocationPage`'s two-query shape and `findOrphanImagesByLocationName`. **That paragraph is
+[E13](#-e13--trigger-collections-location-slug-from-the-image-metadata-save-path).** It is already a
+tracked item with a row and a section. The moment E13 ships, the docblock states something false,
+and nothing will fail to tell anyone. A tracker entry duplicated into a docblock is a comment with
+an expiry date on it.
+
+**What to cut, by kind:**
+
+- [ ] **History.** "used to", "no longer", "the old X", "previously", bare dates, PR numbers. The
+      git log holds this and does not go stale. Delete outright.
+- [ ] **Tracked gaps.** If a paragraph describes known missing work, it belongs on this board. Cut
+      it and leave at most one sentence naming the limitation, with no rationale.
+- [ ] **Rejected-alternative essays.** "This deliberately does not live inside X because…" is PR
+      content. One clause is fine — "kept separate from `revalidateCollectionCache`, which has no
+      location data in scope" — the paragraph is not.
+- [ ] **Restating the signature in prose** when `@param` already says it.
+
+**What to keep — this item is not an instruction to strip rationale.** Constraints a caller can get
+wrong stay, in full. #301's own "slugs must come from the saved response, never from the edit
+buffer, because an unsaved location is `{ id: 0, slug: '' }`" is exactly right and should survive a
+rewrite: it is a live trap, not a historical note. The test is **tense and audience** — does this
+sentence help someone using the function _now_, or does it explain the past to someone who was
+there? Cut on that test, not on line count. Line count is the smell; it is not the rule.
+
+**Scope.** Docs-only, zero source change, so it is safe to split across sittings and safe to do
+alongside anything. Do the 12 long-and-historical blocks first and stop; converting all 53 in one MR
+makes an unreviewable diff for no extra benefit. Re-run the two measurements above afterwards and
+put the new numbers on this item.
+
+**Do NOT add a lint rule for this in the same MR.** `eslint-plugin-jsdoc` can cap length but cannot
+tell history from a live constraint, so a rule would either be trivially satisfied or would fire on
+the docblocks worth keeping. Decide whether a rule is wanted after the manual pass has established
+what the standard actually looks like in this codebase.
+
+---
+
 ## Group H — Feature requests
 
 Filed 2026-08-23 from a user design review of `/user` plus an annotated screenshot. Six requests came
@@ -1300,7 +1368,20 @@ against real merge timestamps on 2026-08-24; only the labels were inconsistent. 
   defined in the then-unmerged #305 and was invisible from `main`. Filed the alternative as **E15**
   and hoisted the lesson. E3 is now ◐ with one yes/no left for the user (keep the guards —
   recommended — or delete them); nothing about it needs further investigation.
-  Next: **E4**.
+  **Filed G4** on the user's request, from #301's 30-line `revalidateLocationCaches` docblock.
+  Measured a baseline rather than filing a vibe: 865 docblocks in `app/`, 53 over 20 lines, 57 with
+  backward-looking language ("used to" ×23, "no longer" ×11), 12 both. The sharp finding is that
+  **#301's "known gap" paragraph IS E13** — a tracked item copied into a docblock, which goes false
+  the day E13 ships. Also named why `CLAUDE.md`'s existing rule misses this: its escape hatch is
+  "split the function", which assumes a long docblock means the function does too much, and here the
+  function is small and the docblock is carrying decision-record content.
+  **Verified the merge order for the 8 open PRs** rather than guessing: 76 files touched, 76 unique,
+  so zero overlap. Trial-merged all 8 onto `main` in sequence — every merge clean, `tsc` clean at
+  each step, combined suite 242 suites / 4325 tests green, eslint and stylelint clean. Order is
+  therefore a convenience call, not a risk one. Two risks I had flagged did not exist: #299 touches
+  `contentLayout.ts` but never `createHeaderRow`/`chunkSize`, and #301's new test builds its own
+  fixtures rather than importing the ones #298 rewrites.
+  Next: **G4**, then E4.
 - 2026-08-24 — **ten items shipped as parallel agents**, PRs #294–#304, plus #305 (this board) and
   #297 (restores a test #294 dropped). Merged so far: #294, #295, #302. Four board claims disproved,
   two estimate biases named, three standing traps hoisted into "how to use this doc". Filed E13 and
