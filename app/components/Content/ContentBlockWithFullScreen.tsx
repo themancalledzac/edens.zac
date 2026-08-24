@@ -3,7 +3,6 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { type ReorderMove } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { useFullScreenImage } from '@/app/hooks/useFullScreenImage';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel } from '@/app/types/Collection';
@@ -12,6 +11,7 @@ import { isCollectionCard } from '@/app/utils/contentRatingUtils';
 
 import Component from './Component';
 import styles from './ContentBlockWithFullScreen.module.scss';
+import { type SharedRendererProps } from './RendererContext';
 
 const FullScreenModal = dynamic(() =>
   import('@/app/components/FullScreenModal/FullScreenModal').then(m => ({
@@ -22,10 +22,9 @@ const FullScreenModal = dynamic(() =>
 const LOAD_MORE_THRESHOLD = '400px';
 const DEFAULT_CHUNK_SIZE = 50;
 
-interface ContentBlockWithFullScreenProps {
+interface ContentBlockWithFullScreenProps extends SharedRendererProps {
   content: AnyContentModel[];
   priorityBlockIndex?: number;
-  enableFullScreenView?: boolean;
   initialPageSize?: number;
   chunkSize?: number;
   /** Mobile-scale density (1-5) forwarded to the layout; see {@link Component}. */
@@ -36,22 +35,6 @@ interface ContentBlockWithFullScreenProps {
   forceHeaderRail?: boolean;
   /** Mean width-cost of the UNFILTERED content, so filtering does not resize every photo. */
   widthCostBaseline?: number;
-  isSelectingCoverImage?: boolean;
-  currentCoverImageId?: number;
-  onImageClick?: (imageId: number) => void;
-  justClickedImageId?: number | null;
-  selectedIds?: number[];
-  currentCollectionId?: number;
-  // Reorder mode props
-  isReorderMode?: boolean;
-  reorderMoves?: ReorderMove[];
-  pickedUpImageId?: number | null;
-  reorderDisplayOrder?: number[];
-  onArrowMove?: (contentId: number, direction: -1 | 1) => void;
-  onPickUp?: (contentId: number) => void;
-  onPlace?: (targetId: number) => void;
-  onCancelImageMove?: (contentId: number) => void;
-  onImageLoadError?: (contentId: number) => void;
   /** SSR fallback viewport, forwarded to Component. */
   serverContentWidth?: number;
   serverViewportHeight?: number;
@@ -60,7 +43,6 @@ interface ContentBlockWithFullScreenProps {
 export default function ContentBlockWithFullScreen({
   content: allBlocks,
   priorityBlockIndex,
-  enableFullScreenView,
   initialPageSize,
   chunkSize,
   mobileChunkSize,
@@ -68,24 +50,10 @@ export default function ContentBlockWithFullScreen({
   collectionData,
   forceHeaderRail,
   widthCostBaseline,
-  isSelectingCoverImage,
-  currentCoverImageId,
-  onImageClick,
-  justClickedImageId,
-  selectedIds,
-  currentCollectionId,
-  isReorderMode = false,
-  reorderMoves,
-  pickedUpImageId,
-  reorderDisplayOrder,
-  onArrowMove,
-  onPickUp,
-  onPlace,
-  onCancelImageMove,
-  onImageLoadError,
   serverContentWidth,
   serverViewportHeight,
   serverIsMobile,
+  ...shared
 }: ContentBlockWithFullScreenProps) {
   const {
     showImage,
@@ -197,30 +165,15 @@ export default function ContentBlockWithFullScreen({
   return (
     <>
       <Component
+        {...shared}
         content={visibleBlocks}
         priorityIndex={priorityBlockIndex}
-        enableFullScreenView={enableFullScreenView}
         onFullScreenImageClick={handleFullScreenImageClick}
-        isSelectingCoverImage={isSelectingCoverImage}
-        currentCoverImageId={currentCoverImageId}
-        onImageClick={onImageClick}
-        justClickedImageId={justClickedImageId}
-        selectedIds={selectedIds}
-        currentCollectionId={currentCollectionId}
         chunkSize={chunkSize}
         mobileChunkSize={mobileChunkSize}
         collectionData={collectionData}
         forceHeaderRail={forceHeaderRail}
         widthCostBaseline={widthCostBaseline}
-        isReorderMode={isReorderMode}
-        reorderMoves={reorderMoves}
-        pickedUpImageId={pickedUpImageId}
-        reorderDisplayOrder={reorderDisplayOrder}
-        onArrowMove={onArrowMove}
-        onPickUp={onPickUp}
-        onPlace={onPlace}
-        onCancelImageMove={onCancelImageMove}
-        onImageLoadError={onImageLoadError}
         serverContentWidth={serverContentWidth}
         serverViewportHeight={serverViewportHeight}
         serverIsMobile={serverIsMobile}
