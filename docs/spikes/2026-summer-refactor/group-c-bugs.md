@@ -188,3 +188,67 @@ branch failed against any of the five bugs, which is the whole reason the item e
 mark a GIF loaded. That dependency list is unchanged from before this MR and there is no code path
 that does it today, so it is noted rather than fixed — but the new test does not cover it either,
 and a future sectioned-viewer change could reach it.
+
+---
+
+### ✅ C8 · Unfollowing leaves the chip count stale
+
+Found while researching H1, filed separately because it is a bug on `main` today, independent of
+whether H1 ever ships. **Do this before H1** — see H1's second "must fix" bullet for why.
+
+- [ ] `FollowsProvider` holds a client-only `useState<Set<number>>` at
+      [FollowsContext.tsx:39](app/components/Personal/FollowsContext.tsx:39), with an optimistic
+      toggle at [:59](app/components/Personal/FollowsContext.tsx:59) and rollback at
+      [:73](app/components/Personal/FollowsContext.tsx:73).
+- [ ] The chip count is server-rendered: `userSpaceData.ts` builds the `following` section with
+      `count: followed.ok ? followedCollectionIds.length : undefined`.
+- [ ] Nothing sends the toggle back to the server, so the count cannot update until the next full
+      server render.
+
+**Verified 2026-08-23 by a parallel session, three checks, all read from `origin/main`.** Recorded
+here because the mechanism was originally asserted from an agent report and that is not evidence:
+
+1. *Is the count from the id list or the rendered blocks?* The id list — and its docblock says so
+   deliberately, because a followed collection that was deleted, or that falls outside the 500-row
+   catalog page, still counts without being renderable. **This constrains the fix:** keep the server
+   number as the base and apply a client delta. Recomputing from rendered tiles would silently
+   change what the number means.
+2. *Is the mutation client-only?* Yes. Worth noting the code is better than first described — it
+   keeps a ref mirror so two rapid clicks each observe the other's result, with a docblock
+   explaining why a functional updater cannot inform the persist direction. That is C3's lesson
+   already applied.
+3. *Does anything trigger a server re-render on toggle?* No, and this is the decisive check.
+   `addFollow` and `removeFollow` ([personal.ts:63](app/lib/api/personal.ts:63) and
+   [:77](app/lib/api/personal.ts:77)) are plain `fetch` calls returning `void`. A grep for
+   `router.refresh|revalidateTag|revalidatePath` across `app/components/Personal/`,
+   `app/components/UserSpace/` and `personal.ts` returns nothing. `FollowButton`'s `onClick` calls
+   `follows.toggle(collectionId)` and stops.
+
+**The gate is the red test.** Mount with a non-zero followed count, unfollow, assert the chip
+decrements — and confirm that fails against pre-fix `main` before the fix is written. A regression
+test that has been watched to go red is repeatable, stays in the suite, and is the evidence this
+item stands on.
+
+**Gap, stated rather than papered over: nobody has watched the badge go stale in a browser.** It
+needs a signed-in account with existing follows, which no agent session should be driving. The
+static chain closes without it — server-rendered number, client-only mutation, no path back — and
+the red test closes it further. Do not treat that as equivalent to observation, though: a test can
+encode the same wrong model as the fix and pass for the wrong reason, which is exactly how C1's
+first draft went green against buggy source. If anyone is in front of a signed-in session with
+follows, spend the minute and confirm it live.
+
+Fix constraint, carried from check 1 above: keep the server number as the base and apply a client
+delta below `FollowsProvider`. Never recompute from rendered tiles — that silently changes what the
+number means. `UserSpace.tsx` is a Server Component with no `'use client'`, so the adjustment lives
+in a client component underneath it; do not convert `UserSpace.tsx`.
+
+**SHIPPED — PR #291, merged 2026-08-24. +418 −22 across 6 files.** The fix honoured every constraint this item recorded.
+
+- [x] New client component `UserSpaceGrid.tsx` sits directly below `FollowsProvider` and hands the sections on to `CollectionPageClient`. `UserSpace.tsx` stays a Server Component — it builds the count but cannot watch it change, and `useFollows()` is only callable below the provider.
+- [x] `CollectionPageClient` and `FilterToolbar` were deliberately not taught about follows. Both are shared by every collection page, and "the Following section counts follows" is a fact about the user space, not about collection pages generally.
+- [x] `reconcileFollowingCount` applies a set-difference delta against the ids the render was built from. **It never counts tiles**, so a followed collection that was deleted or falls outside the 500-row catalog page still counts — the semantics the loader docblock protects.
+- [x] **A failed read stays `undefined`, guarded twice.** The function returns `sections` untouched when the client set is `undefined`, and the map only rewrites a section when `section.count !== undefined`. A delta applied to a failed read would satisfy "never counts tiles" while still destroying the semantics. Pinned by `says nothing rather than counting from a state nobody read`.
+- [x] **Five of eight tests confirmed red first.** The failure DOM showed the bug exactly: the button already read `aria-pressed="false"` / "Follow" while `count-following` still read `2`.
+- [x] Two of the eight cover the rollback, which is C3's lesson applied rather than re-learned — a prescribed fix can be right on the happy path and destructive on the error path. `FollowsContext` keeps a ref mirror so its rollback inverse-applies against the latest membership; the count delta had to inherit that rather than assume it.
+- [x] Test churn worth knowing: `UserSpace.test.tsx` and `app/user/page.test.tsx` walk the tree without rendering, so their `findProps` targets moved from `CollectionPageClient` to `UserSpaceGrid`. `page.test.tsx` and `UserSpace.sectionSwitch.test.tsx` needed `useFollows: () => null` in their `FollowsContext` mocks.
+- [x] **Not done: a browser reproduction**, as this item asked for. It needs a signed-in account with existing follows. The red regression test is the gate that replaced it, and it is stronger in one way (repeatable, and it stays in the suite) and weaker in another (a test written from the same mental model as the fix can encode the same error). If anyone is in front of a signed-in session, it is still worth the minute.

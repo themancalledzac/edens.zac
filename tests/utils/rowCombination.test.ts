@@ -854,6 +854,15 @@ describe('toImageType', () => {
     const result = toImageType(img);
     expect(result.source).toBe(img);
   });
+
+  it('pins numericAR to the fixture aspect ratios', () => {
+    expect(toImageType(createHorizontalImage(1, 4)).numericAR).toBeCloseTo(1.7778, 3);
+    expect(toImageType(createVerticalImage(2, 3)).numericAR).toBeCloseTo(0.5625, 3);
+  });
+
+  it('maps V1★ to effective rating 1 — the penalty that made it 0 is retired', () => {
+    expect(toImageType(createVerticalImage(3, 1)).effectiveRating).toBe(1);
+  });
 });
 
 describe('AtomicComponent builders', () => {
@@ -948,6 +957,27 @@ describe('acToBoxTree', () => {
     if (bt.type === 'combined') {
       expect(bt.children[0].type === 'leaf' && bt.children[0].content).toBe(img1);
       expect(bt.children[1].type === 'leaf' && bt.children[1].content).toBe(img2);
+    }
+  });
+
+  it('keeps leaf order through a 3-chain: H(H(L1,L2),L3)', () => {
+    const items = [
+      createHorizontalImage(1, 3),
+      createHorizontalImage(2, 3),
+      createHorizontalImage(3, 3),
+    ];
+    const bt = acToBoxTree(hChain(items.map(item => toImageType(item))));
+    expect(bt.type).toBe('combined');
+    if (bt.type === 'combined') {
+      expect(bt.direction).toBe('horizontal');
+      expect(bt.children[1].type === 'leaf' && bt.children[1].content).toBe(items[2]);
+      expect(bt.children[0].type).toBe('combined');
+      if (bt.children[0].type === 'combined') {
+        const left = bt.children[0];
+        expect(left.direction).toBe('horizontal');
+        expect(left.children[0].type === 'leaf' && left.children[0].content).toBe(items[0]);
+        expect(left.children[1].type === 'leaf' && left.children[1].content).toBe(items[1]);
+      }
     }
   });
 });

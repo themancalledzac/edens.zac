@@ -743,29 +743,102 @@ describe('hasRenderableContent', () => {
 });
 
 describe('createHeaderRow', () => {
-  it('should return null when collection has no coverImage and no metadata', () => {
-    const collection = createCollectionModel(1, {
-      coverImage: undefined,
-      collectionDate: undefined,
-      description: undefined,
-      locations: [],
+  const componentWidth = 800;
+  const chunkSize = 4;
+
+  describe('Normal cases with full metadata', () => {
+    it('should create header row with two items: cover image and metadata text block', () => {
+      const collection = createCollectionModel(1);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+
+      expect(result).not.toBeNull();
+      expect(result?.items).toHaveLength(2);
+      expect(result?.rowType).toBe('header');
+      expect(result?.items[0]?.content.contentType).toBe('IMAGE');
+      expect(result?.items[1]?.content.contentType).toBe('TEXT');
     });
-    const result = createHeaderRow(collection, 1200, 2);
-    expect(result).toBeNull();
+
+    it('should create header row with cover image block with correct properties', () => {
+      const collection = createCollectionModel(1);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const coverBlock = result?.items[0]?.content as ContentParallaxImageModel;
+
+      expect(coverBlock).toBeDefined();
+      expect(coverBlock.id).toBe(-1);
+      expect(coverBlock.contentType).toBe('IMAGE');
+      expect(coverBlock.enableParallax).toBe(true);
+      expect(coverBlock.imageUrl).toBe('https://example.com/cover-1.jpg');
+      expect(coverBlock.overlayText).toBe('Collection 1');
+      expect(coverBlock.title).toBe('Collection 1');
+    });
+
+    it('should create header row with metadata block with all metadata items', () => {
+      const collection = createCollectionModel(1);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const metadataBlock = result?.items[1]?.content as ContentTextModel;
+
+      expect(metadataBlock).toBeDefined();
+      expect(metadataBlock.id).toBe(-2);
+      expect(metadataBlock.contentType).toBe('TEXT');
+      expect(metadataBlock.items).toHaveLength(3);
+    });
+
+    it('should calculate sizes for header row items', () => {
+      const collection = createCollectionModel(1);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+
+      expect(result?.items[0]?.width).toBeGreaterThan(0);
+      expect(result?.items[0]?.height).toBeGreaterThan(0);
+      expect(result?.items[1]?.width).toBeGreaterThan(0);
+      expect(result?.items[1]?.height).toBeGreaterThan(0);
+
+      // Cover + description widths should sum to componentWidth minus gridGap
+      const totalWidth = (result?.items[0]?.width || 0) + (result?.items[1]?.width || 0);
+      expect(totalWidth).toBeCloseTo(componentWidth - 12.8, 1);
+    });
   });
 
-  it('should return a text-only header row when there is no coverImage but metadata exists', () => {
-    const collection = createCollectionModel(1, {
-      coverImage: undefined,
-      collectionDate: undefined,
-      locations: [],
-      description: 'A short bio',
+  describe('Desktop row shape', () => {
+    it('should return a single row with rowType "header" on desktop', () => {
+      const collection = createCollectionModel(1);
+      const result = createHeaderRow(collection, 1200, 2, false);
+      const row = asSingleRow(result);
+      expect(row).not.toBeNull();
+      expect(row?.rowType).toBe('header');
     });
-    const row = asSingleRow(createHeaderRow(collection, 1200, 2, false));
-    expect(row).not.toBeNull();
-    expect(row?.rowType).toBe('header');
-    expect(row?.items).toHaveLength(1);
-    expect(row?.items[0]?.content.contentType).toBe('TEXT');
+
+    it('should include cover image as first item on desktop', () => {
+      const collection = createCollectionModel(1);
+      const result = createHeaderRow(collection, 1200, 2, false);
+      const row = asSingleRow(result);
+      expect(row?.items.length).toBeGreaterThanOrEqual(1);
+      expect(row?.items[0]?.content.contentType).toBe('IMAGE');
+    });
+  });
+
+  describe('Mobile rows', () => {
+    it('should return an array of rows on mobile (isMobile=true)', () => {
+      const collection = createCollectionModel(1);
+      const result = createHeaderRow(collection, 375, 2, true);
+      expect(Array.isArray(result)).toBe(true);
+      const rows = result as RowWithPatternAndSizes[];
+      expect(rows.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should give each mobile row rowType "header"', () => {
+      const collection = createCollectionModel(1);
+      const result = createHeaderRow(collection, 375, 2, true) as RowWithPatternAndSizes[];
+      for (const row of result) {
+        expect(row.rowType).toBe('header');
+      }
+    });
+
+    it('should include a metadata row on mobile when collection has description', () => {
+      const collection = createCollectionModel(1, { description: 'Some description' });
+      const result = createHeaderRow(collection, 375, 2, true) as RowWithPatternAndSizes[];
+      // Should have cover row + metadata row
+      expect(result.length).toBeGreaterThanOrEqual(2);
+    });
   });
 
   describe('header rail (forceRail)', () => {
@@ -827,60 +900,6 @@ describe('createHeaderRow', () => {
     });
   });
 
-  it('should return null when coverImage has no dimensions', () => {
-    const collection = createCollectionModel(1, {
-      coverImage: {
-        id: 10,
-        contentType: 'IMAGE',
-        orderIndex: 0,
-        imageUrl: 'https://example.com/cover.jpg',
-        locations: [],
-        // no imageWidth / imageHeight / width / height
-      },
-    });
-    const result = createHeaderRow(collection, 1200, 2);
-    expect(result).toBeNull();
-  });
-
-  it('should return a single row with rowType "header" on desktop', () => {
-    const collection = createCollectionModel(1);
-    const result = createHeaderRow(collection, 1200, 2, false);
-    const row = asSingleRow(result);
-    expect(row).not.toBeNull();
-    expect(row?.rowType).toBe('header');
-  });
-
-  it('should include cover image as first item on desktop', () => {
-    const collection = createCollectionModel(1);
-    const result = createHeaderRow(collection, 1200, 2, false);
-    const row = asSingleRow(result);
-    expect(row?.items.length).toBeGreaterThanOrEqual(1);
-    expect(row?.items[0]?.content.contentType).toBe('IMAGE');
-  });
-
-  it('should return an array of rows on mobile (isMobile=true)', () => {
-    const collection = createCollectionModel(1);
-    const result = createHeaderRow(collection, 375, 2, true);
-    expect(Array.isArray(result)).toBe(true);
-    const rows = result as RowWithPatternAndSizes[];
-    expect(rows.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('should give each mobile row rowType "header"', () => {
-    const collection = createCollectionModel(1);
-    const result = createHeaderRow(collection, 375, 2, true) as RowWithPatternAndSizes[];
-    for (const row of result) {
-      expect(row.rowType).toBe('header');
-    }
-  });
-
-  it('should include a metadata row on mobile when collection has description', () => {
-    const collection = createCollectionModel(1, { description: 'Some description' });
-    const result = createHeaderRow(collection, 375, 2, true) as RowWithPatternAndSizes[];
-    // Should have cover row + metadata row
-    expect(result.length).toBeGreaterThanOrEqual(2);
-  });
-
   describe('date metadata item', () => {
     /** The metadata text block is the second desktop header item. */
     function dateItemValue(collection: CollectionModel): string | undefined {
@@ -912,127 +931,6 @@ describe('createHeaderRow', () => {
       expect(
         dateItemValue(createCollectionModel(1, { collectionDate: undefined }))
       ).toBeUndefined();
-    });
-  });
-});
-
-describe('processContentForDisplay', () => {
-  it('should return empty array for empty content', () => {
-    const result = processContentForDisplay([], 1200);
-    expect(result).toEqual([]);
-  });
-
-  it('should produce rows with valid widths for a single image', () => {
-    const content = [createImageContent(1)];
-    const result = processContentForDisplay(content, 1200);
-    expect(result.length).toBeGreaterThan(0);
-    for (const row of result) {
-      for (const item of row.items) {
-        expect(item.width).toBeGreaterThan(0);
-      }
-    }
-  });
-
-  it('should produce rows for mixed content types', () => {
-    const content = [createImageContent(1), createTextContent(2), createGifContent(3)];
-    const result = processContentForDisplay(content, 1200);
-    expect(result.length).toBeGreaterThan(0);
-    const allItems = result.flatMap(r => r.items);
-    expect(allItems.length).toBeGreaterThanOrEqual(3);
-  });
-
-  it('should include a header row when collectionData is provided', () => {
-    const content = [createImageContent(1)];
-    const collection = createCollectionModel(1);
-    const result = processContentForDisplay(content, 1200, 2, { collectionData: collection });
-    // First row should be the header
-    expect(result[0]?.rowType).toBe('header');
-    expect(result.length).toBeGreaterThan(1);
-  });
-
-  it('should not include a header row when collectionData is not provided', () => {
-    const content = [createImageContent(1)];
-    const result = processContentForDisplay(content, 1200);
-    const hasHeaderRow = result.some(r => r.rowType === 'header');
-    expect(hasHeaderRow).toBe(false);
-  });
-
-  it('should respect isMobile option and return rows', () => {
-    const content = [createImageContent(1), createImageContent(2)];
-    const result = processContentForDisplay(content, 375, 2, { isMobile: true });
-    expect(result.length).toBeGreaterThan(0);
-    for (const row of result) {
-      for (const item of row.items) {
-        expect(item.width).toBeGreaterThan(0);
-      }
-    }
-  });
-
-  it('should include mobile header rows when isMobile and collectionData are both provided', () => {
-    const content = [createImageContent(1)];
-    const collection = createCollectionModel(1);
-    const result = processContentForDisplay(content, 375, 2, {
-      isMobile: true,
-      collectionData: collection,
-    });
-    // Header row(s) come first
-    expect(result[0]?.rowType).toBe('header');
-  });
-});
-
-describe('createHeaderRow', () => {
-  const componentWidth = 800;
-  const chunkSize = 4;
-
-  describe('Normal cases with full metadata', () => {
-    it('should create header row with two items: cover image and metadata text block', () => {
-      const collection = createCollectionModel(1);
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
-
-      expect(result).not.toBeNull();
-      expect(result?.items).toHaveLength(2);
-      expect(result?.rowType).toBe('header');
-      expect(result?.items[0]?.content.contentType).toBe('IMAGE');
-      expect(result?.items[1]?.content.contentType).toBe('TEXT');
-    });
-
-    it('should create header row with cover image block with correct properties', () => {
-      const collection = createCollectionModel(1);
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
-      const coverBlock = result?.items[0]?.content as ContentParallaxImageModel;
-
-      expect(coverBlock).toBeDefined();
-      expect(coverBlock.id).toBe(-1);
-      expect(coverBlock.contentType).toBe('IMAGE');
-      expect(coverBlock.enableParallax).toBe(true);
-      expect(coverBlock.imageUrl).toBe('https://example.com/cover-1.jpg');
-      expect(coverBlock.overlayText).toBe('Collection 1');
-      expect(coverBlock.title).toBe('Collection 1');
-    });
-
-    it('should create header row with metadata block with all metadata items', () => {
-      const collection = createCollectionModel(1);
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
-      const metadataBlock = result?.items[1]?.content as ContentTextModel;
-
-      expect(metadataBlock).toBeDefined();
-      expect(metadataBlock.id).toBe(-2);
-      expect(metadataBlock.contentType).toBe('TEXT');
-      expect(metadataBlock.items).toHaveLength(3);
-    });
-
-    it('should calculate sizes for header row items', () => {
-      const collection = createCollectionModel(1);
-      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
-
-      expect(result?.items[0]?.width).toBeGreaterThan(0);
-      expect(result?.items[0]?.height).toBeGreaterThan(0);
-      expect(result?.items[1]?.width).toBeGreaterThan(0);
-      expect(result?.items[1]?.height).toBeGreaterThan(0);
-
-      // Cover + description widths should sum to componentWidth minus gridGap
-      const totalWidth = (result?.items[0]?.width || 0) + (result?.items[1]?.width || 0);
-      expect(totalWidth).toBeCloseTo(componentWidth - 12.8, 1);
     });
   });
 
@@ -1323,6 +1221,17 @@ describe('createHeaderRow', () => {
   });
 
   describe('Missing cover image cases', () => {
+    it('should return null when coverImage is undefined and there is no metadata', () => {
+      const collection = createCollectionModel(1, {
+        coverImage: undefined,
+        collectionDate: undefined,
+        description: undefined,
+        locations: [],
+      });
+      const result = createHeaderRow(collection, 1200, 2);
+      expect(result).toBeNull();
+    });
+
     it('should return null when coverImage is null and there is no metadata', () => {
       const collection = createCollectionModel(1, {
         coverImage: null,
@@ -1342,18 +1251,37 @@ describe('createHeaderRow', () => {
       const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
 
       expect(result).not.toBeNull();
+      expect(result?.rowType).toBe('header');
       expect(result?.items).toHaveLength(1);
       expect(result?.items[0]?.content.contentType).toBe('TEXT');
     });
 
-    it('should return null when cover image has no dimensions', () => {
-      const collection = createCollectionModel(1);
-      if (collection.coverImage) {
-        collection.coverImage.imageWidth = undefined;
-        collection.coverImage.imageHeight = undefined;
-      }
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+    it('should render a text-only header when a description is the only metadata', () => {
+      const collection = createCollectionModel(1, {
+        coverImage: undefined,
+        collectionDate: undefined,
+        locations: [],
+        description: 'A short bio',
+      });
+      const row = asSingleRow(createHeaderRow(collection, 1200, 2, false));
+      expect(row).not.toBeNull();
+      expect(row?.rowType).toBe('header');
+      expect(row?.items).toHaveLength(1);
+      expect(row?.items[0]?.content.contentType).toBe('TEXT');
+    });
 
+    it('should return null when coverImage has no dimensions, even with metadata', () => {
+      const collection = createCollectionModel(1, {
+        coverImage: {
+          id: 10,
+          contentType: 'IMAGE',
+          orderIndex: 0,
+          imageUrl: 'https://example.com/cover.jpg',
+          locations: [],
+          // no imageWidth / imageHeight / width / height
+        },
+      });
+      const result = createHeaderRow(collection, componentWidth, chunkSize);
       expect(result).toBeNull();
     });
   });
@@ -1385,6 +1313,17 @@ describe('processContentForDisplay', () => {
         .map(item => item.content.id);
       const inputIds = content.map(c => c.id);
       expect(allIds.sort()).toEqual(inputIds.sort());
+    });
+
+    it('should produce rows with valid widths for a single image', () => {
+      const content = [createImageContent(1)];
+      const result = processContentForDisplay(content, 1200);
+      expect(result.length).toBeGreaterThan(0);
+      for (const row of result) {
+        for (const item of row.items) {
+          expect(item.width).toBeGreaterThan(0);
+        }
+      }
     });
   });
 
@@ -1486,6 +1425,35 @@ describe('processContentForDisplay', () => {
           expect(item.height).toBeGreaterThan(0);
         }
       }
+    });
+  });
+
+  describe('Header row from collectionData', () => {
+    it('should include a header row when collectionData is provided', () => {
+      const content = [createImageContent(1)];
+      const collection = createCollectionModel(1);
+      const result = processContentForDisplay(content, 1200, 2, { collectionData: collection });
+      // First row should be the header
+      expect(result[0]?.rowType).toBe('header');
+      expect(result.length).toBeGreaterThan(1);
+    });
+
+    it('should not include a header row when collectionData is not provided', () => {
+      const content = [createImageContent(1)];
+      const result = processContentForDisplay(content, 1200);
+      const hasHeaderRow = result.some(r => r.rowType === 'header');
+      expect(hasHeaderRow).toBe(false);
+    });
+
+    it('should include mobile header rows when isMobile and collectionData are both provided', () => {
+      const content = [createImageContent(1)];
+      const collection = createCollectionModel(1);
+      const result = processContentForDisplay(content, 375, 2, {
+        isMobile: true,
+        collectionData: collection,
+      });
+      // Header row(s) come first
+      expect(result[0]?.rowType).toBe('header');
     });
   });
 

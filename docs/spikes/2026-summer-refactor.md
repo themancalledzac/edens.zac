@@ -82,15 +82,6 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   when the toggle started. Following the item literally would have made a second toggle vanish
   whenever the first one failed. Error paths run late, hold stale closures, and are the least
   covered part of any file — read the failure branch before adopting a one-line prescription.
-- **`git push` and `gh` need the sandbox disabled, and the errors lie about why.** Every agent this
-  session lost a round trip to this. `~/.ssh` is on the sandbox read-deny list, so a push over SSH
-  fails with `This proxy requires authentication, and this client did not offer an authentication
-  method` — which reads as a credentials problem and invites the wrong fix. It is a network
-  restriction. `gh` fails differently, with
-  `tls: failed to verify certificate: x509: OSStatus -26276`. Retry both outside the sandbox; the
-  user can allowlist it from an interactive terminal with `/sandbox`. Do not work around the TLS
-  failure by other means — if `gh` cannot be trusted to verify a certificate, say so and hand the
-  step back.
 - **Work in the primary checkout.** PR #253 merged 2026-08-23, so the two-branches-at-once case is
   over: branch off `main` in `/Users/themancalledzac/Code/edens.zac` directly, no worktree. If a
   second concurrent branch ever becomes necessary again, the worktree traps are: `git worktree add`
@@ -191,21 +182,24 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | A7b | `enterSelect`/`enterAdd` inline copies | Low | −2 src | ✅ PR #262 |
 | A8 | Dead SCSS in live modules + `globals.css` tokens | Low | −327 | ✅ PR #263 |
 | A9 | Dead config | Minimal | −35 | ◐ PR #259; 3 follow-ups open |
-| B1 | Merge `manageUtils.test.ts` | Low | −209 net (est. −450) | ◐ PR #290 OPEN |
-| B2 | `rowCombination` characterization dedup | Low | −229 (est. −250) | ◐ PR #288 OPEN |
-| B3 | `metadataUtils.test.ts` dedup | Low | −125 (est. −200 to −300) | ◐ PR #287 OPEN |
-| B4 | `contentLayout.test.ts` merge | Low | −32 (est. −150 to −250) | ◐ PR #289 OPEN |
+| B1 | Merge `manageUtils.test.ts` | Low | −209 net (est. −450) | ✅ PR #290 |
+| B2 | `rowCombination` characterization dedup | Low | −229 (est. −250) | ✅ PR #288 |
+| B3 | `metadataUtils.test.ts` dedup | Low | −125 (est. −200 to −300) | ✅ PR #287 |
+| B4 | `contentLayout.test.ts` merge | Low | −32 (est. −150 to −250) | ✅ PR #289 |
 | B5 | `useCollectionEdit` fixture consolidation | Low | −350 | ☐ |
 | B6 | Fold in `CollectionContentRenderer` characterization | Low | −150 | ☐ |
-| B7 | `useClickOutside` spy tests | Low | −37 (est. −90) | ◐ PR #286 OPEN |
+| B7 | `useClickOutside` spy tests | Low | −37 (est. −90) | ✅ PR #286 |
 | B8 | Fill the required-coverage gaps | Low | +1,100–1,650 for the 4 open bullets (est. +600 for all 6) | ◐ 2 of 6 — PR #266 (clearCache), PR #267 (Escape) |
+| B9 | `useCollectionEdit.buffer.test.tsx` flakes under parallel load | Low | unknown until it reproduces | ☐ 0/13 locally — reproduce under other conditions, do not re-measure here |
 | C1 | Unsaved people/gallery-access wipe (HIGH) | Low | +73 −11 | ✅ PR #264 |
 | C2 | About portrait aspect ratio | Trivial | +99 −5 | ✅ PR #281 |
 | C3 | `SelectsContext.toggle` purity | Low | +121 −10 | ✅ PR #282 |
 | C4 | Cache tags that never connect | Low | +155 −62 | ✅ PR #279 |
 | C5 | Assorted LOW bugs | Low | +497 −101 (11 files) | ✅ PR #283 |
 | C6 | Password cover strip missing on the public card path | Low-medium | ±30 | ⛔ BACKEND-BLOCKED (split out of E1) |
+| C7 | `emailShareLink` POSTs to a route that does not exist | Low | ±40 src, +30 test | ☐ (FE built, BE missing — decide build vs hide) |
 | C9 | Dimensionless cover renders no header, missing cover does | Low | ±20 src, +40 test | ☐ (found by B4; needs a decision first) |
+| C8 | Unfollowing leaves the chip count stale | Low | +418 −22 (est. +40/+80) | ✅ PR #291 |
 | D1 | Gate `POST /api/revalidate` (HIGH) | Low | +175 | ✅ PR #265 |
 | D2 | Gate `clearCacheAction` | Low | +212 (est. +15) | ✅ PR #266 |
 | D3 | Security headers | Low-medium | +60 src, +0–40 test | ✅ PR #274 |
@@ -235,6 +229,9 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | G1 | Docs corrections | Trivial | ±50 | ☐ |
 | G2 | Inline-comment enforcement + migration (decided: keep the rule) | Low | ~neutral (relocation + splits) | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors |
 | G3 | `/user/selects` decision | — | — | ⛔ USER DECISION |
+| H1 | Merge `Following` into `Collections` on `/user` | Medium | −60 src, ±150 test churn (6 test files) | ☐ (do C8 first) |
+| H2a | `/user` rail copy pass + chip-style the Admin links | Low | −25 src, +60–120 test (new `AdminCard` suite) | ☐ |
+| H3 | `Send a message` into the rail as a plain button | Low | ±40 | ☐ direction decided; ride H2a |
 
 Groups A and B together are ~5,000 lines removed at near-zero regression risk.
 
@@ -297,179 +294,25 @@ rm -rf "app/(admin)/admin/layoutpreview"
 
 ## Group B — Test-suite reductions
 
-The suite is 51,446 lines against 37,211 source lines. Hygiene is otherwise excellent: zero skips, zero `.only`, zero snapshots, zero stale TODOs.
+The suite is 51,446 lines against 37,211 source lines. Hygiene is otherwise excellent: zero skips,
+zero `.only`, zero snapshots, zero stale TODOs.
 
-**Correction, 2026-08-24 — "no tautologies" was wrong, and so was every estimate in this group.**
-B2 found two cases in `rowCombination.characterization.test.ts` that hand-build a tree with
-`hPair`/`vStack` and then assert the tree they just built, with no production path under test. They
-were dropped as dead weight rather than as duplicates.
+**B1, B2, B3, B4 and B7 shipped 2026-08-24** (#290, #288, #287, #289, #286) — five in one sitting,
+run as parallel agents in separate worktrees. Write-ups:
+[group-b-tests.md](2026-summer-refactor/group-b-tests.md).
 
-Five items shipped in one sitting (B1, B2, B3, B4, B7 — PRs #290, #288, #287, #286, #289). Every
-estimate came in short, in the same direction, for the same reason: **they counted repeated text and
-assumed repetition meant redundancy.** −450 → −209, −250 → −229, −200/−300 → −125, −150/−250 → −32,
-−90 → −37. B4 is the extreme, off by roughly an order of magnitude, because its "duplicate"
-describes turned out complementary — so the work was merging, not deleting. Two items moved the
-opposite way from subtraction entirely: B3's test count went **up** (106 → 107) and B7 gained a
-behavioral test. Re-estimate B5, B6 and B8 as merges before sizing a sitting around them.
+**Correction — "no tautologies" was wrong.** B2 found two cases in
+`rowCombination.characterization.test.ts` that hand-build a tree with `hPair`/`vStack` and then
+assert the tree they just built, with no production path under test. Dropped as dead weight rather
+than as duplicates.
 
-### ☐ B1 · Merge `manageUtils.test.ts` — NEXT
-
-- [ ] `manageUtils.test.ts` is **1,967 lines** (the board said 1,930; C4 added the
-      `revalidateMetadataCache` suite). It tests `collectionEditUtils.ts` under a stale name at a
-      stale route-shaped path. Merge into
-      `tests/components/ContentCollection/edit/collectionEditUtils.test.ts`, which already exists —
-      this is a merge into a live file, not a rename.
-- [ ] Drop its duplicate `handleApiError` suite — claimed to be a strict subset of
-      `apiUtils.test.ts`'s. **That is a claim, and two of four items this session had a false one.**
-      `apiUtils.test.ts:3` and `manageUtils.test.ts:956` both open a `describe('handleApiError')`;
-      diff the cases before deleting either, and say in the MR which cases were genuinely duplicated.
-- [ ] Drop the position-permutation padding on one-line delegates.
-- [ ] **The path itself is the hidden win, and it is worth stating because it cost time three
-      separate times this session.** `tests/(admin)/collection/manage/[[...slug]]/manageUtils.test.ts`
-      contains `(`, `)`, `[` and `]`, all regex metacharacters. Jest treats a positional argument as
-      a regex against the path, so `jest 'tests/(admin)/.../manageUtils.test.ts'` matches **zero
-      files and exits 1** — it looks like the suite vanished. Every run has to use a bare substring
-      (`jest manageUtils`). Moving the file removes that trap for good.
-
-**Guardrail — leave the two revalidate suites alone.** `describe('revalidateCollectionCache')`
-(`:1038`) and `describe('revalidateMetadataCache')` (`:1162`) will look redundant next to
-`tests/lib/api/cacheTagDrift.test.ts`, which E11 (#280) just landed and which is entirely about
-those same tags. They are not redundant, and deleting them would be the most expensive mistake
-available in this MR:
-
-- The drift test **scans source text** and asserts the registered and revalidated tag *sets* agree.
-  It never renders a request. It cannot see a malformed POST body, a wrong header, or a tag posted
-  under the wrong key.
-- The `manageUtils` suites assert the actual `fetch('/api/revalidate', …)` payload, and one of them
-  is the pin on `collection-home` that made C4 safe to ship. C4's whole finding was that
-  `collection-home` looks dead to a literal grep; that pin is what turns a future "cleanup" red.
-
-Carry both suites into the merged file unchanged, and report what folding them into the drift test
-would actually cost. If the answer turns out to be "nothing, because X", that is a real finding —
-but it needs to be argued from what each test asserts, not from the two files being about tags.
-
-**Also out of scope, and deliberately.** Do not merge the six `useCollectionEdit.*.test.tsx` files
-while you are here — that is B5, and it carries its own fixture-consolidation risk. Do not move
-`collectionEditUtils.ts` itself; that is F3.
-
-**SHIPPED — PR #290 (open).** `manageUtils.test.ts` deleted; `collectionEditUtils.test.ts` 190 →
-1,948 lines. Suite 4,126 → 4,101, and the −25 is fully accounted for: 10 `handleApiError`, 13
-position-permutation, 2 exact duplicates. Real diff −209 net against an estimate of −450.
-
-- [x] **The `handleApiError` duplicate claim HELD** — the only one of five duplication claims this
-      session that did. Eight of ten cases are byte-identical twins in `apiUtils.test.ts`; the other
-      two differ only in a string literal and a property name and hit the same branch. Nothing
-      existed only in the manageUtils copy. Both suites independently reach 100% branch coverage of
-      `apiUtils.ts`.
-- [x] **The better finding: the suite was in the wrong file entirely.** `manageUtils.test.ts`
-      imported `handleApiError` from `@/app/utils/apiUtils`, not from `collectionEditUtils` — it was
-      testing another module's function. That is why it read as duplicated.
-- [x] Both revalidate suites carried over **byte-identical**, verified by diffing each block against
-      `git show HEAD:<old path>` after the merge, reorder, eslint and prettier.
-
-**The guardrail's report — folding them into the drift test loses four of six catches.** Six source
-mutations, each run against both files. CAUGHT means the suite failed.
-
-| Mutation | `cacheTagDrift` | revalidate suites |
-| --- | --- | --- |
-| 3 tags in source, only 1 POSTed | MISSED | CAUGHT |
-| Metadata tags under key `tag` not `tags` | CAUGHT | CAUGHT |
-| `POST` → `PUT` | MISSED | CAUGHT |
-| `Content-Type` dropped | MISSED | CAUGHT |
-| `path` dropped, tag correct | MISSED | CAUGHT |
-| `collection-home` deleted | CAUGHT | CAUGHT |
-
-Row one settles it. Leave all three tag literals in the source and change only which ones reach
-`fetch`: the drift test still reads three tags out of the text and passes, while the runtime suite
-fails on `toHaveBeenCalledTimes(3)`. **A source scan cannot distinguish a tag that is posted from a
-tag that is merely written down** — which is exactly why the `collection-home` pin has to be a live
-request assertion. Method, headers and path never appear in the drift test's regexes at all. The
-intersection is one row. Keep both, and stop re-asking.
-
-### ☐ B2 · `rowCombination` characterization dedup
-
-- [ ] `rowCombination.characterization.test.ts:481-714` — the "architecture types" half duplicates `rowCombination.test.ts`'s own describes. Both files kept a copy after an unfinished handoff. Keep the numbered scenario pins; they are still valuable while the layout engine is under active work.
-- [ ] `heroAcceptance.test.ts` is a strict subset of the unit file — delete it.
-
-**SHIPPED — PR #288 (open).** Characterization file 714 → 470, `rowCombination.heroAcceptance.test.ts`
-deleted (15 lines), unit file 1,734 → 1,764. Net −229. Suite 4,126 → 4,109: 20 cases removed, 3
-carried over.
-
-- [x] **Only 15 of the 18 "architecture types" cases were duplicated.** Three existed nowhere else
-      and were moved into `rowCombination.test.ts` rather than dropped: the `numericAR` pins (H at
-      1.7778, V at 0.5625) — the only `numericAR` assertion in the entire suite; the
-      `effectiveRating` V1★→1 case, which the unit file skipped while pinning V3★ and H3★, and which
-      mapped to 0 under the retired vertical penalty; and leaf order through `acToBoxTree(hChain(3))`,
-      which the unit file's own `hChain() of 3` could not assert because it reused ids (1, 1, 2).
-- [x] **Two more were tautological, not duplicated.** `builds H(leaf, V(leaf,leaf))` and
-      `builds H(leaf, V(H(a,b), leaf))` hand-construct a tree with `hPair`/`vStack` and then assert
-      the tree they just built. No production path under test. Dropped as dead weight.
-- [x] The `heroAcceptance` claim held. Its two cases differ from the `emergent full-width hero`
-      describe only in a density argument (1.5 vs 1.4), and `isSoloHero(item, rowWidth)`
-      ([rowCombination.ts:279](app/utils/rowCombination.ts:279)) takes no density parameter — so the
-      difference exercised nothing. Both unit-file counterparts also assert leaf type and item count.
-- [x] A line was added to the characterization file's docblock saying type-level coverage belongs in
-      `rowCombination.test.ts`, so the second copy does not grow back after the next handoff.
-
-### ☐ B3 · `metadataUtils.test.ts` dedup
-
-- [ ] 1,893 lines (was 2,461 — A3/PR #257 already removed the seven `getDisplay*` delegate suites).
-      Still duplicated: `buildAssociationDiff` via Tags (:332) and People (:442), and the
-      camera/lens/filmType triplet (:169/:207/:245). Keep one full suite per shared builder plus one
-      wiring test per field, or convert to `it.each`. Est −200 to −300, not −500.
-
-**SHIPPED — PR #287 (open).** 1,893 → 1,768 lines (−125). Tests in file 106 → **107**.
-
-- [x] **The "camera/lens/filmType triplet" was wrong, and acting on it would have deleted real
-      coverage.** There is no shared equipment builder. `buildCameraDiff` and `buildLensDiff` are two
-      separate copy-pasted source functions with identical bodies, so dropping either suite as a
-      duplicate would have removed all coverage of a live function. `buildFilmTypeDiff` is unrelated
-      logic entirely — string compare, `availableFilmTypes` lookup by name or `filmTypeName`, ISO
-      defaulting to 400, plus a fallback when the list is absent. It is a pair plus an unrelated
-      third; the filmType suite was left fully intact.
-- [x] **The test count went up.** Tags was a strict superset of People, which had no
-      "adding and removing simultaneously" case. Parameterizing with `describe.each` over the field
-      runs all six cases against both, so People gained coverage it never had. `describe.each` was
-      chosen over "one full suite plus a thin wiring test" precisely because it does not have to
-      claim camera and lens share an implementation when they do not.
-- [x] Every line ref was correct — `:332`, `:442`, `:169`, `:207`, `:245` each opened exactly the
-      describe named, and the 1,893 count was right. **First item this session whose refs needed no
-      correction**, which is worth recording next to the fact that its central claim was false: the
-      refs and the claims fail independently.
-- [x] `buildContentPeopleLocationsDiff` left alone. It calls `buildAssociationDiff('people', ...)`
-      so it reads as a third copy, but it covers the GIF/MP4 entry point and pins `locations`, which
-      routes through a different utility.
-- [x] Mutation-proved: flipping `buildLensDiff`'s `remove: true` to `false` fails exactly one test,
-      the lens variant. Rewiring `buildAssociationDiff('people', updateState.tags, ...)` fails nine.
-- [x] Type trap: `ContentTagModel` ([Metadata.ts](app/types/Metadata.ts)) has `slug` **required**
-      while `ContentPersonModel` has none, so a shared `{id, name}` fixture fails `tsc`. The helper
-      maps a slug in for tags only.
-
-### ☐ B4 · `contentLayout.test.ts` merge
-
-- [ ] Two merged generations left duplicate `createHeaderRow` and `processContentForDisplay` describes. Merge them, keeping the stronger assertions.
-
-**SHIPPED — PR #289 (open).** 1,587 → 1,555 lines (−32, against an estimate of −150 to −250 — off by
-roughly an order of magnitude). Tests in file 111 → 107.
-
-- [x] **The duplicate describes exist but do not overlap.** `createHeaderRow` at `:745` and `:983`,
-      `processContentForDisplay` at `:919` and `:1362`. The two `processContentForDisplay` copies
-      collide on only three tests: copy A is the sole home of `collectionData` header-row
-      integration, copy B the sole home of `mobileChunkSize`, `targetAR` and id-order preservation.
-      The two `createHeaderRow` copies collide only inside "Missing cover image cases" — `forceRail`,
-      date-metadata pins and mobile rows live only in A; siblings, parents and height-constrained
-      sizing only in B. **Collapsing on describe name alone would have dropped whichever copy lost.**
-      The estimate was wrong because the work was merging, not deleting.
-- [x] Four tests removed: empty input (byte-identical), mixed content types (kept exact id-set
-      equality over five types, dropped `length >= 3` over three), mobile positive widths (subsumed
-      by the Mobile vs desktop test), cover-with-no-dimensions (kept the direct construction, dropped
-      the fixture-mutating one). Both cover-less variants kept — `undefined` and `null` are distinct
-      falsy values — and the missing `rowType === 'header'` assertion was added to the copy lacking it.
-- [x] `processContentForDisplay — row packing is order-preserving (D2 characterization)` has a
-      distinct name, is not a duplicate, and was left alone. So was
-      `contentLayoutWidthCostBaseline.test.ts`.
-- [x] The copies never contradicted each other. What looked like a contradiction is real asymmetry in
-      the source, and both copies encoded it correctly — filed as **C9**.
+**Read this before sizing B5, B6 or B8.** Every estimate in this group came in short, in the same
+direction, for the same reason: it counted repeated *text* and assumed repetition meant redundancy.
+−450 → −209, −250 → −229, −200/−300 → −125, −150/−250 → −32, −90 → −37. B4 is the extreme, off by
+roughly an order of magnitude, because its "duplicate" describes turned out complementary — so the
+work was merging, not deleting. Two items moved the opposite way from subtraction entirely: B3's
+test count went **up** (106 → 107) and B7 gained a behavioural test. **Re-estimate the three
+remaining items as merges, not deletions.**
 
 ### ☐ B5 · `useCollectionEdit` fixture consolidation
 
@@ -490,29 +333,40 @@ roughly an order of magnitude). Tests in file 111 → 107.
 
 - [ ] `CollectionContentRenderer.characterization.test.tsx`'s stated purpose (pin behavior before the `getClickEligibility` extraction) is complete. Fold the ~6 unique wiring tests into the main file and delete the rest.
 
-### ☐ B7 · `useClickOutside` spy tests
+### ☐ B9 · `useCollectionEdit.buffer.test.tsx` flakes under parallel load
 
-- [ ] Drop the four listener-attachment-spy tests. They pin an implementation detail; the behavior tests already pin the outcomes.
+Filed 2026-08-23 out of B2's run. It is a real suite defect, not a B2 artifact — the file is
+unrelated to B2's, and it passes standalone and on a clean re-run.
 
-**SHIPPED — PR #286 (open).** 21 insertions, 58 deletions, net −37 (est. −90). File 21 → 18 tests;
-suite 4,126 → 4,123 (four spy tests out, one behavior test in).
+- [ ] `tests/components/ContentCollection/useCollectionEdit.buffer.test.tsx` fails intermittently
+      when the full suite runs in parallel, and passes when run alone.
 
-- [x] **Two of the four spy tests asserted on a listener this hook never registers.**
-      `useClickOutside` attaches only `mousedown`; Escape is delegated to
-      `useEscapeKey(onClose, isOpen)`, and `useEscapeKey.test.ts` already spies on it. The clearest
-      case on this board of tests reaching past their own subject.
-- [x] **One spy was load-bearing and was replaced, not deleted.** The `isOpen` true→false removal
-      spy had no behavioral equivalent for the single-state hook (`useClickOutsideMultiple` had one).
-      Replacement: mount open, dispatch an outside click, assert `onClose` fired once; rerender
-      closed, dispatch again, assert the count is still one. Firing once first is what proves the
-      listener was live and then removed, rather than never attached at all.
-- [x] **The delegation hid a real gap.** Both cleanup tests dispatched only `mousedown`, so a leaked
-      `keydown` listener was invisible. Mutation-proved: deleting cleanup from `useClickOutside`
-      turns 4 tests red, deleting it from `useEscapeKey` turns exactly 2 — and both are the ones the
-      Escape dispatch was added to. Nothing else in the file caught that leak. Both hooks restored;
-      `git diff` on `app/hooks/` is empty.
-- [x] The unmount spy deleted cleanly — the existing "should not call onClose after unmount" test
-      already covers it.
+**Measured 2026-08-23: 0 failures in 13 full-suite runs.** Default parallel scheduling, no
+`--runInBand`, 230 suites / 4126 tests / ~11.6s per run. Zero total failures and zero failures of the
+named file.
+
+**The instrument was validated in the same session, because a null result from an unproven detector
+is not a result.** The run loop classified pass/fail by grepping jest's stdout, which is the mistake
+that produced a false all-CAUGHT table elsewhere this session — a grep can match an unrelated line,
+or miss a crash that never prints a summary. Control: a deliberately failing test was injected into
+`tests/`, the full suite re-run, and both signals confirmed to fire — exit code 1 and the grep
+reporting FAIL, against `Tests: 1 failed, 4126 passed`. The control file was then removed and the
+tree confirmed clean. So the channel can speak, and 0/13 means what it says.
+
+**0/13 does not close this item, and that is deliberate.** An intermittent failure that hides for
+thirteen runs is worse than one that fails every time, not better — it will surface in CI on some
+unrelated PR and cost that author an afternoon. What 0/13 does establish is that it is rarer than
+~1-in-13 on this machine, which bounds the search: whoever picks it up should reproduce under
+different conditions rather than repeating this measurement, since repeating it is now known to be
+uninformative. Try a loaded machine, a cold cache, `--maxWorkers` variations, or CI itself, and
+record the conditions alongside the count. If it cannot be reproduced under any of those, close it
+as not-reproducible with the conditions listed — do not close it as fixed.
+
+Likely suspects once it does reproduce, given the file: this suite is the one C1 rewrote around
+re-seed effects and ref guards, and its fixtures were specifically noted as sharing array identities
+when built with `mockResolvedValue` instead of `mockImplementation`. Shared module state or a
+fixture object leaking across workers is the first place to look. Do not "fix" it by adding a
+retry or by moving it to `--runInBand`; both hide the defect rather than removing it.
 
 ### ☐ B8 · Fill the required-coverage gaps
 
@@ -545,7 +399,7 @@ The project rule requires tests for these and they have none.
 
 ---
 
-## Group C — Bug fixes — ✅ C1–C5 CLOSED; C6 and C9 open
+## Group C — Bug fixes — C1–C5 and C8 shipped; C6, C7 and C9 open
 
 C1–C5 merged (#264, #281, #282, #279, #283). Full write-ups:
 [group-c-bugs.md](2026-summer-refactor/group-c-bugs.md). C4's `collections-location-${slug}` report became E12.
@@ -573,26 +427,62 @@ is almost certainly WHY the strip only ever existed on `collectionToContentModel
       `coverImage` into `buildParallaxCard`, exactly as `collectionToContentModel` now does.
 - [ ] Do NOT open this as a frontend MR before the field exists. There is nothing to write.
 
+### ☐ C7 · `emailShareLink` POSTs to an endpoint that does not exist
+
+Found 2026-08-23 while researching the email strategy (H4). The "Send" button under Share on `/user`
+404s on every click.
+
+- [ ] [share.ts:176](app/lib/api/share.ts:176) `emailShareLink` POSTs to `${SHARE}/email`, i.e.
+      `/api/read/user/share/email` (base constant at [share.ts:16](app/lib/api/share.ts:16)).
+- [ ] The backend has no such route. `UserShareControllerProd`
+      (`controller/prod/UserShareControllerProd.java:39`) declares exactly four mappings:
+      `@GetMapping` `:50`, `@PostMapping("/rotate")` `:67`,
+      `@PutMapping("/collections/{collectionId}")` `:86`,
+      `@DeleteMapping("/collections/{collectionId}")` `:107`.
+- [ ] The UI is fully built and reachable: input and Send button at
+      [ShareCard.tsx:183-200](app/components/Personal/ShareCard.tsx:183), handler `handleEmail` at
+      `:112-121`. The 404 surfaces as the generic "Could not send that email" at `:121`, so it reads
+      as a transient failure rather than a missing feature.
+- [ ] The `ShareEmailResult { sent, reason }` contract at
+      [share.ts:60-63](app/lib/api/share.ts:60) was written against a backend that was never built.
+
+**Three claims checked, not assumed** — the C4 lesson is that a literal grep can report a live route
+as dead when the real one is assembled from a template, so all three were run before filing:
+(1) *Reachable in production?* Yes. The Send button renders in the `settings.exists && shareUrl` arm
+of `ShareCard.tsx` (from `:167`) with no env gate, no `isAdmin` gate and no feature flag; it enables
+as soon as the input is non-empty. (2) *A mapping built from a constant or template?* No. On backend
+`origin/main` every mapping annotation under `src/main/java/**/controller/**` is a plain string
+literal; the only four that are not bare `Mapping("…")` are `@PostMapping(value = "/literal",
+consumes = …)` forms, still literals. There is nowhere for a template-assembled route to hide.
+(3) *A sibling controller that could catch it?* There is a second share controller,
+`ShareControllerProd.java` at `@RequestMapping("/api/read/share")`, but it cannot match — the
+frontend posts to `/api/read/user/share/email`, and `/api/read/share` is not a prefix of that.
+Verified against backend `origin/main`, not a working branch.
+
+The fix is a decision, not a patch: build the handler — `EmailService` already has a working send
+path to reuse — or hide the input until it exists. **Do not "fix" it by swallowing the error**; that
+converts a visible 404 into a silent no-op, which is strictly worse. Whichever way it goes, it is
+paired with H4's decision 2, since both are about whether this app sends mail on a user's behalf.
+
 ### ☐ C9 · A dimensionless cover renders no header; a missing cover renders one
 
-Found by B4 (PR #289) while merging the duplicated `createHeaderRow` describes. Both test copies
-encoded this correctly, so it is behaviour-as-written rather than a regression — but the two paths
-disagree in a way that reads more like an oversight than a decision, and nothing on the board had
-recorded it.
+Found by B4 (#289) while merging the duplicated `createHeaderRow` describes. Both test copies
+encoded it correctly, so it is behaviour as written rather than a regression — but the two paths
+disagree in a way that reads more like an oversight than a decision, and nothing had recorded it.
 
 - [ ] `coverImage` absent (`undefined` **or** `null`) → `createTextOnlyHeaderRow`, which returns a
-      one-item TEXT row when metadata exists and `null` otherwise. A collection with a description
-      and no cover therefore renders a header.
+      one-item TEXT row when metadata exists. A collection with a description and no cover renders
+      a header.
 - [ ] `coverImage` present but missing `imageWidth`/`imageHeight` → `null` unconditionally, metadata
       ignored. The same collection with a broken cover renders nothing.
-- [ ] **The decision, which is the user's:** should a dimensionless cover fall back to the
-      text-only header, or is rendering nothing deliberate? Falling back is the smaller change and
-      makes the two paths agree. Rendering nothing may be intentional if a cover that failed to
-      measure signals a broken collection worth hiding — but nothing says so.
-- [ ] Whichever way it goes, pin it. Neither path currently has a test asserting the *contrast*, so
-      a future refactor can flip one without failing anything.
+- [ ] **The decision is the user's:** should a dimensionless cover fall back to the text-only
+      header, or is rendering nothing deliberate? Falling back is the smaller change and makes the
+      paths agree. Rendering nothing may be intentional if a cover that failed to measure signals a
+      broken collection worth hiding — but nothing says so.
+- [ ] Whichever way it goes, pin it. Neither path has a test asserting the *contrast*, so a future
+      refactor can flip one without failing anything.
 
-Est ±20 src, +40 test. Low priority — it needs an answer before it needs code.
+Est ±20 src, +40 test. It needs an answer before it needs code.
 
 ---
 
@@ -784,7 +674,7 @@ Bigger, optional, sequenced last. Do each individually and verify on :3000.
 - [ ] Rename the lowercase `auth/` and `messages/` component directories.
 - [ ] Fold the `AdminPanel/` fossil (now only contexts) into `ListPanel/`.
 - [ ] Two `logger.warn('manageUtils', …)` labels in `collectionEditUtils.ts` still name a module
-      that no longer exists. Found by B1 (#290) and deliberately left there — renaming log labels
+      that no longer exists. Found by B1 (#290) and deliberately left — renaming log labels
       inside a test-only MR would have put a source change in a diff that had none.
 
 ### ⛔ F4 · `TaxonomyPage` ← `LocationPageClient` — USER DECISION
@@ -809,7 +699,7 @@ Bigger, optional, sequenced last. Do each individually and verify on :3000.
 
 ### ☐ G1 · Docs corrections
 
-The book is wrong in five places.
+The book is wrong in six places.
 
 - [ ] 0204 impersonation removal, 0211 passkey fixes, and 0246 admin-panel-collapse all say "pending" — all are merged.
 - [ ] 007 still lists "Dependabot's 7 frontend vulns" — PR #254 cleared all 27.
@@ -819,6 +709,16 @@ The book is wrong in five places.
       "stops before #243" this line used to claim): it is missing #236–#252 AND the cleanup wave's
       #254–#270 — ~27 merged PRs — which violates the book's own archive rule. All five other doc
       errors above re-verified still current 2026-08-22.
+- [ ] **The email claim is stale in two places, found 2026-08-23 researching H4.** This board's own
+      roadmap item 5 below, and `docs/009-backend-and-vision.md:29`, both say invite links are
+      clipboard-only until SES ships. Invite email is **built**: `sendInviteEmail`
+      (`EmailService.java:97`) wired through `sendInviteEmailAfterCommit`
+      (`AdminUserController.java:457`, called from `:133`, `:180`, `:228`) with an `afterCommit`
+      hook so a rollback cannot mail a dead link. The remaining blocker is operational —
+      `EMAIL_ENABLED` defaults false at `EmailService.java:46` — not code. Correct both. While
+      there, note `docs/superpowers/specs/2026-07-06-email-ses-production.md` is itself partly stale:
+      it asserts one public `EmailService` method (`:20`) and "invite email doesn't exist" (`:34`,
+      `:73`), but its own C5 recommendation (`:161`) has since shipped.
 
 ### ☐ G2 · Inline-comment rule — DECIDED 2026-08-22: keep and enforce
 
@@ -859,6 +759,186 @@ too; the inventory said otherwise. USER decides: does G2b's migration (and the `
 
 ---
 
+## Group H — Feature requests
+
+Filed 2026-08-23 from a user design review of `/user` plus an annotated screenshot. Six requests came
+in; **only the three below are cleanup-board work.** H1 and H2a are startable frontend MRs with known
+test coupling. H3 is a user decision gating a small MR — the same shape as F4 and G3, which is why it
+gets a row: a board row has to be self-sufficient, so anything with a row has its section here.
+
+The other three have no rows and no sections here, because a design review, an ops project and a
+vision item are not MRs and rows for them would make this board unscannable: **H2b** (a durable
+layout for labelled metadata sections), **H4** (one email strategy), **H5** (`MenuDropdown` design
+review) and **H6** (composable page components, vision only). Their detail is in
+[group-h-features.md](2026-summer-refactor/group-h-features.md), reached from "What to build next"
+below. A bug found while researching H4 is filed as **C7** in Group C.
+
+### ☐ H1 · Merge `Following` into `Collections` on `/user`; drop the `Following` chip
+
+`Collections` should show owned, tagged and followed collections in one list. Unfollowing a
+collection that has no other association removes it from the page.
+
+**The premise checks out — there is no dedup anywhere.** It was established by reading both
+membership paths in the loader, not by comparing what renders on screen. That distinction matters
+enough to record: two sets that look identical in the browser prove nothing about whether the same
+source decides them, and a same-session review of five "duplicate" claims elsewhere on this board
+found only one that survived intact. This one is a source-level finding, so it does not need redoing.
+
+`Collections` membership is decided at
+[userSpaceData.ts:72](app/components/UserSpace/userSpaceData.ts:72) (`isContentCollection` over the
+`getUserPage()` content blocks, split at [:65](app/components/UserSpace/userSpaceData.ts:65)).
+`Following` membership is decided at
+[userSpaceData.ts:278](app/components/UserSpace/userSpaceData.ts:278), by intersecting the followed
+id list against a separate catalog read. The two sets never see each other. Own a collection and
+follow it, and it renders in both tabs today.
+
+Where the data comes from:
+
+- Followed ids: `listFollowedCollectionIdsServer()` —
+  [personal.ts:174](app/lib/api/personal.ts:174), hitting `GET /api/proxy/api/read/user/follows`
+  ([personal.ts:16](app/lib/api/personal.ts:16)). Type `FollowedCollectionIds = number[]` at
+  [Personal.ts:14](app/types/Personal.ts:14). Called at `userSpaceData.ts:248`.
+- Followed tiles: `getAllCollections(0, 500)` at `userSpaceData.ts:256`, filtered at `:278`, wrapped
+  by `toCollectionBlocks` at [:87](app/components/UserSpace/userSpaceData.ts:87).
+- Chip labels are data, not literals: `Collections` `userSpaceData.ts:302`, `Images` `:308`,
+  `Saved` `:314`, `Following` `:321`. Mapped to `ToolbarSection[]` at
+  [UserSpace.tsx:108](app/components/UserSpace/UserSpace.tsx:108), rendered at
+  [FilterToolbar.tsx:219](app/components/ui/FilterToolbar/FilterToolbar.tsx:219).
+
+Work:
+
+- [ ] Union the two sets in `userSpaceData.ts`, deduping by collection id. `collectionBlocks` (`:72`)
+      and `followedBlocks` (`:278`) are built from different sources, so the union must key on `id`,
+      never on object identity.
+- [ ] Delete the `following` section descriptor (`userSpaceData.ts:321`) and its key from the tab
+      union.
+- [ ] Decide whether the merged count includes follows (12 + 2 = 14) and whether a
+      followed-but-not-owned tile carries a visual marker. The request does not say, and the answer
+      changes the tile component, not just the loader.
+
+**Two things this item must fix rather than inherit.**
+
+1. **The catalog read is deferred, and merging un-defers it.** `getAllCollections(0, 500)` runs only
+   when `activeKey === 'following'` (`userSpaceData.ts:256`). Merging makes a 500-row catalog fetch
+   run on every `/user` load. That deferral is deliberately pinned by
+   `tests/components/UserSpace/userSpaceData.selfCatalog.test.ts:77`, so that test goes red and the
+   cost has to be accepted on purpose rather than discovered later. The cheaper path is to have the
+   backend return followed collections on the user-page read instead of intersecting client-side —
+   price that before writing the union.
+2. **The stale-count bug is C8, and C8 ships FIRST.** Unfollowing does not update the chip count on
+   `main` — mechanism and evidence are in C8, described there and not repeated here. Sequencing
+   matters and runs the opposite way to the obvious reading: H1 deletes the `Following` chip, so
+   doing H1 first does not remove the staleness, it relocates it onto the merged `Collections`
+   count. H1 also needs the tile itself to vanish on unfollow, which is strictly harder than fixing
+   a number, because tiles are server-built and the provider has no way to express a removal today.
+   C8 builds the client-delta plumbing that H1 then needs anyway. Do C8, then H1.
+
+**Claim to verify before shipping, not while shipping.** This item assumes a stale `?tab=following`
+bookmark degrades to `collections` rather than erroring, via the `resolveTabKey` fallback at
+[userSpaceData.ts:59](app/components/UserSpace/userSpaceData.ts:59) / `:31`. That is a claim about
+code that is about to change. Confirm the fallback still fires once the key is removed from the
+union — the board's record is that unverified item claims have been wrong twice.
+
+Tests that will need updating: `tests/app/user/page.test.tsx:238-262` (chip labels, counts, hrefs),
+`tests/components/UserSpace/UserSpace.sectionSwitch.test.tsx`,
+`tests/components/UserSpace/userSpaceData.test.ts:73,93,166,237`,
+`tests/components/UserSpace/userSpaceData.selfCatalog.test.ts:77`,
+`tests/components/ui/FilterToolbar.test.tsx:507`. Six files touch this chip row — distrust the
+estimate accordingly.
+
+### ☐ H2a · `/user` rail copy pass + chip-style the Admin links
+
+Copy and control changes across the three rail cards, from the annotated screenshot. Startable today
+and the smallest of the six.
+
+- [ ] Delete the passkey hint sentence at
+      [AccountCard.tsx:69](app/components/Personal/AccountCard.tsx:69) ("Sign in faster with Face /
+      Touch ID on this device."). Keep the `Add Face / Touch ID` button
+      ([:70-78](app/components/Personal/AccountCard.tsx:70), label `:77`) and move it onto the email
+      row ([:67](app/components/Personal/AccountCard.tsx:67)), right-aligned.
+- [ ] Delete the Share description sentence at
+      [ShareCard.tsx:155-158](app/components/Personal/ShareCard.tsx:155).
+- [ ] Rename `Create a link` → `Link to share` at
+      [ShareCard.tsx:160](app/components/Personal/ShareCard.tsx:160).
+- [ ] Delete the Admin description sentence at
+      [AdminCard.tsx:36](app/components/Personal/AdminCard.tsx:36).
+- [ ] Restyle the four Admin links to the filter-chip look. They render `NavLink` today
+      ([AdminCard.tsx:41](app/components/Personal/AdminCard.tsx:41), destinations as data at
+      [:16-21](app/components/Personal/AdminCard.tsx:16)), whose only styling is
+      [NavLink.module.scss:1](app/components/ui/NavLink/NavLink.module.scss:1) — colour inherit,
+      hover underline, no border, no padding, no background.
+
+**The real scope is the chip swap, not the copy edits.** `FilterChip`'s link variant
+([FilterChip.tsx:86-99](app/components/ui/FilterChip/FilterChip.tsx:86)) already renders exactly what
+`AdminCard` needs: a `next/link` anchor with chip styling and an optional count. So `AdminCard.tsx:41`
+can swap `NavLink` → `FilterChip href=…` without touching the chip component. Styling lives at
+[FilterChip.module.scss:1](app/components/ui/FilterChip/FilterChip.module.scss:1) (`.chip`), with
+`.active` `:62`, `.count` `:92`, `.trailing` `:100`.
+
+Two traps:
+
+1. `FilterChip` passes `scroll={false}`
+   ([FilterChip.tsx:93](app/components/ui/FilterChip/FilterChip.tsx:93)). That is right for `?tab=`
+   navigation and wrong for a cross-page jump to `/admin` — it will land the user mid-page. Add a
+   prop before the swap, not after.
+2. `FilterChip` is imported by exactly one file today
+   ([FilterToolbar.tsx:5](app/components/ui/FilterToolbar/FilterToolbar.tsx:5)). A second consumer
+   promotes it to a shared primitive. Budget for that and for churn in
+   `tests/components/ui/FilterChip.test.tsx:64-96`.
+
+**There is no `AdminCard` test file** — confirmed absent, not merely unfound. H2a adds one. Note the
+prove-it-fails rule needs care here: a brand-new test file has never been seen to fail, so write each
+assertion against current behaviour first, watch it pass, then change the source and watch it fail
+the other way. A new test written only against the new copy proves nothing.
+
+### ☐ H3 · `Send a message` placement — DIRECTION DECIDED 2026-08-23
+
+**Decided: keep it, move it into the metadata stack, and make it an ordinary clear button — not a
+filled or "bright" box.** The user's words: it should be "a `Button` that is clear what it's
+intended purpose is, and is in a position according to its importance or likelihood of being used."
+So this is Option A of the original pair, with the loud treatment explicitly rejected. Do it in the
+same pass as H2a, which restyles the same rail.
+
+**The two entry points already share a form, so this is placement, not plumbing.**
+`SendMessageButton` ([SendMessageButton.tsx:27](app/components/SendMessageButton/SendMessageButton.tsx:27),
+43 lines) opens `ContactForm` at
+[:38](app/components/SendMessageButton/SendMessageButton.tsx:38). The menu's Contact disclosure opens
+the same component at [MenuDropdown.tsx:343](app/components/MenuDropdown/MenuDropdown.tsx:343). On
+`/user` the email field is hidden and autofilled from the principal via `lockedEmail={me?.email}`.
+
+Why it floats top-right in the screenshot: it is not in the rail. It renders in its own top bar at
+[user/page.tsx:66-68](app/user/page.tsx:66), while the three cards ride `railExtras` at
+[:76](app/user/page.tsx:76).
+
+Work:
+
+- [ ] Move `SendMessageButton` out of the top bar (`user/page.tsx:66-68`) and into `railExtras`
+      (`:76`) with the three cards.
+- [ ] **It is currently `variant="ghost" size="sm"`** — the quietest button the design system has,
+      which is the opposite of the brief. Promote it to a normal-weight variant. `outline` matches
+      what `ShareCard` and `AccountCard` already use for their actions, so the rail stays coherent
+      without anything shouting.
+- [ ] **Reconsider the label.** "Send a message" does not say who receives it, and this sits on the
+      viewer's *own* page, which makes the recipient genuinely ambiguous. Something naming the
+      destination reads clearer. Same string appears twice — button
+      [:28](app/components/SendMessageButton/SendMessageButton.tsx:28) and modal heading
+      [:34](app/components/SendMessageButton/SendMessageButton.tsx:34) — change both.
+
+**Open sub-question the brief surfaces but does not settle: ordering by importance depends on who is
+looking.** For a signed-in client or follower, messaging the owner is plausibly the most-used thing
+on the page, which argues for first position. For the site owner viewing their own `/user`, it is
+close to useless — the form would prefill their own address, and they read incoming messages through
+Admin → Comments instead, which argues for last or hidden. A single fixed position cannot be right
+for both. Decide: one fixed slot, or order the rail on `isAdmin`. Cheapest defensible default is
+first for non-admins, last for admins, since the rail is already assembled per-viewer.
+
+The docblock at
+[SendMessageButton.tsx:13-19](app/components/SendMessageButton/SendMessageButton.tsx:13) says the
+button "sits in the collection header's filter-bar area". That stops being true the moment it moves —
+update it in the same commit rather than leaving a stale description behind.
+
+---
+
 ## What to build next (product roadmap, not cleanup)
 
 Kept here because the cleanup sequencing has to make room for it.
@@ -869,12 +949,22 @@ Kept here because the cleanup sequencing has to make room for it.
 2. Backend `blocks_per_page` fix → restore ISR on the home page (002). Every visitor pays a live Spring fetch on the hottest page today.
 3. The now-unblocked 002 perf tail (items 2, 4, 5, 7, 9) — the "after the refactor wave" condition has been met.
 4. Client-gallery BCrypt (003) — plaintext gallery passwords, real users on the other end.
-5. Email/SES go-live (009) — invite links are clipboard-only until this ships; gates client onboarding.
+5. Email/SES go-live (009) — gates client onboarding. **Corrected 2026-08-23:** invite email is
+   built and wired; the blocker is operational (`EMAIL_ENABLED` defaults false), not code. See H4 and
+   the G1 bullet. Self-serve password reset does not exist at all and is the real gap.
 6. Passkey enrollment-state UI (009) — FE and BE fixes are merged; needs the backend credentials list/remove endpoint.
 
 **Admin and internal:** staging collection (008), `/user` ↔ `/admin/users/[id]` layout unification (008, unblocked by 0204), 004 stragglers (the Breadcrumb drop is A1, chip-click verification, A3 Spot-1), CloudFlare Phase 2 (007).
 
 **Debt:** E1 first (correctness risk), then the error-tracking decision (Sentry vs CloudWatch), F1, property-based layout tests, the 001 CSS sweeps, and G1.
+
+**Feature requests (filed 2026-08-23 from a `/user` design review):** four items that are not MRs —
+a durable layout for labelled metadata sections (H2b), one email strategy (H4), a `MenuDropdown`
+design review (H5), and composable page components as vision only (H6). Detail in
+[group-h-features.md](2026-summer-refactor/group-h-features.md). The three that *are* board work —
+H1, H2a, H3 — are in `## Group H` above. Sequencing note: **H5 waits on E8**, which already owns the
+mechanical half of that component, and **H2b overlaps the 008 `/user` ↔ `/admin/users/[id]` layout
+unification** — settle those two together or they will produce two competing designs.
 
 ## Session log
 
@@ -882,33 +972,53 @@ One line per `/next` run. The newest entry is here; older entries are in
 [session-log.md](2026-summer-refactor/session-log.md). Three consecutive entries ending in the same `Next:` means
 that item is being avoided, not scheduled — make it real work or drop it from the board.
 
-- 2026-08-24 (2) — **five Group B MRs in one sitting, run as parallel agents in separate
-  worktrees:** B1 (#290), B2 (#288), B3 (#287), B4 (#289), B7 (#286). All open, none merged — the
-  rows are ◐ not ✅ deliberately, because nothing here was verified merged. C8 (stale `Following`
-  chip count) is a sixth, in flight.
-  **Every estimate in Group B came in short, in the same direction, for the same reason:** they
-  counted repeated text and assumed repetition meant redundancy. B4 was off by roughly an order of
-  magnitude. Two items moved the opposite way from subtraction — B3's test count went up 106 → 107
-  and B7 gained a behavioural test.
-  **Four of five duplication claims were wrong; B1's was the one that held.** That ratio is now a
-  rule in "How to use this doc": a duplication claim is a lead worth an hour, not a finding.
-  B3's was the dangerous one — deleting the "duplicate" `buildLensDiff` suite would have removed all
-  coverage of a live source function. Refs, by contrast, were fine everywhere; B3's needed no
-  correction at all. **Claims and refs fail independently, and only refs had been drift-checked.**
-  B1 settled the E11 guardrail with a six-mutation table: folding the revalidate suites into the
-  drift test loses four of six catches, because a source scan cannot tell a tag that is posted from
-  a tag that is merely written down. Both suites stay.
-  Filed: **C9** (a dimensionless cover renders no header while a missing cover renders one, found by
-  B4) and an F3 bullet for the stale `logger.warn('manageUtils')` labels. `contentLayout.ts`'s
-  asymmetry needs a decision before it needs code.
-  **C8 shipped too (#291, +418 −22)** — the `Following` chip count no longer goes stale on unfollow.
-  A new client component `UserSpaceGrid.tsx` sits below `FollowsProvider` and applies a set-difference
-  delta to the server count; `UserSpace.tsx` stays a Server Component. Five of eight tests were
-  confirmed red first, and the failure DOM showed the bug exactly — button already reading "Follow"
-  while the count still read 2. **C8's board row and write-up live on `0286-user-feature-requests`**
-  (79a12ff), filed by a parallel session alongside C7 and B9; this branch deliberately adds neither,
-  to keep the two from colliding. Merge 0286 first.
-  Next: B5 — but see the guardrail on it.
+- 2026-08-24 (3) — **six MRs merged in one sitting**, run as parallel agents in separate worktrees:
+  B1 (#290), B2 (#288), B3 (#287), B4 (#289), B7 (#286) and C8 (#291). `main` at a5a7080. All six
+  write-ups moved out in this commit — B-items to `group-b-tests.md`, C8 into `group-c-bugs.md` —
+  which is **the archive rule's first test under load, and it held.** Six items closing at once is
+  exactly where the two previous consolidations failed.
+  **Every Group B estimate came in short, in the same direction**, because each counted repeated
+  text and assumed repetition meant redundancy. B4 was off by roughly an order of magnitude. Two
+  items moved the opposite way from subtraction: B3's test count went up 106 → 107, B7 gained a
+  behavioural test. B5, B6 and B8 should be re-estimated as merges.
+  **Four of five duplication claims were wrong; B1's held.** B3's was the dangerous one — deleting
+  the "duplicate" `buildLensDiff` suite would have removed all coverage of a live source function,
+  because `buildCameraDiff` and `buildLensDiff` are two separately copy-pasted functions, not one
+  shared builder. **Refs were fine everywhere**, and B3's needed no correction at all. Claims and
+  refs fail independently, and only refs had ever been drift-checked. Both lessons hoisted.
+  B1 settled E11's guardrail with a six-mutation table: folding the revalidate suites into the drift
+  test loses four of six catches, because a source scan cannot tell a tag that is posted from a tag
+  that is merely written down. Both suites stay; stop re-asking.
+  Filed **C9** (a dimensionless cover renders no header while a missing cover renders one) and an F3
+  bullet for the stale `logger.warn('manageUtils')` labels. The archive rule was **amended**: the
+  invariant is reachability, not status.
+  Next: B5.
+- 2026-08-23 — **Not a `/next` run: six feature requests filed from a user design review of `/user`.**
+  Filed as Group H. Only H1, H2a and H3 got board rows; H2b/H4/H5/H6 are a design review, an ops
+  project, a second design review and a vision item, so they went to
+  [group-h-features.md](2026-summer-refactor/group-h-features.md) with a pointer under "What to
+  build next". **The rule that decided the split is reachability, not status** — F4 and G3 are ⛔ and
+  still carry rows because each has a self-sufficient live section, so H3 (a decision gating a ±40
+  MR) got the same treatment and the four non-MRs did not.
+  Three parallel explorers gathered the refs; **three of their claims were checked and two were
+  wrong in a way that changed the item.** H5's "should we have this menu on desktop" assumed no
+  desktop treatment exists — there are eight `@media (width >= 768px)` blocks and a JS click-outside
+  branch at `BREAKPOINTS.mobile`. H5's "make About add a component to the page" assumed About is a
+  route — there is no `app/about/`; it is already an inline `Disclosure`, and `About.tsx` is 33
+  lines, props-free and droppable anywhere. Both sub-questions changed meaning once checked.
+  Filed **C7** from the H4 research: `emailShareLink` (`share.ts:176`) POSTs to
+  `/api/read/user/share/email`, which no controller declares. The peer session pushed back on a
+  zero-hit grep as the C4 failure mode, correctly — so it was re-verified three ways before filing
+  (button reachable in prod with no gate; every controller mapping on backend `origin/main` is a
+  string literal, so no template route can hide; the sibling `ShareControllerProd` at
+  `/api/read/share` cannot match on prefix). All three are recorded in the item.
+  Also corrected the roadmap's "invite links are clipboard-only" claim — invite email is built and
+  wired, the blocker is operational — as a sixth G1 bullet.
+  Coordination: this ran alongside the #285 archive split in the SAME checkout. Nothing was written
+  until #285 merged and a branch was cut off `main`. A first draft was misfiled into the archive
+  directory and deleted once the shipped-only rule was checked at lines 120-123.
+  Next: H2a — smallest of the three and startable today, but H3 is a one-line user decision that
+  gates it, so ask first.
 - 2026-08-24 — **Group C is closed except the backend-blocked C6.** Shipped C4 (#279, +155 −62),
   E11 (#280, +277 −28), C2 (#281, +99 −5), C3 (#282, +121 −10), C5 (#283, +497 −101); all five
   merged, `main` at 2e7a184. Estimates on the board rows were replaced with measured diffs.
