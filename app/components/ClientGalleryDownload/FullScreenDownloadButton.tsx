@@ -1,8 +1,10 @@
 'use client';
 
-import { type MouseEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type MouseEvent, useCallback, useEffect, useState } from 'react';
 
+import DownloadIcon from '@/app/components/Icons/DownloadIcon';
 import { IconButton } from '@/app/components/ui/IconButton/IconButton';
+import { useDownloadNavigation } from '@/app/hooks/useDownloadNavigation';
 import { type DownloadFormat, downloadImageUrl } from '@/app/lib/api/downloads';
 
 import styles from './FullScreenDownloadButton.module.scss';
@@ -25,19 +27,14 @@ interface FullScreenDownloadButtonProps {
  */
 export default function FullScreenDownloadButton({ imageId }: FullScreenDownloadButtonProps) {
   const [expanded, setExpanded] = useState(false);
-  const [downloading, setDownloading] = useState<DownloadFormat | null>(null);
-  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Collapse the picker whenever the viewer moves to a different image.
   useEffect(() => {
     setExpanded(false);
   }, [imageId]);
 
-  useEffect(() => {
-    return () => {
-      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
-    };
-  }, []);
+  const collapsePicker = useCallback(() => setExpanded(false), []);
+  const { preparing: downloading, startDownload } = useDownloadNavigation(collapsePicker);
 
   const handleToggle = useCallback((e: MouseEvent) => {
     e.stopPropagation();
@@ -47,17 +44,9 @@ export default function FullScreenDownloadButton({ imageId }: FullScreenDownload
   const handleFormatDownload = useCallback(
     (e: MouseEvent, format: DownloadFormat) => {
       e.stopPropagation();
-      setDownloading(format);
-      // The response is `Content-Disposition: attachment`, so this downloads without navigating away.
-      window.location.href = downloadImageUrl(imageId, format);
-      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
-      resetTimerRef.current = setTimeout(() => {
-        setDownloading(null);
-        setExpanded(false);
-        resetTimerRef.current = null;
-      }, 4000);
+      startDownload(downloadImageUrl(imageId, format), format);
     },
-    [imageId]
+    [imageId, startDownload]
   );
 
   return (
@@ -92,20 +81,7 @@ export default function FullScreenDownloadButton({ imageId }: FullScreenDownload
           className={styles.downloadToggle}
           aria-label="Download image"
         >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={styles.icon}
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
+          <DownloadIcon className={styles.icon} />
         </IconButton>
       )}
     </div>

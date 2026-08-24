@@ -4,9 +4,9 @@ import { notFound, redirect } from 'next/navigation';
 import { skipTargetProps } from '@/app/components/ui/SkipLink/SkipLink';
 import { meServer } from '@/app/lib/api/auth';
 import { getInvitePreview } from '@/app/lib/api/users';
+import styles from '@/app/styles/auth-card.module.scss';
 
 import InviteForm from './InviteForm';
-import styles from './page.module.scss';
 
 export const dynamic = 'force-dynamic';
 
