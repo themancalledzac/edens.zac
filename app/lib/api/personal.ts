@@ -6,7 +6,7 @@
  * Distinct from Selects (per-gallery favorites): saves are cross-collection bookmarks available to
  * ANY logged-in user, and follows track whole collections. Both backend reads return `number[]`.
  */
-import { ApiError, fetchReadApi } from '@/app/lib/api/core';
+import { ApiError, fetchReadApi, throwFromResponse } from '@/app/lib/api/core';
 import { type ContentImageModel } from '@/app/types/Content';
 import { type FailSoftRead } from '@/app/types/FailSoftRead';
 import { type FollowedCollectionIds, type SavedImageIds } from '@/app/types/Personal';
@@ -14,24 +14,6 @@ import { logger } from '@/app/utils/logger';
 
 const SAVES = '/api/proxy/api/read/user/saves';
 const FOLLOWS = '/api/proxy/api/read/user/follows';
-
-/** Throw an `ApiError` carrying the backend message (or a status fallback) for a non-OK response. */
-async function throwFromResponse(res: Response): Promise<never> {
-  let detail: unknown;
-  const contentType = res.headers.get('content-type') || '';
-  try {
-    detail = contentType.includes('application/json') ? await res.json() : await res.text();
-  } catch {
-    detail = '';
-  }
-  const message =
-    typeof detail === 'string' && detail
-      ? detail
-      : detail && typeof detail === 'object'
-        ? ((detail as { message?: string }).message ?? JSON.stringify(detail))
-        : `API error: ${res.status}`;
-  throw new ApiError(message, res.status);
-}
 
 /** Bookmark an image for the current user. Resolves on 201. */
 export async function addSave(imageId: number): Promise<void> {

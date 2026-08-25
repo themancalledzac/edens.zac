@@ -9,29 +9,11 @@
  *   the same shape as `personal.ts` — these are POST/PUT/DELETE on the READ channel because the
  *   backend scopes them to the session principal rather than to the admin surface.
  */
-import { ApiError, fetchReadApi } from '@/app/lib/api/core';
+import { ApiError, fetchReadApi, throwFromResponse } from '@/app/lib/api/core';
 import { type CollectionModel } from '@/app/types/Collection';
 import { logger } from '@/app/utils/logger';
 
 const SHARE = '/api/proxy/api/read/user/share';
-
-/** Throw an `ApiError` carrying the backend message (or a status fallback) for a non-OK response. */
-async function throwFromResponse(res: Response): Promise<never> {
-  let detail: unknown;
-  const contentType = res.headers.get('content-type') || '';
-  try {
-    detail = contentType.includes('application/json') ? await res.json() : await res.text();
-  } catch {
-    detail = '';
-  }
-  const message =
-    typeof detail === 'string' && detail
-      ? detail
-      : detail && typeof detail === 'object'
-        ? ((detail as { message?: string }).message ?? JSON.stringify(detail))
-        : `API error: ${res.status}`;
-  throw new ApiError(message, res.status);
-}
 
 /** What a recipient sees: whose work it is, plus the page itself. */
 export interface ShareView {

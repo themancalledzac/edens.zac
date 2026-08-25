@@ -11,7 +11,7 @@
 
 import { cache } from 'react';
 
-import { ApiError, getApiBaseUrl, getServerCookieHeader } from '@/app/lib/api/core';
+import { getApiBaseUrl, getServerCookieHeader, throwFromResponse } from '@/app/lib/api/core';
 import { type MeResponse } from '@/app/types/Auth';
 
 /**
@@ -31,27 +31,6 @@ function dispatchAuthChanged(): void {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
   }
-}
-
-/**
- * Throw an `ApiError` carrying the backend message (or a status fallback) for a
- * non-OK response. Mirrors the error extraction in `validateClientGalleryAccess`.
- */
-async function throwFromResponse(res: Response): Promise<never> {
-  let detail: unknown;
-  const contentType = res.headers.get('content-type') || '';
-  try {
-    detail = contentType.includes('application/json') ? await res.json() : await res.text();
-  } catch {
-    detail = '';
-  }
-  const message =
-    typeof detail === 'string' && detail
-      ? detail
-      : detail && typeof detail === 'object'
-        ? ((detail as { message?: string }).message ?? JSON.stringify(detail))
-        : `API error: ${res.status}`;
-  throw new ApiError(message, res.status);
 }
 
 /**

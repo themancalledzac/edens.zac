@@ -329,6 +329,22 @@ describe('validateClientGalleryAccess', () => {
     });
   });
 
+  it('replaces the backend message with "Gallery not found" on 404', async () => {
+    // This is where validateClientGalleryAccess deliberately diverges from the shared
+    // throwFromResponse in core.ts: it overrides the backend's own message on 404 only. The test
+    // above pins the status but not the copy, so folding this handler into the shared helper
+    // would have silently swapped this sentence with a green suite. E2 leaves the fold undecided;
+    // this makes the difference fail loudly if anyone takes it.
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 404,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockResolvedValue({ message: 'Not found' }),
+    });
+
+    await expect(validateClientGalleryAccess('missing', 'pw')).rejects.toThrow('Gallery not found');
+  });
+
   it('throws ApiError with the response status on 403', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,

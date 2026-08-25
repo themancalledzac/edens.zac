@@ -99,6 +99,39 @@ export class ApiError extends Error {
 }
 
 /**
+ * Throw an `ApiError` carrying the backend's own message for a non-OK response.
+ *
+ * Prefers a plain-text body, then a JSON `message` field, then the whole JSON body, and falls back
+ * to the status only when the body yields nothing usable. A body that fails to parse is treated as
+ * absent rather than propagated, so a malformed error response still surfaces as an `ApiError`
+ * carrying the real status.
+ *
+ * The status matters as much as the message: callers branch on `ApiError.status` rather than on
+ * copy — `ShareCard`'s `mapError` turns 401/403/409 into three different sentences — so this must
+ * always construct with `res.status`.
+ *
+ * Was duplicated byte-for-byte in `auth.ts`, `personal.ts`, `share.ts` and `selects.ts` before E2.
+ * The near-identical inline handlers in `collections.ts` and `users.ts` are deliberately NOT folded
+ * in: each differs in behaviour, and those differences are unpinned. See the E2 board entry.
+ */
+export async function throwFromResponse(res: Response): Promise<never> {
+  let detail: unknown;
+  const contentType = res.headers.get('content-type') || '';
+  try {
+    detail = contentType.includes('application/json') ? await res.json() : await res.text();
+  } catch {
+    detail = '';
+  }
+  const message =
+    typeof detail === 'string' && detail
+      ? detail
+      : detail && typeof detail === 'object'
+        ? ((detail as { message?: string }).message ?? JSON.stringify(detail))
+        : `API error: ${res.status}`;
+  throw new ApiError(message, res.status);
+}
+
+/**
  * Unified error handling for API requests
  * Handles both Response errors and catch block errors
  *

@@ -13,6 +13,7 @@ import {
   fetchEditPatchJsonApi,
   fetchEditPostJsonApi,
   getServerCookieHeader,
+  throwFromResponse,
 } from '@/app/lib/api/core';
 import { logger } from '@/app/utils/logger';
 
@@ -546,5 +547,61 @@ describe('admin fetchers forward the server session cookie (SSR)', () => {
 
     const [, init] = (global.fetch as jest.Mock).mock.calls[0];
     expect(init.headers).not.toHaveProperty('Cookie');
+  });
+});
+
+/**
+ * `throwFromResponse` moved into core.ts in E2, having been byte-identical in auth.ts,
+ * personal.ts, share.ts and selects.ts. It had no direct tests in any of them — these pin the
+ * contract now that one copy serves four modules, and make the two deliberate divergences in
+ * collections.ts and users.ts visible as differences rather than drift.
+ */
+describe('throwFromResponse', () => {
+  const respond = (status: number, contentType: string, payload: unknown) =>
+    ({
+      status,
+      headers: new Headers({ 'content-type': contentType }),
+      json: jest.fn().mockResolvedValue(payload),
+      text: jest.fn().mockResolvedValue(payload),
+    }) as unknown as Response;
+
+  it('carries the response status onto the ApiError', async () => {
+    // Callers branch on status, not copy — ShareCard's mapError turns 401/403/409 into three
+    // different sentences, so a dropped status silently collapses them into one.
+    await expect(throwFromResponse(respond(409, 'application/json', {}))).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 409,
+    });
+  });
+
+  it('prefers a plain-text body verbatim', async () => {
+    await expect(throwFromResponse(respond(400, 'text/plain', 'plain words'))).rejects.toThrow(
+      'plain words'
+    );
+  });
+
+  it("uses a JSON body's message field", async () => {
+    await expect(
+      throwFromResponse(respond(400, 'application/json', { message: 'from the backend' }))
+    ).rejects.toThrow('from the backend');
+  });
+
+  it('falls back to the whole JSON body when there is no message field', async () => {
+    // This is the branch users.ts deliberately does NOT share — see users.test.ts.
+    await expect(
+      throwFromResponse(respond(400, 'application/json', { error: 'no message key' }))
+    ).rejects.toThrow(JSON.stringify({ error: 'no message key' }));
+  });
+
+  it('falls back to the status when the body cannot be parsed', async () => {
+    const res = {
+      status: 500,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockRejectedValue(new Error('bad json')),
+    } as unknown as Response;
+
+    // A malformed error body must not replace the error; the status still has to survive.
+    await expect(throwFromResponse(res)).rejects.toThrow('API error: 500');
+    await expect(throwFromResponse(res)).rejects.toMatchObject({ status: 500 });
   });
 });

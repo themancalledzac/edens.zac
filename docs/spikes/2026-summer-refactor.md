@@ -341,7 +341,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | D8  | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist                    | Trivial     | +30 src, +52 test (est. ±5 src, +2 test)                                                         | ✅ PR #276                                                                                                                                |
 | D9  | Decide: redundant localhost literals in the Origin allowlist               | Trivial     | −5 src, +20 docblock, +7 test                                                                    | ✅ PR #277 — deleted                                                                                                                      |
 | E1  | Parallax-card builder consolidation                                        | Medium      | +98 src, +659 test (est. −120)                                                                   | ✅ PR #269                                                                                                                                |
-| E2  | `core.ts` fetch skeleton + `clientFetch`                                   | Medium      | ~0 net (−180 src, +150–200 test)                                                                 | ☐                                                                                                                                         |
+| E2  | `core.ts` fetch skeleton + `clientFetch`                                   | Medium      | ~0 net (−180 src, +150–200 test)                                                                 | ◐ bullet 1 shipped 2026-08-25 (`throwFromResponse` deduped); 2 of the "six copies" diverge, now characterized, fold left open             |
 | E3  | `collectionStorage.ts` generics                                            | Low         | **−12 src actual** (−46 code, +39 comment); +927 test via #296 (est. +50–150 net for both)       | ◐ generics ✅ PR #306; guards bullet ⛔ user call                                                                                         |
 | E4  | Entity-diff generics + one IMAGE guard                                     | Medium      | **+44 src / +177 test actual** for the twins half (est. −80)                                     | ✅ PR #311 — twins → `entityUtils.ts`; IMAGE-guard half STRUCK, guards are NOT duplicates                                                 |
 | E5  | Filter/sort/date duplication                                               | Low         | **0 src / +139 test actual** (est. −50 src)                                                      | ◐ PR #299; 4 bullets still open                                                                                                           |
@@ -815,12 +815,43 @@ E1 (#269) and E11 (#280) shipped — write-ups in
 [group-e-consolidations.md](2026-summer-refactor/group-e-consolidations.md). E11 matters to B1; B1 carries what it
 needs inline.
 
-### ☐ E2 · `core.ts` fetch skeleton + `clientFetch`
+### ◐ E2 · `core.ts` fetch skeleton + `clientFetch` — bullet 1 shipped 2026-08-25; three bullets open
 
-- [ ] `throwFromResponse` exists six times — `auth.ts`, `personal.ts`, `selects.ts`, `share.ts`, plus inline in `collections.ts` and `users.ts`. Keep one copy in `core.ts`.
-- [ ] The surrounding raw client-fetch wrapper repeats in ~14 functions; a single `clientFetch(url, init)` collapses another ~60 lines.
-- [ ] Three copies of the fetch skeleton inside `core.ts` — `fetchAdminGetApi` is `fetchReadApi` with a different channel constant. Fold `'read'` into `fetchBase`.
-- [ ] Drop the pointless `Content-Type` on GETs, the double-`throwApiError` try/catch shape, and the identity `ENDPOINT_TYPE_TO_CHANNEL` map.
+- [x] **`throwFromResponse` now lives once, in `core.ts`**, imported by `auth.ts`, `personal.ts`,
+      `share.ts` and `selects.ts`. Those four were confirmed byte-identical before the move — by
+      brace-matched extraction and diff, not by eye — so the fold is mechanical. `tests/lib/api`
+      passed unchanged (290 tests), and `auth.ts` dropped its now-unused `ApiError` import.
+- [ ] The surrounding raw client-fetch wrapper repeats in ~14 functions; a single
+      `clientFetch(url, init)` collapses another ~60 lines.
+- [ ] Three copies of the fetch skeleton inside `core.ts` — `fetchAdminGetApi` is `fetchReadApi`
+      with a different channel constant. Fold `'read'` into `fetchBase`.
+- [ ] Drop the pointless `Content-Type` on GETs, the double-`throwApiError` try/catch shape, and the
+      identity `ENDPOINT_TYPE_TO_CHANNEL` map.
+
+**"exists six times — keep one copy" was wrong about two of the six, and that is this item's main
+finding.** The inline handlers in `collections.ts` and `users.ts` are near-identical, not identical.
+Each carries a deliberate behaviour difference, and **neither difference was pinned by any test**:
+
+| Where                                                                                | How it differs from the shared helper                                                               | Pinned before?                                |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `validateClientGalleryAccess` ([collections.ts:188](app/lib/api/collections.ts:188)) | Overrides the backend's own message on 404 with `'Gallery not found'`                               | No — the 404 test asserted status only        |
+| `acceptInvite` ([users.ts:248](app/lib/api/users.ts:248))                            | Object body with no `message` → `API error: <status>`; the shared helper → `JSON.stringify(detail)` | No — every test supplied a `{ message }` body |
+
+So folding either one in would have changed behaviour **with a green suite** — the unguarded-rewrite
+hazard E3 recorded, arriving one item later in a different disguise. They are deliberately NOT
+folded here. Both are now characterized, and the guards were checked the way C7's were: mutating
+each handler to match `core.ts` fails exactly those two tests and nothing else.
+
+**The shared helper also had no direct tests anywhere, despite four callers.** `core.test.ts` now
+pins its contract — status carried onto the `ApiError`, text body verbatim, JSON `message`
+preferred, whole body stringified when there is no `message`, status fallback when the body will
+not parse. The stringify case is written as the explicit counterpart to `users.ts`'s divergence, so
+the two read as a difference rather than as drift.
+
+**Whether to unify the last two is a behaviour call, not a cleanup**, and it wants an owner: the
+404 override is user-facing copy on the gallery-password screen, and `acceptInvite`'s fallback
+decides what an invitee sees when the backend sends a bare error code. Left open deliberately
+rather than folded on the board's say-so.
 
 ### ◐ E3 · `collectionStorage.ts` generics — generics ✅ PR #306; guards bullet open
 
@@ -2719,6 +2750,35 @@ unification** — settle those two together or they will produce two competing d
 _Newest first. **Dates are local (America/Los_Angeles), not UTC** — earlier entries mixed the two,
 which is why a "08-23" entry can sit between two "08-24" ones. The ordering was verified correct
 against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates._
+
+- 2026-08-25 (6) — **started E2 and shipped bullet 1: `throwFromResponse` now lives once in
+  `core.ts`.** The four copies in `auth.ts`, `personal.ts`, `share.ts` and `selects.ts` were
+  confirmed byte-identical first — brace-matched extraction and diff, not eyeballing — so the fold
+  is mechanical and `tests/lib/api` passed unchanged at 290.
+
+  **The bullet's own wording was wrong about two of the six, and that is the finding.** "Exists six
+  times ... keep one copy" counts the inline handlers in `collections.ts` and `users.ts` as copies.
+  They are not: `validateClientGalleryAccess` overrides the backend's message on 404 with
+  `'Gallery not found'`, and `acceptInvite` falls back to `API error: <status>` where the shared
+  helper stringifies the whole body. **Neither divergence was pinned** — the 404 test asserted
+  status only, and every `acceptInvite` test supplied a `{ message }` object, so the divergent
+  branch was never reached. Folding either would have changed user-facing copy with a green suite.
+  That is E3's unguarded-rewrite hazard again, one item later, wearing a different disguise: there
+  the danger was jest's automocker aliasing two names, here it is a dedup bullet that counted
+  look-alikes as duplicates.
+
+  **Both are now characterized, and the guards were verified by mutation** — rewriting each handler
+  to match `core.ts` fails exactly those two tests and nothing else. The shared helper also had no
+  direct tests anywhere despite four callers; `core.test.ts` now pins its contract, with the
+  stringify case written as the explicit counterpart to `users.ts`'s fallback so the two read as a
+  difference rather than drift. **Whether to unify the last two is a behaviour call with an owner
+  attached, not a cleanup**, and it is left open rather than taken on the board's say-so.
+
+  **Generalizing, because this is the third premise repair in three sessions** (C6's backend claim,
+  C7's "zero coverage", now E2's "six times"): every one was a counting or search claim nobody
+  re-ran. The cheap defence is already proven — diff the things you are about to call identical,
+  and mutate the code to confirm the test that supposedly guards it actually fails. Next: E2's
+  remaining three bullets, `clientFetch` first.
 
 - 2026-08-25 (5) — **closed C7. Zero source lines, as forecast: two tests, and two corrections to
   the board's own C7 entry.** Added the missing `mapError` branch tests — `ApiError(409)` through
