@@ -43,19 +43,14 @@ interface ContentCollectionPageProps {
  * converter carry none. The `art-gallery` -> "Gallery" badge therefore does not render
  * here; the isBlog -> "Story" badge still does.
  *
- * The cover strip stays HERE rather than moving into `buildParallaxCard`: it is a display
- * decision about locked galleries, not a shape decision, and burying it in a generic builder is
- * how it gets bypassed later. Never render a coverImage for a password-protected collection in
- * list views unless the caller explicitly opts in. Keyed on `isPasswordProtected` alone so a
- * payload missing the kind booleans still strips.
+ * A password-protected collection renders no coverImage in list views unless the caller opts in
+ * via `showProtectedCovers`. Keyed on `isPasswordProtected` alone so a payload missing the kind
+ * booleans still strips. The API returns the cover for a protected gallery either way, so this
+ * strip is the only thing keeping it off the card.
  *
- * This is NOT defense-in-depth against the API, whatever an earlier version of this comment
- * said. The backend deliberately returns the cover alongside the flag - `ContentModels.java`
- * calls `isPasswordProtected` "a render hint, not a gate", and the BE-H5 tests pin that the
- * cover is RETAINED for a protected gallery with or without a valid cookie. The strip is a
- * frontend product choice and is the only thing keeping a locked gallery's cover off a card.
- * `convertCollectionContentToParallax` carries the same strip for the `ContentCollectionModel`
- * path; the two are deliberately not shared - see that function's docblock.
+ * The strip stays HERE rather than in `buildParallaxCard`: it is a display decision about locked
+ * galleries, not a shape decision, and burying it in a generic builder is how it gets bypassed.
+ * `convertCollectionContentToParallax` carries the same strip for `ContentCollectionModel`.
  *
  * Visibility maps collection-level -> content-block: LISTED (or unknown/undefined) renders;
  * UNLISTED/HIDDEN hides from list views. That mapping is this call site's own, which is why

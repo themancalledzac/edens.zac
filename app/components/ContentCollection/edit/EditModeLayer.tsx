@@ -172,8 +172,6 @@ export default function EditModeLayer({
   }, [allContent, allImages, criteria, hasActiveFilters]);
 
   const contentBlocks = useMemo(() => {
-    // filterVisible=false: admins must see hidden blocks to manage them.
-    // showProtectedCovers=true: and must recognise a protected child by its cover.
     const processed = processContentBlocks(
       filteredContent,
       false,
