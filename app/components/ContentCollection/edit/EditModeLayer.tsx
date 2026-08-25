@@ -173,11 +173,13 @@ export default function EditModeLayer({
 
   const contentBlocks = useMemo(() => {
     // filterVisible=false: admins must see hidden blocks to manage them.
+    // showProtectedCovers=true: and must recognise a protected child by its cover.
     const processed = processContentBlocks(
       filteredContent,
       false,
       liveCollection.id,
-      liveCollection.displayMode
+      liveCollection.displayMode,
+      true
     );
     return applySort(processed, filterState.dateSortDirection);
   }, [

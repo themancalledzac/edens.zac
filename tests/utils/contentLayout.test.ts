@@ -471,6 +471,79 @@ describe('convertCollectionContentToParallax — badge/kind carry-through', () =
   });
 });
 
+/**
+ * C6. The backend deliberately returns the cover alongside `isPasswordProtected` (it calls the
+ * flag "a render hint, not a gate", and its BE-H5 tests pin that the cover is RETAINED), so this
+ * strip is the only thing keeping a locked gallery's cover off a public card. These tests are the
+ * regression net for that: they were confirmed to fail against the unstripped converter.
+ */
+describe('convertCollectionContentToParallax — password-protected cover strip', () => {
+  it('strips the cover of a protected collection by default', () => {
+    const result = convertCollectionContentToParallax(
+      createCollectionContent(1, { isPasswordProtected: true })
+    );
+
+    expect(result.imageUrl).toBe('');
+    expect(result.imageWidth).toBe(1000);
+    expect(result.imageHeight).toBe(1000);
+  });
+
+  it('keeps the cover of a protected collection when the caller opts in', () => {
+    const result = convertCollectionContentToParallax(
+      createCollectionContent(1, { isPasswordProtected: true }),
+      true
+    );
+
+    expect(result.imageUrl).toBe('https://example.com/cover-1.jpg');
+    expect(result.imageWidth).toBe(1920);
+  });
+
+  it('keeps the cover when the collection is not protected', () => {
+    expect(
+      convertCollectionContentToParallax(createCollectionContent(1, { isPasswordProtected: false }))
+        .imageUrl
+    ).toBe('https://example.com/cover-1.jpg');
+  });
+
+  it('keeps the cover when the payload predates the backend field', () => {
+    expect(convertCollectionContentToParallax(createCollectionContent(1)).imageUrl).toBe(
+      'https://example.com/cover-1.jpg'
+    );
+  });
+
+  it('strips on a payload carrying the flag but no kind booleans', () => {
+    const result = convertCollectionContentToParallax(
+      createCollectionContent(1, {
+        isPasswordProtected: true,
+        isClient: undefined,
+        isBlog: undefined,
+      })
+    );
+
+    expect(result.imageUrl).toBe('');
+  });
+
+  it('strips through processContentBlocks on a public surface', () => {
+    const cards = processContentBlocks([
+      createCollectionContent(1, { isPasswordProtected: true }),
+    ]) as ContentParallaxImageModel[];
+
+    expect(cards[0]?.imageUrl).toBe('');
+  });
+
+  it('keeps the cover through processContentBlocks when an admin surface opts in', () => {
+    const cards = processContentBlocks(
+      [createCollectionContent(1, { isPasswordProtected: true })],
+      false,
+      undefined,
+      undefined,
+      true
+    ) as ContentParallaxImageModel[];
+
+    expect(cards[0]?.imageUrl).toBe('https://example.com/cover-1.jpg');
+  });
+});
+
 describe('extractCollectionDimensions (tested via convertCollectionContentToParallax)', () => {
   describe('dimension extraction', () => {
     it('should prioritize imageWidth/imageHeight over width/height in convertCollectionContentToParallax', () => {

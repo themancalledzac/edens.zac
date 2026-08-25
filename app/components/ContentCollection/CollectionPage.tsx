@@ -43,13 +43,19 @@ interface ContentCollectionPageProps {
  * converter carry none. The `art-gallery` -> "Gallery" badge therefore does not render
  * here; the isBlog -> "Story" badge still does.
  *
- * The cover strip stays HERE rather than moving into `buildParallaxCard`: it is an
- * access-control decision, not a shape decision, and burying it in a generic builder is how
- * it gets bypassed later. Defense-in-depth - never render a coverImage for a
- * password-protected collection in list views unless the caller explicitly opts in. Backend
- * BE-H5 strips it at the API, but a stale cache or future regression could re-expose it.
- * Keyed on `isPasswordProtected` alone so a payload missing the kind booleans (the exact
- * stale-cache case this strip exists for) still strips.
+ * The cover strip stays HERE rather than moving into `buildParallaxCard`: it is a display
+ * decision about locked galleries, not a shape decision, and burying it in a generic builder is
+ * how it gets bypassed later. Never render a coverImage for a password-protected collection in
+ * list views unless the caller explicitly opts in. Keyed on `isPasswordProtected` alone so a
+ * payload missing the kind booleans still strips.
+ *
+ * This is NOT defense-in-depth against the API, whatever an earlier version of this comment
+ * said. The backend deliberately returns the cover alongside the flag - `ContentModels.java`
+ * calls `isPasswordProtected` "a render hint, not a gate", and the BE-H5 tests pin that the
+ * cover is RETAINED for a protected gallery with or without a valid cookie. The strip is a
+ * frontend product choice and is the only thing keeping a locked gallery's cover off a card.
+ * `convertCollectionContentToParallax` carries the same strip for the `ContentCollectionModel`
+ * path; the two are deliberately not shared - see that function's docblock.
  *
  * Visibility maps collection-level -> content-block: LISTED (or unknown/undefined) renders;
  * UNLISTED/HIDDEN hides from list views. That mapping is this call site's own, which is why

@@ -560,7 +560,8 @@ export function useCollectionEdit({
             collection.content ?? [],
             false,
             collection.id,
-            collection.displayMode
+            collection.displayMode,
+            true
           )
         : EMPTY_CONTENT,
     [enabled, collection.content, collection.id, collection.displayMode]
