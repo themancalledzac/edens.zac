@@ -355,7 +355,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | G1  | Docs corrections                                                           | Trivial     | **+106 / −72 actual** (est. ±50)                                                                 | ✅ PR #303                                                                                    |
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)            | Low         | ~neutral (relocation + splits)                                                                   | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors                        |
 | G3  | `/user/selects` decision                                                   | —           | —                                                                                                | ⛔ USER DECISION                                                                              |
-| G4  | Docblock standard — length, structure, and no history                      | Low         | **−50 net actual across 19 blocks** (est. −300 to −500 across ~53); 0 src                        | ◐ intersection pass done — 19 long+historical blocks rewritten; remaining 45 historical open  |
+| G4  | Docblock standard — length, structure, and no history                      | Low         | **−50 net actual across 19 blocks** (est. −300 to −500 across ~53); 0 src                        | ◐ intersection pass done; ~48 short historical blocks open — and #327/#328 ADDED to the pile  |
 | H1  | Merge `Following` into `Collections` on `/user`                            | Medium      | −60 src, ±150 test churn (6 test files)                                                          | ☐ COLD — C8 shipped, so its stated blocker has cleared                                        |
 | H2a | `/user` rail copy pass + chip-style the Admin links                        | Low         | **+319 / −117 actual** (est. −25 src)                                                            | ✅ PR #302                                                                                    |
 | H3  | `Send a message` into the rail as a plain button                           | Low         | rode H2a                                                                                         | ✅ PR #302                                                                                    |
@@ -2342,6 +2342,28 @@ line-count smell never fires on them: "used to" ×20, "no longer" ×11, "previou
 describe DATA state, not code history, and a regex cannot tell those apart. That is the same reason
 the no-lint-rule decision below holds. Sweeping the remainder is a separate sitting and a separate
 MR; it is not blocking anything.
+
+**The sweep will not converge while new docblocks keep adding to the pile, and 2026-08-25 proved
+it.** C6 (#327) and F7 (#328) shipped fresh backward-looking docblocks — "was removed once
+measured", "whatever an earlier version of this comment said", plus board labels (`F6`, `F7`, `C6`)
+and backend PR numbers written into interfaces and test headers. The user caught it on read:
+_"comments like this that explain 'previous issues or previous state' should NOT EXIST"_ and
+_"F6 means NOTHING in this context ... we are only dealing with what the code IS and what it DOES"_.
+Removed in #329, which also took two pre-existing blocks with it (the `reorderImagesBeforeCollections`
+parenthetical in `processContentBlocks`, and `EditRendererProps`' previous-design paragraph).
+
+**Two additions to the standard, both from that read.** First, **board item labels are not allowed
+in code comments at all** — a reader at the call site has no board in front of them, and the name of
+the MR that changed a line does not help them use it. The existing standard bans history; it did not
+explicitly ban `F6`/`C6`/`PR #N`, and every one of those was written by a session that had just read
+this very item. Second, **a refactor's own MR is the most likely place for this rot to enter**,
+because the author has the before-state fresh in mind and mistakes it for context the reader needs.
+Check your own new docblocks against the standard before opening the PR, not just the ones you set
+out to fix.
+
+A re-scan on 2026-08-25 (a looser regex than #310's, so not directly comparable) reports **48**
+backward-looking blocks in `app/` against #310's 45 — after #329's removals. The pile is not
+shrinking on its own.
 
 **Why this is happening, and why the existing rule does not catch it.** `CLAUDE.md` already forbids
 inline comments and sends every "why" into the docblock, with one escape hatch: _if the docblock
