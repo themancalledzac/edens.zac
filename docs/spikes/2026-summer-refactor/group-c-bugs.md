@@ -66,7 +66,7 @@ describes still passes.
 - [x] **The item's prescribed mechanism was wrong, and following it literally would have introduced
       a worse bug.** "Compute `next` outside, then call the setter and the callback sequentially"
       is right for the optimistic update but breaks the rollback. The rollback's functional updater
-      is load-bearing: it inverse-applies against whatever the set is *when the persist rejects*.
+      is load-bearing: it inverse-applies against whatever the set is _when the persist rejects_.
       Computing `next` outside would capture the set as it was when the toggle started, so a
       rollback landing after an unrelated second toggle would discard that second toggle. Verified
       by reading the closure, not assumed — `toggle` is rebuilt per render, but the pending
@@ -122,20 +122,19 @@ the audit below was wrong about it, and the fix was to keep it and write down wh
 **Corrected register-vs-revalidate audit.** Re-grepped 2026-08-25. The line numbers in the previous
 version of this table were off by one on every `revalidateMetadataCache` row.
 
-| Tag | Registered | Revalidated | State |
-| --- | --- | --- | --- |
-| `collections-index` | `collections.ts:84` | `collectionEditUtils.ts:209` | connected |
-| `collection-${slug}` | `collections.ts:108` | `collectionEditUtils.ts:208` | connected |
-| `collection-home` | `collections.ts:108`, as `collection-${slug}` with slug = `home` | `collectionEditUtils.ts:210` | **connected — was misfiled as dead** |
-| `content-tags` | `content.ts:42` | `collectionEditUtils.ts:227` | connected |
-| `content-locations` | `content.ts:58` | `collectionEditUtils.ts:230` | connected |
-| `search-images` | `content.ts:104` | `collectionEditUtils.ts:233` | connected |
-| `collections-location-${slug}` | `collections.ts:151` | — | **orphan registration — left alone** |
-| `content-people` | — | — | **deleted by this MR** |
-| `content-cameras` | — | — | **deleted by this MR** |
-| `content-lenses` | — | — | **deleted by this MR** |
-| `content-film-metadata` | — | — | **deleted by this MR** |
-
+| Tag                            | Registered                                                       | Revalidated                  | State                                |
+| ------------------------------ | ---------------------------------------------------------------- | ---------------------------- | ------------------------------------ |
+| `collections-index`            | `collections.ts:84`                                              | `collectionEditUtils.ts:209` | connected                            |
+| `collection-${slug}`           | `collections.ts:108`                                             | `collectionEditUtils.ts:208` | connected                            |
+| `collection-home`              | `collections.ts:108`, as `collection-${slug}` with slug = `home` | `collectionEditUtils.ts:210` | **connected — was misfiled as dead** |
+| `content-tags`                 | `content.ts:42`                                                  | `collectionEditUtils.ts:227` | connected                            |
+| `content-locations`            | `content.ts:58`                                                  | `collectionEditUtils.ts:230` | connected                            |
+| `search-images`                | `content.ts:104`                                                 | `collectionEditUtils.ts:233` | connected                            |
+| `collections-location-${slug}` | `collections.ts:151`                                             | —                            | **orphan registration — left alone** |
+| `content-people`               | —                                                                | —                            | **deleted by this MR**               |
+| `content-cameras`              | —                                                                | —                            | **deleted by this MR**               |
+| `content-lenses`               | —                                                                | —                            | **deleted by this MR**               |
+| `content-film-metadata`        | —                                                                | —                            | **deleted by this MR**               |
 
 **The `collections-location-${slug}` report moved to E12** on the live board when this section was archived — it was open, sized work with no board row of its own. See [E12](../2026-summer-refactor.md#-e12--wire-up-collections-location-slug).
 
@@ -208,16 +207,16 @@ whether H1 ever ships. **Do this before H1** — see H1's second "must fix" bull
 **Verified 2026-08-23 by a parallel session, three checks, all read from `origin/main`.** Recorded
 here because the mechanism was originally asserted from an agent report and that is not evidence:
 
-1. *Is the count from the id list or the rendered blocks?* The id list — and its docblock says so
+1. _Is the count from the id list or the rendered blocks?_ The id list — and its docblock says so
    deliberately, because a followed collection that was deleted, or that falls outside the 500-row
    catalog page, still counts without being renderable. **This constrains the fix:** keep the server
    number as the base and apply a client delta. Recomputing from rendered tiles would silently
    change what the number means.
-2. *Is the mutation client-only?* Yes. Worth noting the code is better than first described — it
+2. _Is the mutation client-only?_ Yes. Worth noting the code is better than first described — it
    keeps a ref mirror so two rapid clicks each observe the other's result, with a docblock
    explaining why a functional updater cannot inform the persist direction. That is C3's lesson
    already applied.
-3. *Does anything trigger a server re-render on toggle?* No, and this is the decisive check.
+3. _Does anything trigger a server re-render on toggle?_ No, and this is the decisive check.
    `addFollow` and `removeFollow` ([personal.ts:63](app/lib/api/personal.ts:63) and
    [:77](app/lib/api/personal.ts:77)) are plain `fetch` calls returning `void`. A grep for
    `router.refresh|revalidateTag|revalidatePath` across `app/components/Personal/`,
@@ -252,3 +251,137 @@ in a client component underneath it; do not convert `UserSpace.tsx`.
 - [x] Two of the eight cover the rollback, which is C3's lesson applied rather than re-learned — a prescribed fix can be right on the happy path and destructive on the error path. `FollowsContext` keeps a ref mirror so its rollback inverse-applies against the latest membership; the count delta had to inherit that rather than assume it.
 - [x] Test churn worth knowing: `UserSpace.test.tsx` and `app/user/page.test.tsx` walk the tree without rendering, so their `findProps` targets moved from `CollectionPageClient` to `UserSpaceGrid`. `page.test.tsx` and `UserSpace.sectionSwitch.test.tsx` needed `useFollows: () => null` in their `FollowsContext` mocks.
 - [x] **Not done: a browser reproduction**, as this item asked for. It needs a signed-in account with existing follows. The red regression test is the gate that replaced it, and it is stronger in one way (repeatable, and it stays in the suite) and weaker in another (a test written from the same mental model as the fix can encode the same error). If anyone is in front of a signed-in session, it is still worth the minute.
+
+---
+
+### ✅ C6 · Password cover strip was missing on the public collection-card path — PR #327
+
+Split out of E1, which deliberately left it alone to stay a provable no-op. Filed as a frontend
+oversight, reclassified as backend-blocked on 2026-08-23, unblocked by backend PR #209, shipped
+2026-08-25.
+
+`convertCollectionContentToParallax` ([contentLayout.ts](app/utils/contentLayout.ts)) passed
+`col.coverImage` through unconditionally, so a password-protected client gallery reached a public
+card with its cover intact. `collectionToContentModel`
+([CollectionPage.tsx](app/components/ContentCollection/CollectionPage.tsx)) already stripped on the
+`CollectionModel` path. Both feed the same parallax card.
+
+**What shipped.** `ContentCollectionModel` gains `isPasswordProtected?: boolean` (optional — a
+payload cached before backend #209 carries no such key). `convertCollectionContentToParallax`
+strips on it, keyed on `=== true` alone so a payload missing the kind booleans still strips.
+`processContentBlocks` takes a fifth `showProtectedCovers` parameter defaulting to `false`.
+
+**The opt-in is threaded, not hardcoded, and that was not in the board's "two-line change".** The
+three public callers of `processContentBlocks` pass `filterVisible=true`; the two admin manage
+surfaces (`EditModeLayer`, `useCollectionEdit`) pass `false`. An unconditional strip would have
+silently hidden protected child covers in admin edit mode, where an admin managing a parent needs
+to recognise a protected child by its cover. The parameter is deliberately separate from
+`filterVisible` even though the two agree at every call site today: tying a cover-visibility
+decision to a hidden-block decision couples two things that can drift apart.
+
+#### The premise was false, in the direction nobody checked
+
+**C6's stated rationale — "defense-in-depth against a stale cache re-exposing a cover the backend
+already strips" — describes behaviour that has never existed.** The backend is explicit, in three
+places:
+
+- `ContentModels.java:231-234`: `isPasswordProtected` is "a render hint, not a gate: it tells the
+  frontend to draw a locked tile. `coverImage` is deliberately still populated alongside it,
+  matching the detail response."
+- The BE-H5 tests pin that the cover is **RETAINED** for a protected gallery — no cookie, invalid
+  cookie, and valid cookie alike. Their banner reads: the old "must be stripped" text
+  "contradicted all three tests below and led a frontend reviewer to build against a stripping
+  behaviour that has never existed."
+- Backend #209's commit message: "the cover is still returned alongside the flag... Fixes the BE-H5
+  test banner that claimed the opposite and sent the frontend down a wrong branch."
+
+So `collectionToContentModel`'s docblock claim, "Backend BE-H5 strips it at the API", was wrong, and
+the strip it justified is not redundant hardening — it is the only thing keeping a locked gallery's
+cover off a card. Both docblocks now say so. **The board quoted `:231`'s "render hint, not a gate"
+and stopped one sentence early**; the very next clause is the one that falsifies the item.
+
+**The decision taken.** The backend shipped the field so the frontend could draw a locked tile with
+the cover visible. Stripping instead is a deliberate divergence from that intent, chosen 2026-08-25
+for consistency with the path that already stripped. **A locked-tile treatment is still unbuilt and
+is the thing the backend is waiting on** — see the follow-up note at the end of this entry.
+
+**The rule this earns, and it is not the one C6 already carried.** C6 already taught "before filing
+a frontend fix for a missing field check, grep the type". That is about whether the data exists.
+This one is about what the data _means_: **when an item's rationale asserts what the OTHER repo
+does, quote that repo's own words in full before building on it — including the sentence after the
+one that supports you.** A paraphrase of a sibling repo's behaviour is a claim like any other, and
+this board's drift sweep cannot see it. The cheapest check is the tests: BE-H5's three test names
+each end in `retainsCoverImage`, and reading any one of them settles the question in seconds.
+
+#### Unification cost: do NOT merge the two functions
+
+The C6 guardrail asked for this analysis rather than the merge. The guardrail was right, and the
+reason is sharper than "they take different model types".
+
+**8 of 17 builder options differ**, and the differences are not cosmetic:
+
+| `buildParallaxCard` option | `collectionToContentModel`                         | `convertCollectionContentToParallax`   |
+| -------------------------- | -------------------------------------------------- | -------------------------------------- |
+| `id`                       | `col.id`                                           | `col.id ?? col.referencedCollectionId` |
+| `collectionId`             | `col.id`                                           | `col.referencedCollectionId`           |
+| `orderIndex`               | `0` (hardcoded)                                    | `col.orderIndex`                       |
+| `visible`                  | `col.visibility === undefined ? true : === LISTED` | `col.visible ?? true`                  |
+| `rating`                   | not passed                                         | `col.rating ?? undefined`              |
+| `tags`                     | not passed, deliberately                           | `col.tags`                             |
+| `squareFallback`           | `false` (default)                                  | `true`                                 |
+| `allowLayoutDimensions`    | `false` (default)                                  | `true`                                 |
+
+Identical: `title`, `slug`, `isClient`, `isBlog`, `description`, `coverImage`, `createdAt`,
+`updatedAt`, `collectionDate`.
+
+**One divergence is a hard type conflict, not a preference.** `CollectionModel.tags` is
+`string[]` ([Collection.ts:248](app/types/Collection.ts:248)); `ContentCollectionModel.tags` is
+`ContentTagModel[]` ([Content.ts:381](app/types/Content.ts:381)). No shared field mapping can read
+both. A merged function must either take an already-resolved tag array — pushing the mapping back
+into the call sites — or branch internally on which model it got, which is the two functions again
+wearing one name.
+
+**Two more are semantic, not mechanical.** `visible` maps a collection-level `CollectionVisibility`
+enum on one path and reads a block-level boolean on the other; `id`/`collectionId` mean different
+things because one model IS the collection and the other REFERENCES it. The `id ?? referencedId`
+fallback exists only because synthetic PARENT collections carry null content-table ids.
+
+**What actually duplicates is two lines** — the strip predicate,
+`isPasswordProtected === true && !showProtectedCovers ? null : coverImage`. That is the entire
+shared surface. Extracting it as a helper is defensible and would save nothing; keeping it visible
+at both sites is worth more, for the reason `collectionToContentModel`'s docblock already gives:
+it is a display decision about locked galleries, and burying it in a generic builder is how it gets
+bypassed later. `buildParallaxCard` is that generic builder, and E1 already declined to put the
+strip in it.
+
+**Verdict: not worth an MR.** A merge would relocate the divergence into the call sites, not remove
+it — roughly +25 lines of call-site mapping to delete ~30 lines of function body, against a real
+loss in readability at the one place where an access-adjacent decision is made. This is the shape
+the board flags as "the win is 'declared once instead of three times', not 'deleted'", except here
+even that win is absent: the two are not three copies of one thing, they are two adapters for two
+types. **No follow-up MR is filed.**
+
+One thing that would have made a merge worse and is worth recording: it is safe on the automock
+axis, but only by luck. No suite bare-mocks `@/app/utils/contentLayout` or the `CollectionPage`
+module, so collapsing the two exports would not have merged their automocks. Had either been
+mocked, E3's trap would have applied and nothing would have failed to tell anyone.
+
+#### Verification
+
+- Seven new tests in `tests/utils/contentLayout.test.ts`, covering both directions of the opt-in on
+  both `convertCollectionContentToParallax` and `processContentBlocks`.
+- **Three strip assertions confirmed red first** against a neutralised predicate, then green when
+  restored. The fixture carries a real `coverImage` by default, so this avoided C1's trap of a test
+  passing because the relevant field was `undefined`.
+- `eslint --fix` → `prettier --write` → `tsc --noEmit` clean; full jest 246 suites / 4430 tests pass.
+- **Not done: a `:3000` browser check** that a protected child card renders the placeholder rather
+  than a cover. It needs a protected client gallery sitting inside a parent collection. The red
+  tests are the gate that replaced it.
+
+#### Follow-up that is NOT filed as an MR
+
+The locked-tile UI the backend shipped the field for does not exist on either path. A protected
+gallery's card now renders as an indistinguishable grey 1:1 placeholder — the same thing a
+collection with no cover at all renders as. That is a product question (does a locked gallery
+announce itself, and how), not cleanup, so it gets no row on the MR board. It is recorded here and
+in `group-h-features.md`'s neighbourhood as the open half of C6.
