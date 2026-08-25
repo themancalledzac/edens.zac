@@ -472,10 +472,8 @@ describe('convertCollectionContentToParallax — badge/kind carry-through', () =
 });
 
 /**
- * C6. The backend deliberately returns the cover alongside `isPasswordProtected` (it calls the
- * flag "a render hint, not a gate", and its BE-H5 tests pin that the cover is RETAINED), so this
- * strip is the only thing keeping a locked gallery's cover off a public card. These tests are the
- * regression net for that: they were confirmed to fail against the unstripped converter.
+ * The API returns the cover for a password-protected collection, so this strip is the only thing
+ * keeping a locked gallery's cover off a public card.
  */
 describe('convertCollectionContentToParallax — password-protected cover strip', () => {
   it('strips the cover of a protected collection by default', () => {

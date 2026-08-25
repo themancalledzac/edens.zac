@@ -220,11 +220,9 @@ export { clampParallaxDimensions };
  *
  * The cover of a password-protected collection is replaced with `null` unless the caller opts in
  * via `showProtectedCovers`, matching `collectionToContentModel` on the `CollectionModel` path.
- * This is a frontend product choice, NOT defense-in-depth against the API: the backend
- * deliberately returns the cover alongside the flag (`ContentModels.java:231-234`, backend PR
- * #209), so nothing upstream strips it and the card would otherwise show the cover of a locked
- * gallery. Keyed on `isPasswordProtected` alone rather than on kind, so a payload missing the
- * kind booleans still strips. Admin manage surfaces pass `true` — see `processContentBlocks`.
+ * Keyed on `isPasswordProtected` alone rather than on kind, so a payload missing the kind booleans
+ * still strips. The API returns the cover for a protected gallery either way, so this strip is the
+ * only thing keeping it off the card. Admin manage surfaces opt in — see `processContentBlocks`.
  */
 export function convertCollectionContentToParallax(
   col: ContentCollectionModel,
@@ -306,9 +304,7 @@ function filterVisibleBlocks(
 
 /**
  * Convert collection content blocks to parallax image blocks for unified rendering.
- *
- * `showProtectedCovers` is forwarded verbatim to `convertCollectionContentToParallax`; see that
- * function's docblock for why the strip lives there rather than in `buildParallaxCard`.
+ * `showProtectedCovers` is forwarded to `convertCollectionContentToParallax`.
  */
 function transformCollectionBlocks(
   content: AnyContentModel[],
@@ -391,9 +387,8 @@ function sortNonVisibleToBottom(
  *
  * Ordering uses `block.orderIndex` directly (not `collections[].orderIndex`) and is honoured
  * VERBATIM across content types: a child-collection card sits wherever the admin put it, mixed
- * in among images. (The former `reorderImagesBeforeCollections` pass sank every collection block
- * to the tail; it encoded the "a parent holds only child collections" invariant and was removed
- * with it. Row packing downstream is order-preserving, so this is the only ordering authority.)
+ * in among images. Row packing downstream is order-preserving, so this is the only ordering
+ * authority.
  *
  * When `filterVisible` is false (manage page), non-visible content is sorted to
  * the bottom after the primary orderIndex/chronological sort to preserve relative
@@ -403,12 +398,11 @@ function sortNonVisibleToBottom(
  * @param filterVisible - Whether to filter out non-visible blocks (default: true)
  * @param collectionId - Collection ID for checking image visibility
  * @param displayMode - Sort by 'CHRONOLOGICAL' or 'ORDERED' (default: ORDERED)
- * @param showProtectedCovers - Opt in to rendering the cover of a password-protected child
- *   collection. Defaults to false so every public surface strips without having to ask. The two
- *   admin manage surfaces pass true, because an admin managing a parent needs to recognise its
- *   children by their covers. Deliberately a separate parameter rather than being inferred from
- *   `filterVisible === false`: the two happen to agree at every call site today, and collapsing
- *   them would tie a cover-visibility decision to a hidden-block decision that can drift apart.
+ * @param showProtectedCovers - Render the cover of a password-protected child collection.
+ *   Defaults to false, so a public surface strips without having to ask. Admin manage surfaces
+ *   pass true, because an admin managing a parent needs to recognise its children by their covers.
+ *   Kept separate from `filterVisible` on purpose: a cover-visibility decision and a hidden-block
+ *   decision are free to diverge.
  * @returns Processed and sorted content blocks
  */
 export function processContentBlocks(

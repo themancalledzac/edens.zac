@@ -315,7 +315,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | C3  | `SelectsContext.toggle` purity                                             | Low         | +121 −10                                                                                         | ✅ PR #282                                                                                    |
 | C4  | Cache tags that never connect                                              | Low         | +155 −62                                                                                         | ✅ PR #279                                                                                    |
 | C5  | Assorted LOW bugs                                                          | Low         | +497 −101 (11 files)                                                                             | ✅ PR #283                                                                                    |
-| C6  | Password cover strip missing on the public card path                       | Low-medium  | ±30                                                                                              | ☐ COLD — **UNBLOCKED 2026-08-25**: backend #209 shipped the field; frontend-only now          |
+| C6  | Password cover strip missing on the public card path                       | Low-medium  | est ±30 → **actual +60 −16 src (net +44) / +73 test**; much of src is the docblock correction    | ✅ PR #327 — premise was FALSE (backend never stripped); unification analysed and DECLINED    |
 | C7  | `emailShareLink` POSTs to a route that does not exist                      | Low         | ±40 src, +30 test                                                                                | ⛔ BLOCKED on backend BUILD — decision settled 2026-08-24; it is the backend's next item      |
 | C9  | Dimensionless cover renders no header, missing cover does                  | Low         | ±20 src, +40 test                                                                                | ☐ (found by B4; needs a decision first)                                                       |
 | C8  | Unfollowing leaves the chip count stale                                    | Low         | +418 −22 (est. +40/+80)                                                                          | ✅ PR #291                                                                                    |
@@ -355,7 +355,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | G1  | Docs corrections                                                           | Trivial     | **+106 / −72 actual** (est. ±50)                                                                 | ✅ PR #303                                                                                    |
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)            | Low         | ~neutral (relocation + splits)                                                                   | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors                        |
 | G3  | `/user/selects` decision                                                   | —           | —                                                                                                | ⛔ USER DECISION                                                                              |
-| G4  | Docblock standard — length, structure, and no history                      | Low         | **−50 net actual across 19 blocks** (est. −300 to −500 across ~53); 0 src                        | ◐ intersection pass done — 19 long+historical blocks rewritten; remaining 45 historical open  |
+| G4  | Docblock standard — length, structure, and no history                      | Low         | **−50 net actual across 19 blocks** (est. −300 to −500 across ~53); 0 src                        | ◐ intersection pass done; ~48 short historical blocks open — and #327/#328 ADDED to the pile  |
 | H1  | Merge `Following` into `Collections` on `/user`                            | Medium      | −60 src, ±150 test churn (6 test files)                                                          | ☐ COLD — C8 shipped, so its stated blocker has cleared                                        |
 | H2a | `/user` rail copy pass + chip-style the Admin links                        | Low         | **+319 / −117 actual** (est. −25 src)                                                            | ✅ PR #302                                                                                    |
 | H3  | `Send a message` into the rail as a plain button                           | Low         | rode H2a                                                                                         | ✅ PR #302                                                                                    |
@@ -582,76 +582,44 @@ The project rule requires tests for these and they have none.
 
 ---
 
-## Group C — Bug fixes — C1–C5 and C8 shipped; C6, C7 and C9 open
+## Group C — Bug fixes — C1–C6 and C8 shipped; C7 and C9 open
 
-C1–C5 merged (#264, #281, #282, #279, #283). Full write-ups:
+C1–C6 merged (#264, #281, #282, #279, #283, #327). Full write-ups:
 [group-c-bugs.md](2026-summer-refactor/group-c-bugs.md). C4's `collections-location-${slug}` report became E12.
 
-### ☐ C6 · Password cover strip is missing on the public collection-card path — UNBLOCKED 2026-08-25, COLD
+### ✅ C6 · Password cover strip is missing on the public collection-card path — PR #327
 
-**THE BLOCKER CLEARED AND NOBODY TOLD THIS BOARD.** The item's last bullet says "Do NOT open this as
-a frontend MR before the field exists." **The field exists.** Verified 2026-08-25 against the backend
-repo's `origin/main` at `04c0c2d`: `ContentModels.Collection` declares
-`@JsonProperty("isPasswordProtected") boolean isPasswordProtected` at `ContentModels.java:250`,
-carried through both `with*` copy methods (`:313`, `:341`), with a docblock at `:231` stating it is
-**"a render hint, not a gate"**. It shipped in backend PR #209 — the same PR the backend's own board
-recorded as "unblocked the frontend's C6", days ago.
+Shipped 2026-08-25. `ContentCollectionModel` gained `isPasswordProtected`, and
+`convertCollectionContentToParallax` now strips the cover for a protected collection, matching
+`collectionToContentModel`. The admin opt-in is threaded through `processContentBlocks` as a fifth
+parameter, because an unconditional strip would have hidden protected child covers in edit mode.
 
-**So the remaining work is frontend-only and small.** `app/types/Content.ts`'s
-`ContentCollectionModel` still lacks the field — confirmed 2026-08-25. Add it, then do the two-line
-change the bullets below already specify. The backend question in bullet 2 is answered: it serializes
-the field, and it is a render hint, so the strip is worth having.
+Full write-up, including the unification cost analysis the guardrail asked for:
+[group-c-bugs.md](2026-summer-refactor/group-c-bugs.md).
 
-**How this hid, and the rule it earns.** The per-session drift sweep scopes to files THIS repo's
-merges touched, so an item waiting on the OTHER repo can never be swept clean by it — it can only
-ever be re-checked deliberately. **Any item marked BACKEND-BLOCKED must be re-verified against the
-sibling repo's `origin/main` on a fixed cadence, not when something here happens to move.** The
-cheapest form is `git grep <symbol> origin/main` in the sibling plus a read of ITS session log, which
-records decisions its code does not yet show.
+**Two things from it belong on the live board.**
 
-**Why it is next (picked 2026-08-25).** Not because its context is warm — it is not; F7's is. Because
-step 3 of this close-out turned it from a blocked item into a fully specified small one, and because
-it has been sitting available for days without anyone knowing. An item that reads BLOCKED while being
-COLD is the most expensive state on a board: it is skipped by every session that scans for work.
-Clearing it takes priority over cleanup that was never blocked.
+**1. The item's premise was false, and the board quoted the backend one sentence too short.** C6
+justified the strip as "defense-in-depth against a stale cache re-exposing a cover the backend
+already strips". The backend has never stripped. `ContentModels.java:231-234` says
+`isPasswordProtected` is "a render hint, not a gate ... `coverImage` is deliberately still populated
+alongside it", and its three BE-H5 tests are literally named `retainsCoverImage`. The board quoted
+the "render hint, not a gate" half and stopped before the clause that falsifies the item. **Rule:
+when an item's rationale asserts what the OTHER repo does, quote that repo in full before building
+on it — including the sentence after the one that supports you.** This is distinct from C6's
+existing "grep the type" rule: that one asks whether the data exists, this one asks what it means.
+The frontend drift sweep cannot see either.
 
-**Guardrail — do NOT unify `collectionToContentModel` and `convertCollectionContentToParallax`, and
-report what doing so would cost.** Once both strip the cover for protected collections they will look
-like the same function with one call site each, and merging them is the obvious tidy-up. It is also
-exactly the shape this board keeps getting wrong. E1 split C6 out specifically to stay a provable
-no-op, and these two feed the same parallax card from different model types — `CollectionModel` and
-`ContentCollectionModel` — which is why the strip could only ever live on one of them. **Add the
-field, do the two-line change, leave both functions where they are, and write up whether a shared
-helper is worth it.** If it is clean, that is a follow-up MR with the analysis attached.
+**2. The unification verdict is NO, and no follow-up MR is filed.** 8 of 17 `buildParallaxCard`
+options differ, and `CollectionModel.tags` (`string[]`) versus `ContentCollectionModel.tags`
+(`ContentTagModel[]`) is a hard type conflict, not a preference. The only genuinely duplicated code
+is the two-line strip predicate. A merge relocates the divergence into the call sites rather than
+removing it — about +25 call-site lines to delete ~30 body lines. The guardrail was right.
 
-**Second guardrail, from the backend's own docblock: this is a render hint, not a gate.** Backend
-`ContentModels.java:231` says so explicitly, and C6's own text calls the strip "defense-in-depth
-against a stale cache re-exposing a cover the backend already strips". **Do not build server-side
-enforcement, do not add a gate, and do not treat a missing strip as a live leak** — the backend is
-the gate and it already works. The frontend change is cosmetic hardening.
-
-The original section follows, unchanged apart from this header.
-
-Split out of E1, which deliberately left it alone to stay a provable no-op.
-
-- [ ] `collectionToContentModel` ([CollectionPage.tsx](app/components/ContentCollection/CollectionPage.tsx))
-      strips `coverImage` for `isPasswordProtected` collections unless `showProtectedCovers` is set.
-      `convertCollectionContentToParallax` ([contentLayout.ts](app/utils/contentLayout.ts)) does NOT
-      — it passes `col.coverImage` through unconditionally. Both feed the same parallax card.
-      **VERIFIED 2026-08-23, re-verified 2026-08-24 (still zero): this is a BACKEND item, not a frontend one.** `ContentCollectionModel` has
-      zero `isPasswordProtected` — grep the interface in `app/types/Content.ts` and confirm. Only
-      `CollectionModel` carries it ([Collection.ts:266](app/types/Collection.ts:266)). So the public card
-      path has nothing to key the strip on; it is not an oversight that can be fixed in the frontend. That
-      is almost certainly WHY the strip only ever existed on `collectionToContentModel`.
-
-- [ ] Backend first: decide whether `ContentModels.Collection` should serialize
-      `isPasswordProtected`. The strip is defense-in-depth against a stale cache re-exposing a cover
-      the backend (BE-H5) already strips, so the real question is whether the content-block path can
-      carry a stale protected cover at all. If the backend already guarantees it cannot, close this
-      as won't-fix and record that here.
-- [ ] Only if the field lands: post-E1 the frontend side is a two-line change — pass a stripped
-      `coverImage` into `buildParallaxCard`, exactly as `collectionToContentModel` now does.
-- [ ] Do NOT open this as a frontend MR before the field exists. There is nothing to write.
+**Still open, but not as an MR:** the locked-tile UI the backend shipped the field for does not
+exist. A protected gallery's card now renders as a grey 1:1 placeholder, indistinguishable from a
+collection with no cover. That is a product question, so it gets no row — recorded in the archive
+entry.
 
 ### ⛔ C7 · `emailShareLink` POSTs to an endpoint that does not exist — BLOCKED ON BACKEND BUILD (not on a decision)
 
@@ -2375,6 +2343,28 @@ describe DATA state, not code history, and a regex cannot tell those apart. That
 the no-lint-rule decision below holds. Sweeping the remainder is a separate sitting and a separate
 MR; it is not blocking anything.
 
+**The sweep will not converge while new docblocks keep adding to the pile, and 2026-08-25 proved
+it.** C6 (#327) and F7 (#328) shipped fresh backward-looking docblocks — "was removed once
+measured", "whatever an earlier version of this comment said", plus board labels (`F6`, `F7`, `C6`)
+and backend PR numbers written into interfaces and test headers. The user caught it on read:
+_"comments like this that explain 'previous issues or previous state' should NOT EXIST"_ and
+_"F6 means NOTHING in this context ... we are only dealing with what the code IS and what it DOES"_.
+Removed in #329, which also took two pre-existing blocks with it (the `reorderImagesBeforeCollections`
+parenthetical in `processContentBlocks`, and `EditRendererProps`' previous-design paragraph).
+
+**Two additions to the standard, both from that read.** First, **board item labels are not allowed
+in code comments at all** — a reader at the call site has no board in front of them, and the name of
+the MR that changed a line does not help them use it. The existing standard bans history; it did not
+explicitly ban `F6`/`C6`/`PR #N`, and every one of those was written by a session that had just read
+this very item. Second, **a refactor's own MR is the most likely place for this rot to enter**,
+because the author has the before-state fresh in mind and mistakes it for context the reader needs.
+Check your own new docblocks against the standard before opening the PR, not just the ones you set
+out to fix.
+
+A re-scan on 2026-08-25 (a looser regex than #310's, so not directly comparable) reports **48**
+backward-looking blocks in `app/` against #310's 45 — after #329's removals. The pile is not
+shrinking on its own.
+
 **Why this is happening, and why the existing rule does not catch it.** `CLAUDE.md` already forbids
 inline comments and sends every "why" into the docblock, with one escape hatch: _if the docblock
 gets too big, split the function._ That escape hatch assumes a big docblock means the function does
@@ -2673,6 +2663,45 @@ against real merge timestamps on 2026-08-24; only the labels were inconsistent. 
 
   Rename declined: with the caller-facing prop gone there is only one meaning left to hold, and a
   rename would have churned the one test this item said must not be edited.
+
+- 2026-08-25 (2) — **shipped C6 (#327). Its premise was false, and the board had quoted the backend
+  one sentence too short.** C6 justified the cover strip as "defense-in-depth against a stale cache
+  re-exposing a cover the backend already strips". **The backend has never stripped.**
+  `ContentModels.java:231-234` says `isPasswordProtected` is "a render hint, not a gate ...
+  `coverImage` is deliberately still populated alongside it", the three BE-H5 tests are named
+  `retainsCoverImage`, and backend #209's commit message says the old test banner "sent the frontend
+  down a wrong branch". The previous session's close-out quoted the "render hint, not a gate" half
+  and stopped exactly before the clause that falsifies the item. **New rule: when an item's
+  rationale asserts what the OTHER repo does, quote that repo in full — including the sentence after
+  the one that supports you.** Distinct from C6's own "grep the type" rule, which asks whether the
+  data exists rather than what it means.
+
+  **Shipped anyway, as a deliberate divergence rather than a fix.** The strip is a frontend product
+  choice, and both docblocks now say so instead of citing a backend behaviour that does not exist.
+  The backend shipped the field so the frontend could draw a LOCKED TILE with the cover visible;
+  that UI is still unbuilt and is the open half of C6, recorded in the archive as a product question
+  with no MR row.
+
+  **The "two-line change" was not two lines, for a reason the board could not have seen from the
+  item.** `convertCollectionContentToParallax` is reached only through `processContentBlocks`, and
+  two of that function's five callers are admin manage surfaces. An unconditional strip would have
+  silently hidden protected child covers in edit mode. Threading an explicit `showProtectedCovers`
+  parameter — deliberately NOT inferred from `filterVisible`, though the two agree at every call
+  site today — is what took it from ±2 to +60 −16 src. **Before believing an item's size, check
+  whether the function it names is exported or funnel-fed; a funnel means the parameter has to
+  travel and every caller has to be classified.**
+
+  **Unification analysed and DECLINED**, per the guardrail. 8 of 17 `buildParallaxCard` options
+  differ, and `CollectionModel.tags` (`string[]`) vs `ContentCollectionModel.tags`
+  (`ContentTagModel[]`) is a hard type conflict. Only the two-line strip predicate actually
+  duplicates. A merge relocates the divergence into the call sites (+25 call-site lines to delete
+  ~30 body lines). No follow-up MR filed. Full table in
+  [group-c-bugs.md](2026-summer-refactor/group-c-bugs.md).
+
+  Housekeeping: `0324-…` and `0325-…` deleted local and remote now that #326 landed F6 on `main`
+  (`git merge-base --is-ancestor 9953f19 origin/main` confirmed before deleting, not the badge).
+  #327 was opened against `main` directly, per the preventive half of the stacked-PR rule.
+  Next: **F7**.
 
 - 2026-08-25 — **close-out. F6 was NOT on `main` and the board said it was.** #325 merged into its
   stale stacked base `0324-…` 13 minutes after #324 took that base to `main`, so F6 landed on a dead
