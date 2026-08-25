@@ -2,25 +2,22 @@
  * Pins the render-constant props all the way down the grid chain:
  * `ContentBlockWithFullScreen` → `Component` → `BoxRenderer` → `CollectionContentRenderer`.
  *
- * Before F2 each hop re-listed the set in JSX, and nothing asserted that a member actually
- * arrived — a dropped line would have shipped silently. Now the middle two hops carry the set as
- * an object (`{...shared}` into `Component`, then `RendererProvider` down to the leaves), which
- * makes a silent drop cheaper to introduce, not dearer: a mistyped rest destructure loses the whole
- * block at once. So the leaf's props are asserted member by member, against values chosen to be
- * distinguishable from every default.
+ * The middle hops carry the set as an object — `{...shared}` into `Component`, then
+ * `RendererProvider` down to the leaves — so a mistyped rest destructure loses the whole block at
+ * once and silently. Every member is therefore asserted at the leaf, against values chosen to be
+ * distinguishable from its default.
  *
- * Since F6 the set arrives by TWO routes and this test pins the join. The four members public
- * callers still pass go in as props; the twelve only `EditModeLayer` sets go in through a
- * `RendererProvider` above the grid, exactly as that layer supplies them. `Component` reads the
- * ambient value and re-provides it merged with its own props and derived values, so a leaf that
- * receives all sixteen is the only proof that the merge did not drop a side.
+ * The set arrives by two routes and this test pins the join. The members public callers pass go in
+ * as props; the twelve only `EditModeLayer` sets go in through a `RendererProvider` above the grid.
+ * `Component` reads the ambient value and re-provides it merged with its own props and derived
+ * values, so a leaf receiving all of them is the only proof the merge dropped neither side.
  *
  * `CollectionContentRenderer` is the only mock in the chain — everything between the entry point
  * and the leaf is the real component.
  */
 import '@testing-library/jest-dom';
 
-import { act, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import {
@@ -57,7 +54,6 @@ const onArrowMove = jest.fn();
 const onPickUp = jest.fn();
 const onPlace = jest.fn();
 const onCancelImageMove = jest.fn();
-const onImageLoadError = jest.fn();
 
 const collectionData = { id: 7, slug: 'threading-collection' } as CollectionModel;
 
@@ -87,7 +83,6 @@ const renderGrid = () =>
         enableFullScreenView
         onImageClick={onImageClick}
         selectedIds={[11, 22]}
-        onImageLoadError={onImageLoadError}
       />
     </RendererProvider>
   );
@@ -135,15 +130,15 @@ describe('render-constant props reach the leaf renderer', () => {
   );
 
   /**
-   * `onImageLoadError` is the one handler that must NOT arrive by identity: `Component` wraps it so
-   * a failed image is recorded and the public view can reflow around it, then calls the caller's.
+   * `onImageLoadError` is the one handler the leaf receives that no caller supplies. `Component`
+   * builds it itself, to record a failed id so the public view can drop the image and reflow.
+   * What the handler DOES is covered by `Component.reflowOnError.test.tsx`.
    */
-  it('threads a wrapper around onImageLoadError, not the raw handler', () => {
+  it('supplies onImageLoadError from Component, with no caller passing one', () => {
     expect(typeof leafProps().onImageLoadError).toBe('function');
-    expect(leafProps().onImageLoadError).not.toBe(onImageLoadError);
-    const wrapped = leafProps().onImageLoadError;
-    act(() => wrapped?.(1));
-    expect(onImageLoadError).toHaveBeenCalledWith(1);
+    for (const handler of [onImageClick, onArrowMove, onPickUp, onPlace, onCancelImageMove]) {
+      expect(leafProps().onImageLoadError).not.toBe(handler);
+    }
   });
 
   /**

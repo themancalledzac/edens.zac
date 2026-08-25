@@ -126,8 +126,6 @@ export default function Component({
   serverIsMobile,
   ...shared
 }: ContentComponentProps) {
-  const { onImageLoadError } = shared;
-
   // `EditModeLayer` provides the edit slice above this component; every public caller renders
   // without a provider, where this is the frozen empty value.
   const edit = useRenderer();
@@ -155,13 +153,9 @@ export default function Component({
   const isPublicView = currentCollectionId == null;
   const [failedImageIds, setFailedImageIds] = useState<ReadonlySet<number>>(() => new Set());
 
-  const handleImageLoadError = useCallback(
-    (contentId: number) => {
-      setFailedImageIds(prev => (prev.has(contentId) ? prev : new Set(prev).add(contentId)));
-      onImageLoadError?.(contentId);
-    },
-    [onImageLoadError]
-  );
+  const handleImageLoadError = useCallback((contentId: number) => {
+    setFailedImageIds(prev => (prev.has(contentId) ? prev : new Set(prev).add(contentId)));
+  }, []);
 
   const rendererValue: RendererContextValue = {
     ...edit,
