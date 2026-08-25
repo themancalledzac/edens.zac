@@ -27,6 +27,7 @@ import {
   type RendererContextValue,
   RendererProvider,
   type SharedRendererProps,
+  useRenderer,
 } from './RendererContext';
 
 export interface ContentComponentProps extends SharedRendererProps {
@@ -125,7 +126,13 @@ export default function Component({
   serverIsMobile,
   ...shared
 }: ContentComponentProps) {
-  const { currentCollectionId, onImageLoadError } = shared;
+  const { onImageLoadError } = shared;
+
+  // `EditModeLayer` provides the edit slice above this component; every public caller renders
+  // without a provider, where this is the frozen empty value.
+  const edit = useRenderer();
+  const { currentCollectionId } = edit;
+
   const measured = useViewport();
 
   // Download UI is a capability gate (backend authorizes by CLIENT role on any collection), not a
@@ -157,6 +164,7 @@ export default function Component({
   );
 
   const rendererValue: RendererContextValue = {
+    ...edit,
     ...shared,
     onImageLoadError: handleImageLoadError,
     onFullScreenImageClick,

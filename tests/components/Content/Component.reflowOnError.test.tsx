@@ -3,6 +3,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import Component from '@/app/components/Content/Component';
+import { RendererProvider } from '@/app/components/Content/RendererContext';
 import { type AnyContentModel } from '@/app/types/Content';
 
 const measured = { contentWidth: 1274, viewportHeight: 800, isMobile: false, width: 1280 };
@@ -68,7 +69,12 @@ describe('Component — reflow on runtime image-load failure', () => {
     const content = [makeImage(1), makeImage(2), makeImage(3), makeImage(4)];
 
     // Manage view: currentCollectionId is present, so the broken image must NOT be reflowed away.
-    render(<Component content={content} currentCollectionId={42} />);
+    // It arrives through the context now, the way EditModeLayer supplies it.
+    render(
+      <RendererProvider value={{ currentCollectionId: 42 }}>
+        <Component content={content} />
+      </RendererProvider>
+    );
 
     fireEvent.click(screen.getByTestId('item-2'));
 
