@@ -11,7 +11,12 @@
 
 import { cache } from 'react';
 
-import { getApiBaseUrl, getServerCookieHeader, throwFromResponse } from '@/app/lib/api/core';
+import {
+  clientFetch,
+  getApiBaseUrl,
+  getServerCookieHeader,
+  throwFromResponse,
+} from '@/app/lib/api/core';
 import { type MeResponse } from '@/app/types/Auth';
 
 /**
@@ -43,16 +48,10 @@ function dispatchAuthChanged(): void {
 export async function login(email: string, password: string): Promise<void> {
   if (!email) throw new Error('email is required');
   if (!password) throw new Error('password is required');
-  const res = await fetch('/api/proxy/api/auth/login', {
+  await clientFetch('/api/proxy/api/auth/login', {
     method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-    cache: 'no-store',
+    json: { email, password },
   });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
   dispatchAuthChanged();
 }
 
@@ -64,14 +63,7 @@ export async function login(email: string, password: string): Promise<void> {
  * session may still be alive server-side).
  */
 export async function logout(): Promise<void> {
-  const res = await fetch('/api/proxy/api/auth/logout', {
-    method: 'POST',
-    credentials: 'same-origin',
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
+  await clientFetch('/api/proxy/api/auth/logout', { method: 'POST' });
   dispatchAuthChanged();
 }
 
@@ -168,14 +160,9 @@ interface CreationOptionsJSON {
  * Throws `ApiError` if either round-trip is non-OK.
  */
 export async function registerPasskey(): Promise<void> {
-  const startRes = await fetch('/api/proxy/api/auth/webauthn/register/start', {
+  const startRes = await clientFetch('/api/proxy/api/auth/webauthn/register/start', {
     method: 'POST',
-    credentials: 'same-origin',
-    cache: 'no-store',
   });
-  if (!startRes.ok) {
-    await throwFromResponse(startRes);
-  }
   const options = (await startRes.json()) as CreationOptionsJSON;
 
   const publicKey: PublicKeyCredentialCreationOptions = {
@@ -205,16 +192,10 @@ export async function registerPasskey(): Promise<void> {
     },
   };
 
-  const finishRes = await fetch('/api/proxy/api/auth/webauthn/register/finish', {
+  await clientFetch('/api/proxy/api/auth/webauthn/register/finish', {
     method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(finishBody),
-    cache: 'no-store',
+    json: finishBody,
   });
-  if (!finishRes.ok) {
-    await throwFromResponse(finishRes);
-  }
 }
 
 /**
@@ -238,16 +219,10 @@ interface RequestOptionsJSON {
 export async function loginWithPasskey(email: string): Promise<void> {
   if (!email) throw new Error('email is required');
 
-  const startRes = await fetch('/api/proxy/api/auth/webauthn/login/start', {
+  const startRes = await clientFetch('/api/proxy/api/auth/webauthn/login/start', {
     method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
-    cache: 'no-store',
+    json: { email },
   });
-  if (!startRes.ok) {
-    await throwFromResponse(startRes);
-  }
   const options = (await startRes.json()) as RequestOptionsJSON;
 
   const publicKey: PublicKeyCredentialRequestOptions = {
@@ -275,16 +250,10 @@ export async function loginWithPasskey(email: string): Promise<void> {
     },
   };
 
-  const finishRes = await fetch('/api/proxy/api/auth/webauthn/login/finish', {
+  await clientFetch('/api/proxy/api/auth/webauthn/login/finish', {
     method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(finishBody),
-    cache: 'no-store',
+    json: finishBody,
   });
-  if (!finishRes.ok) {
-    await throwFromResponse(finishRes);
-  }
   dispatchAuthChanged();
 }
 

@@ -5,7 +5,7 @@
  * response. Distinct from the ephemeral download "select mode" (see `ClientGalleryDownloadContext`)
  * — these calls persist a user's favorites.
  */
-import { ApiError, fetchReadApi, throwFromResponse } from '@/app/lib/api/core';
+import { ApiError, clientFetch, fetchReadApi } from '@/app/lib/api/core';
 import { type SelectGroup } from '@/app/types/Selects';
 import { logger } from '@/app/utils/logger';
 
@@ -13,28 +13,12 @@ const BASE = '/api/proxy/api/read/user/selects';
 
 /** Add an image to the current user's selects, scoped to a collection. Resolves on 201. */
 export async function addSelect(collectionId: number, contentId: number): Promise<void> {
-  const res = await fetch(BASE, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ collectionId, contentId }),
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
+  await clientFetch(BASE, { method: 'POST', json: { collectionId, contentId } });
 }
 
 /** Remove an image from the current user's selects. Resolves on 204. */
 export async function removeSelect(contentId: number): Promise<void> {
-  const res = await fetch(`${BASE}/${contentId}`, {
-    method: 'DELETE',
-    credentials: 'same-origin',
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
+  await clientFetch(`${BASE}/${contentId}`, { method: 'DELETE' });
 }
 
 /**

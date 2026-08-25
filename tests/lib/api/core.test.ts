@@ -5,6 +5,8 @@
 
 import {
   ApiError,
+  clientFetch,
+  clientFetchJson,
   fetchAdminDeleteApi,
   fetchAdminGetApi,
   fetchAdminPatchJsonApi,
@@ -603,5 +605,92 @@ describe('throwFromResponse', () => {
     // A malformed error body must not replace the error; the status still has to survive.
     await expect(throwFromResponse(res)).rejects.toThrow('API error: 500');
     await expect(throwFromResponse(res)).rejects.toMatchObject({ status: 500 });
+  });
+});
+
+/**
+ * `clientFetch` / `clientFetchJson` replaced 17 hand-written copies of the same skeleton in E2.
+ * These pin the four defaults it exists to apply, because a silently dropped `credentials` or
+ * `cache` would not fail any existing suite — it would just log the user out, or serve them a
+ * stale answer, in the browser.
+ */
+describe('clientFetch', () => {
+  const ok = () =>
+    ({ ok: true, status: 200, json: jest.fn().mockResolvedValue({ v: 1 }) }) as unknown as Response;
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('sends the session cookie and never caches', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(ok());
+
+    await clientFetch('/api/proxy/thing');
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(init.credentials).toBe('same-origin');
+    expect(init.cache).toBe('no-store');
+  });
+
+  it('serializes json and sets the content type, only when there is a body', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(ok());
+
+    await clientFetch('/api/proxy/thing', { method: 'POST', json: { a: 1 } });
+    const [, withBody] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(withBody.body).toBe(JSON.stringify({ a: 1 }));
+    expect(withBody.headers).toMatchObject({ 'Content-Type': 'application/json' });
+
+    (global.fetch as jest.Mock).mockClear();
+    await clientFetch('/api/proxy/thing', { method: 'DELETE' });
+    const [, noBody] = (global.fetch as jest.Mock).mock.calls[0];
+    // A DELETE with a JSON content-type and no body is what the old hand-written calls avoided.
+    expect(noBody.body).toBeUndefined();
+    expect(noBody.headers).toBeUndefined();
+  });
+
+  it('lets a caller override a default', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(ok());
+
+    await clientFetch('/api/proxy/thing', { cache: 'force-cache' });
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(init.cache).toBe('force-cache');
+  });
+
+  it('throws ApiError carrying the status on a non-OK response', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 403,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockResolvedValue({ message: 'nope' }),
+    });
+
+    await expect(clientFetch('/api/proxy/thing')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 403,
+    });
+  });
+
+  it('does not read the body of a successful response', async () => {
+    // 204-returning mutations are the majority of the converted call sites; parsing them would
+    // throw on an empty body.
+    const res = ok();
+    (global.fetch as jest.Mock).mockResolvedValue(res);
+
+    await clientFetch('/api/proxy/thing', { method: 'DELETE' });
+
+    expect(res.json).not.toHaveBeenCalled();
+  });
+});
+
+describe('clientFetchJson', () => {
+  it('returns the parsed body', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ token: 'tok-1' }),
+    });
+
+    await expect(clientFetchJson<{ token: string }>('/api/proxy/thing')).resolves.toEqual({
+      token: 'tok-1',
+    });
   });
 });

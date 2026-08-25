@@ -130,6 +130,66 @@ export async function throwFromResponse(res: Response): Promise<never> {
         : `API error: ${res.status}`;
   throw new ApiError(message, res.status);
 }
+/**
+ * Options for {@link clientFetch}. Mirrors `RequestInit`, except that `body` is replaced by `json`:
+ * every current caller sends JSON or nothing, and letting both through would reintroduce the
+ * "did I remember the Content-Type header" question this helper exists to answer once.
+ */
+export interface ClientFetchOptions extends Omit<RequestInit, 'body'> {
+  /** Serialized to the request body, with the JSON `Content-Type` set for you. */
+  json?: unknown;
+}
+
+/**
+ * Browser-side fetch against the BFF proxy, with the four things every such call needs.
+ *
+ * `credentials: 'same-origin'` so the proxy's `Set-Cookie` is accepted and the session cookie is
+ * sent; `cache: 'no-store'` because these are all reads of per-user state or mutations; the JSON
+ * `Content-Type` whenever there is a body; and a non-OK response converted by
+ * {@link throwFromResponse} into an `ApiError` carrying the real status.
+ *
+ * Returns the `Response` rather than parsed data so `204`-returning mutations do not have to
+ * pretend to decode a body. Use {@link clientFetchJson} when there is a body to read.
+ *
+ * Callers may override any default by passing it — `...rest` is spread after them.
+ *
+ * NOT for the calls whose contract is "a non-OK status is data": `me()` and `meServer()` return
+ * `null` on 401, and `getInvitePreview` maps 410 and every other failure to a status object. Those
+ * stay on raw `fetch` on purpose, because routing them through a helper that throws would mean
+ * catching an exception to recover a value the response already gave us.
+ */
+export async function clientFetch(
+  url: string,
+  options: ClientFetchOptions = {}
+): Promise<Response> {
+  const { json, headers, ...rest } = options;
+  const res = await fetch(url, {
+    credentials: 'same-origin',
+    cache: 'no-store',
+    ...rest,
+    headers: json === undefined ? headers : { 'Content-Type': 'application/json', ...headers },
+    ...(json === undefined ? {} : { body: JSON.stringify(json) }),
+  });
+  if (!res.ok) {
+    await throwFromResponse(res);
+  }
+  return res;
+}
+
+/**
+ * {@link clientFetch} plus `res.json()`, for the calls that read a body.
+ *
+ * The cast is unchecked, exactly as it was at each call site before this helper existed — it moves
+ * the assertion, it does not add validation. `validateClientGalleryAccess` runtime-validates its
+ * own response and is not a caller.
+ */
+export async function clientFetchJson<T>(
+  url: string,
+  options: ClientFetchOptions = {}
+): Promise<T> {
+  const res = await clientFetch(url, options);
+  return (await res.json()) as T;
+}
 
 /**
  * Unified error handling for API requests

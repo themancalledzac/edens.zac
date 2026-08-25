@@ -9,7 +9,7 @@
  *   the same shape as `personal.ts` — these are POST/PUT/DELETE on the READ channel because the
  *   backend scopes them to the session principal rather than to the admin surface.
  */
-import { ApiError, fetchReadApi, throwFromResponse } from '@/app/lib/api/core';
+import { ApiError, clientFetch, clientFetchJson, fetchReadApi } from '@/app/lib/api/core';
 import { type CollectionModel } from '@/app/types/Collection';
 import { logger } from '@/app/utils/logger';
 
@@ -123,13 +123,7 @@ export async function readShareSettings(): Promise<ShareSettingsRead> {
  * Action would duplicate them in a second place that could drift from the backend.
  */
 export async function plantShareCookie(token: string): Promise<void> {
-  const res = await fetch(`/api/proxy/api/read/share/${encodeURIComponent(token)}`, {
-    credentials: 'same-origin',
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
+  await clientFetch(`/api/proxy/api/read/share/${encodeURIComponent(token)}`);
 }
 
 /**
@@ -140,15 +134,7 @@ export async function plantShareCookie(token: string): Promise<void> {
  * sending it again is a copy rather than a reset.
  */
 export async function rotateShareLink(): Promise<ShareSettings> {
-  const res = await fetch(`${SHARE}/rotate`, {
-    method: 'POST',
-    credentials: 'same-origin',
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
-  return (await res.json()) as ShareSettings;
+  return clientFetchJson<ShareSettings>(`${SHARE}/rotate`, { method: 'POST' });
 }
 
 /**
@@ -156,41 +142,17 @@ export async function rotateShareLink(): Promise<ShareSettings> {
  * person cannot cut off the first.
  */
 export async function emailShareLink(toEmail: string): Promise<ShareEmailResult> {
-  const res = await fetch(`${SHARE}/email`, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ toEmail }),
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
-  return (await res.json()) as ShareEmailResult;
+  return clientFetchJson<ShareEmailResult>(`${SHARE}/email`, { method: 'POST', json: { toEmail } });
 }
 
 /** Add a collection the user was granted access to into their shared view. */
 export async function addShareCollection(collectionId: number): Promise<void> {
-  const res = await fetch(`${SHARE}/collections/${collectionId}`, {
-    method: 'PUT',
-    credentials: 'same-origin',
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
+  await clientFetch(`${SHARE}/collections/${collectionId}`, { method: 'PUT' });
 }
 
 /** Take a collection back out of the shared view. */
 export async function removeShareCollection(collectionId: number): Promise<void> {
-  const res = await fetch(`${SHARE}/collections/${collectionId}`, {
-    method: 'DELETE',
-    credentials: 'same-origin',
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
+  await clientFetch(`${SHARE}/collections/${collectionId}`, { method: 'DELETE' });
 }
 
 /** Build the shareable URL from a raw token, against the browser's own origin. */
