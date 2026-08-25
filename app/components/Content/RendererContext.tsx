@@ -5,17 +5,11 @@ import { createContext, useContext } from 'react';
 import { type ReorderMove, type ViewableContent } from '@/app/types/Content';
 
 /**
- * The render-constant props the public callers still pass to
- * {@link ContentBlockWithFullScreen} and {@link Component} by hand.
+ * The render-constant props public callers pass to {@link ContentBlockWithFullScreen} and
+ * {@link Component} by hand.
  *
- * Three members, because those are the three any caller other than `EditModeLayer` has a reason to
- * set. Everything reorder-, cover- or selection-related moved to {@link EditRendererProps} once
- * `EditModeLayer` became its own provider — see that interface for why.
- *
- * A fourth, `onImageLoadError`, was removed once measured: no caller passed one, across all six
- * `ContentBlockWithFullScreen` call sites. The name lives on in {@link RendererContextValue}, where
- * it means something else — `Component`'s own wrapper, going DOWN to the leaves rather than a
- * caller's handler coming in.
+ * Reorder, cover and selection props are not here: they live in {@link EditRendererProps}, which
+ * `EditModeLayer` supplies through a provider.
  */
 export interface SharedRendererProps {
   /** Enable full-screen image viewing on click. */
@@ -29,14 +23,11 @@ export interface SharedRendererProps {
  * The edit-only slice of the grid's render-constant props: supplied by `EditModeLayer` through
  * {@link RendererProvider}, never passed as props.
  *
- * These twelve are here because `EditModeLayer` is the only caller that sets any of them —
- * measured across all six `ContentBlockWithFullScreen` call sites. Threading them through
- * `ContentBlockWithFullScreen` and `Component` meant every public caller carried twelve optional
- * props it never used, and the two components re-declared them to forward them untouched.
+ * `EditModeLayer` is the only caller that sets any of them, which is why they do not travel as
+ * props through `ContentBlockWithFullScreen` and `Component`.
  *
- * They are deliberately NOT also accepted as props. Leaving both paths open would let any of the
- * twelve arrive two ways, with precedence invisible at the call site and at the provider — a
- * worse defect than the duplication this replaces.
+ * They are deliberately NOT also accepted as props. Two open paths would let a member arrive two
+ * ways, with precedence invisible at both the call site and the provider.
  */
 export interface EditRendererProps {
   /**
@@ -64,15 +55,11 @@ export interface EditRendererProps {
  * `EditModeLayer` provides, and the three values `Component` derives rather than receives — the
  * fullscreen click handler handed down by `ContentBlockWithFullScreen`, and the download
  * capability and slug it computes from `collectionData`.
- *
- * `onImageLoadError` is declared here rather than inherited from {@link SharedRendererProps},
- * because it is not a caller's prop at all: it is `Component`'s own wrapper on its way down to the
- * leaves. The caller-facing prop of the same name was deleted once measured as having no callers.
  */
 export interface RendererContextValue extends SharedRendererProps, EditRendererProps {
   /**
-   * Records a failed image id so the public view can drop it and let the row reflow. Set by
-   * `Component` to its own wrapper; a leaf calls it from `<Image onError>`.
+   * Records a failed image id so the public view can drop the image and let the row reflow.
+   * `Component` sets it to its own handler; a leaf calls it from `<Image onError>`.
    */
   onImageLoadError?: (contentId: number) => void;
   /** Accepts any viewable content (image, parallax image, or GIF/MP4 — normalized in renderer). */
