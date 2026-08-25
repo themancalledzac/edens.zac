@@ -12,6 +12,10 @@ import {
 } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+import {
+  type RendererContextValue,
+  RendererProvider,
+} from '@/app/components/Content/RendererContext';
 import MetadataModal from '@/app/components/Metadata/MetadataModal';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
 import { EditBar } from '@/app/components/ui/EditBar/EditBar';
@@ -247,30 +251,43 @@ export default function EditModeLayer({
   // but a child's images are represented there only by the child's card.
   const childCoverCandidates = edit.childCollectionImages ?? [];
 
+  /**
+   * The edit-only slice of the grid's render-constant props. This layer is the only caller that
+   * sets any of them, so they reach the renderer through the context instead of as twelve props
+   * every public caller would have to declare and forward.
+   *
+   * Not memoized, deliberately: the sole consumer is the `Component` inside `grid`, which is not
+   * wrapped in `memo` and re-renders with this layer regardless.
+   */
+  const rendererEditValue: RendererContextValue = {
+    currentCollectionId: collection.id,
+    isSelectingCoverImage: edit.isSelectingCoverImage,
+    currentCoverImageId: edit.currentCoverImageId,
+    justClickedImageId: edit.justClickedImageId,
+    isReorderMode: reorderActive,
+    reorderMoves: reorderActive ? edit.reorder.moves : undefined,
+    pickedUpImageId: reorderActive ? edit.reorder.pickedUpImageId : undefined,
+    reorderDisplayOrder: reorderActive ? edit.reorder.displayOrder : undefined,
+    onArrowMove: reorderActive ? edit.reorder.onArrowMove : undefined,
+    onPickUp: reorderActive ? edit.reorder.onPickUp : undefined,
+    onPlace: reorderActive ? edit.reorder.onPlace : undefined,
+    onCancelImageMove: reorderActive ? edit.reorder.onCancelImageMove : undefined,
+  };
+
   const grid = (
-    <ContentBlockWithFullScreen
-      content={reorderActive ? edit.displayContent : contentBlocks}
-      priorityBlockIndex={0}
-      enableFullScreenView={false}
-      chunkSize={chunkSize}
-      mobileChunkSize={mobileChunkSize}
-      isSelectingCoverImage={edit.isSelectingCoverImage}
-      currentCoverImageId={edit.currentCoverImageId}
-      onImageClick={reorderActive || !editReady ? undefined : edit.handleImageClick}
-      justClickedImageId={edit.justClickedImageId}
-      selectedIds={edit.isMultiSelectMode ? edit.selectedIds : []}
-      currentCollectionId={collection.id}
-      collectionSlug={collection.slug}
-      collectionData={liveCollection}
-      isReorderMode={reorderActive}
-      reorderMoves={reorderActive ? edit.reorder.moves : undefined}
-      pickedUpImageId={reorderActive ? edit.reorder.pickedUpImageId : undefined}
-      reorderDisplayOrder={reorderActive ? edit.reorder.displayOrder : undefined}
-      onArrowMove={reorderActive ? edit.reorder.onArrowMove : undefined}
-      onPickUp={reorderActive ? edit.reorder.onPickUp : undefined}
-      onPlace={reorderActive ? edit.reorder.onPlace : undefined}
-      onCancelImageMove={reorderActive ? edit.reorder.onCancelImageMove : undefined}
-    />
+    <RendererProvider value={rendererEditValue}>
+      <ContentBlockWithFullScreen
+        content={reorderActive ? edit.displayContent : contentBlocks}
+        priorityBlockIndex={0}
+        enableFullScreenView={false}
+        chunkSize={chunkSize}
+        mobileChunkSize={mobileChunkSize}
+        onImageClick={reorderActive || !editReady ? undefined : edit.handleImageClick}
+        selectedIds={edit.isMultiSelectMode ? edit.selectedIds : []}
+        collectionSlug={collection.slug}
+        collectionData={liveCollection}
+      />
+    </RendererProvider>
   );
 
   return (

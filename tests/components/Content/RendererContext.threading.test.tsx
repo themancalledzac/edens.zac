@@ -9,6 +9,12 @@
  * block at once. So the leaf's props are asserted member by member, against values chosen to be
  * distinguishable from every default.
  *
+ * Since F6 the set arrives by TWO routes and this test pins the join. The four members public
+ * callers still pass go in as props; the twelve only `EditModeLayer` sets go in through a
+ * `RendererProvider` above the grid, exactly as that layer supplies them. `Component` reads the
+ * ambient value and re-provides it merged with its own props and derived values, so a leaf that
+ * receives all sixteen is the only proof that the merge did not drop a side.
+ *
  * `CollectionContentRenderer` is the only mock in the chain — everything between the entry point
  * and the leaf is the real component.
  */
@@ -17,6 +23,10 @@ import '@testing-library/jest-dom';
 import { act, render } from '@testing-library/react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+import {
+  type RendererContextValue,
+  RendererProvider,
+} from '@/app/components/Content/RendererContext';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import { createImageContent } from '@/tests/fixtures/contentFixtures';
@@ -51,29 +61,35 @@ const onImageLoadError = jest.fn();
 
 const collectionData = { id: 7, slug: 'threading-collection' } as CollectionModel;
 
+/** The twelve `EditModeLayer` supplies through the context. */
+const editValue: RendererContextValue = {
+  currentCollectionId: 7,
+  isSelectingCoverImage: true,
+  currentCoverImageId: 99,
+  justClickedImageId: 11,
+  isReorderMode: true,
+  reorderMoves: [{ imageId: 1, toIndex: 3 }],
+  pickedUpImageId: 1,
+  reorderDisplayOrder: [1],
+  onArrowMove,
+  onPickUp,
+  onPlace,
+  onCancelImageMove,
+};
+
 const renderGrid = () =>
   render(
-    <ContentBlockWithFullScreen
-      content={[createImageContent(1)]}
-      collectionData={collectionData}
-      collectionSlug={collectionData.slug}
-      enableFullScreenView
-      onImageClick={onImageClick}
-      selectedIds={[11, 22]}
-      currentCollectionId={7}
-      isSelectingCoverImage
-      currentCoverImageId={99}
-      justClickedImageId={11}
-      isReorderMode
-      reorderMoves={[{ imageId: 1, toIndex: 3 }]}
-      pickedUpImageId={1}
-      reorderDisplayOrder={[1]}
-      onArrowMove={onArrowMove}
-      onPickUp={onPickUp}
-      onPlace={onPlace}
-      onCancelImageMove={onCancelImageMove}
-      onImageLoadError={onImageLoadError}
-    />
+    <RendererProvider value={editValue}>
+      <ContentBlockWithFullScreen
+        content={[createImageContent(1)]}
+        collectionData={collectionData}
+        collectionSlug={collectionData.slug}
+        enableFullScreenView
+        onImageClick={onImageClick}
+        selectedIds={[11, 22]}
+        onImageLoadError={onImageLoadError}
+      />
+    </RendererProvider>
   );
 
 const leafProps = (): CollectionContentRendererProps =>
