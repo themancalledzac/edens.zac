@@ -56,6 +56,18 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   `git merge-base --is-ancestor <commit> origin/main`, not the badge**, and it is the only one that
   answers the question the board actually asks. Run it for every stacked PR. Better still, merge a
   stack base-first and confirm each child re-targeted to `main` before merging it.
+  **IT HAPPENED AGAIN on 2026-08-25, with F6/#325 — and the repeat is the more useful data point
+  than the original.** #325 was based on `0324-…`; #324 merged to `main` at 23:59:31 and #325 merged
+  into the retired base 13 minutes later. `SharedRendererProps` still had all sixteen members on
+  `main` while the board read ✅. Recovered by re-opening the same branch against `main` as #326.
+  **Why the rule above did not prevent it: every clause is addressed to the session that MERGES, not
+  the session that OPENS.** It is a detection procedure, so an authoring session reads it as someone
+  else's checklist and stacks anyway. **So the rule now has a preventive half, aimed at the author:
+  do NOT open a PR on this board against anything but `main`.** If the work genuinely depends on an
+  unmerged branch, say so in the PR body and wait for the parent to merge before opening the child.
+  The one-line alternative, if a stack is unavoidable: **delete the base branch the moment it
+  merges** — GitHub's auto-retarget fires on base DELETION, and neither `0313-…` nor `0324-…` was
+  deleted, which is the direct cause of both orphanings.
 - **A `file:line` ref written during the session that edits that file is born stale.** The obvious
   drift risk is refs aging across sessions; the quieter one is writing a ref from a read taken
   BEFORE your own edit, or from a subagent that read the file while you were editing it. Both
@@ -303,8 +315,8 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | C3  | `SelectsContext.toggle` purity                                             | Low         | +121 −10                                                                                   | ✅ PR #282                                                                                    |
 | C4  | Cache tags that never connect                                              | Low         | +155 −62                                                                                   | ✅ PR #279                                                                                    |
 | C5  | Assorted LOW bugs                                                          | Low         | +497 −101 (11 files)                                                                       | ✅ PR #283                                                                                    |
-| C6  | Password cover strip missing on the public card path                       | Low-medium  | ±30                                                                                        | ⛔ BACKEND-BLOCKED (split out of E1)                                                          |
-| C7  | `emailShareLink` POSTs to a route that does not exist                      | Low         | ±40 src, +30 test                                                                          | ☐ (FE built, BE missing — decide build vs hide)                                               |
+| C6  | Password cover strip missing on the public card path                       | Low-medium  | ±30                                                                                        | ☐ COLD — **UNBLOCKED 2026-08-25**: backend #209 shipped the field; frontend-only now          |
+| C7  | `emailShareLink` POSTs to a route that does not exist                      | Low         | ±40 src, +30 test                                                                          | ⛔ BLOCKED on backend BUILD — decision settled 2026-08-24; it is the backend's next item      |
 | C9  | Dimensionless cover renders no header, missing cover does                  | Low         | ±20 src, +40 test                                                                          | ☐ (found by B4; needs a decision first)                                                       |
 | C8  | Unfollowing leaves the chip count stale                                    | Low         | +418 −22 (est. +40/+80)                                                                    | ✅ PR #291                                                                                    |
 | D1  | Gate `POST /api/revalidate` (HIGH)                                         | Low         | +175                                                                                       | ✅ PR #265                                                                                    |
@@ -338,7 +350,8 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | F3  | File moves and renames                                                     | Medium      | `ReorderMove` bullet **+7 src / 0 test actual** (est. ~neutral); other eight unsized       | ◐ `ReorderMove` bullet ✅ PR #324 — F6 unblocked; other EIGHT verified 2026-08-24, still open |
 | F4  | `TaxonomyPage` ← `LocationPageClient`                                      | Medium      | −150                                                                                       | ⛔ USER DECISION                                                                              |
 | F5  | `FullScreenModal` link + resolver cleanup                                  | Low         | **−25 src / +20 test net actual** (est. −30 src, +60–120 test)                             | ✅ PR #318 — src held; test came in UNDER, unlike E13/E16                                     |
-| F6  | Fold `EditModeLayer` into `RendererContext` (shared set 16 → **4**, not 3) | Medium      | est −20 src / +40–60 test → **actual +53 src / +218 test** (PR #325)                       | ✅ PR #325 — src missed in the WRONG DIRECTION; see the relocation rule                       |
+| F6  | Fold `EditModeLayer` into `RendererContext` (shared set 16 → **4**, not 3) | Medium      | est −20 src / +40–60 test → **actual +53 src / +218 test** (PR #325 → #326)                | ✅ via **#326** — #325 orphaned on a retired base; src missed in the WRONG DIRECTION          |
+| F7  | Delete `onImageLoadError` from the render path (dead plumbing)             | Low         | −15 src / −20 test (est.; it is a deletion, so both halves are negative)                   | ☐ COLD — found by F6; the last step of 16 → 3                                                 |
 | G1  | Docs corrections                                                           | Trivial     | **+106 / −72 actual** (est. ±50)                                                           | ✅ PR #303                                                                                    |
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)            | Low         | ~neutral (relocation + splits)                                                             | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors                        |
 | G3  | `/user/selects` decision                                                   | —           | —                                                                                          | ⛔ USER DECISION                                                                              |
@@ -561,9 +574,11 @@ The project rule requires tests for these and they have none.
       E3** — they become E3's characterization safety net.
 - [x] `lib/actions/clearCache.ts` — shipped with D2, PR #266. `tests/lib/actions/clearCache.test.ts`.
 - [ ] If being thorough: `sharedObserver` (116), `useParallax` (161), `useContentReordering` (198).
-      Est +400–600. `collectionToggle` came OFF this list 2026-08-22: `collectionEditUtils.ts:28`
-      re-exports `toggleRelation` and `manageUtils.test.ts:1859` tests it — that bullet is a
-      retarget when B1 moves the file, not new coverage.
+      Est +400–600. `collectionToggle` came OFF this list 2026-08-22: `collectionEditUtils.ts:30`
+      (**was `:28`; corrected 2026-08-25**) re-exports `toggleRelation`. **The second half of this
+      line is DEAD: `manageUtils.test.ts` no longer exists** — B1 (#290) merged it away, which is
+      the very move this bullet said to wait for. The retarget already happened; coverage now lives
+      in `tests/components/ContentCollection/edit/collectionEditUtils.test.ts`. Nothing to do here.
 
 ---
 
@@ -572,7 +587,50 @@ The project rule requires tests for these and they have none.
 C1–C5 merged (#264, #281, #282, #279, #283). Full write-ups:
 [group-c-bugs.md](2026-summer-refactor/group-c-bugs.md). C4's `collections-location-${slug}` report became E12.
 
-### ⛔ C6 · Password cover strip is missing on the public collection-card path — BACKEND-BLOCKED
+### ☐ C6 · Password cover strip is missing on the public collection-card path — UNBLOCKED 2026-08-25, COLD
+
+**THE BLOCKER CLEARED AND NOBODY TOLD THIS BOARD.** The item's last bullet says "Do NOT open this as
+a frontend MR before the field exists." **The field exists.** Verified 2026-08-25 against the backend
+repo's `origin/main` at `04c0c2d`: `ContentModels.Collection` declares
+`@JsonProperty("isPasswordProtected") boolean isPasswordProtected` at `ContentModels.java:250`,
+carried through both `with*` copy methods (`:313`, `:341`), with a docblock at `:231` stating it is
+**"a render hint, not a gate"**. It shipped in backend PR #209 — the same PR the backend's own board
+recorded as "unblocked the frontend's C6", days ago.
+
+**So the remaining work is frontend-only and small.** `app/types/Content.ts`'s
+`ContentCollectionModel` still lacks the field — confirmed 2026-08-25. Add it, then do the two-line
+change the bullets below already specify. The backend question in bullet 2 is answered: it serializes
+the field, and it is a render hint, so the strip is worth having.
+
+**How this hid, and the rule it earns.** The per-session drift sweep scopes to files THIS repo's
+merges touched, so an item waiting on the OTHER repo can never be swept clean by it — it can only
+ever be re-checked deliberately. **Any item marked BACKEND-BLOCKED must be re-verified against the
+sibling repo's `origin/main` on a fixed cadence, not when something here happens to move.** The
+cheapest form is `git grep <symbol> origin/main` in the sibling plus a read of ITS session log, which
+records decisions its code does not yet show.
+
+**Why it is next (picked 2026-08-25).** Not because its context is warm — it is not; F7's is. Because
+step 3 of this close-out turned it from a blocked item into a fully specified small one, and because
+it has been sitting available for days without anyone knowing. An item that reads BLOCKED while being
+COLD is the most expensive state on a board: it is skipped by every session that scans for work.
+Clearing it takes priority over cleanup that was never blocked.
+
+**Guardrail — do NOT unify `collectionToContentModel` and `convertCollectionContentToParallax`, and
+report what doing so would cost.** Once both strip the cover for protected collections they will look
+like the same function with one call site each, and merging them is the obvious tidy-up. It is also
+exactly the shape this board keeps getting wrong. E1 split C6 out specifically to stay a provable
+no-op, and these two feed the same parallax card from different model types — `CollectionModel` and
+`ContentCollectionModel` — which is why the strip could only ever live on one of them. **Add the
+field, do the two-line change, leave both functions where they are, and write up whether a shared
+helper is worth it.** If it is clean, that is a follow-up MR with the analysis attached.
+
+**Second guardrail, from the backend's own docblock: this is a render hint, not a gate.** Backend
+`ContentModels.java:231` says so explicitly, and C6's own text calls the strip "defense-in-depth
+against a stale cache re-exposing a cover the backend already strips". **Do not build server-side
+enforcement, do not add a gate, and do not treat a missing strip as a live leak** — the backend is
+the gate and it already works. The frontend change is cosmetic hardening.
+
+The original section follows, unchanged apart from this header.
 
 Split out of E1, which deliberately left it alone to stay a provable no-op.
 
@@ -595,7 +653,29 @@ Split out of E1, which deliberately left it alone to stay a provable no-op.
       `coverImage` into `buildParallaxCard`, exactly as `collectionToContentModel` now does.
 - [ ] Do NOT open this as a frontend MR before the field exists. There is nothing to write.
 
-### ☐ C7 · `emailShareLink` POSTs to an endpoint that does not exist
+### ⛔ C7 · `emailShareLink` POSTs to an endpoint that does not exist — BLOCKED ON BACKEND BUILD (not on a decision)
+
+**Re-verified 2026-08-25 against backend `origin/main` at `04c0c2d`: the route still does not exist.**
+`git grep share/email` returns nothing across `controller/`, and `UserShareControllerProd` declares
+only `@GetMapping`, `@PostMapping("/rotate")`, and PUT/DELETE on `/collections/{collectionId}`. So
+the 404 is live and the frontend button is still broken.
+
+**But this board's framing of the item is stale, and that matters for whoever picks it up.** The
+status cell said "decide build vs hide". **That decision was made on 2026-08-24, by the backend.**
+Three facts settled it in one pass on their side: the frontend's `ShareEmailResult {sent, reason}` is
+field-for-field `EmailService.SendResult`, which already exists; and both sides already handle
+`email.enabled=false` gracefully, so it ships without SES configured. It went from a product decision
+to a specified one-endpoint build, and **the backend's board lists it as their NEXT item.**
+
+**So C7 is blocked on implementation by a named party at a known position in their queue — not on
+anyone's decision, and not on the frontend.** Do not open a frontend MR and do not remove the button.
+The question, and who answers it: _"has `POST /api/read/user/share/email` shipped yet?"_, answered by
+the backend repo. Re-check with `git grep share/email origin/main` there. When it lands, the frontend
+side is already built and this closes with a test rather than a change.
+
+The original section follows.
+
+#### The original filing
 
 Found 2026-08-23 while researching the email strategy (H4). The "Send" button under Share on `/user`
 404s on every click.
@@ -1611,8 +1691,8 @@ Bigger, optional, sequenced last. Do each individually and verify on :3000.
 
 ### ☐ F1 · Decompose `useCollectionEdit.tsx` (1,747 lines — C1 added the seed guard)
 
-- [ ] After the A- and E-group work (~−150 lines), split along the pattern the file already established (`useContentReordering`, `useCoverImageSelection`, …): `useAdminCollectionState`, `useCollectionUpdateForm`, `useCollectionPeople` + `useGalleryAccess`, `useCollectionRelations`, `useContentOps`, `useManageBar`. The section boundaries verified 2026-08-22: state `:311–421`, update form `:438–792`, people+gallery `:471–851`, content ops `:852–1206`, relations `:1208–1392`, manage bar `:1393–1451`. Keep the existing `UseCollectionEditResult` facade so the SIX test suites (`test`, `buffer`, `handlers`, `bulkRemove`, `escapeSelection`, `delete`) plus `collectionEditFixtures.ts`'s ~70-member result builder do not churn. No file over ~450 lines.
-- [ ] This also dissolves `EditModeLayer`'s FOUR `exhaustive-deps` suppressions (`:131`, `:201`, `:208`, `:215` — was "three").
+- [ ] After the A- and E-group work (~−150 lines), split along the pattern the file already established (`useContentReordering`, `useCoverImageSelection`, …): `useAdminCollectionState`, `useCollectionUpdateForm`, `useCollectionPeople` + `useGalleryAccess`, `useCollectionRelations`, `useContentOps`, `useManageBar`. The section boundaries were verified 2026-08-22 and **have since drifted — corrected 2026-08-25**: state `:312–422`, update form `:439–797`, people+gallery `:472–856`, content ops `:857–1211`, relations `:1213–1397`, manage bar `:1398–1456`. **Why they moved, and the rule it implies:** #313 landed on 2026-08-24, one day AFTER the boundaries were checked, and inserted 1 line at `:68` and 4 at `:748` — so every boundary below `:748` is +1 and every boundary at or above it is +5. Re-anchored on `const [currentState`, `const [editTab`, `const seedUpdateData`, `const [collectionPeople` and `const handleMediaUpload`, all of which still match. **The file's stated 1,747 lines is correct**, which is exactly what made this drift invisible: the line COUNT was refreshed after #313 and the line REFS were not, so the item looked verified. Keep the existing `UseCollectionEditResult` facade so the SIX test suites (`test`, `buffer`, `handlers`, `bulkRemove`, `escapeSelection`, `delete`) plus `collectionEditFixtures.ts`'s ~70-member result builder do not churn. No file over ~450 lines.
+- [ ] This also dissolves `EditModeLayer`'s FOUR `exhaustive-deps` suppressions (**`:135`, `:205`, `:212`, `:219` as of 2026-08-25** — were `:131`/`:201`/`:208`/`:215`, shifted +4 by F6's provider block; was "three" before that).
 
 ### ✅ F2 · `RendererContext` for the BoxRenderer tree — SHIPPED
 
@@ -1745,7 +1825,7 @@ props, and write up what including it would cost and whether the coupling is acc
 turns out clean, that is a follow-up MR with the analysis attached rather than a scope expansion
 discovered mid-diff.
 
-- [x] ~~Twenty render-constant props are copied ~10 times across~~ **Re-measured 2026-08-24 and both numbers are wrong — see below.** **Done in #321.** Render-constant props are copied across `BoxRenderer`, `Component`, and `ContentBlockWithFullScreen`. A context provided once by `Component` reduces `BoxRenderer` to `tree`/`sizes`/`isMobile`/`priority` and removes plumbing — `priority` STAYS a prop, it is per-row (`priority={rowIndex <= priorityRowIndex}`, was Component.tsx:284, **now `:246` after #321 cut 39 lines from the file**), not render-constant. Completes the context migration the codebase already chose for `SelectStar`/`SaveHeart`.
+- [x] ~~Twenty render-constant props are copied ~10 times across~~ **Re-measured 2026-08-24 and both numbers are wrong — see below.** **Done in #321.** Render-constant props are copied across `BoxRenderer`, `Component`, and `ContentBlockWithFullScreen`. A context provided once by `Component` reduces `BoxRenderer` to `tree`/`sizes`/`isMobile`/`priority` and removes plumbing — `priority` STAYS a prop, it is per-row (`priority={rowIndex <= priorityRowIndex}`, was Component.tsx:284, then `:246` after #321 cut 39 lines, **now `:254` after F6 added 8 lines above it (2026-08-25)**), not render-constant. Completes the context migration the codebase already chose for `SelectStar`/`SaveHeart`.
 
 **The two numbers this item's estimate rests on are both wrong, and the second one badly.**
 Measured on 2026-08-24 against `main` + E8:
@@ -1885,10 +1965,10 @@ vague bullet into a shippable item.
       a module that no longer exists. Found by B1 (#290) and deliberately left — renaming log labels
       inside a test-only MR would have put a source change in a diff that had none. **PARTLY
       ACCURATE (2026-08-24) — the labels are stale as claimed, but there are three, not two.**
-      `collectionEditUtils.ts:224`, `:278`, `:304` on `main` at `a60d333` ("Failed to revalidate
+      `collectionEditUtils.ts:225`, `:279`, `:305` as of 2026-08-25 (were `:224`/`:278`/`:304` at `a60d333`; #324 added one import line above them) ("Failed to revalidate
       cache", "…location caches", "…metadata cache"). `manageUtils.ts` is gone —
       `manageUtils.test.ts` was deleted in #290. **Nothing pins the string**: `git grep
-  "'manageUtils'" -- tests/` returns nothing and `logger.warn` is a no-op under
+"'manageUtils'" -- tests/` returns nothing and `logger.warn` is a no-op under
       `NODE_ENV === 'test'`, so this is a 1 src / 0 test change with no assertion to update.
       Correct label is `collectionEditUtils`.
 
@@ -1946,9 +2026,19 @@ the second distinct shape of that rule biting this board; the first was `mockRes
 
 ---
 
-### ✅ F6 · Fold `EditModeLayer` into `RendererContext` — SHIPPED, PR #325
+### ✅ F6 · Fold `EditModeLayer` into `RendererContext` — SHIPPED, PR #325 → re-landed as #326
 
-**SHIPPED 2026-08-24 — PR #325, +53 src / +218 test, against an estimate of −20 src / +40–60 test.**
+**ORPHANED ON MERGE, then recovered — read this before trusting the ✅.** #325 was opened stacked on
+`0324-f3-reordermove-move`. #324 merged to `main` at 23:59:31; #325 merged 13 minutes later into
+that now-retired base, so **`main` never saw F6** even though `gh pr view 325` says `MERGED`. Caught
+by the 2026-08-25 close-out's reconcile step via
+`git merge-base --is-ancestor 9953f19 main`, which said no; the giveaway was that `main`'s
+`SharedRendererProps` still had all sixteen members. Re-opened the same two commits against `main`
+as **#326**. This is the SECOND time this exact trap has hit this board — see E15/#314 and the
+strengthened rule in "how to use this doc", which now carries a preventive clause aimed at the
+session that opens a PR rather than only the one that merges it.
+
+**SHIPPED 2026-08-24 — PR #325 (landed via #326), +53 src / +218 test, against an estimate of −20 src / +40–60 test.**
 `EditModeLayer` supplies the twelve edit-only members through `RendererProvider`; `Component` reads
 the ambient value and re-provides it merged with its own. 246 suites / 4423 tests pass (+1 suite,
 +24 tests) on a 245 / 4399 baseline.
@@ -2030,7 +2120,7 @@ rest of this filing is left as written. Measured 2026-08-24 with
 
 | Caller                                                                   | Shared props passed                                   |
 | ------------------------------------------------------------------------ | ----------------------------------------------------- |
-| `EditModeLayer.tsx:250`                                                  | all 8 reorder + 4 cover/select = **12** (was "13")    |
+| `EditModeLayer.tsx:279` (was `:250` pre-F6)                              | all 8 reorder + 4 cover/select = **12** (was "13")    |
 | `CollectionPageClient.tsx`                                               | `enableFullScreenView`, `onImageClick`, `selectedIds` |
 | `TaxonomyPage`, `CollectionPage`, `LocationPageClient`, `AdminHubClient` | `enableFullScreenView` only                           |
 | `CollectionRailContext`                                                  | none                                                  |
@@ -2064,6 +2154,43 @@ re-provides without ever importing from `edit/` is the cleaner of the two direct
 lines in `EditModeLayer`, +~5 provider lines there, +~5 merge lines in `Component`. Test: anything
 mounting `EditModeLayer` needs the provider, and the merge precedence in `Component` is new behavior
 nothing pins — per E8's rule, size the test half by what is bare, and that merge is bare.
+
+---
+
+### ☐ F7 · Delete `onImageLoadError` from the render path — COLD
+
+Filed 2026-08-25 out of F6's re-measurement. F6 was supposed to take `SharedRendererProps` from
+sixteen members to three; it landed at four. This item is the missing one, and it is a deletion
+rather than a move — which is why it is filed separately instead of bundled into F6.
+
+**The measurement. `onImageLoadError` has ZERO callers in `app/`.** Checked across all six
+`ContentBlockWithFullScreen` call sites: `AdminHubClient`, `CollectionPage`, `CollectionPageClient`,
+`EditModeLayer`, `LocationPageClient`, `TaxonomyPage`. None passes one. It is declared in
+`SharedRendererProps`, accepted by `ContentBlockWithFullScreen` and `Component`, wrapped by
+`Component`, and forwarded to `BoxRenderer` and `CollectionContentRenderer` — for nobody.
+
+**The one thing that must NOT be deleted with it.** `Component`'s wrapper `handleImageLoadError` is
+live and load-bearing: it records the failed id into `failedImageIds` so the public view drops the
+image and the row reflows instead of leaving a blank slot. Only the final `onImageLoadError?.(contentId)`
+call inside the wrapper is inert. **Keep the wrapper, keep the reflow, delete the prop and the
+forwarding call.** `Component.reflowOnError.test.tsx` covers the reflow and must still pass
+untouched — if it needs editing, the change went too far.
+
+**Scope:** remove the member from `SharedRendererProps`, from `Component`'s destructure and its
+`useCallback` dep list, and the one call inside the wrapper. `RendererContextValue` keeps
+`onImageLoadError` because that is `Component`'s wrapper going down to the leaves, which is a
+different thing that happens to share a name — **do not delete that one**, and consider renaming it
+in the same pass so the next reader is not asked to hold two meanings for one identifier.
+
+**Test churn is a deletion, so both halves should be negative.** Per the rule F6 added, only
+removing a declaration's last caller produces a negative src number, and this is exactly that case.
+`RendererContext.threading.test.tsx` asserts the wrapper is threaded rather than the raw handler —
+that assertion changes shape, since there is no raw handler left to distinguish it from. Rewrite it
+to pin that the leaf receives a function which records the failure, not that it differs from a
+caller's handler.
+
+**Why it is COLD, not blocked.** Nothing is unanswered: the caller count is measured, the live half
+is identified, and the affected tests are named.
 
 ---
 
@@ -2503,6 +2630,45 @@ unification** — settle those two together or they will produce two competing d
 _Newest first. **Dates are local (America/Los_Angeles), not UTC** — earlier entries mixed the two,
 which is why a "08-23" entry can sit between two "08-24" ones. The ordering was verified correct
 against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates._
+
+- 2026-08-25 — **close-out. F6 was NOT on `main` and the board said it was.** #325 merged into its
+  stale stacked base `0324-…` 13 minutes after #324 took that base to `main`, so F6 landed on a dead
+  branch while `gh pr view` reported `MERGED`. Caught by `git merge-base --is-ancestor 9953f19 main`;
+  the tell was that `main`'s `SharedRendererProps` still had all sixteen members. Re-opened as
+  **#326** against `main`. **This is the SECOND time — E15/#314 did the same thing on 2026-08-24 —
+  and the repeat is the finding.** The rule was already written here, in detail, with the precedent
+  and the fix. It did not prevent anything because **every clause of it is addressed to the session
+  that MERGES, not the one that OPENS**, so an authoring session files it as someone else's
+  checklist. The rule now has a preventive half aimed at the author: **do not open a PR on this board
+  against anything but `main`.** Generalizes past this board — a trap rule has to name the actor who
+  can prevent it, not only the one who can detect it.
+
+  **Step 3 paid out twice, and both payouts were cross-repo.** Checking the two backend-dependent
+  items against the backend's `origin/main` rather than trusting the board changed both.
+  **C6 was BLOCKED and is actually COLD** — backend #209 shipped `isPasswordProtected` on
+  `ContentModels.Collection` (`:250`, plus both `with*` copies), which is the exact field C6 said to
+  wait for, and the backend's board even recorded it as "unblocked the frontend's C6". It has been
+  available for days while reading as blocked. **C7 is still blocked but no longer on a decision** —
+  the route genuinely does not exist, but the backend settled build-vs-hide on 2026-08-24 (the
+  frontend's `ShareEmailResult` is field-for-field `EmailService.SendResult`, which already exists)
+  and it is their next item. **Rule earned: a BACKEND-BLOCKED item can never be cleared by this
+  board's drift sweep, because the sweep scopes to files THIS repo's merges touched. Re-check them
+  deliberately, and read the sibling repo's session log — it records decisions its code does not yet
+  show.**
+
+  **Six drifted refs corrected, all in the neighborhood of what shipped, as the third principle
+  predicts** — and the most valuable one was invisible for an instructive reason. **F1's section
+  boundaries were verified 2026-08-22 and #313 edited the file on 2026-08-24**, inserting at `:68`
+  and `:748`, so every boundary is +1 or +5. What hid it: **F1's stated line count (1,747) is
+  correct**, because the count was refreshed after #313 and the refs were not. A right-looking
+  inventory number next to stale refs reads as a verified item. Also fixed: F3 b9's logger labels
+  (`:224/:278/:304` → `:225/:279/:305`), `collectionEditUtils.ts:28` → `:30`, F2's
+  `Component.tsx:246` → `:254`, F6's `EditModeLayer.tsx:250` → `:279`, and **one fully dead ref** —
+  the B8 coverage bullet still points at `manageUtils.test.ts:1859`, a file B1/#290 deleted, in a
+  sentence that says to wait for B1.
+
+  **Filed F7** (delete `onImageLoadError`, the dead prop F6 found with zero callers) with a row and a
+  section. Next: **C6**, because step 3 just specified it and it has been silently available.
 
 - 2026-08-24 (12) — **shipped F6 (#325). The src estimate missed in the WRONG DIRECTION for the
   first time on this board: −20 predicted, +53 actual.** Not a magnitude error — a sign error, and
