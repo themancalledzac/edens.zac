@@ -9,18 +9,22 @@
  * block at once. So the leaf's props are asserted member by member, against values chosen to be
  * distinguishable from every default.
  *
- * Since F6 the set arrives by TWO routes and this test pins the join. The four members public
+ * Since F6 the set arrives by TWO routes and this test pins the join. The three members public
  * callers still pass go in as props; the twelve only `EditModeLayer` sets go in through a
  * `RendererProvider` above the grid, exactly as that layer supplies them. `Component` reads the
  * ambient value and re-provides it merged with its own props and derived values, so a leaf that
- * receives all sixteen is the only proof that the merge did not drop a side.
+ * receives all fifteen is the only proof that the merge did not drop a side.
+ *
+ * Three, not four: F7 deleted `onImageLoadError` from the caller-facing set after measuring that
+ * none of the six `ContentBlockWithFullScreen` call sites passed one. It survives as `Component`'s
+ * own wrapper going down, which is a different thing that happens to share the name.
  *
  * `CollectionContentRenderer` is the only mock in the chain — everything between the entry point
  * and the leaf is the real component.
  */
 import '@testing-library/jest-dom';
 
-import { act, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import {
@@ -57,7 +61,6 @@ const onArrowMove = jest.fn();
 const onPickUp = jest.fn();
 const onPlace = jest.fn();
 const onCancelImageMove = jest.fn();
-const onImageLoadError = jest.fn();
 
 const collectionData = { id: 7, slug: 'threading-collection' } as CollectionModel;
 
@@ -87,7 +90,6 @@ const renderGrid = () =>
         enableFullScreenView
         onImageClick={onImageClick}
         selectedIds={[11, 22]}
-        onImageLoadError={onImageLoadError}
       />
     </RendererProvider>
   );
@@ -135,15 +137,21 @@ describe('render-constant props reach the leaf renderer', () => {
   );
 
   /**
-   * `onImageLoadError` is the one handler that must NOT arrive by identity: `Component` wraps it so
-   * a failed image is recorded and the public view can reflow around it, then calls the caller's.
+   * `onImageLoadError` is the one handler the leaf receives that no caller supplies: `Component`
+   * builds it itself, to record a failed id so the public view can drop the image and reflow.
+   *
+   * This used to assert the leaf's handler differed from a caller's raw one. F7 deleted the
+   * caller-facing prop — measured as having no callers across all six `ContentBlockWithFullScreen`
+   * call sites — so there is nothing left to differ from, and the assertion would have passed
+   * vacuously. What is worth pinning now is that the leaf gets a function even though the grid
+   * below is rendered without one, i.e. that `Component` still supplies its own. What that
+   * function DOES is `Component.reflowOnError.test.tsx`, which owns the reflow.
    */
-  it('threads a wrapper around onImageLoadError, not the raw handler', () => {
+  it('supplies onImageLoadError from Component, with no caller passing one', () => {
     expect(typeof leafProps().onImageLoadError).toBe('function');
-    expect(leafProps().onImageLoadError).not.toBe(onImageLoadError);
-    const wrapped = leafProps().onImageLoadError;
-    act(() => wrapped?.(1));
-    expect(onImageLoadError).toHaveBeenCalledWith(1);
+    for (const handler of [onImageClick, onArrowMove, onPickUp, onPlace, onCancelImageMove]) {
+      expect(leafProps().onImageLoadError).not.toBe(handler);
+    }
   });
 
   /**

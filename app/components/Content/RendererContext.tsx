@@ -8,9 +8,14 @@ import { type ReorderMove, type ViewableContent } from '@/app/types/Content';
  * The render-constant props the public callers still pass to
  * {@link ContentBlockWithFullScreen} and {@link Component} by hand.
  *
- * Four members, because those are the four any caller other than `EditModeLayer` has a reason to
+ * Three members, because those are the three any caller other than `EditModeLayer` has a reason to
  * set. Everything reorder-, cover- or selection-related moved to {@link EditRendererProps} once
  * `EditModeLayer` became its own provider — see that interface for why.
+ *
+ * A fourth, `onImageLoadError`, was removed once measured: no caller passed one, across all six
+ * `ContentBlockWithFullScreen` call sites. The name lives on in {@link RendererContextValue}, where
+ * it means something else — `Component`'s own wrapper, going DOWN to the leaves rather than a
+ * caller's handler coming in.
  */
 export interface SharedRendererProps {
   /** Enable full-screen image viewing on click. */
@@ -18,14 +23,6 @@ export interface SharedRendererProps {
   onImageClick?: (imageId: number) => void;
   /** Selected image IDs for bulk editing. */
   selectedIds?: number[];
-  /**
-   * Notified when an image 404s at load time, after `Component` has recorded the failure.
-   *
-   * No caller currently passes one. It is kept as a prop rather than deleted because
-   * `Component`'s own wrapper is live either way — the wrapper drops the image so the row
-   * reflows, and calling this is the only part that is inert.
-   */
-  onImageLoadError?: (contentId: number) => void;
 }
 
 /**
@@ -68,10 +65,16 @@ export interface EditRendererProps {
  * fullscreen click handler handed down by `ContentBlockWithFullScreen`, and the download
  * capability and slug it computes from `collectionData`.
  *
- * `onImageLoadError` here is `Component`'s wrapper, not the caller's raw handler: the wrapper
- * records the failed id so the public view can drop the image and reflow, then calls the caller's.
+ * `onImageLoadError` is declared here rather than inherited from {@link SharedRendererProps},
+ * because it is not a caller's prop at all: it is `Component`'s own wrapper on its way down to the
+ * leaves. The caller-facing prop of the same name was deleted once measured as having no callers.
  */
 export interface RendererContextValue extends SharedRendererProps, EditRendererProps {
+  /**
+   * Records a failed image id so the public view can drop it and let the row reflow. Set by
+   * `Component` to its own wrapper; a leaf calls it from `<Image onError>`.
+   */
+  onImageLoadError?: (contentId: number) => void;
   /** Accepts any viewable content (image, parallax image, or GIF/MP4 — normalized in renderer). */
   onFullScreenImageClick?: (image: ViewableContent) => void;
   /** Client gallery download capability, resolved from the viewer's role. */
