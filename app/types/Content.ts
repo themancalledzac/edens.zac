@@ -342,6 +342,16 @@ export interface ContentCollectionModel extends Content {
   isClient?: boolean;
   /** True when the referenced collection is a blog/story (drives the Story badge). */
   isBlog?: boolean;
+  /**
+   * True when the referenced collection requires a password. Mirrors backend
+   * `ContentModels.Collection.isPasswordProtected`, which the backend documents as "a render hint,
+   * not a gate" — the access boundary is the gallery's own route, never this flag.
+   *
+   * Optional because a payload cached before backend PR #209 carries no such key; consumers must
+   * treat an absent value as "not protected" only where that is the safe default, and key strictly
+   * on `=== true` otherwise.
+   */
+  isPasswordProtected?: boolean;
   coverImage?: ContentImageModel | null; // Full image object with dimensions (matches CollectionModel.coverImage)
   referencedCollectionId: number; // ID of the actual collection being referenced
   /** Rating 0-5 of the referenced collection (nullable). Used by home manage page. */

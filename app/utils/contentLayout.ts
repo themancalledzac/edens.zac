@@ -217,10 +217,22 @@ export { clampParallaxDimensions };
  * `allowLayoutDimensions` is what preserves this path's historical use of
  * `pickImageDimensions` - it accepts the layout `width`/`height` fields as a fallback, which
  * the other three card call sites do not.
+ *
+ * The cover of a password-protected collection is replaced with `null` unless the caller opts in
+ * via `showProtectedCovers`, matching `collectionToContentModel` on the `CollectionModel` path.
+ * This is a frontend product choice, NOT defense-in-depth against the API: the backend
+ * deliberately returns the cover alongside the flag (`ContentModels.java:231-234`, backend PR
+ * #209), so nothing upstream strips it and the card would otherwise show the cover of a locked
+ * gallery. Keyed on `isPasswordProtected` alone rather than on kind, so a payload missing the
+ * kind booleans still strips. Admin manage surfaces pass `true` — see `processContentBlocks`.
  */
 export function convertCollectionContentToParallax(
-  col: ContentCollectionModel
+  col: ContentCollectionModel,
+  showProtectedCovers: boolean = false
 ): ContentParallaxImageModel {
+  const safeCoverImage =
+    col.isPasswordProtected === true && !showProtectedCovers ? null : col.coverImage;
+
   return buildParallaxCard({
     id: col.id ?? col.referencedCollectionId,
     collectionId: col.referencedCollectionId,
@@ -232,7 +244,7 @@ export function convertCollectionContentToParallax(
     isBlog: col.isBlog,
     tags: col.tags,
     description: col.description ?? null,
-    coverImage: col.coverImage,
+    coverImage: safeCoverImage,
     orderIndex: col.orderIndex,
     visible: col.visible ?? true,
     createdAt: col.createdAt,
@@ -293,13 +305,19 @@ function filterVisibleBlocks(
 }
 
 /**
- * Convert collection content blocks to parallax image blocks for unified rendering
+ * Convert collection content blocks to parallax image blocks for unified rendering.
+ *
+ * `showProtectedCovers` is forwarded verbatim to `convertCollectionContentToParallax`; see that
+ * function's docblock for why the strip lives there rather than in `buildParallaxCard`.
  */
-function transformCollectionBlocks(content: AnyContentModel[]): AnyContentModel[] {
+function transformCollectionBlocks(
+  content: AnyContentModel[],
+  showProtectedCovers: boolean
+): AnyContentModel[] {
   return content.map(block => {
     if (isContentCollection(block)) {
       const collectionBlock = block as ContentCollectionModel;
-      return convertCollectionContentToParallax(collectionBlock);
+      return convertCollectionContentToParallax(collectionBlock, showProtectedCovers);
     }
     return block;
   });
@@ -385,13 +403,20 @@ function sortNonVisibleToBottom(
  * @param filterVisible - Whether to filter out non-visible blocks (default: true)
  * @param collectionId - Collection ID for checking image visibility
  * @param displayMode - Sort by 'CHRONOLOGICAL' or 'ORDERED' (default: ORDERED)
+ * @param showProtectedCovers - Opt in to rendering the cover of a password-protected child
+ *   collection. Defaults to false so every public surface strips without having to ask. The two
+ *   admin manage surfaces pass true, because an admin managing a parent needs to recognise its
+ *   children by their covers. Deliberately a separate parameter rather than being inferred from
+ *   `filterVisible === false`: the two happen to agree at every call site today, and collapsing
+ *   them would tie a cover-visibility decision to a hidden-block decision that can drift apart.
  * @returns Processed and sorted content blocks
  */
 export function processContentBlocks(
   content: AnyContentModel[],
   filterVisible: boolean = true,
   collectionId?: number,
-  displayMode?: 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED'
+  displayMode?: 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED',
+  showProtectedCovers: boolean = false
 ): AnyContentModel[] {
   let processed = filterVisibleBlocks(content, filterVisible, collectionId);
   processed = ensureParallaxDimensions(processed);
@@ -405,7 +430,7 @@ export function processContentBlocks(
     processed = sortNonVisibleToBottom(processed, collectionId);
   }
 
-  processed = transformCollectionBlocks(processed);
+  processed = transformCollectionBlocks(processed, showProtectedCovers);
 
   return processed;
 }
