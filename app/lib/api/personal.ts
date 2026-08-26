@@ -6,7 +6,7 @@
  * Distinct from Selects (per-gallery favorites): saves are cross-collection bookmarks available to
  * ANY logged-in user, and follows track whole collections. Both backend reads return `number[]`.
  */
-import { ApiError, fetchReadApi } from '@/app/lib/api/core';
+import { ApiError, clientFetch, fetchReadApi } from '@/app/lib/api/core';
 import { type ContentImageModel } from '@/app/types/Content';
 import { type FailSoftRead } from '@/app/types/FailSoftRead';
 import { type FollowedCollectionIds, type SavedImageIds } from '@/app/types/Personal';
@@ -15,74 +15,24 @@ import { logger } from '@/app/utils/logger';
 const SAVES = '/api/proxy/api/read/user/saves';
 const FOLLOWS = '/api/proxy/api/read/user/follows';
 
-/** Throw an `ApiError` carrying the backend message (or a status fallback) for a non-OK response. */
-async function throwFromResponse(res: Response): Promise<never> {
-  let detail: unknown;
-  const contentType = res.headers.get('content-type') || '';
-  try {
-    detail = contentType.includes('application/json') ? await res.json() : await res.text();
-  } catch {
-    detail = '';
-  }
-  const message =
-    typeof detail === 'string' && detail
-      ? detail
-      : detail && typeof detail === 'object'
-        ? ((detail as { message?: string }).message ?? JSON.stringify(detail))
-        : `API error: ${res.status}`;
-  throw new ApiError(message, res.status);
-}
-
 /** Bookmark an image for the current user. Resolves on 201. */
 export async function addSave(imageId: number): Promise<void> {
-  const res = await fetch(SAVES, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageId }),
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
+  await clientFetch(SAVES, { method: 'POST', json: { imageId } });
 }
 
 /** Remove a saved image for the current user. Resolves on 204. */
 export async function removeSave(imageId: number): Promise<void> {
-  const res = await fetch(`${SAVES}/${imageId}`, {
-    method: 'DELETE',
-    credentials: 'same-origin',
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
+  await clientFetch(`${SAVES}/${imageId}`, { method: 'DELETE' });
 }
 
 /** Follow a collection for the current user. Resolves on 201. */
 export async function addFollow(collectionId: number): Promise<void> {
-  const res = await fetch(FOLLOWS, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ collectionId }),
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
+  await clientFetch(FOLLOWS, { method: 'POST', json: { collectionId } });
 }
 
 /** Unfollow a collection for the current user. Resolves on 204. */
 export async function removeFollow(collectionId: number): Promise<void> {
-  const res = await fetch(`${FOLLOWS}/${collectionId}`, {
-    method: 'DELETE',
-    credentials: 'same-origin',
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
+  await clientFetch(`${FOLLOWS}/${collectionId}`, { method: 'DELETE' });
 }
 
 /**

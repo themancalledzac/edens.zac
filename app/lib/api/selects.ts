@@ -5,54 +5,20 @@
  * response. Distinct from the ephemeral download "select mode" (see `ClientGalleryDownloadContext`)
  * — these calls persist a user's favorites.
  */
-import { ApiError, fetchReadApi } from '@/app/lib/api/core';
+import { ApiError, clientFetch, fetchReadApi } from '@/app/lib/api/core';
 import { type SelectGroup } from '@/app/types/Selects';
 import { logger } from '@/app/utils/logger';
 
 const BASE = '/api/proxy/api/read/user/selects';
 
-/** Throw an `ApiError` carrying the backend message (or a status fallback) for a non-OK response. */
-async function throwFromResponse(res: Response): Promise<never> {
-  let detail: unknown;
-  const contentType = res.headers.get('content-type') || '';
-  try {
-    detail = contentType.includes('application/json') ? await res.json() : await res.text();
-  } catch {
-    detail = '';
-  }
-  const message =
-    typeof detail === 'string' && detail
-      ? detail
-      : detail && typeof detail === 'object'
-        ? ((detail as { message?: string }).message ?? JSON.stringify(detail))
-        : `API error: ${res.status}`;
-  throw new ApiError(message, res.status);
-}
-
 /** Add an image to the current user's selects, scoped to a collection. Resolves on 201. */
 export async function addSelect(collectionId: number, contentId: number): Promise<void> {
-  const res = await fetch(BASE, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ collectionId, contentId }),
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
+  await clientFetch(BASE, { method: 'POST', json: { collectionId, contentId } });
 }
 
 /** Remove an image from the current user's selects. Resolves on 204. */
 export async function removeSelect(contentId: number): Promise<void> {
-  const res = await fetch(`${BASE}/${contentId}`, {
-    method: 'DELETE',
-    credentials: 'same-origin',
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    await throwFromResponse(res);
-  }
+  await clientFetch(`${BASE}/${contentId}`, { method: 'DELETE' });
 }
 
 /**

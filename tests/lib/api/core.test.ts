@@ -5,6 +5,8 @@
 
 import {
   ApiError,
+  clientFetch,
+  clientFetchJson,
   fetchAdminDeleteApi,
   fetchAdminGetApi,
   fetchAdminPatchJsonApi,
@@ -13,6 +15,7 @@ import {
   fetchEditPatchJsonApi,
   fetchEditPostJsonApi,
   getServerCookieHeader,
+  throwFromResponse,
 } from '@/app/lib/api/core';
 import { logger } from '@/app/utils/logger';
 
@@ -546,5 +549,148 @@ describe('admin fetchers forward the server session cookie (SSR)', () => {
 
     const [, init] = (global.fetch as jest.Mock).mock.calls[0];
     expect(init.headers).not.toHaveProperty('Cookie');
+  });
+});
+
+/**
+ * `throwFromResponse` moved into core.ts in E2, having been byte-identical in auth.ts,
+ * personal.ts, share.ts and selects.ts. It had no direct tests in any of them — these pin the
+ * contract now that one copy serves four modules, and make the two deliberate divergences in
+ * collections.ts and users.ts visible as differences rather than drift.
+ */
+describe('throwFromResponse', () => {
+  const respond = (status: number, contentType: string, payload: unknown) =>
+    ({
+      status,
+      headers: new Headers({ 'content-type': contentType }),
+      json: jest.fn().mockResolvedValue(payload),
+      text: jest.fn().mockResolvedValue(payload),
+    }) as unknown as Response;
+
+  it('carries the response status onto the ApiError', async () => {
+    // Callers branch on status, not copy — ShareCard's mapError turns 401/403/409 into three
+    // different sentences, so a dropped status silently collapses them into one.
+    await expect(throwFromResponse(respond(409, 'application/json', {}))).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 409,
+    });
+  });
+
+  it('prefers a plain-text body verbatim', async () => {
+    await expect(throwFromResponse(respond(400, 'text/plain', 'plain words'))).rejects.toThrow(
+      'plain words'
+    );
+  });
+
+  it("uses a JSON body's message field", async () => {
+    await expect(
+      throwFromResponse(respond(400, 'application/json', { message: 'from the backend' }))
+    ).rejects.toThrow('from the backend');
+  });
+
+  it('falls back to the whole JSON body when there is no message field', async () => {
+    // This is the branch users.ts deliberately does NOT share — see users.test.ts.
+    await expect(
+      throwFromResponse(respond(400, 'application/json', { error: 'no message key' }))
+    ).rejects.toThrow(JSON.stringify({ error: 'no message key' }));
+  });
+
+  it('falls back to the status when the body cannot be parsed', async () => {
+    const res = {
+      status: 500,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockRejectedValue(new Error('bad json')),
+    } as unknown as Response;
+
+    // A malformed error body must not replace the error; the status still has to survive.
+    await expect(throwFromResponse(res)).rejects.toThrow('API error: 500');
+    await expect(throwFromResponse(res)).rejects.toMatchObject({ status: 500 });
+  });
+});
+
+/**
+ * `clientFetch` / `clientFetchJson` replaced 17 hand-written copies of the same skeleton in E2.
+ * These pin the four defaults it exists to apply, because a silently dropped `credentials` or
+ * `cache` would not fail any existing suite — it would just log the user out, or serve them a
+ * stale answer, in the browser.
+ */
+describe('clientFetch', () => {
+  const ok = () =>
+    ({ ok: true, status: 200, json: jest.fn().mockResolvedValue({ v: 1 }) }) as unknown as Response;
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it('sends the session cookie and never caches', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(ok());
+
+    await clientFetch('/api/proxy/thing');
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(init.credentials).toBe('same-origin');
+    expect(init.cache).toBe('no-store');
+  });
+
+  it('serializes json and sets the content type, only when there is a body', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(ok());
+
+    await clientFetch('/api/proxy/thing', { method: 'POST', json: { a: 1 } });
+    const [, withBody] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(withBody.body).toBe(JSON.stringify({ a: 1 }));
+    expect(withBody.headers).toMatchObject({ 'Content-Type': 'application/json' });
+
+    (global.fetch as jest.Mock).mockClear();
+    await clientFetch('/api/proxy/thing', { method: 'DELETE' });
+    const [, noBody] = (global.fetch as jest.Mock).mock.calls[0];
+    // A DELETE with a JSON content-type and no body is what the old hand-written calls avoided.
+    expect(noBody.body).toBeUndefined();
+    expect(noBody.headers).toBeUndefined();
+  });
+
+  it('lets a caller override a default', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(ok());
+
+    await clientFetch('/api/proxy/thing', { cache: 'force-cache' });
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(init.cache).toBe('force-cache');
+  });
+
+  it('throws ApiError carrying the status on a non-OK response', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 403,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockResolvedValue({ message: 'nope' }),
+    });
+
+    await expect(clientFetch('/api/proxy/thing')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 403,
+    });
+  });
+
+  it('does not read the body of a successful response', async () => {
+    // 204-returning mutations are the majority of the converted call sites; parsing them would
+    // throw on an empty body.
+    const res = ok();
+    (global.fetch as jest.Mock).mockResolvedValue(res);
+
+    await clientFetch('/api/proxy/thing', { method: 'DELETE' });
+
+    expect(res.json).not.toHaveBeenCalled();
+  });
+});
+
+describe('clientFetchJson', () => {
+  it('returns the parsed body', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ token: 'tok-1' }),
+    });
+
+    await expect(clientFetchJson<{ token: string }>('/api/proxy/thing')).resolves.toEqual({
+      token: 'tok-1',
+    });
   });
 });
