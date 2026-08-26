@@ -145,4 +145,38 @@ describe('ShareCard', () => {
 
     expect(await screen.findByText(/session has expired/i)).toBeInTheDocument();
   });
+
+  it('names the pre-V58 link problem on a 409 rather than offering a retry', async () => {
+    mockEmail.mockRejectedValue(new ApiError('conflict', 409));
+    render(<ShareCard read={{ ok: true, settings: settings() }} />);
+
+    fireEvent.change(screen.getByLabelText(/send the link to this email/i), {
+      target: { value: 'mum@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^send$/i }));
+
+    // Asserts on "re-shown", not the shared closing sentence: the token-null hint ends in the
+    // same "reset it to get one you can copy", so a regex on that tail passes even if mapError
+    // never runs. This is the branch the backend explicitly cares about.
+    expect(await screen.findByText(/before links could be re-shown/i)).toBeInTheDocument();
+    // The generic fallback reads as transient, but a retry never succeeds for this link.
+    expect(screen.queryByText(/could not send that email/i)).not.toBeInTheDocument();
+  });
+
+  it('explains a lost gallery grant on a 403 rather than a generic failure', async () => {
+    mockAdd.mockRejectedValue(new ApiError('forbidden', 403));
+    render(
+      <ShareCard
+        read={{
+          ok: true,
+          settings: settings({ candidateCollections: [collection(9, 'Someone Else Wedding')] }),
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /someone else wedding/i }));
+
+    expect(await screen.findByText(/no longer have access to that gallery/i)).toBeInTheDocument();
+    expect(screen.queryByText(/could not update what your link shows/i)).not.toBeInTheDocument();
+  });
 });
