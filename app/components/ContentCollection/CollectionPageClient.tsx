@@ -69,6 +69,12 @@ import { SelectsProvider } from './SelectsContext';
  */
 const EditModeLayer = dynamic(() => import('./edit/EditModeLayer'), { ssr: false });
 
+/**
+ * Stable stand-in for `contentBlocks` while the edit layer owns the grid. A shared frozen constant
+ * rather than a fresh `[]` so the memo keeps returning one reference across filter changes.
+ */
+const NO_BLOCKS: readonly AnyContentModel[] = Object.freeze([]);
+
 interface CollectionPageClientProps {
   collection: CollectionModel;
   chunkSize?: number;
@@ -404,7 +410,22 @@ export default function CollectionPageClient({
     [baseCollectionOptions, showHighlyRated, showDateSort, showHiddenToggle, hiddenCount]
   );
 
+  /**
+   * Blocks for the public grid, which renders only while the edit layer has not mounted (see
+   * `{!editLayerMounted && grid}` below).
+   *
+   * Once the layer mounts it renders its own grid from its own `processContentBlocks` + `applySort`
+   * pass, called with different arguments — `filterVisible: false` and `showProtectedCovers: true`
+   * against `liveCollection`. Nothing reads this array from that point on, so it short-circuits
+   * instead of recomputing a result no one renders on every filter change. The parent's other
+   * filter work is NOT skipped: `filteredContent`/`filteredImages` still drive the filter bar's
+   * chip availability while editing.
+   */
   const contentBlocks = useMemo(() => {
+    if (editLayerMounted) {
+      return NO_BLOCKS as AnyContentModel[];
+    }
+
     const processed = processContentBlocks(
       filteredContent,
       true,
@@ -424,6 +445,7 @@ export default function CollectionPageClient({
     const pinned = buildPinnedSelects(ordered, new Set(pinnedSelectedIds));
     return [...pinned, ...ordered];
   }, [
+    editLayerMounted,
     filteredContent,
     collection.id,
     collection.displayMode,
