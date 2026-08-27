@@ -10,8 +10,14 @@ const mockGetUserPage = jest.fn();
 
 jest.mock('@/app/lib/api/collections', () => ({ getCollectionBySlug: jest.fn() }));
 jest.mock('@/app/lib/api/auth', () => ({ meServer: () => mockMeServer() }));
-jest.mock('@/app/lib/api/user', () => ({ getUserPage: () => mockGetUserPage() }));
 jest.mock('@/app/lib/api/selects', () => ({ listSelectIdsServer: jest.fn(async () => []) }));
+// `listSavedImageIdsServer` is stubbed alongside getUserPage because they now share a module.
+// It previously ran for real here and fail-softed to [] on the jsdom fetch failure; [] is the same
+// answer without the round trip.
+jest.mock('@/app/lib/api/personal', () => ({
+  getUserPage: () => mockGetUserPage(),
+  listSavedImageIdsServer: jest.fn(async () => []),
+}));
 jest.mock('next/navigation', () => ({
   notFound: () => {
     throw new Error('NEXT_NOT_FOUND');

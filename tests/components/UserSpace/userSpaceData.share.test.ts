@@ -14,7 +14,6 @@ import { type CollectionModel } from '@/app/types/Collection';
 
 jest.mock('@/app/lib/api/share');
 jest.mock('@/app/lib/api/personal');
-jest.mock('@/app/lib/api/user');
 jest.mock('@/app/lib/api/users');
 jest.mock('@/app/lib/api/collections');
 

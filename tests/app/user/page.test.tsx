@@ -7,9 +7,9 @@ jest.mock('next/navigation', () => ({
   }),
 }));
 jest.mock('@/app/lib/api/auth', () => ({ meServer: jest.fn() }));
-jest.mock('@/app/lib/api/user', () => ({ getUserPage: jest.fn() }));
 jest.mock('@/app/lib/api/collections', () => ({ getAllCollections: jest.fn() }));
 jest.mock('@/app/lib/api/personal', () => ({
+  getUserPage: jest.fn(),
   listSavedImagesServer: jest.fn(),
   listFollowedCollectionIdsServer: jest.fn(),
 }));
@@ -59,8 +59,11 @@ import { UserSpaceGrid } from '@/app/components/UserSpace/UserSpaceGrid';
 import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
 import { getAllCollections } from '@/app/lib/api/collections';
-import { listFollowedCollectionIdsServer, listSavedImagesServer } from '@/app/lib/api/personal';
-import { getUserPage } from '@/app/lib/api/user';
+import {
+  getUserPage,
+  listFollowedCollectionIdsServer,
+  listSavedImagesServer,
+} from '@/app/lib/api/personal';
 import UserPage from '@/app/user/page';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 

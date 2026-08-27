@@ -1,13 +1,15 @@
 /**
- * Unit tests for the per-user "Your Space" API module (saves + follows). Mirrors the fetch-mock
- * idiom of tests/lib/api/selects.test.ts: a global fetch mock, assert the proxy URL + RequestInit,
- * and verify ApiError propagation on non-OK responses. Server readers use a mocked `fetchReadApi`.
+ * Unit tests for the per-user "Your Space" API module (the user's own page, saves + follows).
+ * Mirrors the fetch-mock idiom of tests/lib/api/selects.test.ts: a global fetch mock, assert the
+ * proxy URL + RequestInit, and verify ApiError propagation on non-OK responses. Server readers use
+ * a mocked `fetchReadApi`.
  */
 
 import { ApiError, fetchReadApi } from '@/app/lib/api/core';
 import {
   addFollow,
   addSave,
+  getUserPage,
   listFollowedCollectionIdsServer,
   listSavedImageIdsServer,
   listSavedImagesServer,
@@ -278,5 +280,29 @@ describe('listFollowedCollectionIdsServer', () => {
       expect.stringContaining('status 500'),
       expect.objectContaining({ error: expect.any(ApiError) })
     );
+  });
+});
+
+// Folded in from tests/lib/api/user.test.ts when getUserPage moved out of the one-function
+// user.ts. Same mocked `fetchReadApi` + real ApiError harness the server-seed specs above use.
+describe('getUserPage', () => {
+  it('returns the synthetic collection from user/me/page (no-store)', async () => {
+    const fake = { id: 0, slug: 'user', title: 'Yours', content: [] };
+    fetchReadApiMock.mockResolvedValueOnce(fake);
+
+    const result = await getUserPage();
+
+    expect(fetchReadApiMock).toHaveBeenCalledWith('user/me/page', { cache: 'no-store' });
+    expect(result).toBe(fake);
+  });
+
+  it('returns null when the fetch throws ApiError(401) (no/revoked session)', async () => {
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('Unauthorized', 401));
+    expect(await getUserPage()).toBeNull();
+  });
+
+  it('propagates non-401 errors', async () => {
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('Server error', 500));
+    await expect(getUserPage()).rejects.toThrow(ApiError);
   });
 });

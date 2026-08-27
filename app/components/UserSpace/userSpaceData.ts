@@ -11,9 +11,12 @@
 
 import { getAllCollections } from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
-import { listFollowedCollectionIdsServer, listSavedImagesServer } from '@/app/lib/api/personal';
+import {
+  getUserPage,
+  listFollowedCollectionIdsServer,
+  listSavedImagesServer,
+} from '@/app/lib/api/personal';
 import { getCurrentShareView, getShareView, type ShareView } from '@/app/lib/api/share';
-import { getUserPage } from '@/app/lib/api/user';
 import {
   getUserPageById,
   listFollowedCollectionIdsByUserServer,
