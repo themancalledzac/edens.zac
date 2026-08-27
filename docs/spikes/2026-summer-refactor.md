@@ -47,6 +47,13 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   E10/#304 — had merged hours earlier, and their sections' checkboxes had gone unswept with them,
   so bullets that had shipped still read as work remaining. Close the row AND the boxes in the same
   pass as the merge.
+- **FOURTH occurrence, 2026-08-27, B8 — and the row was RIGHT this time.** B8's heading already read
+  "5 of 6 shipped (#266, #267, #295, #296)", yet three bullets under it still sat unticked: `share.ts`
+  and `messages.ts` (both #295) and `collectionStorage.ts` (#296). The board therefore advertised
+  three finished slices as available for three days, and `share.ts` was a plausible "next" pick right
+  up until `ls tests/lib/api/share.test.ts` said otherwise. **So verify boxes against the filesystem,
+  not against the heading — and treat the boxes under any heading that names a PR as suspect until
+  checked.** The check is one `ls` or one `git log --diff-filter=A -- <test path>` per bullet.
 - **`MERGED` is not a claim about `main`.** A stacked PR merges into its BASE, and if that base has
   already been merged and retired, the child lands on a dead branch and `main` never sees it.
   `gh pr view` still says `MERGED`. This happened on 2026-08-24 with E15/#314: it was based on
@@ -334,7 +341,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | B5  | `useCollectionEdit` fixture consolidation                                  | Low         | **−145 actual** (est. −350)                                                                      | ✅ PR #298                                                                                                                                  |
 | B6  | Fold in `CollectionContentRenderer` characterization                       | Low         | **0 actual** (est. −150)                                                                         | ✅ PR #294 + #297 (restore)                                                                                                                 |
 | B7  | `useClickOutside` spy tests                                                | Low         | −37 (est. −90)                                                                                   | ✅ PR #286                                                                                                                                  |
-| B8  | Fill the required-coverage gaps                                            | Low         | +1,545 actual for the 3 slices shipped                                                           | ◐ 5 of 6 — #266 (clearCache), #267 (Escape), #295 (share+messages), #296 (collectionStorage)                                                |
+| B8  | Fill the required-coverage gaps                                            | Low         | +1,545 actual for the 3 slices shipped                                                           | ◐ 8 of 9 — #266, #267, #295 (share+messages), #296 (collectionStorage); only the optional bullet is open                                    |
 | B9  | `useCollectionEdit.buffer.test.tsx` flakes under parallel load             | Low         | 0 repro in 22 runs across 3 worker configs                                                       | ✅ CLOSED not-reproducible 2026-08-24 — NOT fixed; CI still untried                                                                         |
 | C1  | Unsaved people/gallery-access wipe (HIGH)                                  | Low         | +73 −11                                                                                          | ✅ PR #264                                                                                                                                  |
 | C2  | About portrait aspect ratio                                                | Trivial     | +99 −5                                                                                           | ✅ PR #281                                                                                                                                  |
@@ -391,18 +398,29 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 Every open item is COLD or BLOCKED, and every BLOCKED one names its question and who answers it. An
 item blocked on an unwritten question reads as available and then eats a session.
 
-| Item   | State              | If blocked: the question, and who answers it                                                                                                                                                                                                                        |
-| ------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **E6** | COLD               | ——                                                                                                                                                                                                                                                                  |
-| **E7** | COLD               | ——                                                                                                                                                                                                                                                                  |
-| **F1** | COLD               | —— largest open item; no unanswered question, just size                                                                                                                                                                                                             |
-| **H1** | BLOCKED — **user** | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? Also: accept a 500-row catalog fetch on every `/user` load, or ask the backend to return followed collections on the user-page read? |
-| **C9** | BLOCKED — **user** | Should a cover with no `imageWidth`/`imageHeight` fall back to the text-only header, or is rendering nothing deliberate?                                                                                                                                            |
-| **F4** | BLOCKED — **user** | Stated in the item                                                                                                                                                                                                                                                  |
-| **G3** | BLOCKED — **user** | Delete `/user/selects` or rebuild it                                                                                                                                                                                                                                |
-| **E3** | BLOCKED — **user** | Guards bullet only: may the `cached.slug !== slug` guards be deleted? Generics half shipped in #306                                                                                                                                                                 |
-| **E9** | BLOCKED — **user** | `.srOnly` bullet only; both COLD bullets shipped in #300                                                                                                                                                                                                            |
-| **G2** | BLOCKED — **user** | G2b is a scope call; G2c rides other refactors. G2a is COLD                                                                                                                                                                                                         |
+**The 2026-08-26 stamp claimed to cover every open item and did not — six were missing entirely
+(A9, B8, E5, E10, F3, G4).** They are added below. Only the two swept this session (B8, F3) carry a
+verified state; the other four are marked UNSTAMPED rather than given a state nobody checked, since
+a wrong COLD is exactly the thing this table exists to prevent.
+
+| Item    | State              | If blocked: the question, and who answers it                                                                                                                                                                                                                        |
+| ------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **E6**  | COLD               | ——                                                                                                                                                                                                                                                                  |
+| **E7**  | COLD               | ——                                                                                                                                                                                                                                                                  |
+| **B8**  | COLD               | —— verified 2026-08-27: 8 of 9 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                          |
+| **F3**  | COLD               | —— verified 2026-08-27: eight bullets open, every `file:line` ref re-swept and corrected. The `getUserPage` bullet is the next pick                                                                                                                                 |
+| **A9**  | UNSTAMPED          | Never swept. Verify the premise before picking it up                                                                                                                                                                                                                |
+| **E5**  | UNSTAMPED          | Row says "PR #299; 4 bullets still open" — confirm those four are actually open (see the B8 lesson above)                                                                                                                                                           |
+| **E10** | UNSTAMPED          | Row says "PR #304; late-added bullets 6–7 unswept" — sweep them                                                                                                                                                                                                     |
+| **G4**  | UNSTAMPED          | Never swept. Verify the premise before picking it up                                                                                                                                                                                                                |
+| **F1**  | COLD               | —— largest open item; no unanswered question, just size                                                                                                                                                                                                             |
+| **H1**  | BLOCKED — **user** | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? Also: accept a 500-row catalog fetch on every `/user` load, or ask the backend to return followed collections on the user-page read? |
+| **C9**  | BLOCKED — **user** | Should a cover with no `imageWidth`/`imageHeight` fall back to the text-only header, or is rendering nothing deliberate?                                                                                                                                            |
+| **F4**  | BLOCKED — **user** | Stated in the item                                                                                                                                                                                                                                                  |
+| **G3**  | BLOCKED — **user** | Delete `/user/selects` or rebuild it                                                                                                                                                                                                                                |
+| **E3**  | BLOCKED — **user** | Guards bullet only: may the `cached.slug !== slug` guards be deleted? Generics half shipped in #306                                                                                                                                                                 |
+| **E9**  | BLOCKED — **user** | `.srOnly` bullet only; both COLD bullets shipped in #300                                                                                                                                                                                                            |
+| **G2**  | BLOCKED — **user** | G2b is a scope call; G2c rides other refactors. G2a is COLD                                                                                                                                                                                                         |
 
 **Six of the eleven are blocked on the same person, and none of the six is blocked on work.** That
 is the board's real bottleneck, not any individual item — a single sitting answering H1, C9, F4, G3,
@@ -597,7 +615,7 @@ different core counts, and it is where an intermittent failure would actually co
 afternoon. If this resurfaces there, reopen with the CI run URL and go straight to the shared-state
 suspects named above; do not re-run the local measurement, which is now 22-for-22 uninformative.
 
-### ◐ B8 · Fill the required-coverage gaps — 5 of 6 shipped (#266, #267, #295, #296)
+### ◐ B8 · Fill the required-coverage gaps — 8 of 9 shipped (#266, #267, #295, #296); only the optional bullet is open
 
 The project rule requires tests for these and they have none.
 
@@ -616,13 +634,30 @@ The project rule requires tests for these and they have none.
       that `handleBulkEdit` is not on the hook's public API (`:1617` is a deps array, not the
       return), so the bottom bar cell is the only route to it.
 
-- [ ] `lib/api/share.ts` — 217 lines, 9 function exports + 4 type exports, only ever mocked.
-      Est +350–500 (calibrated against the sibling API suites: selects 152, personal 282, users 544).
-- [ ] `lib/api/messages.ts` — 25 lines. Est +80–150.
-- [ ] `lib/storage/collectionStorage.ts` — 286 lines. Est +250–400. **Sequence: write these BEFORE
-      E3** — they become E3's characterization safety net.
+- [x] `lib/api/share.ts` — 9 function exports + 4 type exports. **Shipped in PR #295**
+      (`tests/lib/api/share.test.ts`, 520 lines, covering all nine function exports; the four type
+      exports are exercised through the values those functions return). Est +350–500, actual +520 —
+      in range, at the top of it.
+      **This checkbox was stale, and so were the two below it.** #295 and #296 are named in this
+      item's own heading, and `share.test.ts`'s docblock opens "B8 coverage gap — `share.ts` had
+      none". The work shipped 2026-08-24; nobody ticked the boxes, so the board advertised three
+      finished slices as available for three days.
+      **Corrected 2026-08-27: `share.ts` is 161 lines, not 217.** E2's `clientFetch` conversion
+      (#333) cut 26% of it. The export counts in the original claim are still exactly right — only
+      the line count rotted, and it rotted because a later item shipped against the same file.
+- [x] `lib/api/messages.ts` — 25 lines. **Shipped in PR #295** (`tests/lib/api/messages.test.ts`,
+      98 lines). Est +80–150, actual +98 — in range.
+- [x] `lib/storage/collectionStorage.ts` — **shipped in PR #296**, and the sequencing worked as
+      written: these landed before E3's rewrite and served as its characterization net.
+      `collectionStorage.test.ts` (806) + `collectionStorage.ssr.test.ts` (121) = **+927 against an
+      estimate of +250–400 — 2.3–3.7x over**, the same test-side blowout this board has now recorded
+      four times. **Corrected 2026-08-27: the file is 274 lines, not 286** — E3 (#306) cut it after
+      this bullet was written.
 - [x] `lib/actions/clearCache.ts` — shipped with D2, PR #266. `tests/lib/actions/clearCache.test.ts`.
-- [ ] If being thorough: `sharedObserver` (116), `useParallax` (161), `useContentReordering` (198).
+- [ ] If being thorough: `sharedObserver` (116), `useParallax` (161), `useContentReordering` (197,
+      **was `198`; corrected 2026-08-27**). **Re-verified 2026-08-27: all three are still untested** —
+      no `tests/utils/sharedObserver.test.ts`, no `tests/hooks/useParallax.test.ts`, and no suite for
+      `useContentReordering`. This is now the ONLY open B8 bullet, and it is explicitly optional.
       Est +400–600. `collectionToggle` came OFF this list 2026-08-22: `collectionEditUtils.ts:30`
       (**was `:28`; corrected 2026-08-25**) re-exports `toggleRelation`. **The second half of this
       line is DEAD: `manageUtils.test.ts` no longer exists** — B1 (#290) merged it away, which is
@@ -789,6 +824,16 @@ Found 2026-08-23 while researching the email strategy (H4). The "Send" button un
       as a transient failure rather than a missing feature.
 - [ ] The `ShareEmailResult { sent, reason }` contract at
       [share.ts:60-63](app/lib/api/share.ts:60) was written against a backend that was never built.
+
+**Ref drift in the filing above, noted 2026-08-27 — the record is kept as written, the coordinates
+are not current.** C7 is shipped, so these are history rather than work, but anyone following them
+should know E2 (#333) rewrote `share.ts` underneath them: it is 161 lines now, not 217.
+`emailShareLink` `:176` → **`:144`**; the request body `:181` → **`:145`**, and it is now
+`json: { toEmail }` through `clientFetch` rather than a hand-rolled `JSON.stringify({ toEmail })`;
+`ShareEmailResult` `:60` → **`:42`**. The base constant `SHARE` at `:16` did not move.
+**`throwFromResponse` left `share.ts` entirely** — E2 moved it to `core.ts:117`, so the reference to
+it at `share.ts:18` now points at nothing. That symbol-took-a-walk case is the exact failure mode
+this board's third principle predicts: drift concentrates where a later item shipped.
 
 **Three claims checked, not assumed** — the C4 lesson is that a literal grep can report a live route
 as dead when the real one is assembled from a template, so all three were run before filing:
@@ -963,7 +1008,7 @@ the two read as a difference rather than as drift.
 decides what an invitee sees when the backend sends a bare error code. Left open deliberately
 rather than folded on the board's say-so.
 
-#### Bullets 3–4, shipped 2026-08-26 (PR #334) — the `Content-Type` decision and what it cost
+#### Bullets 3–4, shipped (PR #334, **merged to `main` 2026-08-27, confirmed via `gh pr view`**) — the `Content-Type` decision and what it cost
 
 **The header was dropped, and the decision was made before the fold rather than discovered during
 it**, as this item required. Three reasons, checked rather than assumed:
@@ -2105,6 +2150,24 @@ method this time — neither prior count recorded one, which is why they could n
 
 ### ◐ F3 · File moves and renames — `ReorderMove` bullet SHIPPED (#324); eight bullets verified, still open
 
+**NEXT UP (picked 2026-08-27): the `getUserPage` bullet, on its own.** Three reasons. Its context is
+as warm as it will get — every one of its `file:line` refs was re-verified and corrected in this
+session's drift sweep, so nothing in it is unchecked. It is small and fully specified: 2 src / 7
+test, one export moving from a 19-line file into the module that already holds its three siblings.
+And it kills the `user.ts` vs `users.ts` naming trap, which is a live hazard rather than a tidiness
+complaint — this board has twice had to disambiguate the two by hand.
+
+**Guardrail — do the `getUserPage` bullet only, and leave the invite functions alone.** The very next
+bullet (invite functions from `users.ts` → `auth.ts`) is the adjacent tempting change: it is the same
+kind of move, in the same directory, and its refs are now correct too, so a fresh session will be
+inclined to sweep both into one MR. Do not. That bullet is marked PARTLY ACCURATE on purpose — its
+DESTINATION is unresolved. The three invite functions span three different fetch perimeters
+(`getInvitePreview` server-only via `getApiBaseUrl`, `regenerateInvite` through the admin perimeter
+with the BFF secret, `acceptInvite` client-side through the BFF proxy), and `auth.ts` is client-side
+session code. Moving them into `auth.ts` mixes three perimeters into one file, which is a worse
+structure than the split it claims to fix. **If it still looks right after the `getUserPage` move,
+write down what a new `invites.ts` would cost instead of doing it.**
+
 **SHIPPED 2026-08-24 — PR #324, +16/−9 src (net +7), 0 test.** `ReorderMove` now lives in
 `app/types/Content.ts`. Four files, zero test files, exactly as measured. 245 suites / 4399 tests
 pass, identical to the `main` baseline at `a60d333` measured with the tree stashed. **F6 is
@@ -2182,19 +2245,26 @@ vague bullet into a shippable item.
       `tests/styles/breakpointConsistency.test.ts` globs `app/` recursively (`:17`) so it needs no
       update.
 - [ ] `getUserPage` from the one-function `user.ts` into `personal.ts`, killing the `user.ts` vs
-      `users.ts` naming trap. **STILL ACCURATE (2026-08-24).** `app/lib/api/user.ts` really is 20
-      lines, two imports, one export (`getUserPage:10`). `users.ts` sits beside it with 13 exports.
+      `users.ts` naming trap. **STILL ACCURATE (2026-08-24); refs re-swept 2026-08-27.**
+      `app/lib/api/user.ts` is 19 lines (**was `20`**), two imports, one export (`getUserPage:10`,
+      unchanged). `users.ts` sits beside it with 13 exports.
       `personal.ts` is the right home: it already holds the signed-in user's own reads
-      (`listSavedImageIdsServer:137`, `listSavedImagesServer:155`,
-      `listFollowedCollectionIdsServer:174`), same `cache: 'no-store'`, same null-on-401. 2 src / 7
-      test, and `tests/lib/api/user.test.ts` folds into `tests/lib/api/personal.test.ts`. **Also
-      update the two `{@link getUserPage}` references at `app/lib/api/share.ts:7,99`.**
+      (`listSavedImageIdsServer:87` **was `:137`**, `listSavedImagesServer:105` **was `:155`**,
+      `listFollowedCollectionIdsServer:124` **was `:174`**), same `cache: 'no-store'`, same
+      null-on-401. 2 src / 7 test, and `tests/lib/api/user.test.ts` folds into
+      `tests/lib/api/personal.test.ts`. **Also update the two `{@link getUserPage}` references at
+      `app/lib/api/share.ts:7,81`** (**`:99` → `:81`**).
+      **Every drifted ref here is E2's doing** — #333's `clientFetch` conversion shortened
+      `personal.ts` to 131 lines and `share.ts` to 161. The premise is untouched; only the
+      coordinates moved.
 - [ ] Invite functions from `users.ts` → `auth.ts`. **PARTLY ACCURATE (2026-08-24) — the functions
       are where the bullet says, the destination is questionable.** `regenerateInvite:87`,
       `getInvitePreview:158`, `acceptInvite:240` in `app/lib/api/users.ts`, whose own docblock
-      (`:2`) already admits the split. But `auth.ts` is client-side session code (`login:64`,
-      `logout:87`, `me:104`, `registerPasskey:191`, `loginWithPasskey:259`) plus one server helper
-      (`meServer:129`), and the three invite functions span three different fetch perimeters:
+      (`:2`) already admits the split. **All three `users.ts` refs re-verified correct 2026-08-27 —
+      that file did not drift.** But `auth.ts` is client-side session code (`login:48`, `logout:65`,
+      `me:75`, `registerPasskey:162`, `loginWithPasskey:219` — **all five drifted, was
+      `:64`/`:87`/`:104`/`:191`/`:259`**) plus one server helper (`meServer:100`, **was `:129`**),
+      and the three invite functions span three different fetch perimeters:
       `getInvitePreview` is server-only via `getApiBaseUrl`, `regenerateInvite` goes through the
       admin perimeter with the BFF secret. **Re-decide the destination before moving — a new
       `invites.ts` avoids mixing three perimeters into one file.** 3 src / 6 test.
@@ -2505,7 +2575,8 @@ too; the inventory said otherwise. USER decides: does G2b's migration (and the `
 `.ts` util/lib files, roughly doubling it? If yes, ten more heavy files join G2c's ride-along list:
 `metadataUtils.ts` (38 blocks), `rowCombination.ts` (15), `contentLayout.ts` (15), `contentFilter.ts`
 (13), the proxy `route.ts` (10), `userSpaceData.ts` (10), `useMetadataState.ts` (9), `useParallax.ts`
-(8), `core.ts` (7), `rowStructureAlgorithm.ts` (6). (Exclude or delete the untracked
+(8), `core.ts` (5 — **was `7`; corrected 2026-08-27**; E2's rewrite deleted two inline blocks
+along with the duplicate skeletons), `rowStructureAlgorithm.ts` (6). (Exclude or delete the untracked
 `layoutpreview/page.tsx` harness before regenerating any baseline — it contributes 3 comment lines.)
 
 - [ ] **G2a · Enforcement first.** ESLint: (1) `no-restricted-syntax` with selector `JSXExpressionContainer > JSXEmptyExpression` bans `{/* */}` in JSX; (2) a small local flat-config rule reports `//` and `/* */` comments whose range falls inside a function body under `app/**` (allow `eslint-`, `@ts-`, `prettier-` directives; docblocks above declarations untouched). Land as `warn` immediately; flip to `error` when G2b merges.
@@ -2736,7 +2807,8 @@ follow it, and it renders in both tabs today.
 Where the data comes from:
 
 - Followed ids: `listFollowedCollectionIdsServer()` —
-  [personal.ts:174](app/lib/api/personal.ts:174), hitting `GET /api/proxy/api/read/user/follows`
+  [personal.ts:124](app/lib/api/personal.ts:124) (**was `:174`; corrected 2026-08-27** — E2 #333
+  shortened the file), hitting `GET /api/proxy/api/read/user/follows`
   ([personal.ts:16](app/lib/api/personal.ts:16)). Type `FollowedCollectionIds = number[]` at
   [Personal.ts:14](app/types/Personal.ts:14). Called at `userSpaceData.ts:248`.
 - Followed tiles: `getAllCollections(0, 500)` at `userSpaceData.ts:256`, filtered at `:278`, wrapped
@@ -2920,6 +2992,36 @@ unification** — settle those two together or they will produce two competing d
 _Newest first. **Dates are local (America/Los_Angeles), not UTC** — earlier entries mixed the two,
 which is why a "08-23" entry can sit between two "08-24" ones. The ordering was verified correct
 against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates._
+
+- 2026-08-27 — **E2 CLOSED (#334 merged). Reconciliation pass: B8 was 8 of 9, not 5 of 6 — three
+  bullets had shipped unticked. 17 drifted refs corrected across four items. Next: F3's `getUserPage`
+  bullet.**
+
+  **The board's biggest error this round was not a drifted line, it was three finished slices reading
+  as available.** B8's `share.ts`, `messages.ts` and `collectionStorage.ts` bullets all shipped in
+  #295/#296 on 2026-08-24 and were never ticked — while B8's own heading already named both PRs.
+  `share.ts` was a credible "next" pick until `ls tests/lib/api/share.test.ts` returned a 520-line
+  suite whose docblock opens "B8 coverage gap". The existing rule about unswept checkboxes is aimed
+  at the merging session; this is its fourth occurrence, so the preventive half is now written into
+  "How to use this doc": **verify boxes against the filesystem, not against the heading.**
+
+  **Drift was exactly where the third principle says it is — in the neighborhood of what shipped.**
+  Every corrected ref traces to E2's own `clientFetch` conversion (#333) shortening `personal.ts`,
+  `share.ts`, `auth.ts` and `selects.ts`, or to E3 (#306) cutting `collectionStorage.ts`. Corrected:
+  five refs in F3's `getUserPage` bullet, six in its invite bullet, four inventory counts
+  (`share.ts` 217→161, `collectionStorage.ts` 286→274, `user.ts` 20→19, `useContentReordering`
+  198→197), one in G2c's ride-along list (`core.ts` 7→5 comment blocks — my own rewrite caused that
+  one), and one in H1's data-source map. `users.ts` did not drift at all, and `core.ts:91` survived
+  two rewrites of its own file.
+
+  **The state table claimed to cover every open item and was missing six** (A9, B8, E5, E10, F3, G4).
+  B8 and F3 are stamped COLD from this session's sweep; the other four are marked UNSTAMPED rather
+  than guessed, because a wrong COLD is the specific failure that table exists to prevent.
+
+  **Nothing was unblockable this round.** All seven BLOCKED items are blocked on genuine product or
+  policy calls by the user, each with its question already written down — none on a checkable fact.
+
+  Next: F3's `getUserPage` bullet, alone. Guardrail in the item.
 
 - 2026-08-26 (2) — **closed E2 with bullets 3–4 (#334). Three fetch skeletons in `core.ts` are one;
   the GET `Content-Type` is gone; the identity map is gone. −58 src, +6 tests.**
