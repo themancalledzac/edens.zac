@@ -192,6 +192,21 @@ describe('acceptInvite', () => {
       status: 410,
     });
   });
+
+  it('falls back to the status, not the JSON body, when the error object has no message', async () => {
+    // acceptInvite's inline handler diverges from the shared throwFromResponse in core.ts on
+    // exactly this branch: core stringifies the whole body, this returns `API error: <status>`.
+    // Every other test here supplies a { message } object, so the divergent branch was never
+    // reached. Pinned before E2 considers folding the two together.
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 409,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockResolvedValue({ code: 'ALREADY_ACCEPTED' }),
+    });
+
+    await expect(acceptInvite('tok', body)).rejects.toThrow('API error: 409');
+  });
 });
 
 // ---------------------------------------------------------------------------
