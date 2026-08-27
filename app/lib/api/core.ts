@@ -226,9 +226,60 @@ async function throwApiError(error: unknown, response?: Response): Promise<never
 }
 
 /**
- * Base function for making API requests with consistent error handling
+ * The one server-side fetch skeleton in this file: URL building, SSR cookie forwarding, error
+ * conversion, 204 to null, and JSON parsing. Every exported fetcher below is a thin wrapper that
+ * picks a channel and a method.
  *
- * @param endpoint - API endpoint path ( without the base URL)
+ * Sets no `Content-Type` of its own. The wrappers that send a JSON body set it; the ones that do
+ * not leave it off — bodyless GETs, and `fetchAdminFormDataApi`, whose multipart boundary only the
+ * browser can fill in.
+ *
+ * On the server, forwards the inbound cookies so the backend sees the caller's session: the
+ * `ezac_session` cookie behind admin authorization (`hasRole('ADMIN')`) on `/admin` and
+ * `/admin/users/[id]`, and the per-gallery `gallery_access_<slug>` cookies on RSC re-fetches.
+ * `getServerCookieHeader` returns null in the browser and at build time, so this affects SSR only.
+ *
+ * Each way a request can fail reaches {@link throwApiError} exactly once: a rejected `fetch`, a
+ * non-OK status, or a body that will not parse.
+ *
+ * @param channel - Backend channel segment the request goes to
+ * @param endpoint - API endpoint path (without the base URL)
+ * @param options - Fetch options
+ * @returns The parsed response data, or null for a 204
+ * @throws ApiError if the request fails
+ */
+const fetchBase = async <T>(
+  channel: typeof READ | typeof ADMIN | typeof EDIT,
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T | null> => {
+  const url = buildSimpleApiUrl(channel, endpoint);
+
+  const cookieHeader = await getServerCookieHeader();
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  if (cookieHeader) {
+    headers.Cookie = cookieHeader;
+  }
+
+  const response = await fetch(url, { ...options, headers }).catch(throwApiError);
+
+  if (!response.ok) {
+    return await throwApiError(response);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  return await response.json().catch(throwApiError);
+};
+
+/**
+ * GET from the read endpoint
+ *
+ * @param endpoint - API endpoint path (without the base URL)
  * @param options - Fetch options
  * @returns The parsed response data
  * @throws ApiError if the request fails
@@ -237,89 +288,12 @@ export async function fetchReadApi<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T | null> {
-  try {
-    const url = buildSimpleApiUrl(READ, endpoint);
-
-    const cookieHeader = await getServerCookieHeader();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string> | undefined),
-    };
-    if (cookieHeader) {
-      headers.Cookie = cookieHeader;
-    }
-
-    const response = await fetch(url, { ...options, headers });
-
-    if (!response.ok) {
-      await throwApiError(response);
-    }
-
-    if (response.status === 204) {
-      return null;
-    }
-
-    return await response.json();
-  } catch (error) {
-    return await throwApiError(error);
-  }
+  return await fetchBase<T>(READ, endpoint, options);
 }
-
-/** Maps a `fetchBase` endpoint type to its channel path segment. */
-const ENDPOINT_TYPE_TO_CHANNEL: Record<'admin' | 'edit', string> = {
-  admin: ADMIN,
-  edit: EDIT,
-};
-
-/**
- * Base function for making API requests to admin or edit endpoints
- * Handles URL building, error handling, and response parsing
- *
- * @param endpointType - Type of endpoint ('admin' or 'edit')
- * @param endpoint - API endpoint path (without the base URL)
- * @param options - Fetch options
- * @returns The parsed response data
- * @throws ApiError if the request fails
- */
-const fetchBase = async <T>(
-  endpointType: 'admin' | 'edit',
-  endpoint: string,
-  options: RequestInit
-): Promise<T | null> => {
-  try {
-    const url = buildSimpleApiUrl(ENDPOINT_TYPE_TO_CHANNEL[endpointType], endpoint);
-
-    // On the server, forward the inbound `ezac_session` cookie so the backend's
-    // admin authorization (hasRole('ADMIN')) sees the acting admin's session on
-    // SSR write fetches. Returns null in the browser (fetch already sends
-    // same-origin cookies) and at build time — so this only affects SSR.
-    const cookieHeader = await getServerCookieHeader();
-    const headers: Record<string, string> = {
-      ...(options.headers as Record<string, string> | undefined),
-    };
-    if (cookieHeader) {
-      headers.Cookie = cookieHeader;
-    }
-
-    const response = await fetch(url, { ...options, headers });
-
-    if (!response.ok) {
-      await throwApiError(response);
-    }
-
-    if (response.status === 204) {
-      return null;
-    }
-
-    return await response.json();
-  } catch (error) {
-    return await throwApiError(error);
-  }
-};
 
 /** POST JSON to the admin endpoint */
 export async function fetchAdminPostJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
-  return await fetchBase<T>('admin', endpoint, {
+  return await fetchBase<T>(ADMIN, endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -328,7 +302,7 @@ export async function fetchAdminPostJsonApi<T>(endpoint: string, body: unknown):
 
 /** PUT JSON to the admin endpoint */
 export async function fetchAdminPutJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
-  return await fetchBase<T>('admin', endpoint, {
+  return await fetchBase<T>(ADMIN, endpoint, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -340,7 +314,7 @@ export async function fetchAdminPatchJsonApi<T>(
   endpoint: string,
   body: unknown
 ): Promise<T | null> {
-  return await fetchBase<T>('admin', endpoint, {
+  return await fetchBase<T>(ADMIN, endpoint, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -352,7 +326,7 @@ export async function fetchAdminFormDataApi<T>(
   endpoint: string,
   formData: FormData
 ): Promise<T | null> {
-  return await fetchBase<T>('admin', endpoint, {
+  return await fetchBase<T>(ADMIN, endpoint, {
     method: 'POST',
     body: formData,
   });
@@ -360,7 +334,7 @@ export async function fetchAdminFormDataApi<T>(
 
 /** DELETE via the admin endpoint */
 export async function fetchAdminDeleteApi<T>(endpoint: string): Promise<T | null> {
-  return await fetchBase<T>('admin', endpoint, {
+  return await fetchBase<T>(ADMIN, endpoint, {
     method: 'DELETE',
   });
 }
@@ -370,7 +344,7 @@ export async function fetchAdminDeleteJsonApi<T>(
   endpoint: string,
   body: unknown
 ): Promise<T | null> {
-  return await fetchBase<T>('admin', endpoint, {
+  return await fetchBase<T>(ADMIN, endpoint, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -379,7 +353,7 @@ export async function fetchAdminDeleteJsonApi<T>(
 
 /** POST JSON to the edit endpoint */
 export async function fetchEditPostJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
-  return await fetchBase<T>('edit', endpoint, {
+  return await fetchBase<T>(EDIT, endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -388,7 +362,7 @@ export async function fetchEditPostJsonApi<T>(endpoint: string, body: unknown): 
 
 /** PATCH JSON to the edit endpoint */
 export async function fetchEditPatchJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
-  return await fetchBase<T>('edit', endpoint, {
+  return await fetchBase<T>(EDIT, endpoint, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -400,37 +374,5 @@ export async function fetchAdminGetApi<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T | null> {
-  try {
-    const url = buildSimpleApiUrl(ADMIN, endpoint);
-
-    // On the server, forward the inbound `ezac_session` cookie so the backend's
-    // admin authorization (hasRole('ADMIN')) sees the acting admin's session on
-    // SSR reads (all-images, comments, metadata, /admin, /admin/users/[id],
-    // /explore). Returns null in the browser and at build time — SSR only.
-    const cookieHeader = await getServerCookieHeader();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string> | undefined),
-    };
-    if (cookieHeader) {
-      headers.Cookie = cookieHeader;
-    }
-
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
-
-    if (!response.ok) {
-      await throwApiError(response);
-    }
-
-    if (response.status === 204) {
-      return null;
-    }
-
-    return await response.json();
-  } catch (error) {
-    return await throwApiError(error);
-  }
+  return await fetchBase<T>(ADMIN, endpoint, options);
 }
