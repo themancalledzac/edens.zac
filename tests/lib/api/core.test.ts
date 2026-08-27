@@ -14,6 +14,7 @@ import {
   fetchAdminPutJsonApi,
   fetchEditPatchJsonApi,
   fetchEditPostJsonApi,
+  fetchReadApi,
   getServerCookieHeader,
   throwFromResponse,
 } from '@/app/lib/api/core';
@@ -285,15 +286,24 @@ describe('fetchBase (tested via public API functions)', () => {
 
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/admin'),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
-        })
+        expect.objectContaining({ headers: {} })
       );
     });
 
-    it('should merge custom headers with default headers', async () => {
+    it('sends no Content-Type on a bodyless GET', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue({ data: 'test' }),
+      });
+
+      await fetchAdminGetApi('/test');
+
+      const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(init.headers).not.toHaveProperty('Content-Type');
+    });
+
+    it('should forward custom headers, adding none of its own', async () => {
       const mockResponse = {
         ok: true,
         status: 200,
@@ -310,10 +320,7 @@ describe('fetchBase (tested via public API functions)', () => {
       expect(global.fetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-            'X-Custom-Header': 'custom-value',
-          }),
+          headers: { 'X-Custom-Header': 'custom-value' },
         })
       );
     });
@@ -328,6 +335,63 @@ describe('fetchBase (tested via public API functions)', () => {
 
       const result = await fetchAdminGetApi('/test');
       expect(result).toBeNull();
+    });
+  });
+
+  /**
+   * `fetchReadApi` had no direct coverage here before E2 folded it onto the shared skeleton.
+   * These pin the two things the fold could have got wrong: the channel it resolves to, and the
+   * fact that it no longer sets a Content-Type on a bodyless GET.
+   */
+  describe('fetchReadApi', () => {
+    it('resolves to the read channel', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue({ data: 'test' }),
+      });
+
+      await fetchReadApi('/test');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/read'),
+        expect.objectContaining({ headers: {} })
+      );
+    });
+
+    it('sends no Content-Type on a bodyless GET', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue({ data: 'test' }),
+      });
+
+      await fetchReadApi('/test');
+
+      const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(init.headers).not.toHaveProperty('Content-Type');
+    });
+
+    it('converts a non-OK response into an ApiError carrying the status', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        json: jest.fn().mockResolvedValue({ message: 'Collection not found' }),
+      });
+
+      await expect(fetchReadApi('/test')).rejects.toThrow('Collection not found');
+      await expect(fetchReadApi('/test')).rejects.toHaveProperty('status', 404);
+    });
+
+    it('returns null for a 204', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 204,
+        json: jest.fn(),
+      });
+
+      await expect(fetchReadApi('/test')).resolves.toBeNull();
     });
   });
 });
@@ -508,10 +572,7 @@ describe('admin fetchers forward the server session cookie (SSR)', () => {
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/admin'),
       expect.objectContaining({
-        headers: expect.objectContaining({
-          'Content-Type': 'application/json',
-          Cookie: 'ezac_session=sess-token',
-        }),
+        headers: { Cookie: 'ezac_session=sess-token' },
       })
     );
   });
@@ -533,6 +594,23 @@ describe('admin fetchers forward the server session cookie (SSR)', () => {
           'Content-Type': 'application/json',
           Cookie: 'ezac_session=sess-token',
         }),
+      })
+    );
+  });
+
+  it('attaches the Cookie header on fetchReadApi (gallery_access_<slug> on RSC re-fetches)', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: 'ok' }),
+    });
+
+    await fetchReadApi('/collections/some-gallery');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/read'),
+      expect.objectContaining({
+        headers: { Cookie: 'ezac_session=sess-token' },
       })
     );
   });

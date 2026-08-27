@@ -355,7 +355,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | D8  | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist                    | Trivial     | +30 src, +52 test (est. ±5 src, +2 test)                                                         | ✅ PR #276                                                                                                                                  |
 | D9  | Decide: redundant localhost literals in the Origin allowlist               | Trivial     | −5 src, +20 docblock, +7 test                                                                    | ✅ PR #277 — deleted                                                                                                                        |
 | E1  | Parallax-card builder consolidation                                        | Medium      | +98 src, +659 test (est. −120)                                                                   | ✅ PR #269                                                                                                                                  |
-| E2  | `core.ts` fetch skeleton + `clientFetch`                                   | Medium      | ~0 net (−180 src, +150–200 test)                                                                 | ◐ bullets 1–2 in PR #333 (+478 −298, −57 src) — reopened after #332 merged into a retired base; bullets 3–4 open and ENTANGLED              |
+| E2  | `core.ts` fetch skeleton + `clientFetch`                                   | Medium      | **−115 src actual** (−57 bullets 1–2, −58 bullets 3–4); +6 tests (est. −180 src, +150–200 test)  | ✅ bullets 1–2 PR #333; bullets 3–4 PR #334 — CLOSED                                                                                        |
 | E3  | `collectionStorage.ts` generics                                            | Low         | **−12 src actual** (−46 code, +39 comment); +927 test via #296 (est. +50–150 net for both)       | ◐ generics ✅ PR #306; guards bullet ⛔ user call                                                                                           |
 | E4  | Entity-diff generics + one IMAGE guard                                     | Medium      | **+44 src / +177 test actual** for the twins half (est. −80)                                     | ✅ PR #311 — twins → `entityUtils.ts`; IMAGE-guard half STRUCK, guards are NOT duplicates                                                   |
 | E5  | Filter/sort/date duplication                                               | Low         | **0 src / +139 test actual** (est. −50 src)                                                      | ◐ PR #299; 4 bullets still open                                                                                                             |
@@ -393,7 +393,6 @@ item blocked on an unwritten question reads as available and then eats a session
 
 | Item   | State              | If blocked: the question, and who answers it                                                                                                                                                                                                                        |
 | ------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **E2** | COLD (bullets 3–4) | —— next up; bullets 3 and 4 are entangled, see the item                                                                                                                                                                                                             |
 | **E6** | COLD               | ——                                                                                                                                                                                                                                                                  |
 | **E7** | COLD               | ——                                                                                                                                                                                                                                                                  |
 | **F1** | COLD               | —— largest open item; no unanswered question, just size                                                                                                                                                                                                             |
@@ -853,7 +852,7 @@ E1 (#269) and E11 (#280) shipped — write-ups in
 [group-e-consolidations.md](2026-summer-refactor/group-e-consolidations.md). E11 matters to B1; B1 carries what it
 needs inline.
 
-### ◐ E2 · `core.ts` fetch skeleton + `clientFetch` — bullet 1 shipped 2026-08-25; three bullets open
+### ✅ E2 · `core.ts` fetch skeleton + `clientFetch` — CLOSED 2026-08-26 (#333 bullets 1–2, #334 bullets 3–4)
 
 - [x] **`throwFromResponse` now lives once, in `core.ts`**, imported by `auth.ts`, `personal.ts`,
       `share.ts` and `selects.ts`. Those four were confirmed byte-identical before the move — by
@@ -863,10 +862,14 @@ needs inline.
       17 call sites across `auth.ts`, `personal.ts`, `share.ts` and `selects.ts` collapsed from a
       nine-line block each to one or two lines. **Net −57 src** (callers −117, helpers +60) — the
       "~60 lines" estimate was right, the first one on this board that has been.
-- [ ] Three copies of the fetch skeleton inside `core.ts` — `fetchAdminGetApi` is `fetchReadApi`
-      with a different channel constant. Fold `'read'` into `fetchBase`.
-- [ ] Drop the pointless `Content-Type` on GETs, the double-`throwApiError` try/catch shape, and the
-      identity `ENDPOINT_TYPE_TO_CHANNEL` map.
+- [x] **Three copies of the fetch skeleton inside `core.ts` are now one.** `fetchBase` takes the
+      channel as its first argument (`typeof READ | typeof ADMIN | typeof EDIT`); `fetchReadApi` and
+      `fetchAdminGetApi` are three-line delegates. **Net −58 src** in `core.ts` (436 → 378 lines).
+- [x] **`Content-Type` dropped on GETs; identity map deleted; each failure path now reaches
+      `throwApiError` once.** `ENDPOINT_TYPE_TO_CHANNEL` is gone — `fetchBase` passes the channel
+      straight to `buildSimpleApiUrl`. The double-`throwApiError` shape is gone with the single
+      try/catch: a rejected `fetch` and an unparseable body each route through
+      `.catch(throwApiError)`, and the non-OK branch throws without being re-caught and re-thrown.
 
 **Bullets 3 and 4 verified 2026-08-26, and for once every claim in them is TRUE.** Worth saying
 plainly, because the last three items each had a false premise and the lesson must not become
@@ -959,6 +962,66 @@ the two read as a difference rather than as drift.
 404 override is user-facing copy on the gallery-password screen, and `acceptInvite`'s fallback
 decides what an invitee sees when the backend sends a bare error code. Left open deliberately
 rather than folded on the board's say-so.
+
+#### Bullets 3–4, shipped 2026-08-26 (PR #334) — the `Content-Type` decision and what it cost
+
+**The header was dropped, and the decision was made before the fold rather than discovered during
+it**, as this item required. Three reasons, checked rather than assumed:
+
+- **All 32 call sites are bodyless GETs.** Not one of the 16 `fetchReadApi` or 16 `fetchAdminGetApi`
+  callers passes a `method`, a `body`, or a `headers` option. The header described a request body
+  that never existed on any of them.
+- **The file's other wrappers already follow the opposite rule.** `fetchBase` never set a default;
+  each write wrapper sets `Content-Type` because it has a body, and `fetchAdminFormDataApi`
+  deliberately omits it so the browser can fill in the multipart boundary. Dropping the GET default
+  makes one rule hold across the whole file instead of two.
+- **The BFF proxy does not branch on it for GETs.** `app/api/proxy/[...path]/route.ts:124` reads
+  `content-type` only to pick the 16 KB / 25 MB size cap, and only for write methods.
+
+**The board said four assertions pinned the header. Three did.** `core.test.ts:290`, `:314` and
+`:512` are the real ones, all on `fetchAdminGetApi`. `:533` is on `fetchAdminPostJsonApi` — a POST
+whose `Content-Type` comes from the wrapper's own `headers`, not from the skeleton — so it was never
+affected and stayed green throughout. The miscount is minor, but it is the same species as the
+earlier ones: a number read off a grep rather than off the code path.
+
+**The three were rewritten as positive absence assertions, not deleted.** A deleted assertion leaves
+the new behaviour unguarded, which is the hazard E3 recorded. Each now asserts the exact header
+object, and two new tests assert `not.toHaveProperty('Content-Type')` directly.
+
+**`fetchReadApi` had no direct coverage in `core.test.ts` at all** before this, despite 16 callers —
+the fold changed it as much as it changed `fetchAdminGetApi`. Four tests now pin its channel, its
+absent header, its error conversion and its 204. Suite: 303 → 309 in `tests/lib/api`, 4,451 passing
+overall.
+
+**Both guards were mutation-checked.** Re-adding the `Content-Type` default fails exactly seven
+tests and nothing else; pointing `fetchReadApi` at `ADMIN` fails exactly four. Neither mutation is
+caught by any other suite.
+
+#### Deletion cost of the two wrappers — measured, not done
+
+The guardrail said to keep `fetchReadApi` and `fetchAdminGetApi` and write down what removing them
+would cost. Measured after the fold, with the bodies gone and the wrappers looking like pure
+indirection:
+
+| What it would touch                   | Count                                                                            |
+| ------------------------------------- | -------------------------------------------------------------------------------- |
+| Call sites to rewrite                 | 32 (16 `fetchReadApi`, 16 `fetchAdminGetApi`)                                    |
+| Source files                          | 16 — six `app/lib/api/*`, plus `app/(admin)`, `app/explore`, and four components |
+| Test files that mock them by name     | 12                                                                               |
+| Lines actually deleted from `core.ts` | ~14                                                                              |
+
+**The test files are the part the "32 sites across seventeen files" estimate missed, and they are
+the reason not to do it.** Twelve suites mock these wrappers by name
+(`jest.mock('@/app/lib/api/core', …)`, then `expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/roles')`).
+Deleting the wrappers forces every one of them to mock `fetchBase` and assert on a channel string
+instead of a named function — trading an assertion that reads "this module GETs `/roles` from the
+admin channel" for one that reads "this module called the generic fetcher with `'admin'`". That is
+strictly weaker coverage bought with a 32-site churn to delete fourteen lines.
+
+**It would also widen the public surface of `core.ts`.** `fetchBase` is module-private today. Export
+it and the channel becomes a caller's choice at 32 sites, where a wrong constant routes an admin
+read through the public read channel — a mistake the type system permits and no test would catch.
+Recommendation: keep both wrappers permanently, not just for this MR.
 
 ### ◐ E3 · `collectionStorage.ts` generics — generics ✅ PR #306; guards bullet open
 
@@ -2857,6 +2920,37 @@ unification** — settle those two together or they will produce two competing d
 _Newest first. **Dates are local (America/Los_Angeles), not UTC** — earlier entries mixed the two,
 which is why a "08-23" entry can sit between two "08-24" ones. The ordering was verified correct
 against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates._
+
+- 2026-08-26 (2) — **closed E2 with bullets 3–4 (#334). Three fetch skeletons in `core.ts` are one;
+  the GET `Content-Type` is gone; the identity map is gone. −58 src, +6 tests.**
+
+  **The entanglement the previous session mapped was real and the one-MR call was right.** The fold
+  drops the header as a side effect, so shipping bullet 3 alone would have meant editing three test
+  assertions for a reason its own description did not contain.
+
+  **The header decision was made first, from three checks, not from taste.** All 32 call sites are
+  bodyless GETs; the file's write wrappers already set `Content-Type` only where there is a body;
+  and the BFF proxy reads `content-type` only to size-cap writes. Full reasoning in the item.
+
+  **The board said four assertions pinned the header; three did.** The fourth (`core.test.ts:533`)
+  is a POST whose header comes from its wrapper, not the skeleton. Same species of error as C7's and
+  E2's earlier miscounts — a number read off a grep rather than off the code path — and the fifth
+  time on this board. **The pattern is now specific enough to state as a rule: any count in a bullet
+  is a hypothesis until the code path is walked.** Cheap to check, and checking it has changed the
+  work every time.
+
+  **The three assertions were rewritten as absence assertions rather than deleted**, and
+  `fetchReadApi` — 16 callers, zero direct tests in `core.test.ts` — got four of its own. Both new
+  guards were mutation-checked: re-adding the header fails exactly seven tests, re-pointing the read
+  channel fails exactly four.
+
+  **The wrappers were kept and the deletion cost written down, as the guardrail required.** 32 call
+  sites across 16 source files — but also 12 test files that mock them by name, which the earlier
+  estimate missed. Deleting them would trade named-function assertions for channel-string ones and
+  export `fetchBase`, letting a wrong constant route an admin read through the public channel.
+  Recommendation recorded: keep both permanently.
+
+  Next: E6 or E7, both COLD.
 
 - 2026-08-26 — **shipped C7 (#331). E2 bullets 1–2 written, orphaned as #332, recovered as #333.
   Re-stamped every open item COLD/BLOCKED. Next: E2 bullets 3–4, as one MR.**
