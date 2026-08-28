@@ -1331,8 +1331,14 @@ the fix for it is a four-line guard, not a shared hook.
 
 **SHIPPED 2026-08-27 — PR #337.** `CollectionPageClient.tsx`'s `contentBlocks` memo now
 short-circuits once `editLayerMounted` is true. Src `+22/−0`, test `+87/−3` (3 new specs), measured
-with `git diff --cached --numstat` per group rather than quoted from memory. 246 suites /
-4454 tests, from a 246 / 4451 baseline.
+with `git diff --cached --numstat` per group rather than quoted from memory.
+
+**Suite/test counts, re-measured after #336 merged (2026-08-28).** This branch is **245 suites /
+4454 tests**; `main` at `70ea44d` is **245 / 4451**. The +3 are this item's new specs. It was
+measured as 246 / 4454 against a 246 / 4451 baseline while #336 was still open — #336 deleted
+`tests/lib/api/user.test.ts`, which is the missing suite. **Both readings were correct when taken,
+which is exactly why this board's rule is re-measure rather than quote.** Third baseline move in
+four merges.
 
 **What was actually being wasted.** `contentBlocks` is defined at `CollectionPageClient.tsx:407`,
 read at exactly one place (`content={contentBlocks}`, `:509`, inside `grid`), and `grid` renders
