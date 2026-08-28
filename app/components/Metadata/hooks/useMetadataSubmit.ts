@@ -17,6 +17,7 @@ import {
   buildGifUpdatePayload,
   buildImageUpdateDiff,
   buildImageUpdatesForBulkEdit,
+  buildRemoveFromCollectionDiffs,
   mapUpdateResponseToFrontend,
 } from '../metadataUtils';
 import type { EditableContent } from '../types';
@@ -213,16 +214,11 @@ export function useMetadataSubmit({
     if (!confirmed) return;
 
     await runSave(async () => {
-      const imageUpdates: ContentImageUpdateRequest[] = imageSubset.map(img => {
-        const trimmedCollections = (img.collections || []).filter(
-          c => c.collectionId !== currentCollectionId
-        );
-        return buildImageUpdateDiff(
-          { id: img.id, collections: trimmedCollections },
-          img,
-          availableFilmTypes
-        );
-      });
+      const imageUpdates = buildRemoveFromCollectionDiffs(
+        imageSubset,
+        currentCollectionId,
+        availableFilmTypes
+      );
 
       const response = await updateImages(imageUpdates);
       if (response !== null) {

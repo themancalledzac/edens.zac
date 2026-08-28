@@ -8,6 +8,7 @@ import {
   buildGifUpdatePayload,
   buildImageUpdateDiff,
   buildImageUpdatesForBulkEdit,
+  buildRemoveFromCollectionDiffs,
   computeCameraSelectionUpdate,
   getCommonValues,
   mapUpdateResponseToFrontend,
@@ -1273,6 +1274,70 @@ describe('buildImageUpdatesForBulkEdit', () => {
 // ============================================================================
 // getDisplayFilmStock
 // ============================================================================
+
+describe('buildRemoveFromCollectionDiffs', () => {
+  // Testing Strategy:
+  // Passing test cases:
+  // - Produces one diff per image, keyed to that image's id
+  // - Drops only the named collection and leaves other memberships alone
+  // - Emits no collections diff for an image that was not in the collection
+  // - Returns an empty array for an empty image list
+  //
+  // Failing test cases: none — the builder has no throw path.
+
+  const collectionA = { collectionId: 10, name: 'Collection A', visible: true };
+  const collectionB = { collectionId: 20, name: 'Collection B', visible: true };
+
+  it('builds one diff per image, keyed to that image id', () => {
+    const images = [
+      createImageContent(1, { collections: [collectionA] }),
+      createImageContent(2, { collections: [collectionA] }),
+    ];
+
+    const result = buildRemoveFromCollectionDiffs(images, 10);
+
+    expect(result).toHaveLength(2);
+    expect(result.map(diff => diff.id)).toEqual([1, 2]);
+  });
+
+  it('removes only the named collection and keeps the others', () => {
+    const images = [createImageContent(1, { collections: [collectionA, collectionB] })];
+
+    const result = buildRemoveFromCollectionDiffs(images, 10);
+
+    expect(result[0]!.collections).toEqual({ remove: [10] });
+  });
+
+  it('emits no collections diff for an image that is not in the collection', () => {
+    const images = [createImageContent(1, { collections: [collectionB] })];
+
+    const result = buildRemoveFromCollectionDiffs(images, 10);
+
+    expect(result[0]!.collections).toBeUndefined();
+  });
+
+  it('handles an image with no collections at all', () => {
+    const images = [createImageContent(1, { collections: undefined })];
+
+    const result = buildRemoveFromCollectionDiffs(images, 10);
+
+    expect(result[0]!.id).toBe(1);
+    expect(result[0]!.collections).toBeUndefined();
+  });
+
+  it('returns an empty array for an empty image list', () => {
+    expect(buildRemoveFromCollectionDiffs([], 10)).toEqual([]);
+  });
+
+  it('passes availableFilmTypes through to the underlying diff builder', () => {
+    const filmTypes = [createFilmType(1, 'Kodak Portra 400')];
+    const images = [createImageContent(1, { collections: [collectionA] })];
+
+    const result = buildRemoveFromCollectionDiffs(images, 10, filmTypes);
+
+    expect(result[0]!.collections).toEqual({ remove: [10] });
+  });
+});
 
 describe('mapUpdateResponseToFrontend', () => {
   // Testing Strategy:

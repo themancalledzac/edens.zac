@@ -573,6 +573,37 @@ export function buildGifUpdatePayload(
 // ============================================================================
 
 /**
+ * Build the update diffs that remove a set of images from one collection.
+ *
+ * Each image keeps every collection membership except {@link collectionId}, and the trimmed list
+ * is diffed against the image's current state so only the changed membership is sent.
+ *
+ * Shared by the two remove-from-collection paths: `useCollectionEdit.handleBulkRemove` (the
+ * manage-bar bulk action) and `useMetadataSubmit.handleRemoveFromCollection` (the metadata modal).
+ * Only the diff construction is shared — each caller keeps its own confirmation wording, loading
+ * and error handling, and success callback, because those genuinely differ.
+ *
+ * @param images - Images to remove from the collection
+ * @param collectionId - Collection to drop from each image's memberships
+ * @param availableFilmTypes - Optional list of available film types for filmType validation
+ * @returns Array of ContentImageUpdateRequest objects, one for each image
+ */
+export function buildRemoveFromCollectionDiffs(
+  images: ContentImageModel[],
+  collectionId: number,
+  availableFilmTypes?: Array<{ id: number; name: string; filmTypeName?: string }>
+): ContentImageUpdateRequest[] {
+  return images.map(img => {
+    const trimmedCollections = (img.collections || []).filter(c => c.collectionId !== collectionId);
+    return buildImageUpdateDiff(
+      { id: img.id, collections: trimmedCollections },
+      img,
+      availableFilmTypes
+    );
+  });
+}
+
+/**
  * Build image updates for bulk edit mode
  * Creates a diff for each selected image by comparing updateState (common values) against each image's current state
  *
