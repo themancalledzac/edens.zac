@@ -167,6 +167,38 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   change makes it wrong. Before collapsing twins, `grep -rn "jest.mock('<module path>')" tests/`; if
   there are hits, keep the two as separate delegating functions and say why in the docblock. Costs
   two lines.
+- **Never quote a recorded suite/test baseline. Re-measure it by stashing the tree and running the
+  suite.** Hoisted from F3 on 2026-08-28 because it has now bitten three close-outs running, and
+  because the failure looks exactly like success: every stale reading was correct when it was taken.
+  The number moved THREE TIMES on 2026-08-27–28 alone — 245/4399 → 246/4451 (E2 merges added 52
+  tests) → 246/4454 (E7's new specs) → **245/4454** (#336 deleted a suite). Two of those readings
+  were taken from a branch whose base had since changed, which is the specific trap: a count
+  measured on your own branch is not a claim about `main`. **`main` at `fed67e8` is 245 suites /
+  4454 tests.** Any close-out that quotes a different number without a fresh measurement is wrong,
+  including this line the moment something merges.
+- **The mock-declaration count is the unit of value for a MOVE item, and it moves in both
+  directions.** The rule above covers collapsing two exports into one. The same mechanic decides
+  whether moving an export between modules is worth doing, and a line count cannot see it. F3's
+  `getUserPage` move (#336) looked like net +12 src; what actually happened is that all six test
+  files mocking `@/app/lib/api/user` ALSO mocked `@/app/lib/api/personal` separately, so twelve mock
+  declarations became six. **Before sizing any move item, run
+  `grep -rln "jest.mock('<source module>')" tests/` and the same for the DESTINATION module, and
+  count the overlap.** High overlap means the move pays; zero overlap means it is cosmetic; and a
+  SPLIT with high overlap costs you — F3's invite bullet would have turned six declarations into
+  eight, which is what tipped it from "small" to "don't".
+- **Costing an item is allowed to change its answer, and twice in one session it did. A rejection is
+  a valid, finished outcome of a sizing pass — not a punt.** F3's invite bullet and E7's
+  `useFilteredContentBlocks` hook were both measured on 2026-08-27 and both came back rejected, each
+  for the same underlying reason: **the thing the item proposed to share was not actually shared.**
+  The invite functions span three fetch perimeters, so any file holding all three relocates the mix
+  rather than reducing it. The two filter pipelines are character-identical but consume different
+  `allContent` and pass opposite arguments, so one hook serving both needs 9–11 parameters whose job
+  is to re-describe the differences. **The tell in both: write the shared signature FIRST. If more
+  than about a third of its parameters exist only to switch behavior between the callers, the
+  callers are not duplicates and the item is wrong.** When this happens, record the measurement and
+  the recommended alternative shape in the item so the next pass does not re-litigate it — both of
+  those items now name a smaller move that WOULD work (a 2-function invite split; a four-line
+  handoff guard), and in E7's case the smaller thing shipped the same day.
 - **Size the duplicated region, not the file.** E3's "one generic pair halves the file (~100 lines)"
   halved 286 total lines; only the two trios dedup, and the real saving was 46 code lines. This is a
   _second_, independent estimate bias from the source-only-vs-test-coupling one, and they stack:
@@ -1333,12 +1365,20 @@ the fix for it is a four-line guard, not a shared hook.
 short-circuits once `editLayerMounted` is true. Src `+22/−0`, test `+87/−3` (3 new specs), measured
 with `git diff --cached --numstat` per group rather than quoted from memory.
 
-**Suite/test counts, re-measured after #336 merged (2026-08-28).** This branch is **245 suites /
-4454 tests**; `main` at `70ea44d` is **245 / 4451**. The +3 are this item's new specs. It was
-measured as 246 / 4454 against a 246 / 4451 baseline while #336 was still open — #336 deleted
-`tests/lib/api/user.test.ts`, which is the missing suite. **Both readings were correct when taken,
-which is exactly why this board's rule is re-measure rather than quote.** Third baseline move in
-four merges.
+**Suite/test counts. `main` at `fed67e8` (both #336 and #337 merged) is 245 suites / 4454 tests —
+quote nothing older.** This number moved THREE TIMES inside one day's work, every move legitimate:
+
+| When                  | Reading        | What moved it                             |
+| --------------------- | -------------- | ----------------------------------------- |
+| #324 close-out, 08-24 | 245 / 4399     | stamped "quote from here on"              |
+| #336 branch, 08-27    | 246 / 4451     | E2 merges (#332/#333/#334) added 52 tests |
+| #337 branch, 08-27    | 246 / 4454     | this item's 3 new specs                   |
+| `main` now, 08-28     | **245 / 4454** | #336 deleted `tests/lib/api/user.test.ts` |
+
+**Every one of those was correct when taken, and three of them are wrong now.** That is the whole
+argument for the re-measure rule: a baseline is a measurement with a timestamp, not a fact about the
+repo. The 246 readings were taken while #336 was open, so they counted a suite main no longer has.
+**Re-measure by stashing the tree and running the suite; never quote a recorded number.**
 
 **What was actually being wasted.** `contentBlocks` is defined at `CollectionPageClient.tsx:407`,
 read at exactly one place (`content={contentBlocks}`, `:509`, inside `grid`), and `grid` renders
@@ -2374,6 +2414,15 @@ vague bullet into a shippable item.
       returns exactly this one file. The rest of `app/lib/` is `actions/clearCache.ts`, 13 files in
       `api/`, and `storage/collectionStorage.ts`. 3 src / 6 test — and the three
       `tests/lib/components/CollectionPageWrapper.*.test.tsx` files move with it.
+      **RE-SWEPT 2026-08-28 after #336 touched two of those test files — counts unchanged, still
+      3 src / 6 test.** Src importers are exactly `app/[slug]/page.tsx:5`,
+      `app/all-client-galleries/page.tsx:1`, `app/page.tsx:3`; the other `CollectionPageWrapper`
+      hits in `app/` are prose inside docblocks (`ClientGalleryGate.tsx:30`,
+      `useCollectionEdit.tsx:1152`, `personal.ts:89`, `contentTypeGuards.ts:181`) and move nothing.
+      **`app/lib/` is now 12 files in `api/`, not 13 — #336 deleted `user.ts`.** One caution on the
+      wording: the glob `CollectionPageWrapper.*.test.tsx` matches only TWO files
+      (`.allCollectionsTile`, `.meTile`); the third is `CollectionPageWrapper.test.tsx` with no
+      middle segment. The count of three is right, the glob is not — don't drive the move off it.
 - [ ] `fullscreen-image.module.scss` → `FullScreenModal.module.scss`, which leaves `app/styles/`
       holding only `globals.css`. **PARTLY ACCURATE (2026-08-24) — the move is fine, the
       justification is wrong.** `app/styles/` holds THREE files: `auth-card.module.scss`,
@@ -2794,7 +2843,7 @@ along with the duplicate skeletons), `rowStructureAlgorithm.ts` (6). (Exclude or
   | File                            | Doc claim  | Actual                   | Rides                           |
   | ------------------------------- | ---------- | ------------------------ | ------------------------------- |
   | `useFullScreenImage.tsx`        | ~86 lines  | **80** lines / 37 blocks | own decomposition; pair with F5 |
-  | `CollectionPageClient.tsx`      | 24         | 24 ✓                     | E7                              |
+  | `CollectionPageClient.tsx`      | 24         | 24 ✓ (still 24 on 08-28) | ~~E7~~ **nothing — see below**  |
   | `useCollectionEdit.tsx`         | 19         | **16**                   | F1                              |
   | `CollectionContentRenderer.tsx` | 16 + 4 JSX | 16 + 4 JSX ✓             | E8/F2                           |
   | `EditModeLayer.tsx`             | 13         | **17**                   | F1                              |
@@ -2808,6 +2857,22 @@ along with the duplicate skeletons), `rowStructureAlgorithm.ts` (6). (Exclude or
   Note `useFullScreenImage.tsx` is quoted in LINES while every other entry is in BLOCKS — that
   inconsistency is in the original and is why it looked like an outlier. It is 37 blocks, which
   is still the worst file on the list by a wide margin.
+
+  **`CollectionPageClient.tsx` LOST ITS RIDE (2026-08-28).** It was pencilled to ride E7, but E7's
+  main bullet shipped as a four-line guard in #337 and its two remaining bullets are in
+  `EditModeLayer.tsx` and `useCollectionEdit.tsx` — neither touches this file. Its 24 blocks now
+  ride nothing. `CollectionPageWrapper.tsx` (9) already rode nothing. **Two of the eleven files on
+  this inventory have no carrier, which is the thing that turns G2c from "rides other refactors"
+  into work someone has to schedule.** Say so when G2c is next picked up rather than re-discovering it.
+
+  **Re-derived after #336/#337 and the counts did NOT move: `CollectionPageClient.tsx` is still 24,
+  `CollectionPageWrapper.tsx` still 9.** Command: `awk` over each file counting runs of consecutive
+  lines whose first non-whitespace is `//`. This is worth recording as a property of the metric, not
+  just a result — **#337 added two `/** \*/`docblocks to`CollectionPageClient.tsx`and the count
+did not budge, because the metric counts`//` runs only.\*\* So the inventory measures exactly the
+  thing the project's own rule wants removed (inline comments in bodies) and is blind to the thing
+  the rule wants added (docblocks). That is the right metric, and it means ordinary docblock-adding
+  work cannot inflate this table. For contrast, the same files hold 15 and 3 JSDoc blocks.
 
   **The two files F2 and E17 just rewrote — `Component.tsx` and `MenuDropdown.tsx` — are both still
   exact.** #321 cut 39 lines from `Component.tsx` and #322 rewrote three declarations plus ten call
@@ -2988,12 +3053,19 @@ source decides them, and a same-session review of five "duplicate" claims elsewh
 found only one that survived intact. This one is a source-level finding, so it does not need redoing.
 
 `Collections` membership is decided at
-[userSpaceData.ts:72](app/components/UserSpace/userSpaceData.ts:72) (`isContentCollection` over the
-`getUserPage()` content blocks, split at [:65](app/components/UserSpace/userSpaceData.ts:65)).
+[userSpaceData.ts:75](app/components/UserSpace/userSpaceData.ts:75) (`isContentCollection` over the
+`getUserPage()` content blocks, split at [:68](app/components/UserSpace/userSpaceData.ts:68)).
 `Following` membership is decided at
-[userSpaceData.ts:278](app/components/UserSpace/userSpaceData.ts:278), by intersecting the followed
+[userSpaceData.ts:281](app/components/UserSpace/userSpaceData.ts:281), by intersecting the followed
 id list against a separate catalog read. The two sets never see each other. Own a collection and
 follow it, and it renders in both tabs today.
+
+**All three refs drifted +3 and were corrected 2026-08-28 (were `:72`/`:65`/`:278`).** Cause: #336
+merged `getUserPage`'s import into the existing `personal` import at `userSpaceData.ts:14`, turning
+one line into five. Anchors matched on `isContentCollection(block)`, `export function
+splitUserContent`, and `const followedBlocks = toCollectionBlocks(catalog.filter(...))`. **The
+premise is untouched — `getUserPage` still sources the Collections side, it just lives in
+`personal.ts` now rather than `user.ts`.** Only the coordinates moved.
 
 Where the data comes from:
 
