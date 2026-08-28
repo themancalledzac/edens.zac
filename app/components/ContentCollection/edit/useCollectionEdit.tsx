@@ -60,7 +60,7 @@ import { hasObjectChanges } from '@/app/utils/objectComparison';
 import { toChronologicalOrder } from '@/app/utils/sortByDate';
 import { buildTagsDiff, convertTagsToModels } from '@/app/utils/tagUtils';
 
-import { buildImageUpdateDiff } from '../../Metadata/metadataUtils';
+import { buildRemoveFromCollectionDiffs } from '../../Metadata/metadataUtils';
 import {
   buildUpdatePayload,
   executeReorderOperation,
@@ -1101,16 +1101,11 @@ export function useCollectionEdit({
     try {
       setOperationLoading(true);
       setError(null);
-      const imageUpdates: ContentImageUpdateRequest[] = imageSubset.map(img => {
-        const trimmedCollections = (img.collections || []).filter(
-          c => c.collectionId !== collection.id
-        );
-        return buildImageUpdateDiff(
-          { id: img.id, collections: trimmedCollections },
-          img,
-          currentState?.filmTypes
-        );
-      });
+      const imageUpdates = buildRemoveFromCollectionDiffs(
+        imageSubset,
+        collection.id,
+        currentState?.filmTypes
+      );
       const response = await updateImages(imageUpdates);
       if (response !== null) {
         await handleDeleteSuccess();
