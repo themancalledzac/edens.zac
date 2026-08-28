@@ -222,7 +222,7 @@ export async function revalidateCollectionCache(slug: string): Promise<void> {
     ]);
   } catch (error) {
     if (isLocalEnvironment()) {
-      logger.warn('manageUtils', 'Failed to revalidate cache', { error });
+      logger.warn('collectionEditUtils', 'Failed to revalidate cache', { error });
     }
   }
 }
@@ -276,7 +276,7 @@ export async function revalidateLocationCaches(
     );
   } catch (error) {
     if (isLocalEnvironment()) {
-      logger.warn('manageUtils', 'Failed to revalidate location caches', { error });
+      logger.warn('collectionEditUtils', 'Failed to revalidate location caches', { error });
     }
   }
 }
@@ -302,7 +302,7 @@ export async function revalidateMetadataCache(): Promise<void> {
     });
   } catch (error) {
     if (isLocalEnvironment()) {
-      logger.warn('manageUtils', 'Failed to revalidate metadata cache', { error });
+      logger.warn('collectionEditUtils', 'Failed to revalidate metadata cache', { error });
     }
   }
 }
