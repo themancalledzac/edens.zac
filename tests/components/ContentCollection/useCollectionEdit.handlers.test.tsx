@@ -342,7 +342,7 @@ describe('useCollectionEdit — handler tests', () => {
       act(() => result.current.enterSelect());
 
       await act(async () => {
-        await result.current.handleDeleteSuccess([1, 2]);
+        await result.current.handleDeleteSuccess();
       });
 
       expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith('smith-wedding');
@@ -355,7 +355,7 @@ describe('useCollectionEdit — handler tests', () => {
       const { result } = renderEdit({ enabled: false });
 
       await act(async () => {
-        await result.current.handleDeleteSuccess([1]);
+        await result.current.handleDeleteSuccess();
       });
 
       expect(result.current.error).toBeTruthy();
@@ -369,7 +369,7 @@ describe('useCollectionEdit — handler tests', () => {
       mockGetCollectionUpdateMetadata.mockRejectedValueOnce(new Error('Network error'));
 
       await act(async () => {
-        await result.current.handleDeleteSuccess([1]);
+        await result.current.handleDeleteSuccess();
       });
 
       expect(result.current.error).toBeTruthy();
