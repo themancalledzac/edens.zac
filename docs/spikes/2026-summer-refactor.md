@@ -307,6 +307,19 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   `Promise.all(xs.map(fetch))` that records **one** call instead of N, which reads as a batching bug
   in source that is actually fine. Resolve a plain `{ ok: true }`, the repo convention. Applies to
   any test asserting more than one parallel fetch.
+- **When a guardrail said "report what changing X would cost", go read where that report landed
+  before re-asking the question.** It is usually in the PR body or in a docblock the PR added, not
+  in the board — so the board keeps showing BLOCKED against an answer that already exists in the
+  repo. E3 is the worked example: #306's guardrail asked for the guard-deletion analysis, #306 wrote
+  it into `collectionStorage.ts:47-55`, and the item sat blocked on the user for four days anyway.
+  This is the same family as shipped-but-unticked, pointed at questions instead of checkboxes, and
+  it is now the sixth occurrence. **Before escalating any item to the user, grep the source and the
+  crediting PR for the answer.**
+- **A line ref invalidated by a multi-hunk merge cannot be fixed with a single offset.** #339 made
+  three edits to one file and produced three different offsets (+23/+17/+11 by band). Re-derive from
+  an anchor, never by adding a constant — and **do not anchor on generic punctuation**: anchoring
+  F1's update-form boundary on its raw `);` false-matched 13 lines early. Anchor on the enclosing
+  construct (a `const` declaration, a dependency array), not on a line that appears 200 times.
 - **An open item must be readable without opening the archive.** The archive is for forensics, not
   for prerequisites. Where an open item depends on something shipped, copy the part it needs into
   the open item as a guardrail. B1 is the worked example: it restates exactly what E11's drift test
@@ -410,7 +423,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | D9  | Decide: redundant localhost literals in the Origin allowlist               | Trivial     | −5 src, +20 docblock, +7 test                                                                                                              | ✅ PR #277 — deleted                                                                                                                                            |
 | E1  | Parallax-card builder consolidation                                        | Medium      | +98 src, +659 test (est. −120)                                                                                                             | ✅ PR #269                                                                                                                                                      |
 | E2  | `core.ts` fetch skeleton + `clientFetch`                                   | Medium      | **−115 src actual** (−57 bullets 1–2, −58 bullets 3–4); +6 tests (est. −180 src, +150–200 test)                                            | ✅ bullets 1–2 PR #333; bullets 3–4 PR #334 — CLOSED                                                                                                            |
-| E3  | `collectionStorage.ts` generics                                            | Low         | **−12 src actual** (−46 code, +39 comment); +927 test via #296 (est. +50–150 net for both)                                                 | ◐ generics ✅ PR #306; guards bullet ⛔ user call                                                                                                               |
+| E3  | `collectionStorage.ts` generics                                            | Low         | **−12 src actual** (−46 code, +39 comment); +927 test via #296 (est. +50–150 net for both)                                                 | ✅ CLOSED 2026-08-28 — generics shipped in #306; the guards question was answered by #306 itself in `collectionStorage.ts:47-55` (keep them), 0 further code    |
 | E4  | Entity-diff generics + one IMAGE guard                                     | Medium      | **+44 src / +177 test actual** for the twins half (est. −80)                                                                               | ✅ PR #311 — twins → `entityUtils.ts`; IMAGE-guard half STRUCK, guards are NOT duplicates                                                                       |
 | E5  | Filter/sort/date duplication                                               | Low         | **0 src / +139 test actual** (est. −50 src)                                                                                                | ✅ PR #299 — COMPLETE. All 4 "open" bullets shipped in #299 itself (swept 08-28)                                                                                |
 | E6  | `useCollectionEdit` refresh helpers                                        | Medium      | **`−90 src` is FALSE** — bullet 2 shipped at **+11 src, 0 test churn**; bullets 1/3 also ≈break-even (docblock costs what the dedup saves) | ◐ bullet 2 SHIPPED 2026-08-28; bullet 1 BLOCKED on user (fails the rejection test at 3-of-6 params); bullet 3 startable but sells as drift-protection, not size |
@@ -478,7 +491,7 @@ and E10 both credit the exact PR that silently finished their open bullets. See 
 | **C9**  | BLOCKED — **user** | Should a cover with no `imageWidth`/`imageHeight` fall back to the text-only header, or is rendering nothing deliberate?                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | **F4**  | BLOCKED — **user** | Stated in the item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | **G3**  | BLOCKED — **user** | Delete `/user/selects` or rebuild it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| **E3**  | BLOCKED — **user** | Guards bullet only: may the `cached.slug !== slug` guards be deleted? Generics half shipped in #306                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **E3**  | ✅ CLOSED          | —— it was never a user call. #306 wrote the answer into `collectionStorage.ts:47-55`: the guards are deliberate, unreachable through this module's API but reachable from a foreign sessionStorage write or a non-string slug, where dropping them returns `undefined` through a declared `T \| null`. Pinned by mutation M3. Keep them; 0 code. **SIXTH occurrence of the board's dominant failure mode, and the first that was answered-but-still-blocked rather than shipped-but-unticked**                                                                                                   |
 | **E9**  | BLOCKED — **user** | `.srOnly` bullet only; both COLD bullets shipped in #300                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | **G2**  | BLOCKED — **user** | G2b is a scope call; G2c rides other refactors. G2a is COLD                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
@@ -1172,7 +1185,30 @@ it and the channel becomes a caller's choice at 32 sites, where a wrong constant
 read through the public read channel — a mistake the type system permits and no test would catch.
 Recommendation: keep both wrappers permanently, not just for this MR.
 
-### ◐ E3 · `collectionStorage.ts` generics — generics ✅ PR #306; guards bullet open
+### ✅ E3 · `collectionStorage.ts` generics — CLOSED 2026-08-28; the guards question was already answered in code by #306
+
+**The guards bullet was never a user decision, and it has been sitting BLOCKED for four days
+against an answer that #306 itself wrote into the source.** `collectionStorage.ts:47-55` states it
+outright: the `cached.slug !== slug` check is deliberate and is NOT dead code. It is unreachable
+through the module's own API — the key is `prefix + slug`, injective over string slugs, and `set`
+always files the slug it was given — but it IS reachable from outside: a foreign write to the same
+key (devtools, a stale entry from an older key scheme), or a plain-JS caller passing a non-string
+slug, where `JSON.parse` restores `42` and `42 !== '42'`. Dropping it makes `get` return
+`cached.data`, which for a foreign payload can be `undefined`, **violating the declared `T | null`
+return without TypeScript noticing**, because the value arrived through `JSON.parse`. The eviction
+is pinned by `tests/lib/storage/collectionStorage.test.ts` (mutation M3).
+
+**Answer: keep the guards. Zero code. E3 is closed.**
+
+**This is the SIXTH occurrence of the board's dominant failure mode, and the worst-shaped one yet.**
+The previous five were shipped-but-unticked. This one is *answered-but-still-blocked*: the guardrail
+on #306 said "carry the guards through unchanged and put the deletion analysis in the PR body", the
+PR did exactly that — into a source docblock rather than the board — and the board kept the question
+open anyway. **Rule, hoisted: when a guardrail says "report what changing X would cost", go read
+where that report landed before re-asking the question.** It is usually in the PR body or in a
+docblock the PR added, not in the board.
+
+#### The original filing, kept for history
 
 **SHIPPED 2026-08-24, generics half only — PR #306, −12 net in `collectionStorage.ts`.**
 `createSlugCache<T>(keyPrefix, suffix)` now builds both trios, so the SSR guard, the slug-match
@@ -1416,6 +1452,25 @@ user decision before anyone can start it.
   currently pins them to each other. **Startable any time, no user decision needed**, but it should
   be sold as drift-protection, not as a size win. Do not unify the handlers or the confirm strings
   (`useCollectionEdit.bulkRemove.test.tsx:180-184` pins the wording).
+> **NEXT RUN, picked 2026-08-28 — three MRs, in this order.** All three are COLD; the run
+> deliberately avoids the seven user-blocked items.
+>
+> 1. **E6 `_deletedIds` removal.** Cheapest fully-specified change on the board. It touches the
+>    public `UseCollectionEditResult` type, so it wants its own reviewable diff rather than riding
+>    along with 2. _Guardrail: remove only `_deletedIds`. Leave the rest of the interface alone —
+>    it is 60+ members and "while we're here" would bury the one real change._
+> 2. **E6 bullet 3 — `buildRemoveFromCollectionDiffs`.** Same file as 1, so **re-derive its refs
+>    after 1 lands**; `handleBulkRemove` is at `:1091` today. _Guardrail: share the `map` body only.
+>    Do NOT unify the two handlers and do NOT touch the confirm strings —
+>    `useCollectionEdit.bulkRemove.test.tsx:180-184` pins the wording._
+> 3. **F3's three `logger.warn('manageUtils', …)` labels in `collectionEditUtils.ts`.** Different
+>    file, trivial, no decision. Sequence it after 2 because bullet 3's shared helper may land in
+>    that same file. _Guardrail: fix the labels only. Do not re-open F3's invite bullet — it is
+>    COSTED and REJECTED._
+>
+> Sized at three because that is what the log says a session here actually lands, and because
+> stopping after 1 or 2 still leaves merged work rather than a half-finished branch.
+
 - **The dead `_deletedIds` parameter is still open and is now the cheapest thing on this item.**
   Untouched by bullet 2. `useCollectionEdit.tsx:1060` (**was `:1043`**, +17) still takes
   `async (_deletedIds: number[])` and never reads it, still fed by `:1119` (**was `:1102`**)
@@ -1479,7 +1534,7 @@ drive-by.
 
 - [ ] Three copies of "refetch → adopt → storage-write → revalidate → clear selection" (`handleMetadataSaveSuccess`, `handleGifSaveSuccess`, `handleDeleteSuccess`) → one `refreshAfterContentMutation`.
 - [x] ~~`handleUpdate` and `enterReorder` duplicate the save-adoption block → `adoptSaveResponse`.~~
-      **SHIPPED 2026-08-28** (branch `0339-e6-adopt-save-response`). `adoptSaveResponse` is a
+      **SHIPPED 2026-08-28 — PR #339, MERGED (`4ac6026`), +11 src / 0 test.** `adoptSaveResponse` is a
       `useCallback` at `useCollectionEdit.tsx:740`, called at `:768` (`handleUpdate`) and `:1442`
       (`enterReorder`). Hook-local, not a `collectionEditUtils` export — the block mutates
       `seededCollectionIdRef`/`seededFromAdminRef` and calls `setCurrentState`/`setUpdateData`, so a
@@ -1958,7 +2013,7 @@ anyway, for a different reason than this board gave.** Investigated 2026-08-24 w
   divergent case needs `current` to hold an `id === 0` entry, and no `buildAssociationDiff` call
   site can produce one: both callers (`metadataUtils.ts:459-460`, `:490`) take backend-sourced
   models, and post-save state is re-read from `response.updatedImages`. The only code writing
-  `{id: 0}` into a current-side list (`useCollectionEdit.tsx:1194`, `:1232`) already feeds
+  `{id: 0}` into a current-side list (`useCollectionEdit.tsx:1211`, `:1249` — **were `:1194`/`:1232`**, +17 by #339) already feeds
   `buildEntityDiff`. **And "which saves fire" is wrong even where the outputs differ**: the image
   path calls `updateImages` unconditionally (`useMetadataSubmit.ts:138`), gated only by
   `hasChanges`. A diff controls payload CONTENTS, not whether a save happens. The one path where an
@@ -2369,9 +2424,13 @@ Doing it inside E8's diff would have buried a 10-file sweep in a dedup MR with n
 
 Bigger, optional, sequenced last. Do each individually and verify on :3000.
 
-### ☐ F1 · Decompose `useCollectionEdit.tsx` (1,747 lines — C1 added the seed guard)
+### ☐ F1 · Decompose `useCollectionEdit.tsx` (**1,759 lines** as of #339 — was 1,747 here and 1,748 in E6)
 
-- [ ] After the A- and E-group work (~−150 lines), split along the pattern the file already established (`useContentReordering`, `useCoverImageSelection`, …): `useAdminCollectionState`, `useCollectionUpdateForm`, `useCollectionPeople` + `useGalleryAccess`, `useCollectionRelations`, `useContentOps`, `useManageBar`. The section boundaries were verified 2026-08-22 and **have since drifted — corrected 2026-08-25**: state `:312–422`, update form `:439–797`, people+gallery `:472–856`, content ops `:857–1211`, relations `:1213–1397`, manage bar `:1398–1456`. **Why they moved, and the rule it implies:** #313 landed on 2026-08-24, one day AFTER the boundaries were checked, and inserted 1 line at `:68` and 4 at `:748` — so every boundary below `:748` is +1 and every boundary at or above it is +5. Re-anchored on `const [currentState`, `const [editTab`, `const seedUpdateData`, `const [collectionPeople` and `const handleMediaUpload`, all of which still match. **The file's stated 1,747 lines is correct**, which is exactly what made this drift invisible: the line COUNT was refreshed after #313 and the line REFS were not, so the item looked verified. Keep the existing `UseCollectionEditResult` facade so the SIX test suites (`test`, `buffer`, `handlers`, `bulkRemove`, `escapeSelection`, `delete`) plus `collectionEditFixtures.ts`'s ~70-member result builder do not churn. No file over ~450 lines.
+- [ ] After the A- and E-group work (~−150 lines), split along the pattern the file already established (`useContentReordering`, `useCoverImageSelection`, …): `useAdminCollectionState`, `useCollectionUpdateForm`, `useCollectionPeople` + `useGalleryAccess`, `useCollectionRelations`, `useContentOps`, `useManageBar`. The section boundaries were verified 2026-08-22, corrected 2026-08-25, and **corrected AGAIN 2026-08-28 after #339** — current values: state `:312–422`, update form `:439–814`, people+gallery `:472–873`, content ops `:874–1228`, relations `:1230–1414`, manage bar `:1415–1467`. (Pre-#339 they were `:439–797`, `:472–856`, `:857–1211`, `:1213–1397`, `:1398–1456`.) **Why they moved, and the rule it implies:** #313 landed on 2026-08-24, one day AFTER the boundaries were checked, and inserted 1 line at `:68` and 4 at `:748` — so every boundary below `:748` is +1 and every boundary at or above it is +5. Re-anchored on `const [currentState`, `const [editTab`, `const seedUpdateData`, `const [collectionPeople` and `const handleMediaUpload`, all of which still match. **The file's stated 1,747 lines is correct**, which is exactly what made this drift invisible: the line COUNT was refreshed after #313 and the line REFS were not, so the item looked verified.
+
+**It happened a SECOND time, the same way, four days later — #339 (E6 bullet 2).** Three edits at `:730`, `:765` and `:1439` produced **three different offsets**, so no single number corrects the boundaries: `+0` at or above `:730`, `+23` between `:730` and `:765`, `+17` between `:765` and `:1439`, `+11` below it. The five anchors above all still match and were re-used. **The general rule, now demonstrated twice: F1's boundaries are invalidated by ANY merge into `useCollectionEdit.tsx`, and a uniform offset is the wrong correction whenever the merge had more than one hunk.** Re-derive from the anchors, never by adding a constant.
+
+**Trap found while doing exactly that:** anchoring the update-form end on its raw source line — a bare `);` — false-matched 13 lines early. Generic closing punctuation is not an anchor. The end boundaries here were re-derived from the enclosing construct (`handleUpdate`'s dependency array, `const bottomBarCells`), which is why `:797 → :814` is right and the naive `);` match at `:801` is wrong. Keep the existing `UseCollectionEditResult` facade so the SIX test suites (`test`, `buffer`, `handlers`, `bulkRemove`, `escapeSelection`, `delete`) plus `collectionEditFixtures.ts`'s ~70-member result builder do not churn. No file over ~450 lines.
 - [ ] This also dissolves `EditModeLayer`'s FOUR `exhaustive-deps` suppressions (**`:135`, `:205`, `:212`, `:219` as of 2026-08-25** — were `:131`/`:201`/`:208`/`:215`, shifted +4 by F6's provider block; was "three" before that).
 
 ### ✅ F2 · `RendererContext` for the BoxRenderer tree — SHIPPED
@@ -2661,7 +2720,7 @@ vague bullet into a shippable item.
       3 src / 6 test.** Src importers are exactly `app/[slug]/page.tsx:5`,
       `app/all-client-galleries/page.tsx:1`, `app/page.tsx:3`; the other `CollectionPageWrapper`
       hits in `app/` are prose inside docblocks (`ClientGalleryGate.tsx:30`,
-      `useCollectionEdit.tsx:1152`, `personal.ts:89`, `contentTypeGuards.ts:181`) and move nothing.
+      `useCollectionEdit.tsx:1169` (**was `:1152`**), `personal.ts:89`, `contentTypeGuards.ts:181`) and move nothing.
       **`app/lib/` is now 12 files in `api/`, not 13 — #336 deleted `user.ts`.** One caution on the
       wording: the glob `CollectionPageWrapper.*.test.tsx` matches only TWO files
       (`.allCollectionsTile`, `.meTile`); the third is `CollectionPageWrapper.test.tsx` with no
@@ -3083,19 +3142,27 @@ along with the duplicate skeletons), `rowStructureAlgorithm.ts` (6). (Exclude or
 
 **Re-derived against `main` at `dbc706a`. Six of eleven were exact; five had drifted:**
 
-| File                            | Doc claim  | Actual                   | Rides                           |
-| ------------------------------- | ---------- | ------------------------ | ------------------------------- |
-| `useFullScreenImage.tsx`        | ~86 lines  | **80** lines / 37 blocks | own decomposition; pair with F5 |
-| `CollectionPageClient.tsx`      | 24         | 24 ✓ (still 24 on 08-28) | ~~E7~~ **nothing — see below**  |
-| `useCollectionEdit.tsx`         | 19         | **16**                   | F1                              |
-| `CollectionContentRenderer.tsx` | 16 + 4 JSX | 16 + 4 JSX ✓             | E8/F2                           |
-| `EditModeLayer.tsx`             | 13         | **17**                   | F1                              |
-| `CollectionPageWrapper.tsx`     | 9          | 9 ✓                      | —                               |
-| `ClientGalleryDownload.tsx`     | 8          | **7**                    | E9                              |
-| `CameraSettingsSection.tsx`     | 7          | **8**                    | —                               |
-| `MenuDropdown.tsx`              | 7          | 7 ✓                      | E8                              |
-| `UserManagementPanel.tsx`       | 5          | 5 ✓                      | —                               |
-| `Component.tsx`                 | 5          | 5 ✓                      | F2                              |
+> ⚠ **`useCollectionEdit.tsx` gained one docblock in #339 (raw `/**`count 27 → 28), and this table
+cannot be updated for it, because the table does not record how its numbers were counted.** The raw
+count is 28 and the table says 16, so the 16 is a filtered subset — but the filter is not written
+down anywhere in G4, so there is no way to know whether the new`adoptSaveResponse` docblock falls
+> inside it. **This is the same defect G4 exists to fix, in G4's own measurement.** Before this table
+> is used to size anything, record the command that produces it; until then treat every row as
+> approximate rather than re-deriving one row and trusting the rest.
+
+| File                            | Doc claim  | Actual                     | Rides                           |
+| ------------------------------- | ---------- | -------------------------- | ------------------------------- |
+| `useFullScreenImage.tsx`        | ~86 lines  | **80** lines / 37 blocks   | own decomposition; pair with F5 |
+| `CollectionPageClient.tsx`      | 24         | 24 ✓ (still 24 on 08-28)   | ~~E7~~ **nothing — see below**  |
+| `useCollectionEdit.tsx`         | 19         | **16** ⚠ stale — see below | F1                              |
+| `CollectionContentRenderer.tsx` | 16 + 4 JSX | 16 + 4 JSX ✓               | E8/F2                           |
+| `EditModeLayer.tsx`             | 13         | **17**                     | F1                              |
+| `CollectionPageWrapper.tsx`     | 9          | 9 ✓                        | —                               |
+| `ClientGalleryDownload.tsx`     | 8          | **7**                      | E9                              |
+| `CameraSettingsSection.tsx`     | 7          | **8**                      | —                               |
+| `MenuDropdown.tsx`              | 7          | 7 ✓                        | E8                              |
+| `UserManagementPanel.tsx`       | 5          | 5 ✓                        | —                               |
+| `Component.tsx`                 | 5          | 5 ✓                        | F2                              |
 
 Note `useFullScreenImage.tsx` is quoted in LINES while every other entry is in BLOCKS — that
 inconsistency is in the original and is why it looked like an outlier. It is 37 blocks, which
@@ -3197,7 +3264,7 @@ item labels are not allowed in code comments at all" on 2026-08-25 and nobody co
 `useMetadataSubmit.ts:111` (E12), `collectionEditUtils.ts:284` (C4), `useCollectionEdit.tsx:185`
 (D3), `useCollectionEdit.tsx:193` (D3/D4), `StructureTab.tsx:34` (D4), `clearCache.ts:37` (D1/D2),
 `core.ts:101` (E2), `api/revalidate/route.ts:7` (D6) — plus **6 inline `//` comments**:
-`useCollectionEdit.tsx:1568` (`TODO(A3)`), `useCollectionEdit.tsx:1583` (D4),
+`useCollectionEdit.tsx:1579` (`TODO(A3)`, **was `:1568`**), `useCollectionEdit.tsx:1594` (D4, **was `:1583`**),
 `CollectionPageClient.tsx:322` and `:356` (D7), `useCoverImageSelection.ts:51` (D3),
 `EditModeLayer.tsx:249` (D3). Only 2 of the 19 overlap the 49, so this is **~17 net-new blocks the
 row does not count.** Watch one false positive: `contentRatingUtils.ts:35`'s `H5★` is a five-star
@@ -3565,8 +3632,37 @@ _Newest first. **Dates are local (America/Los_Angeles), not UTC** — earlier en
 which is why a "08-23" entry can sit between two "08-24" ones. The ordering was verified correct
 against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates._
 
-- 2026-08-28 — **shipped E6 bullet 2 (`adoptSaveResponse`), costed bullets 1 and 3 without touching
-  them, and CLOSED E10 on a user decision. First code MR since #337.**
+- 2026-08-28 (2) — **close-out. #339 merged. E3 CLOSED with zero code — its "user decision" was
+  already answered in the source. Corrected F1's slice boundaries, the third time they have drifted.
+  Next run: E6 `_deletedIds`, then E6 bullet 3, then F3's logger labels.**
+
+  **E3 is the sixth occurrence of the board's dominant failure mode and the first of a new shape.**
+  The previous five were shipped-but-unticked. This one was answered-but-still-blocked: #306's
+  guardrail asked for the guard-deletion analysis, #306 delivered it into
+  `collectionStorage.ts:47-55`, and the board kept the question open against the user for four days.
+  Hoisted the rule — before escalating anything to the user, grep the source and the crediting PR
+  for the answer, because that is where a "report what it would cost" guardrail actually lands.
+
+  **F1's boundaries drifted for the THIRD time, and the correction method had to change.** #313 broke
+  them once with a uniform two-band offset; #339 broke them again with three hunks and therefore
+  three offsets (+23/+17/+11). No single number fixes them. Re-derived all six from the five anchors
+  F1 already names, and hoisted the rule. **Also found a trap doing it:** anchoring the update-form
+  end on its raw source line — a bare `);` — false-matched 13 lines early. Generic punctuation is
+  not an anchor.
+
+  **G4's docblock table cannot be updated and that is a defect in G4 itself.** #339 added one
+  docblock to `useCollectionEdit.tsx` (raw `/**` 27 → 28), but the table's "16" is a filtered count
+  whose filter is written down nowhere, so there is no way to know whether the new block falls
+  inside it. Flagged in place. G4 exists to fix undocumented conventions and its own measurement has
+  the same defect.
+
+  **The board is now decision-starved, not work-starved.** After E3 and E10 closed, seven items sit
+  BLOCKED on user calls (H1, C9, F4, G3, E9's `.srOnly`, G2b/G2c, E6 bullet 1) against a COLD set
+  that is F1 plus small tails. That ratio is the thing to watch: the next session should batch the
+  blocked questions in its opening message rather than picking around them.
+
+- 2026-08-28 — **shipped E6 bullet 2 (`adoptSaveResponse`) as PR #339, costed bullets 1 and 3 without
+  touching them, and CLOSED E10 on a user decision. First code MR since #337.**
 
   **The lift itself was exactly as specified and that is worth recording, because it is the first
   item on this board that was.** E6 said "fully specified, needs no discovery pass" and it was true —
