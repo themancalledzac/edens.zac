@@ -13,9 +13,11 @@ jest.mock('@/app/lib/api/collections', () => ({
   getScopedAllCollections: jest.fn(),
 }));
 jest.mock('@/app/lib/api/auth', () => ({ meServer: () => mockMeServer() }));
-jest.mock('@/app/lib/api/user', () => ({ getUserPage: () => mockGetUserPage() }));
 jest.mock('@/app/lib/api/selects', () => ({ listSelectIdsServer: jest.fn(async () => []) }));
-jest.mock('@/app/lib/api/personal', () => ({ listSavedImageIdsServer: jest.fn(async () => []) }));
+jest.mock('@/app/lib/api/personal', () => ({
+  getUserPage: () => mockGetUserPage(),
+  listSavedImageIdsServer: jest.fn(async () => []),
+}));
 jest.mock('next/navigation', () => ({
   notFound: () => {
     throw new Error('NEXT_NOT_FOUND');

@@ -1,12 +1,20 @@
 /**
- * Per-user "Your Space" API — saved images + followed collections. Mirrors the raw-fetch idiom of
- * `app/lib/api/selects.ts`: `fetch` to `/api/proxy/api/read/user/...` with
- * `credentials: 'same-origin'` and `cache: 'no-store'`, throwing `ApiError` on any non-OK response.
+ * Per-user "Your Space" API — the signed-in user's own reads: their page, saved images and
+ * followed collections. Mirrors the raw-fetch idiom of `app/lib/api/selects.ts`: `fetch` to
+ * `/api/proxy/api/read/user/...` with `credentials: 'same-origin'` and `cache: 'no-store'`,
+ * throwing `ApiError` on any non-OK response.
  *
  * Distinct from Selects (per-gallery favorites): saves are cross-collection bookmarks available to
  * ANY logged-in user, and follows track whole collections. Both backend reads return `number[]`.
+ *
+ * Distinct from `app/lib/api/users.ts`, which is the ADMIN side — the id-parameterized
+ * `/api/admin/users/{id}/**` twins for looking at someone else's space. Everything here binds to
+ * the session principal and is self-only by construction. The two files sat one character apart as
+ * `user.ts` and `users.ts` until {@link getUserPage} moved here, which is why that split is now
+ * spelled out rather than implied by a name.
  */
 import { ApiError, clientFetch, fetchReadApi } from '@/app/lib/api/core';
+import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentImageModel } from '@/app/types/Content';
 import { type FailSoftRead } from '@/app/types/FailSoftRead';
 import { type FollowedCollectionIds, type SavedImageIds } from '@/app/types/Personal';
@@ -127,5 +135,26 @@ export async function listFollowedCollectionIdsServer(): Promise<FailSoftRead<nu
     return { ok: true, items: ids ?? [] };
   } catch (error) {
     return unavailableOnError<number>('followed collection ids', error);
+  }
+}
+
+/**
+ * The signed-in user's synthetic collection (galleries + tagged content) from
+ * `GET /api/read/user/me/page`. Personal data — never cached. Returns null on 401 (no/revoked
+ * session) so a render resolves to `notFound()` instead of surfacing an error — covering the race
+ * where the session is revoked between the page's `meServer()` check and this fetch.
+ *
+ * Null-on-401 rather than {@link FailSoftRead} like its three neighbours above: this read IS the
+ * page, so a failure has no partial view to degrade into. Callers either render the collection or
+ * 404, and there is no "we could not read your saves" copy to keep honest.
+ */
+export async function getUserPage(): Promise<CollectionModel | null> {
+  try {
+    return await fetchReadApi<CollectionModel>('user/me/page', { cache: 'no-store' });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      return null;
+    }
+    throw error;
   }
 }
