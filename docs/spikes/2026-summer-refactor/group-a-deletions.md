@@ -9,7 +9,7 @@ All nine items merged: PR #255–#263. Everything here was verified zero-referen
 ### ✅ A1 · Dead whole files + their tests — PR #255
 
 - [x] `app/hooks/useCollectionData.tsx` (112) — old manage-page relic, test-only. Delete `tests/hooks/useCollectionData.test.tsx` (319).
-- [x] `app/utils/focalLength.ts` (28) — the lens-type filter dimension was removed. Delete `tests/utils/focalLength.test.ts` (105) and `LensType` at [GalleryFilter.ts:13](app/types/GalleryFilter.ts:13). The `focalLength` image *field* stays — it is live in `FullScreenModal` and metadata.
+- [x] `app/utils/focalLength.ts` (28) — the lens-type filter dimension was removed. Delete `tests/utils/focalLength.test.ts` (105) and `LensType` at [GalleryFilter.ts:13](app/types/GalleryFilter.ts:13). The `focalLength` image _field_ stays — it is live in `FullScreenModal` and metadata.
 - [x] `app/utils/groupCollectionsByYear.ts` (69) — test-only. Delete `tests/utils/groupCollectionsByYear.test.ts` (91).
 - [x] `app/components/Breadcrumb/` (86 with SCSS) — never mounted; docs 004 already flags "mount or drop", this is the drop. Delete `tests/components/Breadcrumb/` (42).
 - [x] `app/components/ErrorBoundary/` (108 with SCSS) — zero refs, no test; route errors use `app/error.tsx`.
@@ -58,7 +58,7 @@ Deleting `_logLevelCheck` orphaned the `LogLevel` type, and deleting `isFullscre
 orphaned `docEl` in its test — both went too.
 
 **A4 broke an open branch, and nothing in git said so.** `formatDisplayDateRange` was genuinely
-zero-reference *on main* — but PR #253 (`0251-collections-panel`, open since 2026-08-15) imported it.
+zero-reference _on main_ — but PR #253 (`0251-collections-panel`, open since 2026-08-15) imported it.
 The two touch disjoint files, so GitHub reported the PR `MERGEABLE`/`CLEAN` throughout and
 `git merge origin/main` applied with no conflict. The break surfaced only at `tsc`. Fixed on that
 branch by repointing at `formatLongDate`.
