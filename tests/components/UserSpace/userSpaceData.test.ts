@@ -20,8 +20,8 @@
  */
 
 jest.mock('@/app/lib/api/collections', () => ({ getAllCollections: jest.fn() }));
-jest.mock('@/app/lib/api/user', () => ({ getUserPage: jest.fn() }));
 jest.mock('@/app/lib/api/personal', () => ({
+  getUserPage: jest.fn(),
   listSavedImagesServer: jest.fn(),
   listFollowedCollectionIdsServer: jest.fn(),
 }));
@@ -34,8 +34,11 @@ jest.mock('@/app/lib/api/users', () => ({
 import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
 import { getAllCollections } from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
-import { listFollowedCollectionIdsServer, listSavedImagesServer } from '@/app/lib/api/personal';
-import { getUserPage } from '@/app/lib/api/user';
+import {
+  getUserPage,
+  listFollowedCollectionIdsServer,
+  listSavedImagesServer,
+} from '@/app/lib/api/personal';
 import {
   getUserPageById,
   listFollowedCollectionIdsByUserServer,
