@@ -167,6 +167,53 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
   change makes it wrong. Before collapsing twins, `grep -rn "jest.mock('<module path>')" tests/`; if
   there are hits, keep the two as separate delegating functions and say why in the docblock. Costs
   two lines.
+- **When a row names a merged PR, `git show --stat <sha>` that PR against the bullet list BEFORE
+  trusting any checkbox in it.** This is the one command that would have caught all four of
+  2026-08-28's sweeps, and the failure has now happened FIVE times (B8, then E5, E10 and A9 in a
+  single pass). The shape is always the same and it is counter-intuitive: **the PR credited in the
+  status cell is the PR that silently finished the "open" bullets.** E5's row said "PR #299; 4
+  bullets still open" while all four shipped in `699441b` inside #299. E10's said "bullets 6–7
+  unswept" while bullet 6 shipped in #304. The shipping commit's own diffstat named every bullet in
+  both cases. **A session writes its row before it finishes its work, and nothing makes it come
+  back** — so the row is a snapshot of an intention, not a record of an outcome. Never carry a
+  checkbox forward on the strength of the row above it.
+- **An item that hands work to the USER needs a verification step, or it becomes immortal.** A9's
+  `layoutpreview` delete was correctly diagnosed as user-only after the permission gate denied it
+  twice, correctly moved into the handoff prompt — and then re-filed for five sessions because
+  nobody ever ran `ls` to see whether the user had done it. They had. **Write such bullets with the
+  check attached ("done when `find app -iname '*layoutpreview*'` is empty"), not just the ask.**
+- **Never quote a recorded suite/test baseline. Re-measure it by stashing the tree and running the
+  suite.** Hoisted from F3 on 2026-08-28 because it has now bitten three close-outs running, and
+  because the failure looks exactly like success: every stale reading was correct when it was taken.
+  The number moved THREE TIMES on 2026-08-27–28 alone — 245/4399 → 246/4451 (E2 merges added 52
+  tests) → 246/4454 (E7's new specs) → **245/4454** (#336 deleted a suite). Two of those readings
+  were taken from a branch whose base had since changed, which is the specific trap: a count
+  measured on your own branch is not a claim about `main`. **`main` at `fed67e8` is 245 suites /
+  4454 tests.** Any close-out that quotes a different number without a fresh measurement is wrong,
+  including this line the moment something merges.
+- **The mock-declaration count is the unit of value for a MOVE item, and it moves in both
+  directions.** The rule above covers collapsing two exports into one. The same mechanic decides
+  whether moving an export between modules is worth doing, and a line count cannot see it. F3's
+  `getUserPage` move (#336) looked like net +12 src; what actually happened is that all six test
+  files mocking `@/app/lib/api/user` ALSO mocked `@/app/lib/api/personal` separately, so twelve mock
+  declarations became six. **Before sizing any move item, run
+  `grep -rln "jest.mock('<source module>')" tests/` and the same for the DESTINATION module, and
+  count the overlap.** High overlap means the move pays; zero overlap means it is cosmetic; and a
+  SPLIT with high overlap costs you — F3's invite bullet would have turned six declarations into
+  eight, which is what tipped it from "small" to "don't".
+- **Costing an item is allowed to change its answer, and twice in one session it did. A rejection is
+  a valid, finished outcome of a sizing pass — not a punt.** F3's invite bullet and E7's
+  `useFilteredContentBlocks` hook were both measured on 2026-08-27 and both came back rejected, each
+  for the same underlying reason: **the thing the item proposed to share was not actually shared.**
+  The invite functions span three fetch perimeters, so any file holding all three relocates the mix
+  rather than reducing it. The two filter pipelines are character-identical but consume different
+  `allContent` and pass opposite arguments, so one hook serving both needs 9–11 parameters whose job
+  is to re-describe the differences. **The tell in both: write the shared signature FIRST. If more
+  than about a third of its parameters exist only to switch behavior between the callers, the
+  callers are not duplicates and the item is wrong.** When this happens, record the measurement and
+  the recommended alternative shape in the item so the next pass does not re-litigate it — both of
+  those items now name a smaller move that WOULD work (a 2-function invite split; a four-line
+  handoff guard), and in E7's case the smaller thing shipped the same day.
 - **Size the duplicated region, not the file.** E3's "one generic pair halves the file (~100 lines)"
   halved 286 total lines; only the two trios dedup, and the real saving was 46 code lines. This is a
   _second_, independent estimate bias from the source-only-vs-test-coupling one, and they stack:
@@ -333,7 +380,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | A7a | `useCollectionEdit` legacy aliases                                         | Minimal     | −8                                                                                                             | ✅ PR #259                                                                                                                                           |
 | A7b | `enterSelect`/`enterAdd` inline copies                                     | Low         | −2 src                                                                                                         | ✅ PR #262                                                                                                                                           |
 | A8  | Dead SCSS in live modules + `globals.css` tokens                           | Low         | −327                                                                                                           | ✅ PR #263                                                                                                                                           |
-| A9  | Dead config                                                                | Minimal     | −35                                                                                                            | ◐ PR #259; 3 follow-ups open                                                                                                                         |
+| A9  | Dead config                                                                | Minimal     | −35                                                                                                            | ◐ PR #259 — swept 08-28: 2 of 3 already DONE; 1 open, and it is a CLAUDE.md:22 correction, not a deletion                                            |
 | B1  | Merge `manageUtils.test.ts`                                                | Low         | −209 net (est. −450)                                                                                           | ✅ PR #290                                                                                                                                           |
 | B2  | `rowCombination` characterization dedup                                    | Low         | −229 (est. −250)                                                                                               | ✅ PR #288                                                                                                                                           |
 | B3  | `metadataUtils.test.ts` dedup                                              | Low         | −125 (est. −200 to −300)                                                                                       | ✅ PR #287                                                                                                                                           |
@@ -365,12 +412,12 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E2  | `core.ts` fetch skeleton + `clientFetch`                                   | Medium      | **−115 src actual** (−57 bullets 1–2, −58 bullets 3–4); +6 tests (est. −180 src, +150–200 test)                | ✅ bullets 1–2 PR #333; bullets 3–4 PR #334 — CLOSED                                                                                                 |
 | E3  | `collectionStorage.ts` generics                                            | Low         | **−12 src actual** (−46 code, +39 comment); +927 test via #296 (est. +50–150 net for both)                     | ◐ generics ✅ PR #306; guards bullet ⛔ user call                                                                                                    |
 | E4  | Entity-diff generics + one IMAGE guard                                     | Medium      | **+44 src / +177 test actual** for the twins half (est. −80)                                                   | ✅ PR #311 — twins → `entityUtils.ts`; IMAGE-guard half STRUCK, guards are NOT duplicates                                                            |
-| E5  | Filter/sort/date duplication                                               | Low         | **0 src / +139 test actual** (est. −50 src)                                                                    | ◐ PR #299; 4 bullets still open                                                                                                                      |
+| E5  | Filter/sort/date duplication                                               | Low         | **0 src / +139 test actual** (est. −50 src)                                                                    | ✅ PR #299 — COMPLETE. All 4 "open" bullets shipped in #299 itself (swept 08-28)                                                                     |
 | E6  | `useCollectionEdit` refresh helpers                                        | Medium      | −90 src, **±20 test churn** (was "±100" — the call-order risk behind it is FALSE, verified 08-27)              | ☐ bullets re-verified 2026-08-27; helper already exists at `collectionEditUtils.ts:338`                                                              |
 | E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook)                    | Small       | **+22 src / +84 test actual** (est. was "+100–200 net (new hook suite)" — the hook is rejected)                | ◐ waste FIXED ✅ #337; hook REJECTED (9–11 params, 4 behavior switches); two smaller paths still open                                                |
 | E8  | Renderer + `MenuDropdown` dedup                                            | Medium      | est −120 src / +150–250 test → **actual −49 src / +90 test** (PR #319)                                         | ✅                                                                                                                                                   |
 | E9  | Download icon/hook, auth-card SCSS, `.srOnly`                              | Low         | **+16 src / +393 test actual** (est. −100 src)                                                                 | ◐ PR #300 — both COLD bullets shipped; srOnly ⛔ user call                                                                                           |
-| E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator)          | Low         | **−79 src code-only / +176 test code-only** (est. −60 src)                                                     | ◐ PR #304; late-added bullets 6–7 unswept                                                                                                            |
+| E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator)          | Low         | **−79 src code-only / +176 test code-only** (est. −60 src)                                                     | ◐ PR #304 — swept 08-28: 5 of 7 shipped in #304, 1 was never a task; ONE open (`--color-danger` hover, user call)                                    |
 | E11 | Make cache-tag register/revalidate drift detectable                        | Low-medium  | +277 −28                                                                                                       | ✅ PR #280                                                                                                                                           |
 | E12 | Wire up `collections-location-${slug}`                                     | Low-medium  | **+72 src / +293 test actual** (est. +30 src)                                                                  | ✅ PR #301; image-path trigger split out as E13                                                                                                      |
 | E13 | Trigger `collections-location-${slug}` from the image-metadata save path   | Low-medium  | **+36 src net / +165 test actual** (est. +30 src, +60 test)                                                    | ✅ PR #313 — src estimate held; location-RENAME gap split out as E16                                                                                 |
@@ -388,7 +435,7 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | G1  | Docs corrections                                                           | Trivial     | **+106 / −72 actual** (est. ±50)                                                                               | ✅ PR #303                                                                                                                                           |
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)            | Low         | ~neutral (relocation + splits)                                                                                 | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors                                                                               |
 | G3  | `/user/selects` decision                                                   | —           | —                                                                                                              | ⛔ USER DECISION                                                                                                                                     |
-| G4  | Docblock standard — length, structure, and no history                      | Low         | **−50 net actual across 19 blocks** (est. −300 to −500 across ~53); 0 src                                      | ◐ intersection pass done; ~48 short historical blocks open — and #327/#328 ADDED to the pile                                                         |
+| G4  | Docblock standard — length, structure, and no history                      | Low         | **−50 net actual across 19 blocks** (est. −300 to −500 across ~53); 0 src                                      | ◐ intersection pass done; swept 08-28: 49 hits but only ~26 real; #327/#328 line was STALE (#329 cleared it); +~17 uncounted board-label blocks      |
 | H1  | Merge `Following` into `Collections` on `/user`                            | Medium      | −60 src, ±150 test churn (6 test files)                                                                        | ☐ COLD — C8 shipped, so its stated blocker has cleared                                                                                               |
 | H2a | `/user` rail copy pass + chip-style the Admin links                        | Low         | **+319 / −117 actual** (est. −25 src)                                                                          | ✅ PR #302                                                                                                                                           |
 | H3  | `Send a message` into the rail as a plain button                           | Low         | rode H2a                                                                                                       | ✅ PR #302                                                                                                                                           |
@@ -399,9 +446,22 @@ Every open item is COLD or BLOCKED, and every BLOCKED one names its question and
 item blocked on an unwritten question reads as available and then eats a session.
 
 **The 2026-08-26 stamp claimed to cover every open item and did not — six were missing entirely
-(A9, B8, E5, E10, F3, G4).** They are added below. Only the two swept this session (B8, F3) carry a
-verified state; the other four are marked UNSTAMPED rather than given a state nobody checked, since
-a wrong COLD is exactly the thing this table exists to prevent.
+(A9, B8, E5, E10, F3, G4).** They were added below. ~~Only the two swept this session (B8, F3) carry
+a verified state; the other four are marked UNSTAMPED rather than given a state nobody checked,
+since a wrong COLD is exactly the thing this table exists to prevent.~~
+
+**RESOLVED 2026-08-28 — the four UNSTAMPED items are now swept, and holding back the stamp was the
+right call. Every one of them was wrong.** E5 was complete. E10 was 5-of-7 done with a sixth bullet
+that was never a task. A9 was 2-of-3 done, including a deletion the board re-filed for five
+sessions. G4's count held but half its scope was false positives and ~17 blocks of real work were
+uncounted. **Had these been stamped COLD unverified in August, four sessions would have opened them
+expecting work that was already finished.** UNSTAMPED is a useful state; use it rather than guessing,
+and then actually sweep it.
+
+**The general lesson, now the FIFTH occurrence of shipped-but-unticked (B8, then E5, E10, A9 all in
+one pass): the board is least accurate about the items it has most recently shipped against.** E5
+and E10 both credit the exact PR that silently finished their open bullets. See the
+`git show --stat` rule in "how to use this doc".
 
 | Item    | State              | If blocked: the question, and who answers it                                                                                                                                                                                                                                                                                                                                                                                         |
 | ------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -409,10 +469,10 @@ a wrong COLD is exactly the thing this table exists to prevent.
 | **E7**  | COLD               | —— the waste shipped as a handoff guard 2026-08-27 (#337); the hook is REJECTED with measurement. Two smaller wasted paths left open in the item (`EditModeLayer.tsx:280` reorder path, and a third `processContentBlocks` caller at `useCollectionEdit.tsx:556`)                                                                                                                                                                    |
 | **B8**  | COLD               | —— verified 2026-08-27: 8 of 9 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                                                                                                                                                                                           |
 | **F3**  | COLD               | —— `getUserPage` shipped 2026-08-27 (#336), `user.ts` deleted. The invite bullet is COSTED and REJECTED — do not re-open it as a 3-function move; the note names the 2-function alternative. Six bullets open, refs swept 2026-08-27                                                                                                                                                                                                 |
-| **A9**  | UNSTAMPED          | Never swept. Verify the premise before picking it up                                                                                                                                                                                                                                                                                                                                                                                 |
-| **E5**  | UNSTAMPED          | Row says "PR #299; 4 bullets still open" — confirm those four are actually open (see the B8 lesson above)                                                                                                                                                                                                                                                                                                                            |
-| **E10** | UNSTAMPED          | Row says "PR #304; late-added bullets 6–7 unswept" — sweep them                                                                                                                                                                                                                                                                                                                                                                      |
-| **G4**  | UNSTAMPED          | Never swept. Verify the premise before picking it up                                                                                                                                                                                                                                                                                                                                                                                 |
+| **A9**  | COLD               | —— swept 2026-08-28. 2 of 3 bullets were ALREADY DONE (worktrees cleared; `layoutpreview` deleted by the user outside git after 5 sessions of re-filing). The one open bullet is a factual correction to `CLAUDE.md:22` — `npm`/`npx`/`node` all resolve, `npm --version` is 11.8.0. Allowlist count was 7, is 6                                                                                                                     |
+| **E5**  | ✅ CLOSED          | —— swept 2026-08-28: all four "open" bullets shipped in `699441b`, inside PR #299 itself. Nothing was open. FIFTH shipped-but-unticked occurrence                                                                                                                                                                                                                                                                                    |
+| **E10** | BLOCKED — **user** | Should the delete button's hover text be `--color-danger` or `--color-danger-text`? (`RolesPanel.module.scss:66`.) Swept 2026-08-28: 5 of 7 shipped in #304, bullet 3 was a rejection not a task. The "other three panels" this bullet compares against DO NOT EXIST — one `.deleteButton` repo-wide, so there is no majority either way                                                                                             |
+| **G4**  | COLD               | —— swept 2026-08-28. Count reproduces (49 vs ~48) and its method is recoverable, but ~23 are false positives so the history sweep is ~26 real and must be read block-by-block, not regexed. Row's "#327/#328 added to the pile" was stale. NEW: ~17 uncounted board-label blocks (13 docblocks + 6 inline)                                                                                                                           |
 | **F1**  | COLD               | —— largest open item; no unanswered question, just size                                                                                                                                                                                                                                                                                                                                                                              |
 | **H1**  | BLOCKED — **user** | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? Also: accept a 500-row catalog fetch on every `/user` load, or ask the backend to return followed collections on the user-page read?                                                                                                                                                                  |
 | **C9**  | BLOCKED — **user** | Should a cover with no `imageWidth`/`imageHeight` fall back to the text-only header, or is rendering nothing deliberate?                                                                                                                                                                                                                                                                                                             |
@@ -485,19 +545,59 @@ it (or move it to a tracked `docs/cleanup/`) so its decisions survive the machin
 All nine items merged (#255–#263). Full write-ups: [group-a-deletions.md](2026-summer-refactor/group-a-deletions.md).
 Three bullets under A9 never shipped and stay here.
 
-### ◐ A9 · Dead config — PR #259
+### ◐ A9 · Dead config — PR #259 — swept 2026-08-28: TWO of the three are done, ONE is open
 
-_Shipped bullets are in the [archive](2026-summer-refactor/group-a-deletions.md). These three are open._
+_Shipped bullets are in the [archive](2026-summer-refactor/group-a-deletions.md). ~~These three are
+open.~~_ **Swept for the first time on 2026-08-28. Two of the three describe states that no longer
+exist — including the `layoutpreview` delete this board carried for FIVE sessions and repeatedly
+re-attempted. The user cleared it outside git. Nobody checked; the board just kept re-filing it.**
+That is the cost of an item stamped UNSTAMPED: not a wrong line number, five sessions of re-deriving
+a dead task.
 
 - [ ] `.claude/agents/` — NOT done, and the premise looks wrong: `npm`, `npx`, and `node` all resolve
       on PATH (`/opt/homebrew/bin`). Re-confirmed 2026-08-22 from the review session's shell — same
-      result, so the "npm is not on PATH" line in CLAUDE.md may itself be stale. Re-diagnose against
-      an actual agent run before editing 7 allowlists.
-- [ ] `.claude/worktrees/` still holds the 6 orphaned `agent-*` directories (Mar 16, unregistered —
+      result, so the "npm is not on PATH" line in CLAUDE.md may itself be stale. ~~Re-diagnose against
+      an actual agent run before editing 7 allowlists.~~
+      **RE-CONFIRMED A THIRD TIME 2026-08-28, and the diagnosis is now settled — the CLAUDE.md line
+      is simply WRONG.** `which npm npx node` returns all three under `/opt/homebrew/bin`, and
+      `npm --version` prints **11.8.0**. The stale claim is live at
+      [CLAUDE.md:22](CLAUDE.md:22): "`npm` and `npx` are not on PATH."
+      **So the work is not the allowlists — it is deleting that CLAUDE.md paragraph.** The
+      allowlists already use plain `npm`/`npx`, which work; nothing there is broken.
+      **Count corrected: "7 allowlists" is wrong.** Ten `.claude/agents/*.md` files carry a `tools:`
+      block, and only **6** carry `Bash(npm…)`/`Bash(npx…)` entries — `code-reviewer.md:14-15`,
+      `debugger.md:11-13`, `implementer.md:12-13`, `linter-fixer.md:12-14`,
+      `refactor-rename.md:11-12`, `test-writer.md:11`. The seventh `grep -l` hit was
+      `.claude/agents/README.md`, which is documentation, not an allowlist.
+      **Cost of the stale line, measured:** every command in this session ran as
+      `/opt/homebrew/bin/node node_modules/.bin/jest` because CLAUDE.md says to. That works, so
+      nothing ever failed loudly enough to prompt a re-check. **A false instruction that still
+      produces working commands is invisible indefinitely** — which is why this sat through three
+      confirmations without anyone editing the line.
+- [x] ~~`.claude/worktrees/` still holds the 6 orphaned `agent-*` directories (Mar 16, unregistered —
       re-checked 2026-08-22). Check each for uncommitted work before deleting — that is the only
       reason they were left in place. The `cleanup` worktree was removed by the review session (its
-      D6 branch merged, tree clean).
-- [ ] `app/(admin)/admin/layoutpreview/` — the untracked screenshot harness for PR #253's
+      D6 branch merged, tree clean).~~ **DONE — verified 2026-08-28.** `ls -a .claude/worktrees/`
+      shows an empty directory (mtime Aug 24, i.e. cleared after the 08-22 re-check), and
+      `git worktree list` returns exactly one entry: the main checkout. Zero orphans.
+- [x] **DONE — the directory is GONE. Verified 2026-08-28: `ls "app/(admin)/admin/layoutpreview/"`
+      returns "No such file or directory" and `find app -iname "*layoutpreview*"` returns nothing.**
+      The user cleared it outside git (it was never tracked —
+      `git log --all -- "app/(admin)/admin/layoutpreview"` is empty), and `git grep` across every
+      remote branch finds `layoutpreview` only in this board file. Nothing is live anywhere.
+      **This bullet was carried for five sessions and re-attempted at least twice.** The board's own
+      advice — "stop re-attempting the delete, put the command in the handoff prompt" — was right,
+      worked, and then nobody checked whether it had worked. **The lesson is not about permissions:
+      an item that hands work to the USER needs a verification step on the next run, or it becomes
+      immortal.** Stamp such bullets with what to check, not just what to ask for.
+      **One live consequence remains and it is NOT this bullet:** `.next-verify/dev/types/validator.ts`
+      still holds a generated type pointing at the deleted `layoutpreview/page.tsx`, which is the
+      single `tsc --noEmit` error this board has called "expected noise" for three sessions. The
+      page is gone, so the error is now purely a stale build artifact. `.next-verify/` is gitignored
+      (`.gitignore:123`) and regenerable; `rm -rf .next-verify` clears it. Left for the user — it is
+      their local build cache, not repo state.
+      _Original text follows._
+      ~~`app/(admin)/admin/layoutpreview/` — the untracked screenshot harness for PR #253's
       four-panel question. Read and confirmed purposeless 2026-08-23: its own first line says
       "TEMPORARY … Delete this directory when the screenshots are captured", and #253 merged at
       79fbca5. Carried forward from the 08-23 log entry's "delete on sight", which did not stick
@@ -509,11 +609,15 @@ _Shipped bullets are in the [archive](2026-summer-refactor/group-a-deletions.md)
       permissions active, so no agent session can clear it. Fifth session carrying it. Stop
       re-attempting the delete; put the command in the handoff prompt instead and let the user run
       it. Re-read before deleting if you want: it is one file, `page.tsx`, whose first line still
-      reads "TEMPORARY — screenshot harness for the PR #253 four-panel layout question.
+      reads "TEMPORARY — screenshot harness for the PR #253 four-panel layout question.~~
 
-```bash
+~~```bash
 rm -rf "app/(admin)/admin/layoutpreview"
-```
+
+````~~
+
+**A9 is now one bullet, and it is not a deletion — it is a one-paragraph correction to
+[CLAUDE.md:22](CLAUDE.md:22).** The item is a third of its recorded size.
 
 ---
 
@@ -1241,7 +1345,27 @@ lines collapsing to ~55, but the shared module needs its own docblocks and `Enti
 need declaring, and those exceed what the wrappers gave back. The win is one copy of the mechanic
 instead of two, not a smaller tree — the same lesson E3 taught, in the same direction.
 
-### ◐ E5 · Filter/sort/date duplication — PR #299; 4 bullets open
+### ✅ E5 · Filter/sort/date duplication — PR #299, COMPLETE (the four "open" bullets shipped in #299 itself)
+
+**CLOSED 2026-08-28. Nothing was open; nothing needed doing.** All four unticked bullets shipped in
+commit `699441b`, which is inside PR #299 — **the very PR the row credited while calling them
+open.** `git merge-base --is-ancestor 699441b HEAD` → yes. Verified individually against `main` at
+`fed67e8`:
+
+| Bullet | Evidence it shipped |
+| --- | --- |
+| `createMetadataTextBlock` / `createTextOnlyHeaderRow` literals | Extracted to `buildHeaderTextBlock` (`contentLayout.ts:498`), called at `:534` and `:580`. Neither function holds a `ContentTextModel` literal now. The `-2` sentinel is named: `HEADER_TEXT_CONTENT_ID` at `:491` |
+| `ImageBlock` alias declared twice | Both declarations deleted. `grep -rn "type ImageBlock" app tests` returns nothing. `useFullScreenImage.tsx:16` and `FullScreenModal.tsx:22` use `ViewableContent` directly |
+| `buildImageFilterParams` (~30 lines) | `content.ts:90-116` = **27 lines**, estimate was good. Called at `:129` (`searchImages`, csv) and `:316` (`getAllImages`, repeat). Endpoints stayed separate as required, and csv-vs-repeat is an explicit parameter with no default |
+| `ProcessContentOptions.displayMode` ignored | REMOVED, not honored. The interface (`contentLayout.ts:60-99`) has no such field. Pinned by a docblock at `tests/utils/contentLayout.test.ts:1375`. **Do not confuse it with `processContentBlocks`'s own `displayMode` at `contentLayout.ts:412`, read at `:419` — that one was always live** |
+
+**FIFTH occurrence of the shipped-but-unticked failure, and this one is the worst shape yet:** on
+B8 the row was at least ambiguous, here the row named the exact PR that did the work and still
+called the work open. **The check that would have caught it in one command is
+`git show --stat <sha>` against the bullet list** — the shipping commit's own diffstat named every
+bullet, in both E5 and E10. Added to "how to use this doc".
+
+- [x] `FILTER_PARAM_KEYS` in `useFilterUrlState.ts` hand-mirrors `serializeFilterToParams`; the "MUST mirror" comment is a drift warning. Export the key list from `contentFilter.ts`.
 
 - [x] `FILTER_PARAM_KEYS` in `useFilterUrlState.ts` hand-mirrors `serializeFilterToParams`; the "MUST mirror" comment is a drift warning. Export the key list from `contentFilter.ts`.
 - [x] ~~`sortContent.ts` / `sortByDate.ts` mirror `contentFilter`'s merge/sort pair~~ — STRUCK
@@ -1255,15 +1379,58 @@ instead of two, not a smaller tree — the same lesson E3 taught, in the same di
       claiming the short lists were distinct was also false. The dedup was right; only the
       description was wrong. A ref can drift twice: re-read it even when a prior session says it
       already corrected it.
-- [ ] `createMetadataTextBlock` / `createTextOnlyHeaderRow` are near-identical literals.
+- [x] ~~`createMetadataTextBlock` / `createTextOnlyHeaderRow` are near-identical literals.~~ **Shipped in #299 (`699441b`)** — `buildHeaderTextBlock` at `contentLayout.ts:498`.
 - [x] ~~`rowCombination` re-derives AR formulas that `affineHeight.ts` already exports~~ — STRUCK
       2026-08-22: already done. `rowCombination.ts:37` imports them, its `:1342` comment says both
       are adapters onto the shared core, and `affineHeight.mirror.test.ts` pins it.
-- [ ] The `ImageBlock` alias is declared twice.
-- [ ] `searchImages` and `getAllImages` should share a `buildImageFilterParams` for the query string (~30 lines). The endpoints stay separate by design.
-- [ ] `contentLayout.ts`'s `ProcessContentOptions.displayMode` is accepted and advertised but silently ignored — honor it or remove it.
+- [x] ~~The `ImageBlock` alias is declared twice.~~ **Shipped in #299** — both declarations deleted; `useFullScreenImage.tsx:16` and `FullScreenModal.tsx:22` use `ViewableContent` directly.
+- [x] ~~`searchImages` and `getAllImages` should share a `buildImageFilterParams` for the query string (~30 lines). The endpoints stay separate by design.~~ **Shipped in #299** — `content.ts:90-116` (27 lines, estimate good), called at `:129` csv / `:316` repeat. Endpoints stayed separate.
+- [x] ~~`contentLayout.ts`'s `ProcessContentOptions.displayMode` is accepted and advertised but silently ignored — honor it or remove it.~~ **Shipped in #299 — REMOVED, not honored.** Pinned by `tests/utils/contentLayout.test.ts:1375`. Not to be confused with `processContentBlocks`' own live `displayMode` at `contentLayout.ts:412`.
 
-### ☐ E6 · `useCollectionEdit` refresh helpers
+### ☐ E6 · `useCollectionEdit` refresh helpers — NEXT UP (picked 2026-08-28)
+
+**NEXT UP: bullet 2 only — extract `adoptSaveResponse`.** Three reasons, and the third is the one
+that decided it.
+
+It is the only bullet on this item with **no behavior question attached**. `handleUpdate:745-751`
+and `enterReorder:1425-1431` are the same seven lines in the same order; the lift is mechanical and
+its correctness is checkable by reading. Bullets 1 and 3 are not like that — see below.
+
+Its refs are as fresh as they get. `git diff --name-only d784bc5..fed67e8 --
+app/components/ContentCollection/edit/` returns nothing, so nothing in this file moved under #336 or
+#337, and all six function refs were re-confirmed on `main` at `fed67e8` on 2026-08-28.
+
+And **the two things that made E6 look risky are both gone.** The ±100 test-churn budget rested on a
+call-order assertion that does not exist, and this session's sweep of the four UNSTAMPED items
+means E6 is now the largest COLD item with no user question in front of it. F1 is bigger but is
+pure size; E6 bullet 2 is small, verified, and shrinks the file F1 will later split.
+
+**Guardrail — do bullet 2 ONLY. Leave bullets 1 and 3 alone and report what changing them would
+cost.** They are the adjacent tempting changes and both look like the same kind of lift:
+
+- **Bullet 1 (the three refresh copies) is not a refactor, it is a behavior change.** The three
+  differ on four axes — `handleMetadataSaveSuccess:990` adopts LAST through `mergeNewMetadata` and
+  calls `updateImagesInCache`; `handleGifSaveSuccess:1021` adopts FIRST and **omits
+  `revalidateMetadataCache` entirely**; `handleDeleteSuccess:1042` adopts first, keeps it, and is
+  the only one that fails loudly. Consolidating means either 3–4 options params or deciding that the
+  gif path starts firing `revalidateMetadataCache`. **That decision is the user's.** Also: extend
+  `refreshCollectionAfterOperation` (`collectionEditUtils.ts:338`, already used at three of the six
+  sites) rather than writing a new helper.
+- **Bullet 3 should narrow to the diff builder before anyone touches it.** `handleBulkRemove:1090-1099`
+  and `useMetadataSubmit.ts:216-225` share a near-identical `map` body, but the handlers around it
+  differ and the confirm wording is pinned by `useCollectionEdit.bulkRemove.test.tsx:180-184`.
+  Share `buildRemoveFromCollectionDiffs`; do NOT unify the handlers or the strings.
+
+**Apply the rejection test to both before proposing either** — write the shared signature first, and
+if a third of its parameters exist only to switch behavior between callers, they are not duplicates.
+That test has now killed two items in two days (F3's `invites.ts`, E7's hook), and bullet 1 is the
+next candidate to fail it.
+
+**Also in scope if the pass is quick: the dead `_deletedIds` parameter** at
+`useCollectionEdit.tsx:1043`, never read, fed by `handleBulkRemove:1102` computing
+`imageSubset.map(img => img.id)` purely to satisfy it. It is on the public `UseCollectionEditResult`
+type at `:285`, so removing it changes callers — which is why it belongs to E6 rather than to a
+drive-by.
 
 - [ ] Three copies of "refetch → adopt → storage-write → revalidate → clear selection" (`handleMetadataSaveSuccess`, `handleGifSaveSuccess`, `handleDeleteSuccess`) → one `refreshAfterContentMutation`.
 - [ ] `handleUpdate` and `enterReorder` duplicate the save-adoption block → `adoptSaveResponse`.
@@ -1304,6 +1471,13 @@ starting rather than discovering them mid-PR.
 `enterReorder:1425-1431` are the same seven lines in the same order. `adoptSaveResponse` is a
 straight lift with no behavior question. **If E6 is picked and time is short, do this bullet alone.**
 
+**Refs RE-CONFIRMED on `main` at `fed67e8` (2026-08-28), zero drift.** `git diff --name-only
+d784bc5..fed67e8 -- app/components/ContentCollection/edit/` returns nothing — neither #336 nor #337
+touched this directory, so every line number above still lands on its named function:
+`handleUpdate:730`, `handleMetadataSaveSuccess:990`, `handleGifSaveSuccess:1021`,
+`handleDeleteSuccess:1042`, `handleBulkRemove:1074`, `enterReorder:1395`. File is 1748 lines.
+**This item is fully specified and needs no discovery pass before it starts.**
+
 **Bullet 3 should narrow to the diff builder only.** `handleBulkRemove:1090-1099` and
 `useMetadataSubmit.ts:216-225` share a near-identical `map` body (same `filter` + same
 `buildImageUpdateDiff`), but everything around it differs — `useMetadataSubmit` wraps in `runSave`
@@ -1333,12 +1507,20 @@ the fix for it is a four-line guard, not a shared hook.
 short-circuits once `editLayerMounted` is true. Src `+22/−0`, test `+87/−3` (3 new specs), measured
 with `git diff --cached --numstat` per group rather than quoted from memory.
 
-**Suite/test counts, re-measured after #336 merged (2026-08-28).** This branch is **245 suites /
-4454 tests**; `main` at `70ea44d` is **245 / 4451**. The +3 are this item's new specs. It was
-measured as 246 / 4454 against a 246 / 4451 baseline while #336 was still open — #336 deleted
-`tests/lib/api/user.test.ts`, which is the missing suite. **Both readings were correct when taken,
-which is exactly why this board's rule is re-measure rather than quote.** Third baseline move in
-four merges.
+**Suite/test counts. `main` at `fed67e8` (both #336 and #337 merged) is 245 suites / 4454 tests —
+quote nothing older.** This number moved THREE TIMES inside one day's work, every move legitimate:
+
+| When                  | Reading        | What moved it                             |
+| --------------------- | -------------- | ----------------------------------------- |
+| #324 close-out, 08-24 | 245 / 4399     | stamped "quote from here on"              |
+| #336 branch, 08-27    | 246 / 4451     | E2 merges (#332/#333/#334) added 52 tests |
+| #337 branch, 08-27    | 246 / 4454     | this item's 3 new specs                   |
+| `main` now, 08-28     | **245 / 4454** | #336 deleted `tests/lib/api/user.test.ts` |
+
+**Every one of those was correct when taken, and three of them are wrong now.** That is the whole
+argument for the re-measure rule: a baseline is a measurement with a timestamp, not a fact about the
+repo. The 246 readings were taken while #336 was open, so they counted a suite main no longer has.
+**Re-measure by stashing the tree and running the suite; never quote a recorded number.**
 
 **What was actually being wasted.** `contentBlocks` is defined at `CollectionPageClient.tsx:407`,
 read at exactly one place (`content={contentBlocks}`, `:509`, inside `grid`), and `grid` renders
@@ -1455,45 +1637,84 @@ broken implementation: deleting `contentId !== currentCoverImageId` fails exactl
 (1 failed / 70 passed), and neutralizing the shared node fails exactly the four presence tests
 (4 failed / 67 passed). No assertion in the block passes vacuously.
 
-### ◐ E10 · Admin panel dedup — PR #304; late-added bullets 6–7 unswept
+### ◐ E10 · Admin panel dedup — PR #304; FIVE of seven shipped in #304 itself, ONE open
 
 All four panels are on main as of 79fbca5, so every bullet below is now startable — the former
 branch-only refs (CollectionsPanel) are main refs. Verified byte-identical by `diff` (re-hashed
 2026-08-22), not by eye. COLD.
 
-- [ ] `.loadError` is byte-identical in `CollectionsPanel`, `RolesPanel` and `UserManagementPanel`;
+- [x] ~~`.loadError` is byte-identical in `CollectionsPanel`, `RolesPanel` and `UserManagementPanel`;
       `.error` is byte-identical in `CollectionsPanel` and `RolesPanel`. The 6-line retry block
       (`<div role="alert">` + `<p>` + Retry `<Button>`) is identical in **five** .tsx files, not four —
       `RoleDetailView.tsx` is the fifth copy, missed by the original audit and found by PR #304.
       Extract `<LoadError message onRetry />` into `app/components/ui/StatusText/`. It completes a
-      family that already cross-references itself — `EmptyState.tsx:15-22` explicitly says failed
-      reads get their own branch, and the failed-read branch is the only member never written.
-- [ ] `.viewAll` in `CollectionsPanel.module.scss:14-23` is byte-identical to
-      `MessagesPanel.module.scss:4-13`, hover block included. The JSX is the same five lines too.
-- [ ] **Do NOT extract a `<PanelBody>` owning the whole load/error/empty ladder.** Checked: it needs
+      family that already cross-references itself — `EmptyState.tsx:15-21` (**was `:15-22`**)
+      explicitly says failed
+      reads get their own branch, and the failed-read branch is the only member never written.~~
+      **SHIPPED in #304 (`ebf1620`)** at the exact path named: `LoadError` at
+      `app/components/ui/StatusText/LoadError.tsx:35`, and the "five, not four" count was right —
+      all five call sites converted (`CollectionsPanel.tsx:86`, `MessagesPanel.tsx:95`,
+      `RolesPanel.tsx:206`, `RoleDetailView.tsx:179`, `UserManagementPanel.tsx:129`). `.loadError`
+      is gone from every panel module. The one surviving `.error` (`MessagesPanel.module.scss:7`)
+      now holds the DELETE failure only, and its comment says so.
+- [x] ~~`.viewAll` in `CollectionsPanel.module.scss:14-23` is byte-identical to
+      `MessagesPanel.module.scss:4-13`, hover block included. The JSX is the same five lines too.~~
+      **SHIPPED in #304** — hoisted to `ListPanel`: `ViewAllLink` at `ListPanel.tsx:197`, styles at
+      `ListPanel.module.scss:287-301`. **BOTH original refs are now GONE, not drifted** — `.viewAll`
+      no longer exists in either panel module; those line ranges hold unrelated rules today. Use the
+      `ListPanel` ref instead.
+- [x] **NOT A TASK — this is a recorded REJECTION and its open checkbox is what made the item look unfinished.** Do NOT extract a `<PanelBody>` owning the whole load/error/empty ladder. Checked: it needs
       ~10 props, three of them pure escape hatches — `footer` for the Messages/Roles delete errors,
       and `visible` for the Roles/Users `view.mode === 'list'` gate. `LoadingText` must stay mounted
-      OUTSIDE that gate ([LoadingText.tsx:24-28](app/components/ui/StatusText/LoadingText.tsx:24)),
+      OUTSIDE that gate ([LoadingText.tsx:23-28](app/components/ui/StatusText/LoadingText.tsx:23), **was `:24-28`; `#304` never touched this file, the head was simply off by one**),
       so the component would have to render one child unconditionally and the rest conditionally —
       an invariant its name does not imply and nothing would enforce.
-- [ ] The four `ContentPanelModel` literals in `buildAdminHubContent` are four copies of the same
+- [x] ~~The four `ContentPanelModel` literals in `buildAdminHubContent` are four copies of the same
       14-line object differing in `panelType`, `title`, and `id`/`orderIndex` that are just
       `1001+n`/`100+n`. A `PANEL_ORDER.map(...)` replaces ~60 lines with ~20.
       **`width: 600` and `height: 1100` are NOT dead** — perturbing them to 137/999 moved 15 hub
-      tests. They feed the layout solve. Do not "clean them up".
-- [ ] `newestFirst` in `CollectionsPanel.tsx:58` is the same algorithm as `sortGroup`'s BLOG branch
-      at [CollectionListSelector.tsx:63](app/components/CollectionListSelector/CollectionListSelector.tsx:63),
+      tests. They feed the layout solve. Do not "clean them up".~~ **SHIPPED in #304** —
+      `PANEL_ORDER` at `adminHubContent.ts:250`, mapped at `:322`. **The warning was heeded**: the
+      dimensions survive as named constants `PANEL_DECLARED_WIDTH` (`:279`) and
+      `PANEL_DECLARED_HEIGHT` (`:280`), with the 15-hub-test figure recorded in the docblock at
+      `:271-278`.
+- [x] ~~`newestFirst` in `CollectionsPanel.tsx:79` (**was `:58`**) is the same algorithm as `sortGroup`'s BLOG branch
+      at [CollectionListSelector.tsx:67](app/components/CollectionListSelector/CollectionListSelector.tsx:67) (**was `:63`**),
       over the same `CollectionListModel` from the same `getMetadata()`. Only difference is
       `compareNames` vs a raw `localeCompare` (a real base-sensitivity difference in name
-      tie-breaks, not just style — pick one deliberately).
-- [ ] Added by the 2026-08-22 review of #253: the `TALLER_THAN_OPEN_TODAY` skip lists
+      tie-breaks, not just style — pick one deliberately).~~ **SHIPPED in #304** —
+      `compareCollectionsNewestFirst` at `sortCollections.ts:22`, used at `CollectionsPanel.tsx:79`
+      and `CollectionListSelector.tsx:67`. **The deliberate pick was made and recorded**:
+      `compareNames` won and was applied to BOTH `sortGroup` branches (`CollectionListSelector.tsx:68`),
+      rationale at `:57-61`, pinned by 20 assertions in `tests/utils/sortCollections.test.ts`
+      including the base-sensitivity cases at `:56` and `:66`.
+- [x] ~~Added by the 2026-08-22 review of #253: the `TALLER_THAN_OPEN_TODAY` skip lists
       (`page.collapseStates.test.ts:395`, `page.collapsedLayout.test.ts:331`) are one-directional on
       their own — each excepted state is held bidirectional only by a companion exact pin, and
       nothing asserts the two name the same states. Convert to the whole-list compare pattern the
-      width sweep uses, or add that assertion.
-- [ ] From D7, which shipped without it: `RolesPanel.module.scss:72` still uses
-      `--color-danger` for a button hover where the other three panels use `--color-danger-text`.
-      A visible design change, so it needs a call rather than a sweep.
+      width sweep uses, or add that assertion.~~ **SHIPPED in #304 — so the row's "bullets 6-7
+      unswept" was half wrong.** Both files now do the whole-list compare:
+      `page.collapseStates.test.ts:410` and `page.collapsedLayout.test.ts:341`, both
+      `expect(taller).toEqual(TALLER_THAN_OPEN_TODAY)`. The `it.each`-with-skip and the `continue`
+      are gone. **Both original refs drifted AND changed meaning** — the list declarations are now
+      `page.collapseStates.test.ts:368` and `page.collapsedLayout.test.ts:115`; the old line numbers
+      now point at prose, one of which *describes the retired skip list*, which is exactly the kind
+      of ref that reads as correct while meaning something else.
+- [ ] From D7, which shipped without it: `RolesPanel.module.scss:66` (**was `:72`** — #304 hoisted
+      `.loadError`/`.error` out of this file and shortened it by 12 lines) still uses
+      `--color-danger` for a button hover ~~where the other three panels use
+      `--color-danger-text`~~. **THE COMPARISON IS FALSE, re-checked 2026-08-28. There are no other
+      three panels.** `grep -rn "\.deleteButton" app | grep '\.scss'` returns **exactly one hit**,
+      `RolesPanel.module.scss:42` — no other panel module defines a delete button at all. And
+      `grep -rn -- "--color-danger)" app | grep -v danger-text` returns 11 hits of which
+      `RolesPanel.module.scss:66` is the **only** one used as a text colour on a hover; every other
+      is a `border` or `background`, which are different tokens by design. The near-misses that made
+      the original claim look plausible are `.error` PARAGRAPHS (`MessagesPanel.module.scss:10`,
+      `RolesPanel.module.scss:10`), not hovers.
+      **So this is a one-off design call on a single line, not a consistency sweep — and it is now
+      the ONLY open bullet in E10.** It stays BLOCKED on the user, but the question is smaller than
+      it reads: *should the delete button's hover text be `--color-danger` or `--color-danger-text`?*
+      There is no majority to align with either way.
 
 ### ◐ E9 · Download icon/hook, auth-card SCSS, `.srOnly` — PR #300; srOnly ⛔
 
@@ -2374,6 +2595,15 @@ vague bullet into a shippable item.
       returns exactly this one file. The rest of `app/lib/` is `actions/clearCache.ts`, 13 files in
       `api/`, and `storage/collectionStorage.ts`. 3 src / 6 test — and the three
       `tests/lib/components/CollectionPageWrapper.*.test.tsx` files move with it.
+      **RE-SWEPT 2026-08-28 after #336 touched two of those test files — counts unchanged, still
+      3 src / 6 test.** Src importers are exactly `app/[slug]/page.tsx:5`,
+      `app/all-client-galleries/page.tsx:1`, `app/page.tsx:3`; the other `CollectionPageWrapper`
+      hits in `app/` are prose inside docblocks (`ClientGalleryGate.tsx:30`,
+      `useCollectionEdit.tsx:1152`, `personal.ts:89`, `contentTypeGuards.ts:181`) and move nothing.
+      **`app/lib/` is now 12 files in `api/`, not 13 — #336 deleted `user.ts`.** One caution on the
+      wording: the glob `CollectionPageWrapper.*.test.tsx` matches only TWO files
+      (`.allCollectionsTile`, `.meTile`); the third is `CollectionPageWrapper.test.tsx` with no
+      middle segment. The count of three is right, the glob is not — don't drive the move off it.
 - [ ] `fullscreen-image.module.scss` → `FullScreenModal.module.scss`, which leaves `app/styles/`
       holding only `globals.css`. **PARTLY ACCURATE (2026-08-24) — the move is fine, the
       justification is wrong.** `app/styles/` holds THREE files: `auth-card.module.scss`,
@@ -2787,45 +3017,61 @@ along with the duplicate skeletons), `rowStructureAlgorithm.ts` (6). (Exclude or
   ```bash
   awk '/^[[:space:]]*\/\//{if(!p)n++;p=1;next}{p=0}END{print n+0}' <file>   # blocks
   grep -c '{/\*' <file>                                                      # JSX
-  ```
+````
 
-  **Re-derived against `main` at `dbc706a`. Six of eleven were exact; five had drifted:**
+**Re-derived against `main` at `dbc706a`. Six of eleven were exact; five had drifted:**
 
-  | File                            | Doc claim  | Actual                   | Rides                           |
-  | ------------------------------- | ---------- | ------------------------ | ------------------------------- |
-  | `useFullScreenImage.tsx`        | ~86 lines  | **80** lines / 37 blocks | own decomposition; pair with F5 |
-  | `CollectionPageClient.tsx`      | 24         | 24 ✓                     | E7                              |
-  | `useCollectionEdit.tsx`         | 19         | **16**                   | F1                              |
-  | `CollectionContentRenderer.tsx` | 16 + 4 JSX | 16 + 4 JSX ✓             | E8/F2                           |
-  | `EditModeLayer.tsx`             | 13         | **17**                   | F1                              |
-  | `CollectionPageWrapper.tsx`     | 9          | 9 ✓                      | —                               |
-  | `ClientGalleryDownload.tsx`     | 8          | **7**                    | E9                              |
-  | `CameraSettingsSection.tsx`     | 7          | **8**                    | —                               |
-  | `MenuDropdown.tsx`              | 7          | 7 ✓                      | E8                              |
-  | `UserManagementPanel.tsx`       | 5          | 5 ✓                      | —                               |
-  | `Component.tsx`                 | 5          | 5 ✓                      | F2                              |
+| File                            | Doc claim  | Actual                   | Rides                           |
+| ------------------------------- | ---------- | ------------------------ | ------------------------------- |
+| `useFullScreenImage.tsx`        | ~86 lines  | **80** lines / 37 blocks | own decomposition; pair with F5 |
+| `CollectionPageClient.tsx`      | 24         | 24 ✓ (still 24 on 08-28) | ~~E7~~ **nothing — see below**  |
+| `useCollectionEdit.tsx`         | 19         | **16**                   | F1                              |
+| `CollectionContentRenderer.tsx` | 16 + 4 JSX | 16 + 4 JSX ✓             | E8/F2                           |
+| `EditModeLayer.tsx`             | 13         | **17**                   | F1                              |
+| `CollectionPageWrapper.tsx`     | 9          | 9 ✓                      | —                               |
+| `ClientGalleryDownload.tsx`     | 8          | **7**                    | E9                              |
+| `CameraSettingsSection.tsx`     | 7          | **8**                    | —                               |
+| `MenuDropdown.tsx`              | 7          | 7 ✓                      | E8                              |
+| `UserManagementPanel.tsx`       | 5          | 5 ✓                      | —                               |
+| `Component.tsx`                 | 5          | 5 ✓                      | F2                              |
 
-  Note `useFullScreenImage.tsx` is quoted in LINES while every other entry is in BLOCKS — that
-  inconsistency is in the original and is why it looked like an outlier. It is 37 blocks, which
-  is still the worst file on the list by a wide margin.
+Note `useFullScreenImage.tsx` is quoted in LINES while every other entry is in BLOCKS — that
+inconsistency is in the original and is why it looked like an outlier. It is 37 blocks, which
+is still the worst file on the list by a wide margin.
 
-  **The two files F2 and E17 just rewrote — `Component.tsx` and `MenuDropdown.tsx` — are both still
-  exact.** #321 cut 39 lines from `Component.tsx` and #322 rewrote three declarations plus ten call
-  sites in `MenuDropdown.tsx`, and neither added or removed a single `//` block. Useful calibration:
-  this inventory is not as fragile as line refs are. It drifts on comment edits, not on code edits,
-  so it does not need re-checking after every merge — only after a session that touched comments.
-  `UserManagementPanel.tsx` lives at `app/components/UserManagementPanel/`, not under `AdminPanel/`.
+**`CollectionPageClient.tsx` LOST ITS RIDE (2026-08-28).** It was pencilled to ride E7, but E7's
+main bullet shipped as a four-line guard in #337 and its two remaining bullets are in
+`EditModeLayer.tsx` and `useCollectionEdit.tsx` — neither touches this file. Its 24 blocks now
+ride nothing. `CollectionPageWrapper.tsx` (9) already rode nothing. **Two of the eleven files on
+this inventory have no carrier, which is the thing that turns G2c from "rides other refactors"
+into work someone has to schedule.** Say so when G2c is next picked up rather than re-discovering it.
 
-  > **⚠ This inventory is stale as of 2026-08-24 and cannot be repaired as written.** Three of the
-  > files listed have since been edited by the very items they were tagged to: `useFullScreenImage.tsx`
-  > and `CollectionContentRenderer.tsx` + `MenuDropdown.tsx` (F5 and E8 respectively). Worse, **the
-  > counting method was never recorded**, so the numbers cannot be re-taken comparably — a naive
-  > contiguous-comment-run count today gives `useFullScreenImage` 50, `CollectionContentRenderer` 21,
-  > `MenuDropdown` 14, `Component` 21, `useCollectionEdit` 43, which is nowhere near the recorded
-  > 86/16+4/7/5/19 and is obviously a different metric, not a delta. **Whoever picks up G2 must
-  > re-take the whole inventory in one pass and write the command down beside it.** Do not trust or
-  > partially patch these numbers. Same failure as F2's prop count directly above: an inventory
-  > number with no recorded method is not verifiable, only re-derivable.
+**Re-derived after #336/#337 and the counts did NOT move: `CollectionPageClient.tsx` is still 24,
+`CollectionPageWrapper.tsx` still 9.** Command: `awk` over each file counting runs of consecutive
+lines whose first non-whitespace is `//`. This is worth recording as a property of the metric, not
+just a result — **#337 added two `/** \*/`docblocks to`CollectionPageClient.tsx`and the count
+did not budge, because the metric counts`//` runs only.\*\* So the inventory measures exactly the
+thing the project's own rule wants removed (inline comments in bodies) and is blind to the thing
+the rule wants added (docblocks). That is the right metric, and it means ordinary docblock-adding
+work cannot inflate this table. For contrast, the same files hold 15 and 3 JSDoc blocks.
+
+**The two files F2 and E17 just rewrote — `Component.tsx` and `MenuDropdown.tsx` — are both still
+exact.** #321 cut 39 lines from `Component.tsx` and #322 rewrote three declarations plus ten call
+sites in `MenuDropdown.tsx`, and neither added or removed a single `//` block. Useful calibration:
+this inventory is not as fragile as line refs are. It drifts on comment edits, not on code edits,
+so it does not need re-checking after every merge — only after a session that touched comments.
+`UserManagementPanel.tsx` lives at `app/components/UserManagementPanel/`, not under `AdminPanel/`.
+
+> **⚠ This inventory is stale as of 2026-08-24 and cannot be repaired as written.** Three of the
+> files listed have since been edited by the very items they were tagged to: `useFullScreenImage.tsx`
+> and `CollectionContentRenderer.tsx` + `MenuDropdown.tsx` (F5 and E8 respectively). Worse, **the
+> counting method was never recorded**, so the numbers cannot be re-taken comparably — a naive
+> contiguous-comment-run count today gives `useFullScreenImage` 50, `CollectionContentRenderer` 21,
+> `MenuDropdown` 14, `Component` 21, `useCollectionEdit` 43, which is nowhere near the recorded
+> 86/16+4/7/5/19 and is obviously a different metric, not a delta. **Whoever picks up G2 must
+> re-take the whole inventory in one pass and write the command down beside it.** Do not trust or
+> partially patch these numbers. Same failure as F2's prop count directly above: an inventory
+> number with no recorded method is not verifiable, only re-derivable.
 
 ### ⛔ G3 · `/user/selects` — delete or rebuild — USER DECISION
 
@@ -2844,7 +3090,73 @@ along with the duplicate skeletons), `rowStructureAlgorithm.ts` (6). (Exclude or
 
 ---
 
-### ◐ G4 · Docblock standard — length, structure, and no history — intersection pass done
+### ◐ G4 · Docblock standard — swept 2026-08-28: count REPRODUCES, scope is ~half on one axis and BIGGER on another
+
+**Swept for the first time on 2026-08-28. Three corrections, and the item comes out a different
+shape rather than a different size.**
+
+**1. The `~48` count reproduces — 49 today — and the METHOD survives, which matters more.** Scan
+every `.ts`/`.tsx` under `app/`, extract `/\*\*.*?\*/` non-greedy across newlines, test each block
+against six anchored case-insensitive patterns: `\bused to\b`, `\bno longer\b`, `\bpreviously\b`,
+`\bthe old\b`, `\bPR #\d+`, `\b20\d\d-\d\d-\d\d\b`. Result: **1411 blocks total, 49 backward-looking**
+(`used to` 21, `no longer` 12, `previously` 7, bare date 6, `the old` 4, `PR #N` 1). The per-term
+split is within one of the recorded table on every term but `the old` (2→4), and 1411 lines up with
+#310's 1384. **"Long AND historical" is still 0.** Per the standing rule about unrecoverable counts:
+this one is recoverable, so it stays trusted. Note the recorded table sums to 47 rather than the 45
+it states — term overlap (`collectionSlugs.ts:43` and `listPanelShape.ts:97` each match two); the
+union is the right number.
+
+**2. But ~23 of the 49 are FALSE POSITIVES, so the history sweep is roughly half its apparent
+size.** They are the DATA-state-not-code-history confusion this section already names, and the regex
+cannot tell them apart: `Metadata.ts:16` "Used to categorize images" and `contentFilter.ts:255`
+"Used to populate filter dropdowns" are _employed-to_, not _past-habit_; `users.ts:79`/`:95`/`:130`
+"@throws `ApiError(404)` when the user no longer exists" is runtime state, three times;
+`formatDateRange.ts:1`/`:65` and `FilterToolbar.tsx:29` match on bare dates that are _code examples_;
+`useCachedPanelData.ts:227` "the superseded fetch no longer owns that flag" is a present-tense
+invariant. **~26 are genuine.** And the regex MISSES history it should catch —
+`contentRatingUtils.ts:35` ("The vertical penalty was RETIRED in the directional-prominence
+rewrite") and `contentLayout.ts:93` ("bit-for-bit what it was before this option existed") are pure
+history with no anchor term. **So 26 is a floor, not a ceiling, and this item cannot be finished by
+running the regex — every hit needs reading.** Budget accordingly.
+
+**3. The row's "#327/#328 ADDED to the pile" is STALE, and contradicts this section's own body.**
+#329 cleaned them and it held: every source file those two PRs touched is clean of anchor terms
+today (#327 `eb3948c` — `CollectionPage.tsx`, `EditModeLayer.tsx`, `useCollectionEdit.tsx`,
+`types/Content.ts`, `contentLayout.ts`; #328 `dab519d` — `Component.tsx`, `RendererContext.tsx`,
+`RendererContext.threading.test.tsx`). The one `contentLayout.ts` hit at `:86` is "used to hold
+photos-per-row steady" — employed-to — and `git log -L` traces it to `10fb626`, not #327. The
+section already said "Removed in #329"; **the row was arguing with its own section, which is exactly
+the board/section contradiction the integrity check is for.**
+
+**4. NEW, and the actual unswept work: the board-label rule has never been swept.** G4 added "board
+item labels are not allowed in code comments at all" on 2026-08-25 and nobody counted against it.
+**13 docblocks** carry board labels — `contentFilter.ts:872` (D7), `contentLayout.ts:589` (E14/E15),
+`contentTypeGuards.ts:173` (D3), `originAllowlist.ts:42` (D9), `Badge.tsx:27` (D6),
+`useMetadataSubmit.ts:111` (E12), `collectionEditUtils.ts:284` (C4), `useCollectionEdit.tsx:185`
+(D3), `useCollectionEdit.tsx:193` (D3/D4), `StructureTab.tsx:34` (D4), `clearCache.ts:37` (D1/D2),
+`core.ts:101` (E2), `api/revalidate/route.ts:7` (D6) — plus **6 inline `//` comments**:
+`useCollectionEdit.tsx:1568` (`TODO(A3)`), `useCollectionEdit.tsx:1583` (D4),
+`CollectionPageClient.tsx:322` and `:356` (D7), `useCoverImageSelection.ts:51` (D3),
+`EditModeLayer.tsx:249` (D3). Only 2 of the 19 overlap the 49, so this is **~17 net-new blocks the
+row does not count.** Watch one false positive: `contentRatingUtils.ts:35`'s `H5★` is a five-star
+horizontal rating, not item H5. The worst single offender is `collectionEditUtils.ts:284-293`, which
+breaks three rules at once — board label, PR number, and history.
+
+**5. The section's own rot prediction came true and is now SPENT.** It quoted #301's "Image-level
+location edits are not covered, and that is a known gap" as a paragraph that would go false. It did,
+and it was caught: E13 (#313) shipped and rewrote the docblock in the same pass.
+`collectionEditUtils.ts:230` now describes two live call sites, is 24 lines (down from the 30 that
+filed the item), and the "slugs must come from the saved response" trap the section wanted preserved
+is intact at `:239-242`. **Delete the prediction rather than carrying it — it was right and it is
+finished.**
+
+**G4 net: smaller on history (~26 real, not 48), larger overall (+~17 label blocks), and it cannot
+be run as a regex sweep.** Two row corrections applied: drop "#327/#328 ADDED to the pile", and
+carry the label count as its own number.
+
+_Original section follows, unchanged apart from the corrections noted above._
+
+**G4 · Docblock standard — length, structure, and no history — intersection pass done**
 
 _Raised by the user 2026-08-24 off PR #301's `revalidateLocationCaches` docblock: 30 lines of prose
 for a function that maps two location arrays to a set of tags._
@@ -2988,12 +3300,19 @@ source decides them, and a same-session review of five "duplicate" claims elsewh
 found only one that survived intact. This one is a source-level finding, so it does not need redoing.
 
 `Collections` membership is decided at
-[userSpaceData.ts:72](app/components/UserSpace/userSpaceData.ts:72) (`isContentCollection` over the
-`getUserPage()` content blocks, split at [:65](app/components/UserSpace/userSpaceData.ts:65)).
+[userSpaceData.ts:75](app/components/UserSpace/userSpaceData.ts:75) (`isContentCollection` over the
+`getUserPage()` content blocks, split at [:68](app/components/UserSpace/userSpaceData.ts:68)).
 `Following` membership is decided at
-[userSpaceData.ts:278](app/components/UserSpace/userSpaceData.ts:278), by intersecting the followed
+[userSpaceData.ts:281](app/components/UserSpace/userSpaceData.ts:281), by intersecting the followed
 id list against a separate catalog read. The two sets never see each other. Own a collection and
 follow it, and it renders in both tabs today.
+
+**All three refs drifted +3 and were corrected 2026-08-28 (were `:72`/`:65`/`:278`).** Cause: #336
+merged `getUserPage`'s import into the existing `personal` import at `userSpaceData.ts:14`, turning
+one line into five. Anchors matched on `isContentCollection(block)`, `export function
+splitUserContent`, and `const followedBlocks = toCollectionBlocks(catalog.filter(...))`. **The
+premise is untouched — `getUserPage` still sources the Collections side, it just lives in
+`personal.ts` now rather than `user.ts`.** Only the coordinates moved.
 
 Where the data comes from:
 
@@ -3183,6 +3502,49 @@ unification** — settle those two together or they will produce two competing d
 _Newest first. **Dates are local (America/Los_Angeles), not UTC** — earlier entries mixed the two,
 which is why a "08-23" entry can sit between two "08-24" ones. The ordering was verified correct
 against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates._
+
+- 2026-08-28 — **shipped E7 as a handoff guard (#337), rejected its hook. Swept all four UNSTAMPED
+  items: E5 CLOSED, E10 down to one bullet, A9 down to one, G4 re-shaped. Next: E6.**
+
+  **The four UNSTAMPED items were the whole story, and every one of them was wrong.** E5 was
+  COMPLETE — all four "open" bullets shipped in `699441b`, inside PR #299, the very PR its row
+  credited. E10 was 5-of-7 shipped in #304 plus one bullet that was never a task (a recorded
+  rejection carrying an open checkbox, which is what made the item look unfinished). A9 was 2-of-3
+  done, including the `layoutpreview` delete **this board re-filed for five sessions after the user
+  had already done it.** G4's count reproduced (49 vs ~48, method recoverable) but ~23 are false
+  positives and ~17 board-label blocks were never counted at all.
+
+  **That is the fifth shipped-but-unticked occurrence and the pattern is now unmistakable: the board
+  is least accurate about the items it has most recently shipped against.** Two rows named the exact
+  PR that finished their open bullets. Hoisted the one-command fix — `git show --stat <sha>` the
+  credited PR against the bullet list before trusting a checkbox.
+
+  **Holding the stamp back in August was right.** Those four were marked UNSTAMPED rather than
+  guessed COLD; had they been guessed, four sessions would have opened them expecting finished work.
+  The state is only useful if someone later sweeps it, which is what this run did.
+
+  **E7 shipped, but not what the item asked for.** The waste was real — the parent recomputed
+  `contentBlocks` on every filter change after the edit layer took the grid — but the fix is a
+  four-line guard, not the shared hook. The hook is rejected with measurement: 9–11 parameters, four
+  of them pure behavior switches, because the two "identical" pipelines consume different
+  `allContent` and pass opposite arguments. **Second rejection-by-measurement in two days** (F3's
+  `invites.ts` was the first), so the test behind both is now a rule: write the shared signature
+  first, and if a third of its parameters only switch behavior between callers, the callers are not
+  duplicates.
+
+  **Drift sweep found 3 refs, all in the neighborhood of what merged** — H1's three
+  `userSpaceData.ts` refs, each off by exactly +3 because #336 turned one import line into five. The
+  cheap scoped check is still holding; no drift escaped it.
+
+  **Baseline moved three times in two days** (245/4399 → 246/4451 → 246/4454 → **245/4454**) and
+  every reading was correct when taken. Two were measured on a branch whose base had since changed.
+  Hoisted: never quote a baseline, re-measure it.
+
+  **A9's remaining bullet is a false instruction, not dead config.** `CLAUDE.md:22` says "`npm` and
+  `npx` are not on PATH"; `npm --version` prints 11.8.0 and all three resolve under
+  `/opt/homebrew/bin`. Every command this session ran the long way because of it. **A false
+  instruction that still produces working commands is invisible indefinitely** — which is why it
+  survived three confirmations without anyone editing the line.
 
 - 2026-08-27 (2) — **shipped F3's `getUserPage` bullet (#336); costed and REJECTED the invite
   bullet without touching it. Guardrail honored. Baseline re-measured: 246 / 4451, not 4399.**
