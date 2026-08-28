@@ -282,7 +282,7 @@ export interface UseCollectionEditResult {
 
   handleMetadataSaveSuccess: (response: ContentImageUpdateResponse) => Promise<void>;
   handleGifSaveSuccess: (updated: ContentGifModel) => Promise<void>;
-  handleDeleteSuccess: (deletedIds: number[]) => Promise<void>;
+  handleDeleteSuccess: () => Promise<void>;
 
   enterSelect: () => void;
   enterReorder: () => void;
@@ -1056,37 +1056,34 @@ export function useCollectionEdit({
     [currentState]
   );
 
-  const handleDeleteSuccess = useCallback(
-    async (_deletedIds: number[]) => {
-      if (!currentState?.collection.slug) {
-        logger.warn(
-          'useCollectionEdit',
-          'handleDeleteSuccess: currentState or slug unavailable, cannot refresh collection'
-        );
-        setError('Unable to refresh collection after deletion — please reload the page.');
-        return;
+  const handleDeleteSuccess = useCallback(async () => {
+    if (!currentState?.collection.slug) {
+      logger.warn(
+        'useCollectionEdit',
+        'handleDeleteSuccess: currentState or slug unavailable, cannot refresh collection'
+      );
+      setError('Unable to refresh collection after deletion — please reload the page.');
+      return;
+    }
+
+    try {
+      const stateSlug = currentState.collection.slug;
+
+      const fullResponse = await getCollectionUpdateMetadata(stateSlug);
+      if (fullResponse !== null) {
+        setCurrentState(fullResponse);
+        collectionStorage.update(stateSlug, fullResponse.collection);
+        collectionStorage.updateFull(stateSlug, fullResponse);
+        await revalidateCollectionCache(stateSlug);
+        void revalidateMetadataCache();
       }
 
-      try {
-        const stateSlug = currentState.collection.slug;
-
-        const fullResponse = await getCollectionUpdateMetadata(stateSlug);
-        if (fullResponse !== null) {
-          setCurrentState(fullResponse);
-          collectionStorage.update(stateSlug, fullResponse.collection);
-          collectionStorage.updateFull(stateSlug, fullResponse);
-          await revalidateCollectionCache(stateSlug);
-          void revalidateMetadataCache();
-        }
-
-        setSelectedIds([]);
-        setIsMultiSelectMode(false);
-      } catch (error_) {
-        setError(handleApiError(error_, 'Failed to refresh collection after deletion'));
-      }
-    },
-    [currentState]
-  );
+      setSelectedIds([]);
+      setIsMultiSelectMode(false);
+    } catch (error_) {
+      setError(handleApiError(error_, 'Failed to refresh collection after deletion'));
+    }
+  }, [currentState]);
 
   const handleBulkRemove = useCallback(async () => {
     if (selectedIds.length === 0 || !collection) return;
@@ -1116,7 +1113,7 @@ export function useCollectionEdit({
       });
       const response = await updateImages(imageUpdates);
       if (response !== null) {
-        await handleDeleteSuccess(imageSubset.map(img => img.id));
+        await handleDeleteSuccess();
       }
     } catch (error_) {
       setError(handleApiError(error_, 'Failed to remove images from collection.'));
