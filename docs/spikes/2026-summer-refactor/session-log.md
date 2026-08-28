@@ -1016,3 +1016,46 @@ pageType="collectionsCollection">` is one line before and one line after — so 
   `/opt/homebrew/bin`. Every command this session ran the long way because of it. **A false
   instruction that still produces working commands is invisible indefinitely** — which is why it
   survived three confirmations without anyone editing the line.
+
+- 2026-08-28 — **shipped E6 bullet 2 (`adoptSaveResponse`) as PR #339, costed bullets 1 and 3 without
+  touching them, and CLOSED E10 on a user decision. First code MR since #337.**
+
+  **The lift itself was exactly as specified and that is worth recording, because it is the first
+  item on this board that was.** E6 said "fully specified, needs no discovery pass" and it was true —
+  the two blocks were byte-identical apart from one trailing comment, the six function refs all
+  landed, and no exploration was needed. The three sessions of re-verification that preceded it
+  (08-26, 08-27, 08-28) are what made that possible.
+
+  **Both test-churn budgets on E6 were over-estimates, not just the first one.** ±100 was corrected
+  to ±20 on 08-27 after the call-order claim was disproved. The real number is **0** — all six
+  suites pass with no test file edited, full suite 245/245 and 4454 tests. The lesson is not "the
+  ±100 was wrong"; it is that **a churn budget written before the extraction is a guess, and both
+  guesses here were biased the same direction.** Extractions that preserve call order and add no
+  branches do not move tests. Budget those at 0 and be surprised upward.
+
+  **The size estimate was wrong in the other direction — E6's `−90 src` is unachievable.** Bullet 2
+  removed 16 duplicated lines and added 27, of which 9 are the docblock the no-inline-comments rule
+  requires. Net **+11**; the file went 1748 → 1759. **This is structural, not a one-off:** every
+  remaining dedup on this board trades duplicated code for a documented helper, and a documented
+  helper costs about what a seven-line dedup saves. Sell these items as drift-protection, not as
+  line-count wins, and stop putting `−N src` figures on them.
+
+  **The guardrail held — bullets 1 and 3 were costed, not quietly done.** Bullet 1's shared
+  signature needs `revalidateMetadata`, `failLoudly`, and an adopt-ordering switch: **three of about
+  six params exist only to switch behavior between callers, so it fails the rejection test on its
+  own terms** — the third item that test has killed in three days, after F3's `invites.ts` and E7's
+  hook. Even the narrow version (extend `refreshCollectionAfterOperation` for `revalidateCache`
+  only) still changes the gif path's behavior, so it does not clear the user gate either. Recommend
+  folding it into F1, which must touch those three functions anyway. Bullet 3 is unblocked and
+  cheap but ≈break-even on size; its case is that nothing pins the two copies together.
+
+  **E10 closed on a one-word answer, which vindicates asking early.** The user chose to keep
+  `--color-danger` — zero code. The bullet had been BLOCKED for days over a comparison that turned
+  out to be false; once "the other three panels" was shown not to exist, the decision cost one
+  question and no MR. **Ask the small blocked questions before they need their own branch.**
+
+  **New failure mode for this board: bullet 2 shifted every ref below `:740` in its own item, and
+  the shift is not uniform** (+23, +17 or +11 depending on which of the three edits a line sits
+  below). Left a re-derived ref list at the top of E6 rather than patching prose in place, because
+  the prose below still argues from the old numbers and rewriting it would have risked breaking the
+  reasoning. **A shipped bullet invalidates its siblings' refs — re-derive them in the same commit.**
