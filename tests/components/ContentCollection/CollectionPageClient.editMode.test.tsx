@@ -49,6 +49,14 @@ jest.mock('@/app/lib/api/collections');
 jest.mock('@/app/lib/api/content');
 jest.mock('@/app/lib/storage/collectionStorage');
 
+/**
+ * Records the `filterVisible` argument of every `processContentBlocks` call. That argument is what
+ * tells the two callers apart: `CollectionPageClient` passes `true`, `EditModeLayer` passes
+ * `false`. The edit-grid-handoff specs below count `true` calls to prove the parent stops
+ * processing blocks nobody renders.
+ */
+const processProbe = jest.fn<void, [boolean | undefined]>();
+
 jest.mock('@/app/utils/contentLayout', () => ({
   // displayMode-aware stand-in: order-sensitive tests below assert WHICH displayMode reached the
   // layout pass, so the fake applies the same primary sort the real pipeline does
@@ -58,14 +66,16 @@ jest.mock('@/app/utils/contentLayout', () => ({
     _filterVisible?: boolean,
     _collectionId?: number,
     displayMode?: 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED'
-  ) =>
-    displayMode === 'CHRONOLOGICAL'
+  ) => {
+    processProbe(_filterVisible);
+    return displayMode === 'CHRONOLOGICAL'
       ? [...content].sort(
           (a, b) =>
             (a.createdAt ? new Date(a.createdAt).getTime() : 0) -
             (b.createdAt ? new Date(b.createdAt).getTime() : 0)
         )
-      : [...content].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)),
+      : [...content].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+  },
 }));
 
 const gridProbe = jest.fn();
@@ -157,6 +167,7 @@ const pendingForever = () => new Promise<CollectionUpdateResponseDTO | null>(() 
 
 beforeEach(() => {
   gridProbe.mockClear();
+  processProbe.mockClear();
   mockDynamicLoadProbe.mockClear();
   mockPush.mockClear();
   mockSearchParams = new URLSearchParams();
@@ -327,6 +338,79 @@ describe('CollectionPageClient — editMode true', () => {
 
     // Filter must be cleared so the full collection is visible (2 images).
     expect(screen.getByTestId('grid')).toHaveAttribute('data-content-count', '2');
+  });
+
+  /**
+   * Once `EditModeLayer` mounts it renders its own grid, and the parent's `contentBlocks` is no
+   * longer read — the parent renders `{!editLayerMounted && grid}`. Before the handoff gate the
+   * parent still ran `processContentBlocks` + `applySort` on every filter change and threw the
+   * result away, which is one full layout pass per keystroke-equivalent while editing.
+   *
+   * `filterVisible` separates the two callers: the parent passes `true`, the layer passes `false`.
+   */
+  describe('edit-grid handoff — the parent stops processing blocks the layer has taken over', () => {
+    const filterableContent = [
+      {
+        id: 1,
+        contentType: 'IMAGE' as const,
+        orderIndex: 0,
+        imageUrl: 'a.jpg',
+        rating: 5,
+        locations: [],
+      },
+      {
+        id: 2,
+        contentType: 'IMAGE' as const,
+        orderIndex: 1,
+        imageUrl: 'b.jpg',
+        rating: 2,
+        locations: [],
+      },
+    ];
+
+    it('does not re-process the public grid on a filter change once the layer has mounted', async () => {
+      mockSearchParams = new URLSearchParams('rating=4');
+      const collection = makeCollection({ displayMode: 'ORDERED', content: filterableContent });
+
+      render(<CollectionPageClient collection={collection} editMode />);
+      await flush();
+
+      // The handoff is complete; only the layer's passes should follow.
+      processProbe.mockClear();
+
+      act(() => {
+        screen.getByRole('button', { name: 'Reorder' }).click();
+      });
+      act(() => {
+        screen.getByRole('button', { name: 'Cancel' }).click();
+      });
+
+      const parentPasses = processProbe.mock.calls.filter(([filterVisible]) => filterVisible);
+      expect(parentPasses).toHaveLength(0);
+      // The filter change really did happen — the layer re-processed on it.
+      expect(processProbe).toHaveBeenCalled();
+    });
+
+    it('still processes the fallback grid BEFORE the layer mounts, so edit mode paints', () => {
+      const collection = makeCollection({ displayMode: 'ORDERED', content: filterableContent });
+
+      render(<CollectionPageClient collection={collection} editMode />);
+
+      // No flush: the dynamic chunk has not resolved, so the parent's grid is the one on screen.
+      const parentPasses = processProbe.mock.calls.filter(([filterVisible]) => filterVisible);
+      expect(parentPasses.length).toBeGreaterThan(0);
+      expect(screen.getByTestId('grid')).toBeInTheDocument();
+    });
+
+    it('keeps processing on a public page, where no layer ever takes the grid', () => {
+      const collection = makeCollection({ displayMode: 'ORDERED', content: filterableContent });
+
+      render(<CollectionPageClient collection={collection} />);
+
+      const parentPasses = processProbe.mock.calls.filter(([filterVisible]) => filterVisible);
+      expect(parentPasses.length).toBeGreaterThan(0);
+      expect(screen.getByTestId('grid')).toHaveAttribute('data-content-count', '2');
+    });
   });
 
   describe('Escape key — manage-mode exit guard', () => {

@@ -366,8 +366,8 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 | E3  | `collectionStorage.ts` generics                                            | Low         | **−12 src actual** (−46 code, +39 comment); +927 test via #296 (est. +50–150 net for both)                     | ◐ generics ✅ PR #306; guards bullet ⛔ user call                                                                                                    |
 | E4  | Entity-diff generics + one IMAGE guard                                     | Medium      | **+44 src / +177 test actual** for the twins half (est. −80)                                                   | ✅ PR #311 — twins → `entityUtils.ts`; IMAGE-guard half STRUCK, guards are NOT duplicates                                                            |
 | E5  | Filter/sort/date duplication                                               | Low         | **0 src / +139 test actual** (est. −50 src)                                                                    | ◐ PR #299; 4 bullets still open                                                                                                                      |
-| E6  | `useCollectionEdit` refresh helpers                                        | Medium      | −90 src, ±100 test churn                                                                                       | ☐                                                                                                                                                    |
-| E7  | `useFilteredContentBlocks` hook                                            | Medium      | +100–200 net (new hook suite)                                                                                  | ☐                                                                                                                                                    |
+| E6  | `useCollectionEdit` refresh helpers                                        | Medium      | −90 src, **±20 test churn** (was "±100" — the call-order risk behind it is FALSE, verified 08-27)              | ☐ bullets re-verified 2026-08-27; helper already exists at `collectionEditUtils.ts:338`                                                              |
+| E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook)                    | Small       | **+22 src / +84 test actual** (est. was "+100–200 net (new hook suite)" — the hook is rejected)                | ◐ waste FIXED ✅ #337; hook REJECTED (9–11 params, 4 behavior switches); two smaller paths still open                                                |
 | E8  | Renderer + `MenuDropdown` dedup                                            | Medium      | est −120 src / +150–250 test → **actual −49 src / +90 test** (PR #319)                                         | ✅                                                                                                                                                   |
 | E9  | Download icon/hook, auth-card SCSS, `.srOnly`                              | Low         | **+16 src / +393 test actual** (est. −100 src)                                                                 | ◐ PR #300 — both COLD bullets shipped; srOnly ⛔ user call                                                                                           |
 | E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator)          | Low         | **−79 src code-only / +176 test code-only** (est. −60 src)                                                     | ◐ PR #304; late-added bullets 6–7 unswept                                                                                                            |
@@ -403,24 +403,24 @@ item blocked on an unwritten question reads as available and then eats a session
 verified state; the other four are marked UNSTAMPED rather than given a state nobody checked, since
 a wrong COLD is exactly the thing this table exists to prevent.
 
-| Item    | State              | If blocked: the question, and who answers it                                                                                                                                                                                                                        |
-| ------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **E6**  | COLD               | ——                                                                                                                                                                                                                                                                  |
-| **E7**  | COLD               | ——                                                                                                                                                                                                                                                                  |
-| **B8**  | COLD               | —— verified 2026-08-27: 8 of 9 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                          |
-| **F3**  | COLD               | —— `getUserPage` shipped 2026-08-27 (#336), `user.ts` deleted. The invite bullet is COSTED and REJECTED — do not re-open it as a 3-function move; the note names the 2-function alternative. Six bullets open, refs swept 2026-08-27                                |
-| **A9**  | UNSTAMPED          | Never swept. Verify the premise before picking it up                                                                                                                                                                                                                |
-| **E5**  | UNSTAMPED          | Row says "PR #299; 4 bullets still open" — confirm those four are actually open (see the B8 lesson above)                                                                                                                                                           |
-| **E10** | UNSTAMPED          | Row says "PR #304; late-added bullets 6–7 unswept" — sweep them                                                                                                                                                                                                     |
-| **G4**  | UNSTAMPED          | Never swept. Verify the premise before picking it up                                                                                                                                                                                                                |
-| **F1**  | COLD               | —— largest open item; no unanswered question, just size                                                                                                                                                                                                             |
-| **H1**  | BLOCKED — **user** | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? Also: accept a 500-row catalog fetch on every `/user` load, or ask the backend to return followed collections on the user-page read? |
-| **C9**  | BLOCKED — **user** | Should a cover with no `imageWidth`/`imageHeight` fall back to the text-only header, or is rendering nothing deliberate?                                                                                                                                            |
-| **F4**  | BLOCKED — **user** | Stated in the item                                                                                                                                                                                                                                                  |
-| **G3**  | BLOCKED — **user** | Delete `/user/selects` or rebuild it                                                                                                                                                                                                                                |
-| **E3**  | BLOCKED — **user** | Guards bullet only: may the `cached.slug !== slug` guards be deleted? Generics half shipped in #306                                                                                                                                                                 |
-| **E9**  | BLOCKED — **user** | `.srOnly` bullet only; both COLD bullets shipped in #300                                                                                                                                                                                                            |
-| **G2**  | BLOCKED — **user** | G2b is a scope call; G2c rides other refactors. G2a is COLD                                                                                                                                                                                                         |
+| Item    | State              | If blocked: the question, and who answers it                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **E6**  | COLD               | —— re-verified 2026-08-27, code untouched. The ±100 churn budget and the call-order risk behind it are FALSE; budget ±20. `refreshCollectionAfterOperation` already exists (`collectionEditUtils.ts:338`) — extend it, don't write one. Consolidating the three refresh copies is a BEHAVIOR change (gif path omits `revalidateMetadataCache`) and needs a user decision. Bullet 2 (`adoptSaveResponse`) is clean and pickable alone |
+| **E7**  | COLD               | —— the waste shipped as a handoff guard 2026-08-27 (#337); the hook is REJECTED with measurement. Two smaller wasted paths left open in the item (`EditModeLayer.tsx:280` reorder path, and a third `processContentBlocks` caller at `useCollectionEdit.tsx:556`)                                                                                                                                                                    |
+| **B8**  | COLD               | —— verified 2026-08-27: 8 of 9 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                                                                                                                                                                                           |
+| **F3**  | COLD               | —— `getUserPage` shipped 2026-08-27 (#336), `user.ts` deleted. The invite bullet is COSTED and REJECTED — do not re-open it as a 3-function move; the note names the 2-function alternative. Six bullets open, refs swept 2026-08-27                                                                                                                                                                                                 |
+| **A9**  | UNSTAMPED          | Never swept. Verify the premise before picking it up                                                                                                                                                                                                                                                                                                                                                                                 |
+| **E5**  | UNSTAMPED          | Row says "PR #299; 4 bullets still open" — confirm those four are actually open (see the B8 lesson above)                                                                                                                                                                                                                                                                                                                            |
+| **E10** | UNSTAMPED          | Row says "PR #304; late-added bullets 6–7 unswept" — sweep them                                                                                                                                                                                                                                                                                                                                                                      |
+| **G4**  | UNSTAMPED          | Never swept. Verify the premise before picking it up                                                                                                                                                                                                                                                                                                                                                                                 |
+| **F1**  | COLD               | —— largest open item; no unanswered question, just size                                                                                                                                                                                                                                                                                                                                                                              |
+| **H1**  | BLOCKED — **user** | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? Also: accept a 500-row catalog fetch on every `/user` load, or ask the backend to return followed collections on the user-page read?                                                                                                                                                                  |
+| **C9**  | BLOCKED — **user** | Should a cover with no `imageWidth`/`imageHeight` fall back to the text-only header, or is rendering nothing deliberate?                                                                                                                                                                                                                                                                                                             |
+| **F4**  | BLOCKED — **user** | Stated in the item                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **G3**  | BLOCKED — **user** | Delete `/user/selects` or rebuild it                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **E3**  | BLOCKED — **user** | Guards bullet only: may the `cached.slug !== slug` guards be deleted? Generics half shipped in #306                                                                                                                                                                                                                                                                                                                                  |
+| **E9**  | BLOCKED — **user** | `.srOnly` bullet only; both COLD bullets shipped in #300                                                                                                                                                                                                                                                                                                                                                                             |
+| **G2**  | BLOCKED — **user** | G2b is a scope call; G2c rides other refactors. G2a is COLD                                                                                                                                                                                                                                                                                                                                                                          |
 
 **Six of the eleven are blocked on the same person, and none of the six is blocked on work.** That
 is the board's real bottleneck, not any individual item — a single sitting answering H1, C9, F4, G3,
@@ -1269,13 +1269,112 @@ instead of two, not a smaller tree — the same lesson E3 taught, in the same di
 - [ ] `handleUpdate` and `enterReorder` duplicate the save-adoption block → `adoptSaveResponse`.
 - [ ] `handleBulkRemove` duplicates `useMetadataSubmit.handleRemoveFromCollection` → shared builder.
 - [ ] Sequencing (added 2026-08-22): E6 is a slice of F1's decomposition — do E6 first or fold it
-      into F1, not both independently. And `useCollectionEdit.handlers.test.tsx` asserts on
+      into F1, not both independently. ~~And `useCollectionEdit.handlers.test.tsx` asserts on
       `collectionStorage.update`/`updateFull` CALL ORDER — a consolidated helper that reorders those
-      calls moves assertions (budget ±100 test churn across the six suites).
+      calls moves assertions (budget ±100 test churn across the six suites).~~
 
-### ☐ E7 · `useFilteredContentBlocks` hook
+**VERIFIED 2026-08-27 against `main` at `d784bc5`, nothing changed. The call-order claim is FALSE
+and the churn budget with it.** `useCollectionEdit.handlers.test.tsx` (908 lines) contains **zero**
+call-order assertions on `collectionStorage.update`/`updateFull`. Its only two `collectionStorage`
+assertions are `:124-125`, both order-independent `toHaveBeenCalledWith`. The single
+`invocationCallOrder` assertion in any of the six suites is in a DIFFERENT file
+(`useCollectionEdit.test.tsx:283-285`) on DIFFERENT mocks — it pins `reorderCollectionContent`
+before `updateCollection`, the failure-safety ordering documented at `useCollectionEdit.tsx:1412`
+and `:1420`, and it sits BEFORE the adoption block, so extracting `adoptSaveResponse` cannot touch
+it. **There is nothing to reorder. Budget ±20, not ±100** — the six suites hold ~122 tests total, so
+±100 would have meant rewriting 80% of them, which should have been the tell.
 
-- [ ] `CollectionPageClient` and `EditModeLayer` both run the full filter → process → sort pipeline, so it runs twice per filter change while editing. Extract one hook.
+**The item also missed that the helper already exists.** `refreshCollectionAfterOperation` is at
+`collectionEditUtils.ts:338` (`operation() → refetch → storage.update → storage.updateFull`), used
+at `useCollectionEdit.tsx:871`, `:922` and `useCaptureDateSelection.ts:61`. **The family is six
+sites, three using it and three not.** Reframe bullet 1 as "extend the existing helper to cover
+revalidate + clear-selection", not "write a new one".
+
+**And the three "copies" are not copies — consolidating them is a BEHAVIOR change, not a
+refactor.** `handleMetadataSaveSuccess:990-1019` adopts LAST through `mergeNewMetadata` and calls
+`updateImagesInCache`; `handleGifSaveSuccess:1021-1040` adopts FIRST and **omits
+`revalidateMetadataCache` entirely**; `handleDeleteSuccess:1042-1072` adopts first, keeps
+`revalidateMetadataCache`, and is the only one that fails LOUDLY (`setError` + `logger.warn`) where
+the other two return silently. Four axes of variation. One helper serves all three only with 3–4
+options params, or by accepting that the gif path starts firing `revalidateMetadataCache` and that
+adopt-ordering is normalized. **Both are decisions for the user, not mechanics** — flag them before
+starting rather than discovering them mid-PR.
+
+**Bullet 2 is the clean one and is unaffected by any of the above.** `handleUpdate:745-751` and
+`enterReorder:1425-1431` are the same seven lines in the same order. `adoptSaveResponse` is a
+straight lift with no behavior question. **If E6 is picked and time is short, do this bullet alone.**
+
+**Bullet 3 should narrow to the diff builder only.** `handleBulkRemove:1090-1099` and
+`useMetadataSubmit.ts:216-225` share a near-identical `map` body (same `filter` + same
+`buildImageUpdateDiff`), but everything around it differs — `useMetadataSubmit` wraps in `runSave`
+and closes the modal, `handleBulkRemove` manages its own loading/error and calls
+`handleDeleteSuccess`. Share `buildRemoveFromCollectionDiffs`; keep the handlers separate. **Do not
+unify the confirm strings** — `useCollectionEdit.bulkRemove.test.tsx:180-184` pins the wording.
+
+**Dead parameter found, not fixed here.** `useCollectionEdit.tsx:1043` takes
+`async (_deletedIds: number[])` and never reads it; `handleBulkRemove:1102` computes
+`imageSubset.map(img => img.id)` purely to feed it. Both sides can drop it, but it is on the public
+`UseCollectionEditResult` type at `:285`, so callers change — that makes it E6's business rather
+than a drive-by.
+
+**F1 boundary note.** F1's slices (`docs/spikes/2026-summer-refactor.md:1990`) put the three refresh
+copies and `handleBulkRemove` inside content-ops `:857-1211`, and `handleUpdate:730-797` inside
+update-form `:439-797`. `enterReorder:1395-1449` **straddles** F1's relations/manage-bar boundary at
+`:1397`, so F1's boundary is already slightly off there. `adoptSaveResponse` is the one E6 bullet
+spanning two F1 slices. The file is **1748 lines**, not the 1,747 F1 records.
+
+### ◐ E7 · Edit-grid handoff — the waste is FIXED (#337); the hook is REJECTED
+
+**The item was half right, and its prescription did not follow from its own evidence.** Verified
+against `main` at `d784bc5`. The double run is real. But only the process → sort half is wasted, and
+the fix for it is a four-line guard, not a shared hook.
+
+**SHIPPED 2026-08-27 — PR #337.** `CollectionPageClient.tsx`'s `contentBlocks` memo now
+short-circuits once `editLayerMounted` is true. Src `+22/−0`, test `+87/−3` (3 new specs), measured
+with `git diff --cached --numstat` per group rather than quoted from memory.
+
+**Suite/test counts, re-measured after #336 merged (2026-08-28).** This branch is **245 suites /
+4454 tests**; `main` at `70ea44d` is **245 / 4451**. The +3 are this item's new specs. It was
+measured as 246 / 4454 against a 246 / 4451 baseline while #336 was still open — #336 deleted
+`tests/lib/api/user.test.ts`, which is the missing suite. **Both readings were correct when taken,
+which is exactly why this board's rule is re-measure rather than quote.** Third baseline move in
+four merges.
+
+**What was actually being wasted.** `contentBlocks` is defined at `CollectionPageClient.tsx:407`,
+read at exactly one place (`content={contentBlocks}`, `:509`, inside `grid`), and `grid` renders
+only under `{!editLayerMounted && grid}` at `:536`. So after the edit layer mounts, every filter
+change ran a full `processContentBlocks` + `applySort` pass whose result nothing rendered.
+**Confirmed by `grep -n "contentBlocks\|editLayerMounted\|const grid"`, which returns those four
+lines and nothing else.** `EditModeLayer` is a child (`:537`), gets `filterState` as a prop, and is
+created by `dynamic()` with no `React.memo` — so memoization never prevented the double run.
+
+**The hook is rejected, and the reason is the same one that killed F3's `invites.ts`: the shared
+thing is not shared.** The two sites' filter blocks are character-identical
+(`CollectionPageClient.tsx:332-335`, `EditModeLayer.tsx:169-172`) but consume DIFFERENT `allContent`
+— the parent scopes through `applyVisibilityScope(rawContent, filterState.showHidden)` (`:284-296`),
+the layer does not (`EditModeLayer.tsx:149-152`). Same code, different domain, different output,
+both used. And the process/sort calls pass opposite arguments: `filterVisible` `true` vs `false`,
+`showProtectedCovers` absent vs `true`, `collection.*` vs `liveCollection.*`, plus a pinned-selects
+branch the layer can never reach (`selectsEnabled` requires `!editMode`, `:219-220`). `filterVisible`
+is not a flag tweak — `contentLayout.ts:415-427` shows `false` both skips `filterVisibleBlocks` AND
+runs `sortNonVisibleToBottom`. **A hook serving both sites takes 9–11 parameters, four of them pure
+behavior switches. That signature's job would be to re-describe the differences.**
+
+**The parent's filter work is NOT waste and was deliberately left alone.** `filteredContent` feeds
+`filteredImages:337` → `filteredAvailableOptions:367-394`, which drives filter-chip greying and is
+live while editing. Only `contentBlocks` is dead. Gating the wrong one would break the chips.
+
+- [x] ~~`CollectionPageClient` and `EditModeLayer` both run the full filter → process → sort pipeline, so it runs twice per filter change while editing. Extract one hook.~~ **Waste fixed by the handoff guard (#337); hook extraction rejected — see above.**
+- [ ] **Still open, found while measuring: a fourth wasted path inside the layer.**
+      `EditModeLayer.tsx:280` renders `content={reorderActive ? edit.displayContent : contentBlocks}`,
+      so in reorder mode the layer's OWN `contentBlocks` is computed and discarded in favour of
+      `useCollectionEdit`'s separately-processed `displayContent`. Same shape as the bug just fixed,
+      one level down. Not bundled into #337 — that PR's claim is "the parent stops processing what
+      the layer took over", and this is a different claim about the layer itself. Unsized.
+- [ ] **Still open: a third `processContentBlocks` caller the item never mentioned.**
+      `useCollectionEdit.tsx:556-568` (`processedContent`) uses the layer's argument set
+      (`false, id, displayMode, true`) on unfiltered `collection.content ?? []` with no `applySort`.
+      Worth knowing before anyone counts call sites again — there are three, not two.
 
 ### ✅ E8 · Renderer + `MenuDropdown` dedup — PR #319
 
