@@ -33,7 +33,7 @@ B1, B2, B3, B4 and B7 merged 2026-08-24 as PRs #290, #288, #287, #289 and #286 �
 those same tags. They are not redundant, and deleting them would be the most expensive mistake
 available in this MR:
 
-- The drift test **scans source text** and asserts the registered and revalidated tag *sets* agree.
+- The drift test **scans source text** and asserts the registered and revalidated tag _sets_ agree.
   It never renders a request. It cannot see a malformed POST body, a wrong header, or a tag posted
   under the wrong key.
 - The `manageUtils` suites assert the actual `fetch('/api/revalidate', …)` payload, and one of them
@@ -66,14 +66,14 @@ position-permutation, 2 exact duplicates. Real diff −209 net against an estima
 **The guardrail's report — folding them into the drift test loses four of six catches.** Six source
 mutations, each run against both files. CAUGHT means the suite failed.
 
-| Mutation | `cacheTagDrift` | revalidate suites |
-| --- | --- | --- |
-| 3 tags in source, only 1 POSTed | MISSED | CAUGHT |
-| Metadata tags under key `tag` not `tags` | CAUGHT | CAUGHT |
-| `POST` → `PUT` | MISSED | CAUGHT |
-| `Content-Type` dropped | MISSED | CAUGHT |
-| `path` dropped, tag correct | MISSED | CAUGHT |
-| `collection-home` deleted | CAUGHT | CAUGHT |
+| Mutation                                 | `cacheTagDrift` | revalidate suites |
+| ---------------------------------------- | --------------- | ----------------- |
+| 3 tags in source, only 1 POSTed          | MISSED          | CAUGHT            |
+| Metadata tags under key `tag` not `tags` | CAUGHT          | CAUGHT            |
+| `POST` → `PUT`                           | MISSED          | CAUGHT            |
+| `Content-Type` dropped                   | MISSED          | CAUGHT            |
+| `path` dropped, tag correct              | MISSED          | CAUGHT            |
+| `collection-home` deleted                | CAUGHT          | CAUGHT            |
 
 Row one settles it. Leave all three tag literals in the source and change only which ones reach
 `fetch`: the drift test still reads three tags out of the text and passes, while the runtime suite
@@ -190,3 +190,79 @@ suite 4,126 → 4,123 (four spy tests out, one behavior test in).
       `git diff` on `app/hooks/` is empty.
 - [x] The unmount spy deleted cleanly — the existing "should not call onClose after unmount" test
       already covers it.
+
+### ✅ B5 · `useCollectionEdit` fixture consolidation — PR #298
+
+- [ ] SIX files (PR #267 added `escapeSelection.test.tsx` with the same hand-rolled preamble) each
+      open with a 122–169-line preamble hand-rolling `makeCollection`/`makeMetadata` — now defined
+      6× each and drifted — that `tests/fixtures/collectionEditFixtures.ts` already exists to
+      provide (886 preamble lines total). Consolidate the setup. The describe topics are
+      complementary; keep them. C1's lesson is a hard constraint: the shared builders must return
+      FRESH objects per call so per-DTO array identities survive — a shared constant re-introduces
+      the exact fixture trap C1's tests document.
+- [ ] **B5 is bigger than six files.** The separate hand-rolled `GeneralMetadataDTO` literal (eight
+      empty arrays) appears in all six `useCollectionEdit.*` tests plus `tests/explore/page.test.tsx`
+      — seven sites, and `collectionEditFixtures.ts` does NOT currently export a builder for it
+      (`makeState()` returns `CollectionUpdateResponseDTO`, a different type). One `makeMetadata()`
+      export covers all of them. Est −350 to −450 net.
+
+### ✅ B6 · Fold in `CollectionContentRenderer` characterization — PR #294 + #297
+
+- [ ] `CollectionContentRenderer.characterization.test.tsx`'s stated purpose (pin behavior before the `getClickEligibility` extraction) is complete. Fold the ~6 unique wiring tests into the main file and delete the rest.
+
+### ✅ B9 · `useCollectionEdit.buffer.test.tsx` flakes under parallel load — CLOSED not-reproducible
+
+Filed 2026-08-23 out of B2's run. It is a real suite defect, not a B2 artifact — the file is
+unrelated to B2's, and it passes standalone and on a clean re-run.
+
+- [ ] `tests/components/ContentCollection/useCollectionEdit.buffer.test.tsx` fails intermittently
+      when the full suite runs in parallel, and passes when run alone.
+
+**Measured 2026-08-23: 0 failures in 13 full-suite runs.** Default parallel scheduling, no
+`--runInBand`, ~11.6s per run. **Three more clean full-suite runs 2026-08-24 during E13/E15**
+(243 suites / 4356 tests, ~12s each), bringing the standing tally to **0 failures in 16 runs**. Not
+proof of a fix — nothing was changed to fix it — but at 16 clean runs the cost of chasing this
+exceeds the evidence that it is still live. **Recommend closing it as unreproducible** unless it
+resurfaces, rather than carrying it a fourth time. **The suite counts quoted here were wrong and misled a later run** —
+the real baseline on `53aaac4` is **229 suites / 4086 tests**, measured independently by four agents.
+A further 5 standalone runs of the named file on 2026-08-24 gave 10/10 passes. Zero total failures and zero failures of the
+named file.
+
+**The instrument was validated in the same session, because a null result from an unproven detector
+is not a result.** The run loop classified pass/fail by grepping jest's stdout, which is the mistake
+that produced a false all-CAUGHT table elsewhere this session — a grep can match an unrelated line,
+or miss a crash that never prints a summary. Control: a deliberately failing test was injected into
+`tests/`, the full suite re-run, and both signals confirmed to fire — exit code 1 and the grep
+reporting FAIL, against `Tests: 1 failed, 4126 passed`. The control file was then removed and the
+tree confirmed clean. So the channel can speak, and 0/13 means what it says.
+
+**0/13 does not close this item, and that is deliberate.** An intermittent failure that hides for
+thirteen runs is worse than one that fails every time, not better — it will surface in CI on some
+unrelated PR and cost that author an afternoon. What 0/13 does establish is that it is rarer than
+~1-in-13 on this machine, which bounds the search: whoever picks it up should reproduce under
+different conditions rather than repeating this measurement, since repeating it is now known to be
+uninformative. Try a loaded machine, a cold cache, `--maxWorkers` variations, or CI itself, and
+record the conditions alongside the count. If it cannot be reproduced under any of those, close it
+as not-reproducible with the conditions listed — do not close it as fixed.
+
+Likely suspects once it does reproduce, given the file: this suite is the one C1 rewrote around
+re-seed effects and ref guards, and its fixtures were specifically noted as sharing array identities
+when built with `mockResolvedValue` instead of `mockImplementation`. Shared module state or a
+fixture object leaking across workers is the first place to look. Do not "fix" it by adding a
+retry or by moving it to `--runInBand`; both hide the defect rather than removing it.
+
+**CLOSED 2026-08-24 as NOT-REPRODUCIBLE — not as fixed. Nothing was changed.** This item asked for
+a reproduction under _different conditions_, on the explicit grounds that repeating the default-run
+measurement had become uninformative. That was done: **6 full-suite runs across three worker
+configurations — `--maxWorkers=100%`, `=2` and `=1` — all 244 suites / 4374 tests green, with
+`useCollectionEdit.buffer.test.tsx` passing in every one.** Serial (`=1`) matters most: it removes
+parallelism entirely, so a cross-worker fixture leak could not hide there.
+
+Counting the four default-scheduling runs this session as well, the standing tally is 0 failures in
+**22 runs**. Per this item's own rule those four add nothing — logged for honesty, not as evidence.
+
+**Conditions NOT tried, and they are where a future reproduction should start: CI itself**, a
+loaded machine, and a cold cache. CI is the one that matters — it is different hardware with
+different core counts, and it is where an intermittent failure would actually cost someone an
+afternoon. If this resurfaces there, reopen with the CI run URL and go straight to the shared-state
+suspects named above; do not re-run the local measurement, which is now 22-for-22 uninformative.

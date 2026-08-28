@@ -205,20 +205,19 @@ segment, not a climb. All four are pinned as tests.
 **Matcher: only `'/cdn/:path*'` was removed. Nothing else was touched.** The other entries, and what
 changing them would do:
 
-| Entry | What removing it would do |
-| --- | --- |
-| `/admin`, `/admin/:path*` | Un-gates the admin hub and `/admin/users/[id]` at the edge. Prod would serve them to anonymous traffic until the (admin) layout's `requireAdmin()` ran. Not a full breach — the backend is authoritative — but it moves the reject later and leaks the pages' existence. |
-| `/collection/manage`, `/collection/manage/:path*` | Same, for the manage surface. |
-| `/comments`, `/comments/:path*` | Same, for `/comments`. |
-| `/metadata`, `/metadata/:path*` | Same, for `/metadata`. |
-| `/all-images`, `/all-images/:path*` | Same, for `/all-images`. |
-| `/catalog/:slug*` | Kills the legacy `/catalog/:slug` → `/collection/:slug` 308. Old links and any indexed catalog URLs would 404 instead of redirecting. The redirect is already behind `COLLECTION_REDIRECTS_ENABLED`, so it is dormant unless that flag is set. |
+| Entry                                             | What removing it would do                                                                                                                                                                                                                                                |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/admin`, `/admin/:path*`                         | Un-gates the admin hub and `/admin/users/[id]` at the edge. Prod would serve them to anonymous traffic until the (admin) layout's `requireAdmin()` ran. Not a full breach — the backend is authoritative — but it moves the reject later and leaks the pages' existence. |
+| `/collection/manage`, `/collection/manage/:path*` | Same, for the manage surface.                                                                                                                                                                                                                                            |
+| `/comments`, `/comments/:path*`                   | Same, for `/comments`.                                                                                                                                                                                                                                                   |
+| `/metadata`, `/metadata/:path*`                   | Same, for `/metadata`.                                                                                                                                                                                                                                                   |
+| `/all-images`, `/all-images/:path*`               | Same, for `/all-images`.                                                                                                                                                                                                                                                 |
+| `/catalog/:slug*`                                 | Kills the legacy `/catalog/:slug` → `/collection/:slug` 308. Old links and any indexed catalog URLs would 404 instead of redirecting. The redirect is already behind `COLLECTION_REDIRECTS_ENABLED`, so it is dormant unless that flag is set.                           |
 
 And the additions that look tempting and are not: `/explore` and `/all-collections` are deliberately
 absent (both public — see the warnings in the matcher comment), and `/` is absent on purpose so the
 hottest route pays no middleware cost. `/cdn` was safe to remove only because `app/` has no `cdn`
-directory at all — checked, not assumed — so the rule redirected prod traffic that could only ever
-404. The four-place list in the item was exact; there were no other `/cdn` references in the repo
+directory at all — checked, not assumed — so the rule redirected prod traffic that could only ever 404. The four-place list in the item was exact; there were no other `/cdn` references in the repo
 (the remaining `cdn` grep hits are all `https://cdn.example.com` test fixtures).
 
 **Reject status is 404, not 403.** The proxy has no such route to offer. 404 also tells a prober
@@ -343,18 +342,18 @@ cost write-up). Fails closed, never open: an availability trap, not a bypass.
 
 **The board's spec had a hole, and guarding only the throw would have opened a bypass.**
 `new URL(raw).origin` does not throw on every bad value. A non-special scheme parses fine and
-returns the *string* `"null"`: `new URL('data:text/plain,hi').origin === 'null'`, same for `file:`
+returns the _string_ `"null"`: `new URL('data:text/plain,hi').origin === 'null'`, same for `file:`
 and any unknown scheme. `"null"` is also exactly what a browser sends as `Origin` from a sandboxed
 iframe or an opaque redirect. So a `try/catch` alone would have put `"null"` into the allowlist Set
-and admitted those callers — a fail-*open* introduced by the fix meant to prevent a fail-closed
+and admitted those callers — a fail-_open_ introduced by the fix meant to prevent a fail-closed
 outage. The helper drops it explicitly (`origin === 'null' ? null : origin`) and the docblock says
 why, so it does not read as defensive noise. Verified against Node across twelve env-value shapes
 before writing the guard, not assumed.
 
-The three tests beyond the board's two: the env value *as written* (`https://example.com/`) is
+The three tests beyond the board's two: the env value _as written_ (`https://example.com/`) is
 rejected once normalized away; an env value with a path normalizes to the bare origin; a `"null"`
 origin is denied when the env value has an opaque scheme. That last one is the only new test that
-passes on the *unfixed* code — it guards against the naive version of this fix, so it is green
+passes on the _unfixed_ code — it guards against the naive version of this fix, so it is green
 before and after by design.
 
 **Both guardrails held.** The incoming `origin` argument is untouched and still compared exactly;
@@ -425,7 +424,7 @@ One asymmetry the board had not recorded, found while checking: the two are **no
 strictness. `DEV_LAN_ORIGIN` carries the `/i` flag, so it matches `http://LOCALHOST:3000`; the Set
 does an exact, case-sensitive match and does not. The literals are therefore a strict subset of the
 regex, not an overlapping alternative. That cuts against the "two independent expressions of the
-same intent" framing above — as written they are the *narrower* of the two, and would only become
+same intent" framing above — as written they are the _narrower_ of the two, and would only become
 load-bearing if a future MR tightened the regex specifically. Worth weighing in the decision; not a
 decision in itself.
 
@@ -433,7 +432,7 @@ decision in itself.
 detail that a reader who thinks the literals were dropped by accident is answered on the spot.
 
 Three things carried it. The literals were verified redundant with `DEV_LAN_ORIGIN` under identical
-`NODE_ENV` gating. They were the *narrower* of the two, so "independent expressions of the same
+`NODE_ENV` gating. They were the _narrower_ of the two, so "independent expressions of the same
 intent" was never accurate. And the failure that keeping them would cover is loud, not silent — a
 tightened regex breaks the dev server on the next admin write and turns tests red in the same
 second. Defense in depth is worth its cost against failures that pass unnoticed; this one cannot.

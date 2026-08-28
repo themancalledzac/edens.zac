@@ -47,7 +47,7 @@ What exists today, so the review starts from facts rather than a blank page:
 - **The container half is already solved.** The rail slot at
   [CollectionContentRenderer.tsx:441](app/components/Content/CollectionContentRenderer.tsx:441) is
   the same `railExtras` slot that `/admin/users/[id]` fills with `UserRolesSection`
-  ([page.tsx:153](app/(admin)/admin/users/[id]/page.tsx:153)). Two unrelated pages already push
+  ([page.tsx:153](<app/(admin)/admin/users/[id]/page.tsx:153>)). Two unrelated pages already push
   arbitrary sections through one slot. What is unsettled is the content model, not the container.
 
 The decision to make: does `Card` grow variants to cover prose and grouped lists, or do `Card` and
@@ -73,8 +73,8 @@ defaults false (`EmailService.java:46`); both public senders return
    [contactApi.ts:13,17](app/utils/contactApi.ts:13) → `MessagesControllerPublic.java:26,42` →
    `MessageService.create`, which is two lines — a repository insert, no email
    (`services/MessageService.java:17-18`). Storage: `V17__create_messages_table.sql:1-6`. Admin
-   reads it at [comments/page.tsx:12](app/(admin)/comments/page.tsx:12) and
-   [admin/page.tsx:61](app/(admin)/admin/page.tsx:61). The only reply path is manual — a `mailto:`
+   reads it at [comments/page.tsx:12](<app/(admin)/comments/page.tsx:12>) and
+   [admin/page.tsx:61](<app/(admin)/admin/page.tsx:61>). The only reply path is manual — a `mailto:`
    link ([MessageRow.tsx:33](app/components/messages/MessageRow.tsx:33)) and a "Reply in Gmail" link
    (`:69,74`, built by [messageFormat.ts:16](app/utils/messageFormat.ts:16)). Adding an owner
    notification is spec'd as C7 in `docs/superpowers/specs/2026-07-06-email-ses-production.md:162`
@@ -87,7 +87,7 @@ defaults false (`EmailService.java:46`); both public senders return
    `/me`. Grepping the backend for `forgotPassword|resetPassword|password.?reset|/forgot` hits only
    comments describing the invite reuse (`AdminUserController.java:163`, `UserInviteService.java:49`).
    Today the sole recovery path is an admin regenerating an invite while the UI relabels it a reset
-   ([GenerateInviteButton.tsx:32-33](app/(admin)/admin/users/GenerateInviteButton.tsx:32)).
+   ([GenerateInviteButton.tsx:32-33](<app/(admin)/admin/users/GenerateInviteButton.tsx:32>)).
    **A logged-out user cannot recover their own account.**
 3. **User setup link via email. Already built — the blocker is operational, not code.**
    `sendInviteEmailAfterCommit` (`AdminUserController.java:457`, called from `:133`, `:180`, `:228`)
@@ -136,7 +136,7 @@ question being asked, which is the reason to check before opening a review.**
 - **"Do we even want this popout on desktop, or only mobile?"** — desktop already gets a different
   treatment. Eight `@media (width >= 768px)` blocks at
   [MenuDropdown.module.scss:36](app/components/MenuDropdown/MenuDropdown.module.scss:36) and `:76,
-  94, 110, 128, 227, 238, 246`. Mobile is a full-viewport overlay (`:6-20`); desktop is a
+94, 110, 128, 227, 238, 246`. Mobile is a full-viewport overlay (`:6-20`); desktop is a
   right-anchored `min(400px, …)` panel with a left drop shadow (`:36-45`). There is a behavioural
   branch too — click-outside closes only above 768
   ([MenuDropdown.tsx:212](app/components/MenuDropdown/MenuDropdown.tsx:212), `BREAKPOINTS.mobile` at
@@ -218,3 +218,101 @@ Two precursors that stand on their own, if this ever starts:
   That is a working slot mechanism to build on rather than inventing one.
 
 Revisit after the search work (roadmap item 1) lands.
+
+### ✅ H2a · `/user` rail copy pass + chip-style the Admin links — PR #302
+
+Copy and control changes across the three rail cards, from the annotated screenshot. Startable today
+and the smallest of the six.
+
+- [ ] Delete the passkey hint sentence at
+      [AccountCard.tsx:69](app/components/Personal/AccountCard.tsx:69) ("Sign in faster with Face /
+      Touch ID on this device."). Keep the `Add Face / Touch ID` button
+      ([:70-78](app/components/Personal/AccountCard.tsx:70), label `:77`) and move it onto the email
+      row ([:67](app/components/Personal/AccountCard.tsx:67)), right-aligned.
+- [ ] Delete the Share description sentence at
+      [ShareCard.tsx:155-158](app/components/Personal/ShareCard.tsx:155).
+- [ ] Rename `Create a link` → `Link to share` at
+      [ShareCard.tsx:160](app/components/Personal/ShareCard.tsx:160).
+- [ ] Delete the Admin description sentence at
+      [AdminCard.tsx:36](app/components/Personal/AdminCard.tsx:36).
+- [ ] Restyle the four Admin links to the filter-chip look. They render `NavLink` today
+      ([AdminCard.tsx:41](app/components/Personal/AdminCard.tsx:41), destinations as data at
+      [:16-21](app/components/Personal/AdminCard.tsx:16)), whose only styling is
+      [NavLink.module.scss:1](app/components/ui/NavLink/NavLink.module.scss:1) — colour inherit,
+      hover underline, no border, no padding, no background.
+
+**The real scope is the chip swap, not the copy edits.** `FilterChip`'s link variant
+([FilterChip.tsx:86-99](app/components/ui/FilterChip/FilterChip.tsx:86)) already renders exactly what
+`AdminCard` needs: a `next/link` anchor with chip styling and an optional count. So `AdminCard.tsx:41`
+can swap `NavLink` → `FilterChip href=…` without touching the chip component. Styling lives at
+[FilterChip.module.scss:1](app/components/ui/FilterChip/FilterChip.module.scss:1) (`.chip`), with
+`.active` `:62`, `.count` `:92`, `.trailing` `:100`.
+
+Two traps:
+
+1. `FilterChip` passes `scroll={false}`
+   ([FilterChip.tsx:93](app/components/ui/FilterChip/FilterChip.tsx:93)). That is right for `?tab=`
+   navigation and wrong for a cross-page jump to `/admin` — it will land the user mid-page. Add a
+   prop before the swap, not after.
+2. `FilterChip` is imported by exactly one file today
+   ([FilterToolbar.tsx:5](app/components/ui/FilterToolbar/FilterToolbar.tsx:5)). A second consumer
+   promotes it to a shared primitive. Budget for that and for churn in
+   `tests/components/ui/FilterChip.test.tsx:64-96`.
+
+**There is no `AdminCard` test file** — confirmed absent, not merely unfound. H2a adds one. Note the
+prove-it-fails rule needs care here: a brand-new test file has never been seen to fail, so write each
+assertion against current behaviour first, watch it pass, then change the source and watch it fail
+the other way. A new test written only against the new copy proves nothing.
+
+### ✅ H3 · `Send a message` placement — PR #302; direction decided 2026-08-23
+
+**Decided: keep it, move it into the metadata stack, and make it an ordinary clear button — not a
+filled or "bright" box.** The user's words: it should be "a `Button` that is clear what it's
+intended purpose is, and is in a position according to its importance or likelihood of being used."
+So this is Option A of the original pair, with the loud treatment explicitly rejected. Do it in the
+same pass as H2a, which restyles the same rail.
+
+**The two entry points already share a form, so this is placement, not plumbing.**
+`SendMessageButton` ([SendMessageButton.tsx:27](app/components/SendMessageButton/SendMessageButton.tsx:27),
+43 lines) opens `ContactForm` at
+[:38](app/components/SendMessageButton/SendMessageButton.tsx:38). The menu's Contact disclosure opens
+the same component at [MenuDropdown.tsx:374](app/components/MenuDropdown/MenuDropdown.tsx:374)
+(the `Disclosure` wrapping it opens at `:368`; was `:343` before E8 reshaped the menu, `:373`/`:369`
+before E17 added a docblock above `isCollectionPage`. Re-verified against `main` at `dbc706a` on
+the anchor `<ContactForm onSubmit={handleContactSubmit} />`. Note the `:369` was already wrong by
+two when it was written — there are two `<Disclosure>` in this file, at `:359` and `:368`, and the
+one wrapping `ContactForm` is the second). On
+`/user` the email field is hidden and autofilled from the principal via `lockedEmail={me?.email}`.
+
+Why it floats top-right in the screenshot: it is not in the rail. It renders in its own top bar at
+[user/page.tsx:66-68](app/user/page.tsx:66), while the three cards ride `railExtras` at
+[:76](app/user/page.tsx:76).
+
+Work:
+
+- [ ] Move `SendMessageButton` out of the top bar (`user/page.tsx:66-68`) and into `railExtras`
+      (`:76`) with the three cards.
+- [ ] **It is currently `variant="ghost" size="sm"`** — the quietest button the design system has,
+      which is the opposite of the brief. Promote it to a normal-weight variant. `outline` matches
+      what `ShareCard` and `AccountCard` already use for their actions, so the rail stays coherent
+      without anything shouting.
+- [ ] **Reconsider the label.** "Send a message" does not say who receives it, and this sits on the
+      viewer's _own_ page, which makes the recipient genuinely ambiguous. Something naming the
+      destination reads clearer. Same string appears twice — button
+      [:28](app/components/SendMessageButton/SendMessageButton.tsx:28) and modal heading
+      [:34](app/components/SendMessageButton/SendMessageButton.tsx:34) — change both.
+
+**Open sub-question the brief surfaces but does not settle: ordering by importance depends on who is
+looking.** For a signed-in client or follower, messaging the owner is plausibly the most-used thing
+on the page, which argues for first position. For the site owner viewing their own `/user`, it is
+close to useless — the form would prefill their own address, and they read incoming messages through
+Admin → Comments instead, which argues for last or hidden. A single fixed position cannot be right
+for both. Decide: one fixed slot, or order the rail on `isAdmin`. Cheapest defensible default is
+first for non-admins, last for admins, since the rail is already assembled per-viewer.
+
+The docblock at
+[SendMessageButton.tsx:13-19](app/components/SendMessageButton/SendMessageButton.tsx:13) says the
+button "sits in the collection header's filter-bar area". That stops being true the moment it moves —
+update it in the same commit rather than leaving a stale description behind.
+
+---

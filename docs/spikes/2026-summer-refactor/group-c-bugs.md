@@ -385,3 +385,151 @@ gallery's card now renders as an indistinguishable grey 1:1 placeholder — the 
 collection with no cover at all renders as. That is a product question (does a locked gallery
 announce itself, and how), not cleanup, so it gets no row on the MR board. It is recorded here and
 in `group-h-features.md`'s neighbourhood as the open half of C6.
+
+### ✅ C7 · `emailShareLink` POSTs to an endpoint that does not exist — PR #331, 0 src
+
+**The route shipped.** Verified against backend `origin/main` at `1b4960e`:
+`UserShareControllerProd` now declares `@PostMapping("/email")` at `:115`, handler `emailLink` at
+`:116`. It landed in backend PR #213 (`feat(share): email the link that is already in circulation`),
+the item their board listed as next. The 404 is gone.
+
+**The contract matches field-for-field, so the frontend needs no change to the happy path.**
+Checked both sides rather than trusting the earlier claim:
+
+|              | Frontend                                                                                              | Backend                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Request body | `JSON.stringify({ toEmail })` ([share.ts:181](app/lib/api/share.ts:181))                              | `SendShareLinkRequest(@NotBlank @Email String toEmail)` |
+| Response     | `ShareEmailResult { sent: boolean; reason: string \| null }` ([share.ts:60](app/lib/api/share.ts:60)) | `ShareEmailResult(boolean sent, String reason)`         |
+
+Delivery is best-effort on the backend and never throws, and it short-circuits while
+`email.enabled` is false — so this ships without SES configured, exactly as the earlier note said.
+`ShareCard`'s `handleEmail` already branches on `result.sent` and shows the copy-it-yourself message
+on false. Test coverage exists too: `tests/lib/api/share.test.ts:395` has an `emailShareLink`
+describe with success, not-sent, and error cases.
+
+**So the frontend needs NO code change at all. C7 closes on verification.**
+
+This section briefly said otherwise, and the correction is the most useful thing in it. The backend
+returns `409 CONFLICT` when the owner's token cannot be recovered (minted before V58, or encrypted
+under a since-changed secret), and its docblock is explicit that _"the honest answer is 'reset to get
+a new one', not a silent no-op"_. Reading `handleEmail` alone, that looks unhandled: it calls
+`run(..., 'Could not send that email. Please try again.')`, and that fallback string reads as
+transient. **Following the path one hop further shows it is already correct.** `run` hands the raw
+error to `mapError` ([ShareCard.tsx:33](app/components/Personal/ShareCard.tsx:33)), which branches on
+`ApiError.status` and returns, for 409:
+_"This link was created before links could be re-shown. Reset it to get one you can copy."_
+`throwFromResponse` ([share.ts:18](app/lib/api/share.ts:18)) constructs that `ApiError` with
+`res.status`, and `ApiError` carries `status` ([core.ts:91](app/lib/api/core.ts:91)). The chain is
+whole.
+
+**The lesson, and it is this board's own rule turned on itself: a fallback string at a call site is
+not evidence that the error is unhandled.** The generic copy is the LAST branch of a mapper, not the
+only one. Reading `handleEmail` and stopping there produced a confident, wrong finding that was one
+`grep` from being written into this board as work. That is the same failure as C6's false premise,
+committed in the same session that recorded C6's false premise.
+
+**What was left, and what happened to it (closed 2026-08-25).**
+
+- [x] **`mapError`'s 403 and 409 branches now have tests.** `ApiError(409)` is driven through
+      `handleEmail` and `ApiError(403)` through `toggleCollection`, in
+      `tests/components/Personal/ShareCard.test.tsx`. Both were watched failing first, as asked:
+      stubbing `mapError` to `return fallback` as its first statement fails exactly three tests and
+      leaves the other eight untouched. That is the whole item's source of confidence — it proves
+      each test is bound to the branch rather than to some other string on the page.
+- [x] **The "ZERO test coverage" claim directly above was itself wrong, about 401.** A 401 test has
+      been there all along (`explains an expired session rather than a generic failure`), driving
+      `ApiError(401)` through `handleReset`. The stub run above confirms it: it is one of the three
+      that fail. **Why the earlier grep missed it — worth keeping.** That grep looked for the copy
+      strings as written in `mapError`; the test asserts on the fragment `/session has expired/i`.
+      Grepping a full copy string cannot find a test that matches part of it, and "nothing matches"
+      was read as "nothing covers it". Only 403 and 409 were ever genuinely uncovered.
+- [ ] **The live click was deliberately NOT run, and this is the one thing still open.** There is no
+      local database to run it against: port 5432 is an SSH tunnel to the production EC2 box, and
+      `~/portfolio-db/` (which the backend's `docker-compose.yml` names as where the DB lives) does
+      not exist. The frontend has no `.env` either. Standing the backend up locally therefore points
+      it at production, so the "local check" would be a production write. **And it would not have
+      proven the thing anyway:** `EMAIL_ENABLED` is unset in the backend `.env`, so compose's
+      `false` default wins and `sendShareLinkEmail` short-circuits — the click would exercise the
+      `sent:false` path, which `says so plainly when email is switched off` already covers. Left for
+      whoever next has a real environment; it is not blocking anything.
+
+**Cost of unifying `handleEmail` / `handleReset` / `handleCopy` — reported as asked, and DECLINED.**
+
+**First, the guardrail's own premise is off: `handleCopy` is not a `run(...)`.** It wraps
+`navigator.clipboard.writeText` in its own try/catch, sets `setError` to a literal, and never
+touches `mapError` or the pending phase ([ShareCard.tsx:95](app/components/Personal/ShareCard.tsx:95)).
+It has no network call, no `ApiError` and no status code, so it could not join a status reducer even
+if one were wanted. The three actual `run(...)` callers are `handleReset`, `handleEmail` and
+`toggleCollection`.
+
+**Second, the unification already exists.** `run(action, fallback)` is the shared reducer: it clears
+`error` and `emailNote`, sets `pending`, wraps the call, hands failures to `mapError`, and sets the
+phase. `mapError` is the shared status table. Between the three callers the only thing not already
+shared is one fallback string each — and that string is the one thing that must differ.
+
+**So the refactor on offer is: replace three string literals with three keys and a lookup.** Roughly
+15 lines touched, zero net lines saved, one new indirection. It also moves the copy away from the
+call site, so reading `handleEmail` would no longer tell you what a failed send says. Worse, a
+swapped key still type-checks — every key has the same type — which is precisely the "tells someone
+their link was sent when it was not" failure the guardrail exists to prevent. It converts a mistake
+the compiler currently makes impossible into a silent one. **Declined; leave all four handlers
+alone.**
+
+**Second guardrail held: `throwFromResponse`, `ApiError` and `mapError` are unchanged.** The diff is
+test-only — `0 src`, as forecast. Confirmed with `git diff` against `HEAD` after the stub was
+reverted.
+The original filing follows, which is still accurate about the UI being fully built.
+
+#### The original filing
+
+Found 2026-08-23 while researching the email strategy (H4). The "Send" button under Share on `/user`
+404s on every click.
+
+- [ ] [share.ts:176](app/lib/api/share.ts:176) `emailShareLink` POSTs to `${SHARE}/email`, i.e.
+      `/api/read/user/share/email` (base constant at [share.ts:16](app/lib/api/share.ts:16)).
+- [ ] The backend has no such route. `UserShareControllerProd`
+      (`controller/prod/UserShareControllerProd.java:39`) declares exactly four mappings:
+      `@GetMapping` `:50`, `@PostMapping("/rotate")` `:64`,
+      `@PutMapping("/collections/{collectionId}")` `:80`,
+      `@DeleteMapping("/collections/{collectionId}")` `:98`.
+      **Re-verified TWICE on 2026-08-24, the second time against backend `origin/main` at
+      `32f0451` (the repo moved from `4abb28e` between the two checks): still exactly those four
+      mappings at those four lines, and no `/email` route anywhere under `src/`.** Three of the four
+      refs above had drifted (`:67→:64`, `:86→:80`, `:107→:98`) and are corrected here; they did
+      NOT drift again across the backend's own advance, so the anchors are stable.
+      Cross-repo refs on this board are not covered by the frontend drift sweep — re-check them
+      by hand whenever the item is picked up, and pin the backend SHA you checked against.
+- [ ] The UI is fully built and reachable: input and Send button at
+      [ShareCard.tsx:183-200](app/components/Personal/ShareCard.tsx:183), handler `handleEmail` at
+      `:112-121`. The 404 surfaces as the generic "Could not send that email" at `:121`, so it reads
+      as a transient failure rather than a missing feature.
+- [ ] The `ShareEmailResult { sent, reason }` contract at
+      [share.ts:60-63](app/lib/api/share.ts:60) was written against a backend that was never built.
+
+**Ref drift in the filing above, noted 2026-08-27 — the record is kept as written, the coordinates
+are not current.** C7 is shipped, so these are history rather than work, but anyone following them
+should know E2 (#333) rewrote `share.ts` underneath them: it is 161 lines now, not 217.
+`emailShareLink` `:176` → **`:144`**; the request body `:181` → **`:145`**, and it is now
+`json: { toEmail }` through `clientFetch` rather than a hand-rolled `JSON.stringify({ toEmail })`;
+`ShareEmailResult` `:60` → **`:42`**. The base constant `SHARE` at `:16` did not move.
+**`throwFromResponse` left `share.ts` entirely** — E2 moved it to `core.ts:117`, so the reference to
+it at `share.ts:18` now points at nothing. That symbol-took-a-walk case is the exact failure mode
+this board's third principle predicts: drift concentrates where a later item shipped.
+
+**Three claims checked, not assumed** — the C4 lesson is that a literal grep can report a live route
+as dead when the real one is assembled from a template, so all three were run before filing:
+(1) _Reachable in production?_ Yes. The Send button renders in the `settings.exists && shareUrl` arm
+of `ShareCard.tsx` (from `:167`) with no env gate, no `isAdmin` gate and no feature flag; it enables
+as soon as the input is non-empty. (2) _A mapping built from a constant or template?_ No. On backend
+`origin/main` every mapping annotation under `src/main/java/**/controller/**` is a plain string
+literal; the only four that are not bare `Mapping("…")` are `@PostMapping(value = "/literal",
+consumes = …)` forms, still literals. There is nowhere for a template-assembled route to hide.
+(3) _A sibling controller that could catch it?_ There is a second share controller,
+`ShareControllerProd.java` at `@RequestMapping("/api/read/share")`, but it cannot match — the
+frontend posts to `/api/read/user/share/email`, and `/api/read/share` is not a prefix of that.
+Verified against backend `origin/main`, not a working branch.
+
+The fix is a decision, not a patch: build the handler — `EmailService` already has a working send
+path to reuse — or hide the input until it exists. **Do not "fix" it by swallowing the error**; that
+converts a visible 404 into a silent no-op, which is strictly worse. Whichever way it goes, it is
+paired with H4's decision 2, since both are about whether this app sends mail on a user's behalf.
