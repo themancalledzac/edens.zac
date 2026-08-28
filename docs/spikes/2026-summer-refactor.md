@@ -417,76 +417,118 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 
 ## MR board
 
-| MR  | Scope                                                                      | Risk        | Est. diff                                                                                                                                  | Status                                                                                                                                                          |
-| --- | -------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A1  | Dead whole files + their tests                                             | Minimal     | −1,261                                                                                                                                     | ✅ PR #255                                                                                                                                                      |
-| A2  | Dead exports in `lib/api`                                                  | Minimal     | −283                                                                                                                                       | ✅ PR #256                                                                                                                                                      |
-| A3  | Dead half of `metadataUtils.ts`                                            | Minimal     | −400 src, −500 test                                                                                                                        | ✅ PR #257                                                                                                                                                      |
-| A4  | Dead small utils, constants, type guards                                   | Minimal     | −652                                                                                                                                       | ✅ PR #258                                                                                                                                                      |
-| A5  | Gray overlay never paints on the manage grid (BUG)                         | Low         | ±40                                                                                                                                        | ✅ PR #260                                                                                                                                                      |
-| A6  | `CollectionListSelector` flat mode                                         | Medium      | −223 net (−183 src/scss, −40 test)                                                                                                         | ✅ PR #261                                                                                                                                                      |
-| A7a | `useCollectionEdit` legacy aliases                                         | Minimal     | −8                                                                                                                                         | ✅ PR #259                                                                                                                                                      |
-| A7b | `enterSelect`/`enterAdd` inline copies                                     | Low         | −2 src                                                                                                                                     | ✅ PR #262                                                                                                                                                      |
-| A8  | Dead SCSS in live modules + `globals.css` tokens                           | Low         | −327                                                                                                                                       | ✅ PR #263                                                                                                                                                      |
-| A9  | Dead config                                                                | Minimal     | −35                                                                                                                                        | ◐ PR #259 — swept 08-28: 2 of 3 already DONE; 1 open, and it is a CLAUDE.md:22 correction, not a deletion                                                       |
-| B1  | Merge `manageUtils.test.ts`                                                | Low         | −209 net (est. −450)                                                                                                                       | ✅ PR #290                                                                                                                                                      |
-| B2  | `rowCombination` characterization dedup                                    | Low         | −229 (est. −250)                                                                                                                           | ✅ PR #288                                                                                                                                                      |
-| B3  | `metadataUtils.test.ts` dedup                                              | Low         | −125 (est. −200 to −300)                                                                                                                   | ✅ PR #287                                                                                                                                                      |
-| B4  | `contentLayout.test.ts` merge                                              | Low         | −32 (est. −150 to −250)                                                                                                                    | ✅ PR #289                                                                                                                                                      |
-| B5  | `useCollectionEdit` fixture consolidation                                  | Low         | **−145 actual** (est. −350)                                                                                                                | ✅ PR #298                                                                                                                                                      |
-| B6  | Fold in `CollectionContentRenderer` characterization                       | Low         | **0 actual** (est. −150)                                                                                                                   | ✅ PR #294 + #297 (restore)                                                                                                                                     |
-| B7  | `useClickOutside` spy tests                                                | Low         | −37 (est. −90)                                                                                                                             | ✅ PR #286                                                                                                                                                      |
-| B8  | Fill the required-coverage gaps                                            | Low         | +1,545 actual for the 3 slices shipped                                                                                                     | ◐ 8 of 9 — #266, #267, #295 (share+messages), #296 (collectionStorage); only the optional bullet is open                                                        |
-| B9  | `useCollectionEdit.buffer.test.tsx` flakes under parallel load             | Low         | 0 repro in 22 runs across 3 worker configs                                                                                                 | ✅ CLOSED not-reproducible 2026-08-24 — NOT fixed; CI still untried                                                                                             |
-| C1  | Unsaved people/gallery-access wipe (HIGH)                                  | Low         | +73 −11                                                                                                                                    | ✅ PR #264                                                                                                                                                      |
-| C2  | About portrait aspect ratio                                                | Trivial     | +99 −5                                                                                                                                     | ✅ PR #281                                                                                                                                                      |
-| C3  | `SelectsContext.toggle` purity                                             | Low         | +121 −10                                                                                                                                   | ✅ PR #282                                                                                                                                                      |
-| C4  | Cache tags that never connect                                              | Low         | +155 −62                                                                                                                                   | ✅ PR #279                                                                                                                                                      |
-| C5  | Assorted LOW bugs                                                          | Low         | +497 −101 (11 files)                                                                                                                       | ✅ PR #283                                                                                                                                                      |
-| C6  | Password cover strip missing on the public card path                       | Low-medium  | est ±30 → **actual +60 −16 src (net +44) / +73 test**; much of src is the docblock correction                                              | ✅ PR #327 — premise was FALSE (backend never stripped); unification analysed and DECLINED                                                                      |
-| C7  | `emailShareLink` POSTs to a route that does not exist                      | Low         | ±40 src, +30 test → **actual 0 src / +34 test**: FE was already complete, 409 included                                                     | ✅ PR #331 (+185 −101) — 403 + 409 tests added; "zero coverage" was wrong about 401; live click not run (no local DB); unification DECLINED                     |
-| C9  | Dimensionless cover renders no header, missing cover does                  | Low         | ±20 src, +40 test                                                                                                                          | ☐ (found by B4; needs a decision first)                                                                                                                         |
-| C8  | Unfollowing leaves the chip count stale                                    | Low         | +418 −22 (est. +40/+80)                                                                                                                    | ✅ PR #291                                                                                                                                                      |
-| D1  | Gate `POST /api/revalidate` (HIGH)                                         | Low         | +175                                                                                                                                       | ✅ PR #265                                                                                                                                                      |
-| D2  | Gate `clearCacheAction`                                                    | Low         | +212 (est. +15)                                                                                                                            | ✅ PR #266                                                                                                                                                      |
-| D3  | Security headers                                                           | Low-medium  | +60 src, +0–40 test                                                                                                                        | ✅ PR #274                                                                                                                                                      |
-| D4  | Pin the CloudFront host                                                    | Low         | ±1 (actual ±1)                                                                                                                             | ✅ PR #272                                                                                                                                                      |
-| D5  | Proxy path reject + `/cdn` matcher removal                                 | Low         | ~+30 net (−27 src, +6 reject, +40–60 test)                                                                                                 | ✅ PR #273                                                                                                                                                      |
-| D6  | Shared Origin allowlist (CSRF on `/api/revalidate`)                        | Low-medium  | +75 src, +230 test (est. ±60)                                                                                                              | ✅ PR #270                                                                                                                                                      |
-| D7  | Wrong danger token on error text (a11y)                                    | Trivial     | 0 (rode #253)                                                                                                                              | ✅ via PR #253                                                                                                                                                  |
-| D8  | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist                    | Trivial     | +30 src, +52 test (est. ±5 src, +2 test)                                                                                                   | ✅ PR #276                                                                                                                                                      |
-| D9  | Decide: redundant localhost literals in the Origin allowlist               | Trivial     | −5 src, +20 docblock, +7 test                                                                                                              | ✅ PR #277 — deleted                                                                                                                                            |
-| E1  | Parallax-card builder consolidation                                        | Medium      | +98 src, +659 test (est. −120)                                                                                                             | ✅ PR #269                                                                                                                                                      |
-| E2  | `core.ts` fetch skeleton + `clientFetch`                                   | Medium      | **−115 src actual** (−57 bullets 1–2, −58 bullets 3–4); +6 tests (est. −180 src, +150–200 test)                                            | ✅ bullets 1–2 PR #333; bullets 3–4 PR #334 — CLOSED                                                                                                            |
-| E3  | `collectionStorage.ts` generics                                            | Low         | **−12 src actual** (−46 code, +39 comment); +927 test via #296 (est. +50–150 net for both)                                                 | ✅ CLOSED 2026-08-28 — generics shipped in #306; the guards question was answered by #306 itself in `collectionStorage.ts:47-55` (keep them), 0 further code    |
-| E4  | Entity-diff generics + one IMAGE guard                                     | Medium      | **+44 src / +177 test actual** for the twins half (est. −80)                                                                               | ✅ PR #311 — twins → `entityUtils.ts`; IMAGE-guard half STRUCK, guards are NOT duplicates                                                                       |
-| E5  | Filter/sort/date duplication                                               | Low         | **0 src / +139 test actual** (est. −50 src)                                                                                                | ✅ PR #299 — COMPLETE. All 4 "open" bullets shipped in #299 itself (swept 08-28)                                                                                |
-| E6  | `useCollectionEdit` refresh helpers                                        | Medium      | **`−90 src` is FALSE** — bullet 2 shipped at **+11 src, 0 test churn**; bullets 1/3 also ≈break-even (docblock costs what the dedup saves) | ◐ bullet 2 SHIPPED 2026-08-28; bullet 1 BLOCKED on user (fails the rejection test at 3-of-6 params); bullet 3 startable but sells as drift-protection, not size |
-| E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook)                    | Small       | **+22 src / +84 test actual** (est. was "+100–200 net (new hook suite)" — the hook is rejected)                                            | ◐ waste FIXED ✅ #337; hook REJECTED (9–11 params, 4 behavior switches); two smaller paths still open                                                           |
-| E8  | Renderer + `MenuDropdown` dedup                                            | Medium      | est −120 src / +150–250 test → **actual −49 src / +90 test** (PR #319)                                                                     | ✅                                                                                                                                                              |
-| E9  | Download icon/hook, auth-card SCSS, `.srOnly`                              | Low         | **+16 src / +393 test actual** (est. −100 src)                                                                                             | ◐ PR #300 — both COLD bullets shipped; srOnly ⛔ user call                                                                                                      |
-| E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator)          | Low         | **−79 src code-only / +176 test code-only** (est. −60 src)                                                                                 | ✅ CLOSED 2026-08-28 — PR #304 shipped 5 of 7, 1 was never a task, and the last (`--color-danger` hover) was DECIDED by the user as keep-as-is, 0 code          |
-| E11 | Make cache-tag register/revalidate drift detectable                        | Low-medium  | +277 −28                                                                                                                                   | ✅ PR #280                                                                                                                                                      |
-| E12 | Wire up `collections-location-${slug}`                                     | Low-medium  | **+72 src / +293 test actual** (est. +30 src)                                                                                              | ✅ PR #301; image-path trigger split out as E13                                                                                                                 |
-| E13 | Trigger `collections-location-${slug}` from the image-metadata save path   | Low-medium  | **+36 src net / +165 test actual** (est. +30 src, +60 test)                                                                                | ✅ PR #313 — src estimate held; location-RENAME gap split out as E16                                                                                            |
-| E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value         | Low         | **−3 src / −4 test net actual**, 36 call sites (est. −2 src, ~40 sites)                                                                    | ✅ PR #307 — the one estimate on this board that held                                                                                                           |
-| E15 | `createHeaderRow`'s two trailing boolean params → options object           | Low         | **+22 src net / 14 test call sites** (est. ±15 src, ~20 sites)                                                                             | ✅ PR #314 — stacked on #313; first call-site estimate to come in OVER                                                                                          |
-| E16 | Revalidate the OLD slug when a location is RENAMED                         | Low-medium  | **+40 src / +281 test actual** across 2 slices (est. +30 src / +120 test)                                                                  | ✅ PR #316 (slice 1) + #317 (slice 2) — src held; test half 2.3x over                                                                                           |
-| E17 | Collapse the inert `pageType` union to a boolean                           | Low         | est −15 src / ~0 test → **actual +3 src (−2 code, +5 comment) / +9 test** (PR #322)                                                        | ✅                                                                                                                                                              |
-| F1  | Decompose `useCollectionEdit.tsx`                                          | Medium-high | ~neutral                                                                                                                                   | ☐                                                                                                                                                               |
-| F2  | `RendererContext` for the BoxRenderer tree                                 | Medium      | est −100 src / +150–250 test → **actual −47 src / +142 test** (PR #321)                                                                    | ✅                                                                                                                                                              |
-| F3  | File moves and renames                                                     | Medium      | `ReorderMove` **+7 src / 0 test**; `getUserPage` **+12 src / +2 test** (both est. ~neutral); other six unsized                             | ◐ `ReorderMove` ✅ #324 (F6 unblocked) · `getUserPage` ✅ #336 (`user.ts` deleted) · invite bullet COSTED and REJECTED 2026-08-27 · six bullets open            |
-| F4  | `TaxonomyPage` ← `LocationPageClient`                                      | Medium      | −150                                                                                                                                       | ⛔ USER DECISION                                                                                                                                                |
-| F5  | `FullScreenModal` link + resolver cleanup                                  | Low         | **−25 src / +20 test net actual** (est. −30 src, +60–120 test)                                                                             | ✅ PR #318 — src held; test came in UNDER, unlike E13/E16                                                                                                       |
-| F6  | Fold `EditModeLayer` into `RendererContext` (shared set 16 → **4**, not 3) | Medium      | est −20 src / +40–60 test → **actual +53 src / +218 test** (PR #325 → #326)                                                                | ✅ via **#326** — #325 orphaned on a retired base; src missed in the WRONG DIRECTION                                                                            |
-| F7  | Delete `onImageLoadError` from the render path (dead plumbing)             | Low         | est −15 src / −20 test → **actual −3 src / +8 test**; docblocks explaining a deletion cost lines                                           | ✅ PR #328 — completes 16 → 3; premise re-verified, estimate missed direction on BOTH halves                                                                    |
-| G1  | Docs corrections                                                           | Trivial     | **+106 / −72 actual** (est. ±50)                                                                                                           | ✅ PR #303                                                                                                                                                      |
-| G2  | Inline-comment enforcement + migration (decided: keep the rule)            | Low         | ~neutral (relocation + splits)                                                                                                             | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors                                                                                          |
-| G3  | `/user/selects` decision                                                   | —           | —                                                                                                                                          | ⛔ USER DECISION                                                                                                                                                |
-| G4  | Docblock standard — length, structure, and no history                      | Low         | **−50 net actual across 19 blocks** (est. −300 to −500 across ~53); 0 src                                                                  | ◐ intersection pass done; swept 08-28: 49 hits but only ~26 real; #327/#328 line was STALE (#329 cleared it); +~17 uncounted board-label blocks                 |
-| H1  | Merge `Following` into `Collections` on `/user`                            | Medium      | −60 src, ±150 test churn (6 test files)                                                                                                    | ☐ COLD — C8 shipped, so its stated blocker has cleared                                                                                                          |
-| H2a | `/user` rail copy pass + chip-style the Admin links                        | Low         | **+319 / −117 actual** (est. −25 src)                                                                                                      | ✅ PR #302                                                                                                                                                      |
-| H3  | `Send a message` into the rail as a plain button                           | Low         | rode H2a                                                                                                                                   | ✅ PR #302                                                                                                                                                      |
+| MR  | Scope                                                                      | Risk        | Est. diff                                                                                                                                                | Status                                                                                                                                                                  |
+| --- | -------------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1  | Dead whole files + their tests                                             | Minimal     | −1,261                                                                                                                                                   | ✅ PR #255                                                                                                                                                              |
+| A2  | Dead exports in `lib/api`                                                  | Minimal     | −283                                                                                                                                                     | ✅ PR #256                                                                                                                                                              |
+| A3  | Dead half of `metadataUtils.ts`                                            | Minimal     | −400 src, −500 test                                                                                                                                      | ✅ PR #257                                                                                                                                                              |
+| A4  | Dead small utils, constants, type guards                                   | Minimal     | −652                                                                                                                                                     | ✅ PR #258                                                                                                                                                              |
+| A5  | Gray overlay never paints on the manage grid (BUG)                         | Low         | ±40                                                                                                                                                      | ✅ PR #260                                                                                                                                                              |
+| A6  | `CollectionListSelector` flat mode                                         | Medium      | −223 net (−183 src/scss, −40 test)                                                                                                                       | ✅ PR #261                                                                                                                                                              |
+| A7a | `useCollectionEdit` legacy aliases                                         | Minimal     | −8                                                                                                                                                       | ✅ PR #259                                                                                                                                                              |
+| A7b | `enterSelect`/`enterAdd` inline copies                                     | Low         | −2 src                                                                                                                                                   | ✅ PR #262                                                                                                                                                              |
+| A8  | Dead SCSS in live modules + `globals.css` tokens                           | Low         | −327                                                                                                                                                     | ✅ PR #263                                                                                                                                                              |
+| A9  | Dead config                                                                | Minimal     | −35                                                                                                                                                      | ◐ PR #259 — swept 08-28: 2 of 3 already DONE; 1 open, and it is a CLAUDE.md:22 correction, not a deletion                                                               |
+| B1  | Merge `manageUtils.test.ts`                                                | Low         | −209 net (est. −450)                                                                                                                                     | ✅ PR #290                                                                                                                                                              |
+| B2  | `rowCombination` characterization dedup                                    | Low         | −229 (est. −250)                                                                                                                                         | ✅ PR #288                                                                                                                                                              |
+| B3  | `metadataUtils.test.ts` dedup                                              | Low         | −125 (est. −200 to −300)                                                                                                                                 | ✅ PR #287                                                                                                                                                              |
+| B4  | `contentLayout.test.ts` merge                                              | Low         | −32 (est. −150 to −250)                                                                                                                                  | ✅ PR #289                                                                                                                                                              |
+| B5  | `useCollectionEdit` fixture consolidation                                  | Low         | **−145 actual** (est. −350)                                                                                                                              | ✅ PR #298                                                                                                                                                              |
+| B6  | Fold in `CollectionContentRenderer` characterization                       | Low         | **0 actual** (est. −150)                                                                                                                                 | ✅ PR #294 + #297 (restore)                                                                                                                                             |
+| B7  | `useClickOutside` spy tests                                                | Low         | −37 (est. −90)                                                                                                                                           | ✅ PR #286                                                                                                                                                              |
+| B8  | Fill the required-coverage gaps                                            | Low         | +1,545 actual for the 3 slices shipped                                                                                                                   | ◐ 8 of 9 — #266, #267, #295 (share+messages), #296 (collectionStorage); only the optional bullet is open                                                                |
+| B9  | `useCollectionEdit.buffer.test.tsx` flakes under parallel load             | Low         | 0 repro in 22 runs across 3 worker configs                                                                                                               | ✅ CLOSED not-reproducible 2026-08-24 — NOT fixed; CI still untried                                                                                                     |
+| C1  | Unsaved people/gallery-access wipe (HIGH)                                  | Low         | +73 −11                                                                                                                                                  | ✅ PR #264                                                                                                                                                              |
+| C2  | About portrait aspect ratio                                                | Trivial     | +99 −5                                                                                                                                                   | ✅ PR #281                                                                                                                                                              |
+| C3  | `SelectsContext.toggle` purity                                             | Low         | +121 −10                                                                                                                                                 | ✅ PR #282                                                                                                                                                              |
+| C4  | Cache tags that never connect                                              | Low         | +155 −62                                                                                                                                                 | ✅ PR #279                                                                                                                                                              |
+| C5  | Assorted LOW bugs                                                          | Low         | +497 −101 (11 files)                                                                                                                                     | ✅ PR #283                                                                                                                                                              |
+| C6  | Password cover strip missing on the public card path                       | Low-medium  | est ±30 → **actual +60 −16 src (net +44) / +73 test**; much of src is the docblock correction                                                            | ✅ PR #327 — premise was FALSE (backend never stripped); unification analysed and DECLINED                                                                              |
+| C7  | `emailShareLink` POSTs to a route that does not exist                      | Low         | ±40 src, +30 test → **actual 0 src / +34 test**: FE was already complete, 409 included                                                                   | ✅ PR #331 (+185 −101) — 403 + 409 tests added; "zero coverage" was wrong about 401; live click not run (no local DB); unification DECLINED                             |
+| C9  | Dimensionless cover renders no header, missing cover does                  | Low         | ±20 src, +40 test                                                                                                                                        | ☐ (found by B4; needs a decision first)                                                                                                                                 |
+| C8  | Unfollowing leaves the chip count stale                                    | Low         | +418 −22 (est. +40/+80)                                                                                                                                  | ✅ PR #291                                                                                                                                                              |
+| D1  | Gate `POST /api/revalidate` (HIGH)                                         | Low         | +175                                                                                                                                                     | ✅ PR #265                                                                                                                                                              |
+| D2  | Gate `clearCacheAction`                                                    | Low         | +212 (est. +15)                                                                                                                                          | ✅ PR #266                                                                                                                                                              |
+| D3  | Security headers                                                           | Low-medium  | +60 src, +0–40 test                                                                                                                                      | ✅ PR #274                                                                                                                                                              |
+| D4  | Pin the CloudFront host                                                    | Low         | ±1 (actual ±1)                                                                                                                                           | ✅ PR #272                                                                                                                                                              |
+| D5  | Proxy path reject + `/cdn` matcher removal                                 | Low         | ~+30 net (−27 src, +6 reject, +40–60 test)                                                                                                               | ✅ PR #273                                                                                                                                                              |
+| D6  | Shared Origin allowlist (CSRF on `/api/revalidate`)                        | Low-medium  | +75 src, +230 test (est. ±60)                                                                                                                            | ✅ PR #270                                                                                                                                                              |
+| D7  | Wrong danger token on error text (a11y)                                    | Trivial     | 0 (rode #253)                                                                                                                                            | ✅ via PR #253                                                                                                                                                          |
+| D8  | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist                    | Trivial     | +30 src, +52 test (est. ±5 src, +2 test)                                                                                                                 | ✅ PR #276                                                                                                                                                              |
+| D9  | Decide: redundant localhost literals in the Origin allowlist               | Trivial     | −5 src, +20 docblock, +7 test                                                                                                                            | ✅ PR #277 — deleted                                                                                                                                                    |
+| E1  | Parallax-card builder consolidation                                        | Medium      | +98 src, +659 test (est. −120)                                                                                                                           | ✅ PR #269                                                                                                                                                              |
+| E2  | `core.ts` fetch skeleton + `clientFetch`                                   | Medium      | **−115 src actual** (−57 bullets 1–2, −58 bullets 3–4); +6 tests (est. −180 src, +150–200 test)                                                          | ✅ bullets 1–2 PR #333; bullets 3–4 PR #334 — CLOSED                                                                                                                    |
+| E3  | `collectionStorage.ts` generics                                            | Low         | **−12 src actual** (−46 code, +39 comment); +927 test via #296 (est. +50–150 net for both)                                                               | ✅ CLOSED 2026-08-28 — generics shipped in #306; the guards question was answered by #306 itself in `collectionStorage.ts:47-55` (keep them), 0 further code            |
+| E4  | Entity-diff generics + one IMAGE guard                                     | Medium      | **+44 src / +177 test actual** for the twins half (est. −80)                                                                                             | ✅ PR #311 — twins → `entityUtils.ts`; IMAGE-guard half STRUCK, guards are NOT duplicates                                                                               |
+| E5  | Filter/sort/date duplication                                               | Low         | **0 src / +139 test actual** (est. −50 src)                                                                                                              | ✅ PR #299 — COMPLETE. All 4 "open" bullets shipped in #299 itself (swept 08-28)                                                                                        |
+| E6  | `useCollectionEdit` refresh helpers                                        | Medium      | **`−90 src` is DEAD** — every measured bullet came in POSITIVE: bullet 2 **+11**, bullet 3 **+22**, `_deletedIds` **−3**. Test churn 0 on all three      | ◐ bullets 2 (#339) and 3 (#342) SHIPPED, `_deletedIds` removed (#341); **only bullet 1 left and it is BLOCKED on the user** (fails the rejection test at 3-of-6 params) |
+| E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook)                    | Small       | **+22 src / +84 test actual** (est. was "+100–200 net (new hook suite)" — the hook is rejected)                                                          | ◐ waste FIXED ✅ #337; hook REJECTED (9–11 params, 4 behavior switches); two smaller paths still open                                                                   |
+| E8  | Renderer + `MenuDropdown` dedup                                            | Medium      | est −120 src / +150–250 test → **actual −49 src / +90 test** (PR #319)                                                                                   | ✅                                                                                                                                                                      |
+| E9  | Download icon/hook, auth-card SCSS, `.srOnly`                              | Low         | **+16 src / +393 test actual** (est. −100 src)                                                                                                           | ◐ PR #300 — both COLD bullets shipped; srOnly ⛔ user call                                                                                                              |
+| E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator)          | Low         | **−79 src code-only / +176 test code-only** (est. −60 src)                                                                                               | ✅ CLOSED 2026-08-28 — PR #304 shipped 5 of 7, 1 was never a task, and the last (`--color-danger` hover) was DECIDED by the user as keep-as-is, 0 code                  |
+| E11 | Make cache-tag register/revalidate drift detectable                        | Low-medium  | +277 −28                                                                                                                                                 | ✅ PR #280                                                                                                                                                              |
+| E12 | Wire up `collections-location-${slug}`                                     | Low-medium  | **+72 src / +293 test actual** (est. +30 src)                                                                                                            | ✅ PR #301; image-path trigger split out as E13                                                                                                                         |
+| E13 | Trigger `collections-location-${slug}` from the image-metadata save path   | Low-medium  | **+36 src net / +165 test actual** (est. +30 src, +60 test)                                                                                              | ✅ PR #313 — src estimate held; location-RENAME gap split out as E16                                                                                                    |
+| E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value         | Low         | **−3 src / −4 test net actual**, 36 call sites (est. −2 src, ~40 sites)                                                                                  | ✅ PR #307 — the one estimate on this board that held                                                                                                                   |
+| E15 | `createHeaderRow`'s two trailing boolean params → options object           | Low         | **+22 src net / 14 test call sites** (est. ±15 src, ~20 sites)                                                                                           | ✅ PR #314 — stacked on #313; first call-site estimate to come in OVER                                                                                                  |
+| E16 | Revalidate the OLD slug when a location is RENAMED                         | Low-medium  | **+40 src / +281 test actual** across 2 slices (est. +30 src / +120 test)                                                                                | ✅ PR #316 (slice 1) + #317 (slice 2) — src held; test half 2.3x over                                                                                                   |
+| E17 | Collapse the inert `pageType` union to a boolean                           | Low         | est −15 src / ~0 test → **actual +3 src (−2 code, +5 comment) / +9 test** (PR #322)                                                                      | ✅                                                                                                                                                                      |
+| F1  | Decompose `useCollectionEdit.tsx`                                          | Medium-high | ~neutral                                                                                                                                                 | ☐                                                                                                                                                                       |
+| F2  | `RendererContext` for the BoxRenderer tree                                 | Medium      | est −100 src / +150–250 test → **actual −47 src / +142 test** (PR #321)                                                                                  | ✅                                                                                                                                                                      |
+| F3  | File moves and renames                                                     | Medium      | `ReorderMove` **+7 src / 0 test**; `getUserPage` **+12 src / +2 test**; logger labels **+3/−3 src, 0 test — estimate exactly right**; other five unsized | ◐ `ReorderMove` ✅ #324 (F6 unblocked) · `getUserPage` ✅ #336 (`user.ts` deleted) · logger labels ✅ #343 · invite bullet COSTED and REJECTED · **five bullets open**  |
+| F4  | `TaxonomyPage` ← `LocationPageClient`                                      | Medium      | −150                                                                                                                                                     | ⛔ USER DECISION                                                                                                                                                        |
+| F5  | `FullScreenModal` link + resolver cleanup                                  | Low         | **−25 src / +20 test net actual** (est. −30 src, +60–120 test)                                                                                           | ✅ PR #318 — src held; test came in UNDER, unlike E13/E16                                                                                                               |
+| F6  | Fold `EditModeLayer` into `RendererContext` (shared set 16 → **4**, not 3) | Medium      | est −20 src / +40–60 test → **actual +53 src / +218 test** (PR #325 → #326)                                                                              | ✅ via **#326** — #325 orphaned on a retired base; src missed in the WRONG DIRECTION                                                                                    |
+| F7  | Delete `onImageLoadError` from the render path (dead plumbing)             | Low         | est −15 src / −20 test → **actual −3 src / +8 test**; docblocks explaining a deletion cost lines                                                         | ✅ PR #328 — completes 16 → 3; premise re-verified, estimate missed direction on BOTH halves                                                                            |
+| G1  | Docs corrections                                                           | Trivial     | **+106 / −72 actual** (est. ±50)                                                                                                                         | ✅ PR #303                                                                                                                                                              |
+| G2  | Inline-comment enforcement + migration (decided: keep the rule)            | Low         | ~neutral (relocation + splits)                                                                                                                           | ◐ wording PR #268; G2a COLD, G2b ⛔ scope call, G2c ⛔ rides refactors                                                                                                  |
+| G3  | `/user/selects` decision                                                   | —           | —                                                                                                                                                        | ⛔ USER DECISION                                                                                                                                                        |
+| G4  | Docblock standard — length, structure, and no history                      | Low         | **−50 net actual across 19 blocks** (est. −300 to −500 across ~53); 0 src                                                                                | ◐ intersection pass done; swept 08-28: 49 hits but only ~26 real; #327/#328 line was STALE (#329 cleared it); +~17 uncounted board-label blocks                         |
+| H1  | Merge `Following` into `Collections` on `/user`                            | Medium      | −60 src, ±150 test churn (6 test files)                                                                                                                  | ☐ COLD — C8 shipped, so its stated blocker has cleared                                                                                                                  |
+| H2a | `/user` rail copy pass + chip-style the Admin links                        | Low         | **+319 / −117 actual** (est. −25 src)                                                                                                                    | ✅ PR #302                                                                                                                                                              |
+| H3  | `Send a message` into the rail as a plain button                           | Low         | rode H2a                                                                                                                                                 | ✅ PR #302                                                                                                                                                              |
+
+### NEXT RUN, picked 2026-08-28 (3) — two user questions first, then three COLD MRs
+
+**Ask both questions in the opening message, batched.** Each has a fully specified item behind it,
+so an answer becomes an MR in the same session instead of the next one's problem.
+
+1. **C9 — should a dimensionless cover fall back to the text-only header?** Today `coverImage`
+   absent renders a header; `coverImage` present but missing `imageWidth`/`imageHeight` renders
+   nothing. Falling back is the smaller change and makes the paths agree. Est ±20 src / +40 test,
+   and the item is otherwise complete.
+2. **E6 bullet 1 — should the GIF save path start firing `revalidateMetadataCache`, and should
+   adopt-ordering be normalized?** This is the only thing left on E6. It is a behavior change, not
+   a refactor (3-of-6 behavior-switching params), so it cannot be started without the answer.
+
+**Then this run, in this order. All three are COLD and were re-verified 2026-08-28 (3).**
+
+1. **A9's `.claude/agents/` bullet.** The premise is settled: `which npm npx node` resolves all
+   three under `/opt/homebrew/bin` and `npm --version` prints **11.8.0** — confirmed a FOURTH time
+   today. Fix the false "npm and npx are not on PATH" line in `CLAUDE.md` and the 7 agent
+   allowlists that were written around it. First because it is settled, cheap, and it removes
+   friction from every future session on this board.
+   _Guardrail: fix the PATH claim and the allowlists it distorted. Do NOT restructure the agent
+   definitions or re-scope what any agent is allowed to do — report anything that looks wrong._
+2. **F3's `CollectionPageWrapper.tsx` out of `app/lib/components/`.** 3 src / 6 test, re-swept
+   2026-08-28 and again today; counts reproduce. Src importers are exactly `app/[slug]/page.tsx:5`,
+   `app/all-client-galleries/page.tsx:1`, `app/page.tsx:3`.
+   _Guardrail: the glob `CollectionPageWrapper.*.test.tsx` matches only TWO of the three test files
+   — the third is `CollectionPageWrapper.test.tsx` with no middle segment. The count of three is
+   right, the glob is not. Do not drive the move off the glob._
+3. **F3's `AdminPanel/` fold into `ListPanel/`.** Re-verified today: `app/components/AdminPanel/`
+   holds exactly two files, both contexts. 5 src importers, 3 test files — counts reproduce.
+   _Guardrail: `AdminPanelRenderer.tsx` and its `.module.scss` live in `app/components/Content/`,
+   NOT in `AdminPanel/`. Leave them where they are and do not go looking for them in the folded
+   directory._
+
+**Re-derive refs between MRs only if an MR lands in a file a later one reads.** These three touch
+disjoint trees (`.claude/` + `CLAUDE.md`, `app/lib/components/`, `app/components/AdminPanel/`),
+so no re-derivation is needed between them — the first run in a while where that is true.
+
+**Deliberately NOT in this run:** F1. It is the largest open item and its boundaries have now been
+invalidated three times; it wants a session of its own, and it should start by re-anchoring the two
+boundaries this close-out flagged as unanchored.
 
 ### State of the open items (re-stamped 2026-08-26)
 
@@ -511,21 +553,21 @@ one pass): the board is least accurate about the items it has most recently ship
 and E10 both credit the exact PR that silently finished their open bullets. See the
 `git show --stat` rule in "how to use this doc".
 
-| Item   | State              | If blocked: the question, and who answers it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **E6** | PARTLY SHIPPED     | —— bullet 2 (`adoptSaveResponse`) SHIPPED 2026-08-28, hook-local at `useCollectionEdit.tsx:740`. Test churn was **0**, not ±20 — both budgets on this item were over-estimates. File GREW 1748 → 1759. **All refs below `:740` in this item drifted; the item carries a re-derived list.** Bullet 1 stays BLOCKED on the user and was costed: the shared signature needs 3-of-6 behavior-switching params, so it fails the rejection test. Bullet 3 is unblocked but ≈break-even on size; its value is drift-protection. Dead `_deletedIds` (`:1060`, type at `:285`) is the cheapest thing left |
-| **E7** | COLD               | —— the waste shipped as a handoff guard 2026-08-27 (#337); the hook is REJECTED with measurement. Two smaller wasted paths left open in the item (`EditModeLayer.tsx:280` reorder path, and a third `processContentBlocks` caller at `useCollectionEdit.tsx:556`)                                                                                                                                                                                                                                                                                                                                |
-| **B8** | COLD               | —— verified 2026-08-27: 8 of 9 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| **F3** | COLD               | —— `getUserPage` shipped 2026-08-27 (#336), `user.ts` deleted. The invite bullet is COSTED and REJECTED — do not re-open it as a 3-function move; the note names the 2-function alternative. Six bullets open, refs swept 2026-08-27                                                                                                                                                                                                                                                                                                                                                             |
-| **A9** | COLD               | —— swept 2026-08-28. 2 of 3 bullets were ALREADY DONE (worktrees cleared; `layoutpreview` deleted by the user outside git after 5 sessions of re-filing). The one open bullet is a factual correction to `CLAUDE.md:22` — `npm`/`npx`/`node` all resolve, `npm --version` is 11.8.0. Allowlist count was 7, is 6                                                                                                                                                                                                                                                                                 |
-| **G4** | COLD               | —— swept 2026-08-28. Count reproduces (49 vs ~48) and its method is recoverable, but ~23 are false positives so the history sweep is ~26 real and must be read block-by-block, not regexed. Row's "#327/#328 added to the pile" was stale. NEW: ~17 uncounted board-label blocks (13 docblocks + 6 inline)                                                                                                                                                                                                                                                                                       |
-| **F1** | COLD               | —— largest open item; no unanswered question, just size                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| **H1** | BLOCKED — **user** | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? Also: accept a 500-row catalog fetch on every `/user` load, or ask the backend to return followed collections on the user-page read?                                                                                                                                                                                                                                                                                                                              |
-| **C9** | BLOCKED — **user** | Should a cover with no `imageWidth`/`imageHeight` fall back to the text-only header, or is rendering nothing deliberate?                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| **F4** | BLOCKED — **user** | Stated in the item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| **G3** | BLOCKED — **user** | Delete `/user/selects` or rebuild it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| **E9** | BLOCKED — **user** | `.srOnly` bullet only; both COLD bullets shipped in #300                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| **G2** | BLOCKED — **user** | G2b is a scope call; G2c rides other refactors. G2a is COLD                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Item   | State              | If blocked: the question, and who answers it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **E6** | BLOCKED (user)     | —— **down to bullet 1 alone.** Bullet 2 (#339, +11), bullet 3 (#342, +22) and `_deletedIds` (#341, −3) all shipped; test churn was **0** on all three, against a ±20 budget that has now over-estimated three times. File 1748 → 1759 → **1751**. Bullet 1 needs a product answer: **should the GIF save path start firing `revalidateMetadataCache`, and should adopt-ordering be normalized?** It fails the rejection test at 3-of-6 behavior-switching params, so it is a behavior change, not a refactor. **Nothing else on E6 is startable.** |
+| **E7** | COLD               | —— the waste shipped as a handoff guard 2026-08-27 (#337); the hook is REJECTED with measurement. Two smaller wasted paths left open in the item (`EditModeLayer.tsx:280` reorder path, and a third `processContentBlocks` caller at `useCollectionEdit.tsx:556`)                                                                                                                                                                                                                                                                                  |
+| **B8** | COLD               | —— verified 2026-08-27: 8 of 9 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **F3** | COLD               | —— `getUserPage` shipped 2026-08-27 (#336), `user.ts` deleted; logger labels shipped 2026-08-28 (#343). The invite bullet is COSTED and REJECTED — do not re-open it as a 3-function move; the note names the 2-function alternative. **Five bullets open.** `CollectionPageWrapper` (3 src / 6 test) and the `AdminPanel/` fold (5 src / 3 test) both re-verified 2026-08-28 (2) and are the two freshest                                                                                                                                         |
+| **A9** | COLD               | —— swept 2026-08-28. 2 of 3 bullets were ALREADY DONE (worktrees cleared; `layoutpreview` deleted by the user outside git after 5 sessions of re-filing). The one open bullet is a factual correction to `CLAUDE.md:22` — `npm`/`npx`/`node` all resolve, `npm --version` is 11.8.0. Allowlist count was 7, is 6                                                                                                                                                                                                                                   |
+| **G4** | COLD               | —— swept 2026-08-28. Count reproduces (49 vs ~48) and its method is recoverable, but ~23 are false positives so the history sweep is ~26 real and must be read block-by-block, not regexed. Row's "#327/#328 added to the pile" was stale. NEW: ~17 uncounted board-label blocks (13 docblocks + 6 inline)                                                                                                                                                                                                                                         |
+| **F1** | COLD               | —— largest open item; no unanswered question, just size                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **H1** | BLOCKED — **user** | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? Also: accept a 500-row catalog fetch on every `/user` load, or ask the backend to return followed collections on the user-page read?                                                                                                                                                                                                                                                                                |
+| **C9** | BLOCKED — **user** | Should a cover with no `imageWidth`/`imageHeight` fall back to the text-only header, or is rendering nothing deliberate?                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **F4** | BLOCKED — **user** | Stated in the item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **G3** | BLOCKED — **user** | Delete `/user/selects` or rebuild it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **E9** | BLOCKED — **user** | `.srOnly` bullet only; both COLD bullets shipped in #300                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **G2** | BLOCKED — **user** | G2b is a scope call; G2c rides other refactors. G2a is COLD                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 **Six of the eleven are blocked on the same person, and none of the six is blocked on work.** That
 is the board's real bottleneck, not any individual item — a single sitting answering H1, C9, F4, G3,
@@ -790,7 +832,7 @@ E1, E2, E3, E4, E5, E8, E10, E11 and E12–E17 have all shipped — full write-u
 [group-e-consolidations.md](2026-summer-refactor/group-e-consolidations.md). **Only E6, E7 and E9
 remain open, below.** E11 matters to B1; B1 carries what it needs inline.
 
-### ◐ E6 · `useCollectionEdit` refresh helpers — bullet 2 SHIPPED 2026-08-28; bullets 1 and 3 COSTED, both blocked
+### ◐ E6 · `useCollectionEdit` refresh helpers — bullets 2 and 3 SHIPPED plus `_deletedIds`; only bullet 1 is left, BLOCKED on the user
 
 **Bullet 2 is done and the guardrail held — bullets 1 and 3 were costed, not touched.** Both costs
 are recorded under their own bullets below. Neither is a mechanical lift, and bullet 1 still needs a
@@ -819,30 +861,65 @@ user decision before anyone can start it.
   currently pins them to each other. **Startable any time, no user decision needed**, but it should
   be sold as drift-protection, not as a size win. Do not unify the handlers or the confirm strings
   (`useCollectionEdit.bulkRemove.test.tsx:180-184` pins the wording).
-> **NEXT RUN, picked 2026-08-28 — three MRs, in this order.** All three are COLD; the run
-> deliberately avoids the seven user-blocked items.
->
-> 1. **E6 `_deletedIds` removal.** Cheapest fully-specified change on the board. It touches the
->    public `UseCollectionEditResult` type, so it wants its own reviewable diff rather than riding
->    along with 2. _Guardrail: remove only `_deletedIds`. Leave the rest of the interface alone —
->    it is 60+ members and "while we're here" would bury the one real change._
-> 2. **E6 bullet 3 — `buildRemoveFromCollectionDiffs`.** Same file as 1, so **re-derive its refs
->    after 1 lands**; `handleBulkRemove` is at `:1091` today. _Guardrail: share the `map` body only.
->    Do NOT unify the two handlers and do NOT touch the confirm strings —
->    `useCollectionEdit.bulkRemove.test.tsx:180-184` pins the wording._
-> 3. **F3's three `logger.warn('manageUtils', …)` labels in `collectionEditUtils.ts`.** Different
->    file, trivial, no decision. Sequence it after 2 because bullet 3's shared helper may land in
->    that same file. _Guardrail: fix the labels only. Do not re-open F3's invite bullet — it is
->    COSTED and REJECTED._
->
-> Sized at three because that is what the log says a session here actually lands, and because
-> stopping after 1 or 2 still leaves merged work rather than a half-finished branch.
+#### CLOSE-OUT 2026-08-28 (2) — the picked run landed in full: #341, #342, #343
 
-- **The dead `_deletedIds` parameter is still open and is now the cheapest thing on this item.**
+**All three MRs of the previous run merged.** `_deletedIds` (#341) and bullet 3 (#342) are done, so
+**E6 is down to bullet 1 alone, and bullet 1 is BLOCKED on the user.** F3's logger bullet (#343) is
+recorded in that item.
+
+| MR | What | Src | Test | Suite after |
+| --- | --- | --- | --- | --- |
+| [#341](https://github.com/themancalledzac/edens.zac/pull/341) | `_deletedIds` removed from `handleDeleteSuccess` | +28/−31 | 3 call sites edited | 245 / 4454 |
+| [#342](https://github.com/themancalledzac/edens.zac/pull/342) | `buildRemoveFromCollectionDiffs` shared | +43/−21 | +65 (6 new specs) | 245 / 4460 |
+
+**The helper did NOT go where this item predicted.** The run note said `collectionEditUtils.ts`.
+It went to `app/components/Metadata/metadataUtils.ts` — that is where `buildImageUpdateDiff` (which
+it calls) and its sibling `buildImageUpdatesForBulkEdit` live, and both call sites already imported
+from it. `useMetadataSubmit` reaches into `collectionEditUtils` for exactly one revalidate
+function; putting a diff builder there would have widened that cross-directory edge for nothing.
+**Rule: put a shared helper where its own dependencies live, not where the louder caller lives.**
+
+**Estimate vs actual — the "≈break-even" call was right, and the reason generalizes.** Bullet 3 came
+in at src net **+22**, the third consecutive E6 extraction to GROW the file (bullet 2 was +11).
+16 of the 31 new lines in `metadataUtils.ts` are the docblock the no-inline-comments rule requires;
+the dedup saves 9 lines of body against 15 lines of helper body. **The `−90 src` on this item's
+MR-board row is now definitively dead** — every bullet on E6 that could be measured came in
+positive. Any remaining item on this board that promises negative source lines from an EXTRACTION
+should be re-read as ≈+20 before it is scheduled.
+
+**A dead param is not a free deletion — Prettier moved 3 lines that no edit touched.** Emptying
+`handleDeleteSuccess`'s parameter list let Prettier collapse `useCallback(\n  async (…) => {` onto
+one line and de-indent the whole body. That is why #341 reads +28/−31 for what is four edits, and it
+is a **third** demonstration of F1's re-derive rule — this time with no helper inserted at all.
+**Formatting is a hunk. A four-line change can still move every ref below it.**
+
+**Zero test churn again, on both MRs.** #341 edited 3 existing call sites (they passed an array to a
+function that now takes none); #342 edited no existing test at all and added 6 specs for the new
+builder. The ±20 budget this item once carried has now over-estimated three times running.
+
+**The rejection test passed cleanly for the first time on this item.**
+`buildRemoveFromCollectionDiffs(images, collectionId, availableFilmTypes?)` — three params, **zero**
+behavior switches. Contrast bullet 1 at 3-of-6. That contrast is the item's most useful artifact:
+the same test that killed bullet 1 and F3's `invites.ts` green-lit this one, so it is discriminating
+rather than merely conservative.
+
+
+- **~~The dead `_deletedIds` parameter~~ REMOVED 2026-08-28 — PR #341, MERGED.** `handleDeleteSuccess` is now `() => Promise<void>` on `UseCollectionEditResult:285`. `MetadataModal`'s `onDeleteSuccess`/`onRemoveFromCollectionSuccess` props deliberately KEPT `(ids: number[]) => void` — `useMetadataSubmit:189/:197/:229` passes real ids and its tests assert on them; a zero-arg handler is assignable, so `EditModeLayer.tsx:365-366` needed no edit. Original filing kept below.
+
+- ~~**The dead `_deletedIds` parameter is still open and is now the cheapest thing on this item.**~~
   Untouched by bullet 2. `useCollectionEdit.tsx:1060` (**was `:1043`**, +17) still takes
   `async (_deletedIds: number[])` and never reads it, still fed by `:1119` (**was `:1102`**)
   computing `imageSubset.map(img => img.id)`. It is still on the public `UseCollectionEditResult`
   type at `:285` — **that ref did NOT drift**, the interface sits above bullet 2's insertion point.
+
+> **REF DRIFT, ROUND 2 — from #341 and #342 (2026-08-28), applies on top of everything below.**
+> The file is now **1,751 lines** (was 1,759). Two hunks, two different offsets:
+> **+0 at or above `:1058`, −3 between `:1059` and `:1100`, −8 at or below `:1101`.**
+> Re-derived and re-confirmed against `main` at `652d5bb`: `adoptSaveResponse:740` (unchanged),
+> `handleUpdate:753` (unchanged), `handleMetadataSaveSuccess:1007` (unchanged),
+> `handleGifSaveSuccess:1038` (unchanged), `handleDeleteSuccess:1059` (unchanged — it is the
+> collapse point), `handleBulkRemove:1088` (**was `:1091`**), `enterReorder:1404` (**was
+> `:1412`**). **Everything in the older note below is superseded where the two disagree.**
 
 > **Ref drift from bullet 2, applies to the whole E6 section below.** `adoptSaveResponse` added 11
 > net lines at `:740`. The shift is **not uniform** — the 27-line helper inserts before
@@ -915,7 +992,11 @@ drive-by.
       requires. Anyone costing the remaining E6 bullets by "lines removed" should assume the same
       shape: each extraction here trades duplicated code for a documented helper and roughly breaks
       even. The `−90 src` figure on the MR-board row is not achievable from bullets 1 and 3 either.
-- [ ] `handleBulkRemove` duplicates `useMetadataSubmit.handleRemoveFromCollection` → shared builder.
+- [x] ~~`handleBulkRemove` duplicates `useMetadataSubmit.handleRemoveFromCollection` → shared builder.~~
+      **SHIPPED 2026-08-28 — PR #342, MERGED, src net +22 / +6 new tests.**
+      `buildRemoveFromCollectionDiffs` is an export of `app/components/Metadata/metadataUtils.ts`,
+      called from `useCollectionEdit.tsx:1104` and `useMetadataSubmit.ts:216`. The handlers were
+      NOT unified and the confirm strings were NOT touched, exactly as the guardrail required.
 - [ ] Sequencing (added 2026-08-22): E6 is a slice of F1's decomposition — do E6 first or fold it
       into F1, not both independently. ~~And `useCollectionEdit.handlers.test.tsx` asserts on
       `collectionStorage.update`/`updateFull` CALL ORDER — a consolidated helper that reorders those
@@ -927,16 +1008,24 @@ call-order assertions on `collectionStorage.update`/`updateFull`. Its only two `
 assertions are `:124-125`, both order-independent `toHaveBeenCalledWith`. The single
 `invocationCallOrder` assertion in any of the six suites is in a DIFFERENT file
 (`useCollectionEdit.test.tsx:283-285`) on DIFFERENT mocks — it pins `reorderCollectionContent`
-before `updateCollection`, the failure-safety ordering documented at `useCollectionEdit.tsx:1412`
-and `:1420`, and it sits BEFORE the adoption block, so extracting `adoptSaveResponse` cannot touch
+before `updateCollection`, the failure-safety ordering documented at `useCollectionEdit.tsx:1421`
+(WRITE A) and `:1429` (WRITE B) (**were `:1412`/`:1420`; +17 by #339, then −8 by #341/#342**), and it sits BEFORE the adoption block, so extracting `adoptSaveResponse` cannot touch
 it. **There is nothing to reorder. Budget ±20, not ±100** — the six suites hold ~122 tests total, so
 ±100 would have meant rewriting 80% of them, which should have been the tell.
 
 **The item also missed that the helper already exists.** `refreshCollectionAfterOperation` is at
 `collectionEditUtils.ts:338` (`operation() → refetch → storage.update → storage.updateFull`), used
-at `useCollectionEdit.tsx:871`, `:922` and `useCaptureDateSelection.ts:61`. **The family is six
+at `useCollectionEdit.tsx:888`, `:939` (**was `:871`/`:922` — MISSED BY #339's OWN DRIFT SWEEP, see
+below**) and `useCaptureDateSelection.ts:61`. **The family is six
 sites, three using it and three not.** Reframe bullet 1 as "extend the existing helper to cover
 revalidate + clear-selection", not "write a new one".
+
+**Drift note the bullet-2 sweep got wrong, found 2026-08-28 (2).** #339's re-derived list named six
+functions and was accurate for all six — but it did not sweep the PROSE, and the
+`refreshCollectionAfterOperation` call sites two paragraphs up sat at `:871`/`:922` for a day
+after #339 shifted them to `:888`/`:939` (+17). They are correct now. **A drift sweep that fixes
+the checklist and skips the paragraphs leaves the paragraphs wrong**, and the paragraphs are what a
+fresh session actually reads first.
 
 **And the three "copies" are not copies — consolidating them is a BEHAVIOR change, not a
 refactor.** `handleMetadataSaveSuccess:990-1019` adopts LAST through `mergeNewMetadata` and calls
@@ -1058,16 +1147,41 @@ Bigger, optional, sequenced last. Do each individually and verify on :3000.
 F2, F5, F6 and F7 shipped — full write-ups in
 [group-f-structural.md](2026-summer-refactor/group-f-structural.md). F1, F3 and F4 remain open, below.
 
-### ☐ F1 · Decompose `useCollectionEdit.tsx` (**1,759 lines** as of #339 — was 1,747 here and 1,748 in E6)
+### ☐ F1 · Decompose `useCollectionEdit.tsx` (**1,751 lines** as of #342 — was 1,759 after #339, 1,747 before that)
 
 - [ ] After the A- and E-group work (~−150 lines), split along the pattern the file already established (`useContentReordering`, `useCoverImageSelection`, …): `useAdminCollectionState`, `useCollectionUpdateForm`, `useCollectionPeople` + `useGalleryAccess`, `useCollectionRelations`, `useContentOps`, `useManageBar`. The section boundaries were verified 2026-08-22, corrected 2026-08-25, and **corrected AGAIN 2026-08-28 after #339** — current values: state `:312–422`, update form `:439–814`, people+gallery `:472–873`, content ops `:874–1228`, relations `:1230–1414`, manage bar `:1415–1467`. (Pre-#339 they were `:439–797`, `:472–856`, `:857–1211`, `:1213–1397`, `:1398–1456`.) **Why they moved, and the rule it implies:** #313 landed on 2026-08-24, one day AFTER the boundaries were checked, and inserted 1 line at `:68` and 4 at `:748` — so every boundary below `:748` is +1 and every boundary at or above it is +5. Re-anchored on `const [currentState`, `const [editTab`, `const seedUpdateData`, `const [collectionPeople` and `const handleMediaUpload`, all of which still match. **The file's stated 1,747 lines is correct**, which is exactly what made this drift invisible: the line COUNT was refreshed after #313 and the line REFS were not, so the item looked verified.
 
 **It happened a SECOND time, the same way, four days later — #339 (E6 bullet 2).** Three edits at `:730`, `:765` and `:1439` produced **three different offsets**, so no single number corrects the boundaries: `+0` at or above `:730`, `+23` between `:730` and `:765`, `+17` between `:765` and `:1439`, `+11` below it. The five anchors above all still match and were re-used. **The general rule, now demonstrated twice: F1's boundaries are invalidated by ANY merge into `useCollectionEdit.tsx`, and a uniform offset is the wrong correction whenever the merge had more than one hunk.** Re-derive from the anchors, never by adding a constant.
 
+**It happened a THIRD time, on 2026-08-28, and this one is the most instructive — #341 and #342
+between them changed FOUR lines of logic and still moved the boundaries.** #341's only structural
+effect was a **Prettier collapse**: emptying `handleDeleteSuccess`'s parameter list let the
+`useCallback` fit on one line, removing 3 lines at `:1059`. #342 replaced a 10-line `map` body
+with a 5-line call at `:1101`. Two hunks, two offsets: **+0 at or above `:1058`, −3 between
+`:1059` and `:1100`, −8 at or below `:1101`.** Re-derived boundaries, verified against `main` at
+`652d5bb`: state **`:312–422`** (unchanged), update form **`:439–814`** (unchanged),
+people+gallery **`:472–873`** (unchanged), content ops **`:874–1220`**, relations
+**`:1222–1406`**, manage bar **`:1407–1459`**. **The rule now has a stronger form: it is not
+"any merge with more than one hunk" — it is ANY merge at all, including one that changes no logic
+below the edit. A formatter is a hunk.**
+
+**DEFECT IN THIS ITEM, found 2026-08-28 (2): two of the six boundaries have no anchor, so the
+re-derive rule cannot actually be applied to them.** The item names five anchors — `const
+[currentState` (`:312`), `const [editTab` (`:422`), `const seedUpdateData` (`:439`), `const
+[collectionPeople` (`:472`), `const handleMediaUpload` (`:875`) — all five re-confirmed today.
+But the **content-ops/relations** boundary and the **relations/manage-bar** boundary are bare
+numbers. Re-deriving them by offset lands `:1220` in the middle of `handleLocationsChange`
+(`:1217`) and `:1407` in the middle of `enterReorder` (`:1404`) — both mid-function, which is
+not a boundary. **Anchor them before the next correction, or this drifts silently forever.**
+Proposed anchors, both verified today: relations starts at `const currentTags` (**`:1231`**),
+manage bar starts at `const enterSelect` (**`:1402`**). Under those, `enterReorder` straddles the
+relations/manage-bar line exactly as the item already notes — that straddle is real and is a
+genuine finding about the split, not a bad boundary.
+
 **Trap found while doing exactly that:** anchoring the update-form end on its raw source line — a bare `);` — false-matched 13 lines early. Generic closing punctuation is not an anchor. The end boundaries here were re-derived from the enclosing construct (`handleUpdate`'s dependency array, `const bottomBarCells`), which is why `:797 → :814` is right and the naive `);` match at `:801` is wrong. Keep the existing `UseCollectionEditResult` facade so the SIX test suites (`test`, `buffer`, `handlers`, `bulkRemove`, `escapeSelection`, `delete`) plus `collectionEditFixtures.ts`'s ~70-member result builder do not churn. No file over ~450 lines.
 - [ ] This also dissolves `EditModeLayer`'s FOUR `exhaustive-deps` suppressions (**`:135`, `:205`, `:212`, `:219` as of 2026-08-25** — were `:131`/`:201`/`:208`/`:215`, shifted +4 by F6's provider block; was "three" before that).
 
-### ◐ F3 · File moves and renames — `ReorderMove` (#324) and `getUserPage` (#336) SHIPPED; invite bullet COSTED and REJECTED; six bullets open
+### ◐ F3 · File moves and renames — `ReorderMove` (#324), `getUserPage` (#336) and the logger labels (#343) SHIPPED; invite bullet COSTED and REJECTED; five bullets open
 
 **SHIPPED 2026-08-27 — the `getUserPage` bullet, PR #336. Src `+38/−26` (net +12), test `+58/−56`
 (net +2).** Measured with `git diff --cached --numstat -- app` and `-- tests`, summed with `awk`.
@@ -1198,7 +1312,7 @@ vague bullet into a shippable item.
       3 src / 6 test.** Src importers are exactly `app/[slug]/page.tsx:5`,
       `app/all-client-galleries/page.tsx:1`, `app/page.tsx:3`; the other `CollectionPageWrapper`
       hits in `app/` are prose inside docblocks (`ClientGalleryGate.tsx:30`,
-      `useCollectionEdit.tsx:1169` (**was `:1152`**), `personal.ts:89`, `contentTypeGuards.ts:181`) and move nothing.
+      `useCollectionEdit.tsx:1161` (**was `:1169`, −8 by #341/#342**), `personal.ts:89`, `contentTypeGuards.ts:181`) and move nothing.
       **`app/lib/` is now 12 files in `api/`, not 13 — #336 deleted `user.ts`.** One caution on the
       wording: the glob `CollectionPageWrapper.*.test.tsx` matches only TWO files
       (`.allCollectionsTile`, `.meTile`); the third is `CollectionPageWrapper.test.tsx` with no
@@ -1304,16 +1418,25 @@ vague bullet into a shippable item.
       **`AdminPanelRenderer.tsx` + its `.module.scss` live in `app/components/Content/`, not here**
       — worth knowing so nobody hunts for them. Four of the five importers already import from
       `ListPanel/` too, so the pairing matches how the code is used. 5 src / 3 test.
-- [ ] ~~Two~~ **THREE** `logger.warn('manageUtils', …)` labels in `collectionEditUtils.ts` still name
-      a module that no longer exists. Found by B1 (#290) and deliberately left — renaming log labels
-      inside a test-only MR would have put a source change in a diff that had none. **PARTLY
-      ACCURATE (2026-08-24) — the labels are stale as claimed, but there are three, not two.**
-      `collectionEditUtils.ts:225`, `:279`, `:305` as of 2026-08-25 (were `:224`/`:278`/`:304` at `a60d333`; #324 added one import line above them) ("Failed to revalidate
-      cache", "…location caches", "…metadata cache"). `manageUtils.ts` is gone —
-      `manageUtils.test.ts` was deleted in #290. **Nothing pins the string**: `git grep
-"'manageUtils'" -- tests/` returns nothing and `logger.warn` is a no-op under
-      `NODE_ENV === 'test'`, so this is a 1 src / 0 test change with no assertion to update.
-      Correct label is `collectionEditUtils`.
+- [x] ~~~~Two~~ **THREE** `logger.warn('manageUtils', …)` labels in `collectionEditUtils.ts` still name
+      a module that no longer exists.~~ **SHIPPED 2026-08-28 — PR #343, MERGED, +3/−3 src, 0 test.**
+      All three (`collectionEditUtils.ts:225`, `:279`, `:305`) now read `'collectionEditUtils'`.
+      **The estimate was exactly right for once** — 1 src file, 0 test churn, 245 / 4454 unchanged.
+      The bullet's own count correction (THREE, not two) also held, and the line refs had not
+      drifted since the 2026-08-25 sweep. Original filing kept for history: found by B1 (#290) and
+      deliberately left, because renaming log labels inside a test-only MR would have put a source
+      change in a diff that had none. Nothing pinned the string —
+      `git grep "'manageUtils'" -- tests/` returned nothing and `logger.warn` is a no-op under
+      `NODE_ENV === 'test'`. The one surviving `manageUtils` mention, at
+      `collectionEditUtils.test.ts:4`, is a docblock recording which file B1 merged in; that is
+      accurate history and was left alone.
+- [ ] **NEW 2026-08-28 (2), found while doing the bullet above: `collectionEditUtils.ts` labels are
+      still inconsistent, just no longer stale.** `:437` logs under `'replayMoves'` — the FUNCTION
+      name, where the other three now use the MODULE name. Not stale (`replayMoves` exists at
+      `:432`), so #343 left it. **The open question is which convention this repo wants**:
+      `useCollectionEdit.tsx` logs under `'useCollectionEdit'` (module), so module-name is
+      dominant, but nothing writes it down. 1 src / 0 test if the answer is "module". Low value
+      alone — fold it into whichever MR next touches this file rather than spending an MR on it.
 
 ### ⛔ F4 · `TaxonomyPage` ← `LocationPageClient` — USER DECISION
 
@@ -1495,7 +1618,7 @@ item labels are not allowed in code comments at all" on 2026-08-25 and nobody co
 `useMetadataSubmit.ts:111` (E12), `collectionEditUtils.ts:284` (C4), `useCollectionEdit.tsx:185`
 (D3), `useCollectionEdit.tsx:193` (D3/D4), `StructureTab.tsx:34` (D4), `clearCache.ts:37` (D1/D2),
 `core.ts:101` (E2), `api/revalidate/route.ts:7` (D6) — plus **6 inline `//` comments**:
-`useCollectionEdit.tsx:1579` (`TODO(A3)`, **was `:1568`**), `useCollectionEdit.tsx:1594` (D4, **was `:1583`**),
+`useCollectionEdit.tsx:1571` (`TODO(A3)`, **was `:1579`**), `useCollectionEdit.tsx:1586` (D4, **was `:1594`**),
 `CollectionPageClient.tsx:322` and `:356` (D7), `useCoverImageSelection.ts:51` (D3),
 `EditModeLayer.tsx:249` (D3). Only 2 of the 19 overlap the 49, so this is **~17 net-new blocks the
 row does not count.** Watch one false positive: `contentRatingUtils.ts:35`'s `H5★` is a five-star
@@ -1768,6 +1891,38 @@ _Newest first. **Dates are local (America/Los_Angeles), not UTC** — earlier en
 which is why a "08-23" entry can sit between two "08-24" ones. The ordering was verified correct
 against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates._
 
+- 2026-08-28 (3) — **shipped the full picked run: #341 (E6 `_deletedIds`), #342 (E6 bullet 3), #343
+  (F3 logger labels). Three MRs, all merged. E6 is now down to one BLOCKED bullet.** First time a
+  run of three was picked and all three landed.
+  **Estimate vs actual, and it settles a pattern.** Src came in at −3, +22 and +3/−3; test churn was
+  0, 0 and 0 (#342 added 6 new specs but edited no existing test). **Three consecutive sessions have
+  now over-estimated test churn on E6** against a ±20 budget that was itself a correction of a ±100
+  budget. Retire the budget. Meanwhile `−90 src` on E6's board row is dead: every measured bullet
+  came in POSITIVE, because each extraction trades duplicated body for a documented helper and the
+  docblock is not optional here. **Applied forward: any board item promising negative source lines
+  from an EXTRACTION should be re-read as ≈+20 before it is scheduled.**
+  **Bullet 3's helper went somewhere the board did not predict** — `metadataUtils.ts`, not
+  `collectionEditUtils.ts`, because that is where `buildImageUpdateDiff` and its sibling builder
+  already live and where both call sites already imported from. Rule recorded in E6: put a shared
+  helper where its dependencies live, not where the louder caller lives.
+  **F1's boundaries were invalidated a THIRD time, and this one is the sharpest case yet** — #341
+  changed four lines and moved 3 more purely through a **Prettier collapse** when the parameter list
+  emptied. The rule tightens from "any merge with more than one hunk" to **"any merge at all; a
+  formatter is a hunk."** Also found a real defect in F1: two of its six boundaries are bare numbers
+  with no anchor, and re-deriving them by offset lands mid-function. Proposed anchors recorded.
+  **Drift fixed: 6 refs.** `refreshCollectionAfterOperation`'s call sites (`:871`/`:922` →
+  `:888`/`:939`) had been wrong for a day — **#339's sweep fixed its checklist and skipped the
+  prose**, which is what a fresh session reads first. Plus `:1169`→`:1161`, `:1412`/`:1420`→
+  `:1421`/`:1429`, `:1579`→`:1571`, `:1594`→`:1586`, and F1's six boundaries re-derived.
+  **Filed one new bullet** under F3: `collectionEditUtils.ts:437` logs under `'replayMoves'` (a
+  function name) where the other three now use the module name — not stale, so #343 left it, but the
+  file's convention is still unwritten.
+  **Process fix outside the board:** the repo had `deleteBranchOnMerge: false` and 311 remote
+  branches, so GitHub never auto-retargeted #342 when its base #341 merged — auto-retarget fires on
+  branch DELETION, not on merge. Setting is now on. **Do not promise another system's automatic
+  behavior without checking the setting that governs it.**
+  Next: A9's `.claude/agents/` bullet, then F3's `CollectionPageWrapper` and `AdminPanel/` moves.
+
 - 2026-08-28 (2) — **close-out. #339 merged. E3 CLOSED with zero code — its "user decision" was
   already answered in the source. Corrected F1's slice boundaries, the third time they have drifted.
   Next run: E6 `_deletedIds`, then E6 bullet 3, then F3's logger labels.**
@@ -1796,49 +1951,6 @@ against real merge timestamps on 2026-08-24; only the labels were inconsistent. 
   BLOCKED on user calls (H1, C9, F4, G3, E9's `.srOnly`, G2b/G2c, E6 bullet 1) against a COLD set
   that is F1 plus small tails. That ratio is the thing to watch: the next session should batch the
   blocked questions in its opening message rather than picking around them.
-
-- 2026-08-28 — **shipped E6 bullet 2 (`adoptSaveResponse`) as PR #339, costed bullets 1 and 3 without
-  touching them, and CLOSED E10 on a user decision. First code MR since #337.**
-
-  **The lift itself was exactly as specified and that is worth recording, because it is the first
-  item on this board that was.** E6 said "fully specified, needs no discovery pass" and it was true —
-  the two blocks were byte-identical apart from one trailing comment, the six function refs all
-  landed, and no exploration was needed. The three sessions of re-verification that preceded it
-  (08-26, 08-27, 08-28) are what made that possible.
-
-  **Both test-churn budgets on E6 were over-estimates, not just the first one.** ±100 was corrected
-  to ±20 on 08-27 after the call-order claim was disproved. The real number is **0** — all six
-  suites pass with no test file edited, full suite 245/245 and 4454 tests. The lesson is not "the
-  ±100 was wrong"; it is that **a churn budget written before the extraction is a guess, and both
-  guesses here were biased the same direction.** Extractions that preserve call order and add no
-  branches do not move tests. Budget those at 0 and be surprised upward.
-
-  **The size estimate was wrong in the other direction — E6's `−90 src` is unachievable.** Bullet 2
-  removed 16 duplicated lines and added 27, of which 9 are the docblock the no-inline-comments rule
-  requires. Net **+11**; the file went 1748 → 1759. **This is structural, not a one-off:** every
-  remaining dedup on this board trades duplicated code for a documented helper, and a documented
-  helper costs about what a seven-line dedup saves. Sell these items as drift-protection, not as
-  line-count wins, and stop putting `−N src` figures on them.
-
-  **The guardrail held — bullets 1 and 3 were costed, not quietly done.** Bullet 1's shared
-  signature needs `revalidateMetadata`, `failLoudly`, and an adopt-ordering switch: **three of about
-  six params exist only to switch behavior between callers, so it fails the rejection test on its
-  own terms** — the third item that test has killed in three days, after F3's `invites.ts` and E7's
-  hook. Even the narrow version (extend `refreshCollectionAfterOperation` for `revalidateCache`
-  only) still changes the gif path's behavior, so it does not clear the user gate either. Recommend
-  folding it into F1, which must touch those three functions anyway. Bullet 3 is unblocked and
-  cheap but ≈break-even on size; its case is that nothing pins the two copies together.
-
-  **E10 closed on a one-word answer, which vindicates asking early.** The user chose to keep
-  `--color-danger` — zero code. The bullet had been BLOCKED for days over a comparison that turned
-  out to be false; once "the other three panels" was shown not to exist, the decision cost one
-  question and no MR. **Ask the small blocked questions before they need their own branch.**
-
-  **New failure mode for this board: bullet 2 shifted every ref below `:740` in its own item, and
-  the shift is not uniform** (+23, +17 or +11 depending on which of the three edits a line sits
-  below). Left a re-derived ref list at the top of E6 rather than patching prose in place, because
-  the prose below still argues from the old numbers and rewriting it would have risked breaking the
-  reasoning. **A shipped bullet invalidates its siblings' refs — re-derive them in the same commit.**
 
 ## Verified fine — do not re-investigate
 
