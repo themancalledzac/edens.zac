@@ -972,11 +972,12 @@ unify the confirm strings** — `useCollectionEdit.bulkRemove.test.tsx:180-184` 
 `UseCollectionEditResult` type at `:285`, so callers change — that makes it E6's business rather
 than a drive-by.
 
-**F1 boundary note.** F1's slices (`docs/spikes/2026-summer-refactor.md:1990`) put the three refresh
-copies and `handleBulkRemove` inside content-ops `:857-1211`, and `handleUpdate:730-797` inside
-update-form `:439-797`. `enterReorder:1395-1449` **straddles** F1's relations/manage-bar boundary at
-`:1397`, so F1's boundary is already slightly off there. `adoptSaveResponse` is the one E6 bullet
-spanning two F1 slices. The file is **1748 lines**, not the 1,747 F1 records.
+**F1 boundary note — re-derived 2026-08-28 after #339.** F1's slices (see **F1** under Group F; do
+not cite this file by line number, the two-tier split moved every section once already) put the
+three refresh copies and `handleBulkRemove` inside content-ops `:874-1228`, and `handleUpdate:753-814`
+inside update-form `:439-814`. `enterReorder:1412-1460` **straddles** F1's relations/manage-bar
+boundary at `:1414`, so F1's boundary is still slightly off there. `adoptSaveResponse` is the one E6
+bullet spanning two F1 slices. The file is **1,759 lines**.
 
 ### ◐ E7 · Edit-grid handoff — the waste is FIXED (#337); the hook is REJECTED
 
@@ -1768,6 +1769,34 @@ _Newest first. **Dates are local (America/Los_Angeles), not UTC** — earlier en
 which is why a "08-23" entry can sit between two "08-24" ones. The ordering was verified correct
 against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates._
 
+- 2026-08-28 (3) — **re-applied the two-tier split (#340): live tracker 4,571 → 1,869 lines. No code.
+  Run unchanged: E6 `_deletedIds`, E6 bullet 3, F3's logger labels.**
+
+  **The split was not missing, it had lapsed.** The archive under `2026-summer-refactor/` was built
+  2026-08-24 with one file per group and a stated rule that closed detail moves there. Then
+  twenty-four items closed on the live board without moving, and the session log grew to 28 entries
+  against a rule of one. `group-e-consolidations.md` still read "E2–E10 and E12 are still open" while
+  ten of those had closed. **A lapsed convention is worse than a missing one**, because the archive's
+  existence made the board look organized while every session paid to load 2,700 lines it did not need.
+
+  **Moved 1,907 lines of closed detail and 837 lines of old session log.** Added
+  `group-f-structural.md` and `group-g-decisions.md` — F and G were the two groups the 08-24 pass
+  never gave archive files, which is part of why their items never moved. Verified nothing was lost:
+  6,315 lines across both tiers before, 6,350 after, the +35 being new header, rules and pointers;
+  and every one of the 24 closed items now resolves to exactly one home.
+
+  **Two things nearly went wrong and are worth repeating as method.** C6 was already archived, so a
+  naive append would have duplicated it — the migration checked for an existing section per item and
+  skipped. And C6's live section was not detail at all: it was a summary carrying **two hoisted
+  rules**, which archiving would have silently deleted. Both turned out to already be in "how to use
+  this doc". **That is the near-miss that justifies rule 2 of the split** — hoist before you move,
+  and check, because the loss is invisible afterwards.
+
+  **New failure mode for this board: line refs that point INTO this file.** E6's F1 boundary note
+  cited `docs/spikes/2026-summer-refactor.md:1990`, which the move invalidated along with its quoted
+  boundaries. Replaced with a section reference. **Never cite this file by line number** — it is the
+  one document guaranteed to be re-ordered.
+
 - 2026-08-28 (2) — **close-out. #339 merged. E3 CLOSED with zero code — its "user decision" was
   already answered in the source. Corrected F1's slice boundaries, the third time they have drifted.
   Next run: E6 `_deletedIds`, then E6 bullet 3, then F3's logger labels.**
@@ -1796,49 +1825,6 @@ against real merge timestamps on 2026-08-24; only the labels were inconsistent. 
   BLOCKED on user calls (H1, C9, F4, G3, E9's `.srOnly`, G2b/G2c, E6 bullet 1) against a COLD set
   that is F1 plus small tails. That ratio is the thing to watch: the next session should batch the
   blocked questions in its opening message rather than picking around them.
-
-- 2026-08-28 — **shipped E6 bullet 2 (`adoptSaveResponse`) as PR #339, costed bullets 1 and 3 without
-  touching them, and CLOSED E10 on a user decision. First code MR since #337.**
-
-  **The lift itself was exactly as specified and that is worth recording, because it is the first
-  item on this board that was.** E6 said "fully specified, needs no discovery pass" and it was true —
-  the two blocks were byte-identical apart from one trailing comment, the six function refs all
-  landed, and no exploration was needed. The three sessions of re-verification that preceded it
-  (08-26, 08-27, 08-28) are what made that possible.
-
-  **Both test-churn budgets on E6 were over-estimates, not just the first one.** ±100 was corrected
-  to ±20 on 08-27 after the call-order claim was disproved. The real number is **0** — all six
-  suites pass with no test file edited, full suite 245/245 and 4454 tests. The lesson is not "the
-  ±100 was wrong"; it is that **a churn budget written before the extraction is a guess, and both
-  guesses here were biased the same direction.** Extractions that preserve call order and add no
-  branches do not move tests. Budget those at 0 and be surprised upward.
-
-  **The size estimate was wrong in the other direction — E6's `−90 src` is unachievable.** Bullet 2
-  removed 16 duplicated lines and added 27, of which 9 are the docblock the no-inline-comments rule
-  requires. Net **+11**; the file went 1748 → 1759. **This is structural, not a one-off:** every
-  remaining dedup on this board trades duplicated code for a documented helper, and a documented
-  helper costs about what a seven-line dedup saves. Sell these items as drift-protection, not as
-  line-count wins, and stop putting `−N src` figures on them.
-
-  **The guardrail held — bullets 1 and 3 were costed, not quietly done.** Bullet 1's shared
-  signature needs `revalidateMetadata`, `failLoudly`, and an adopt-ordering switch: **three of about
-  six params exist only to switch behavior between callers, so it fails the rejection test on its
-  own terms** — the third item that test has killed in three days, after F3's `invites.ts` and E7's
-  hook. Even the narrow version (extend `refreshCollectionAfterOperation` for `revalidateCache`
-  only) still changes the gif path's behavior, so it does not clear the user gate either. Recommend
-  folding it into F1, which must touch those three functions anyway. Bullet 3 is unblocked and
-  cheap but ≈break-even on size; its case is that nothing pins the two copies together.
-
-  **E10 closed on a one-word answer, which vindicates asking early.** The user chose to keep
-  `--color-danger` — zero code. The bullet had been BLOCKED for days over a comparison that turned
-  out to be false; once "the other three panels" was shown not to exist, the decision cost one
-  question and no MR. **Ask the small blocked questions before they need their own branch.**
-
-  **New failure mode for this board: bullet 2 shifted every ref below `:740` in its own item, and
-  the shift is not uniform** (+23, +17 or +11 depending on which of the three edits a line sits
-  below). Left a re-derived ref list at the top of E6 rather than patching prose in place, because
-  the prose below still argues from the old numbers and rewriting it would have risked breaking the
-  reasoning. **A shipped bullet invalidates its siblings' refs — re-derive them in the same commit.**
 
 ## Verified fine — do not re-investigate
 
