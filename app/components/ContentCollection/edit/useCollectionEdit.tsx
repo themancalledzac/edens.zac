@@ -727,6 +727,29 @@ export function useCollectionEdit({
     setIsTextBlockModalOpen(true);
   }, [collection]);
 
+  /**
+   * Adopt a successful collection save into hook state and the client cache.
+   *
+   * Rebases the edit buffer on the saved baseline so the next diff is taken against what the server
+   * actually stored, marks the buffer as admin-seeded so the reseed effect leaves it alone, mirrors
+   * the response into `collectionStorage`, and revalidates the collection's server cache.
+   *
+   * Covers only the block the save paths share. Follow-up work that differs per caller — slug
+   * redirects, location revalidation, reorder seeding — stays at the call site.
+   */
+  const adoptSaveResponse = useCallback(
+    (response: CollectionUpdateResponseDTO) => {
+      setCurrentState(response);
+      setUpdateData(seedUpdateData(response.collection));
+      seededCollectionIdRef.current = response.collection.id;
+      seededFromAdminRef.current = true;
+      collectionStorage.update(response.collection.slug, response.collection);
+      collectionStorage.updateFull(response.collection.slug, response);
+      void revalidateCollectionCache(response.collection.slug);
+    },
+    [seedUpdateData]
+  );
+
   const handleUpdate = useCallback(
     async (patch?: Partial<CollectionUpdateRequest>) => {
       if (!collection || !currentState) {
@@ -742,13 +765,7 @@ export function useCollectionEdit({
         const response = await updateCollection(collection.id, payload);
 
         if (response !== null) {
-          setCurrentState(response);
-          setUpdateData(seedUpdateData(response.collection)); // rebase buffer on saved baseline
-          seededCollectionIdRef.current = response.collection.id;
-          seededFromAdminRef.current = true;
-          collectionStorage.update(response.collection.slug, response.collection);
-          collectionStorage.updateFull(response.collection.slug, response);
-          void revalidateCollectionCache(response.collection.slug);
+          adoptSaveResponse(response);
           void revalidateLocationCaches(
             collection.locations ?? [],
             response.collection.locations ?? []
@@ -793,7 +810,7 @@ export function useCollectionEdit({
         setSaving(false);
       }
     },
-    [collection, currentState, updateData, router, seedUpdateData]
+    [collection, currentState, updateData, router, adoptSaveResponse]
   );
 
   const handleSaveAccess = useCallback(async () => {
@@ -1422,13 +1439,7 @@ export function useCollectionEdit({
         const payload = buildUpdatePayload({ ...updateData, displayMode: 'ORDERED' }, collection);
         const response = await updateCollection(collection.id, payload);
         if (response !== null) {
-          setCurrentState(response);
-          setUpdateData(seedUpdateData(response.collection));
-          seededCollectionIdRef.current = response.collection.id;
-          seededFromAdminRef.current = true;
-          collectionStorage.update(response.collection.slug, response.collection);
-          collectionStorage.updateFull(response.collection.slug, response);
-          void revalidateCollectionCache(response.collection.slug);
+          adoptSaveResponse(response);
 
           // Seed the reorder base from the order we just persisted (not the stale processedContent).
           handleEnterReorderMode(chronoIds);
@@ -1444,7 +1455,7 @@ export function useCollectionEdit({
     currentState,
     updateData,
     processedContent,
-    seedUpdateData,
+    adoptSaveResponse,
     handleEnterReorderMode,
   ]);
   const enterAdd = useCallback(() => setIsAddMode(true), []);
