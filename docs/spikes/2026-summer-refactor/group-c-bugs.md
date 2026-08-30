@@ -2,7 +2,20 @@
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
 
-C1–C5 merged: PR #264, #281, #282, #279, #283. C6 is backend-blocked and stayed on the live board.
+C1–C8 merged: PR #264, #281, #282, #279, #283, #327, #331, #291. C9, C10 and C11 are open on the live board.
+
+## Closed rows
+
+| MR  | Scope                                                 | Outcome                                                                                              |
+| --- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| C1  | Unsaved people/gallery-access wipe (HIGH)             | +73 −11 · #264                                                                                       |
+| C2  | About portrait aspect ratio                           | +99 −5 · #281                                                                                        |
+| C3  | `SelectsContext.toggle` purity                        | +121 −10 · #282                                                                                      |
+| C4  | Cache tags that never connect                         | +155 −62 · #279 — the `collections-location-${slug}` report became E12                               |
+| C5  | Assorted LOW bugs                                     | +497 −101 (11 files) · #283                                                                          |
+| C6  | Password cover strip missing on the public card path  | +44 src / +73 test (est ±30) · #327 — premise was FALSE (backend never stripped); unification DECLINED |
+| C7  | `emailShareLink` POSTs to a route that does not exist | 0 src / +34 test (#331 total +185 −101) — FE was already complete, 409 included; unification DECLINED |
+| C8  | Unfollowing leaves the chip count stale               | +418 −22 (est. +40/+80) · #291                                                                       |
 
 ---
 
@@ -302,8 +315,10 @@ and stopped one sentence early**; the very next clause is the one that falsifies
 
 **The decision taken.** The backend shipped the field so the frontend could draw a locked tile with
 the cover visible. Stripping instead is a deliberate divergence from that intent, chosen 2026-08-25
-for consistency with the path that already stripped. **A locked-tile treatment is still unbuilt and
-is the thing the backend is waiting on** — see the follow-up note at the end of this entry.
+for consistency with the path that already stripped. **A locked-tile treatment is still unbuilt** —
+the backend shipped `isPasswordProtected` so one could be drawn, but its board tracks no wait on it
+(corrected 2026-08-29; the earlier "the thing the backend is waiting on" overstated). See the
+follow-up note at the end of this entry.
 
 **The rule this earns, and it is not the one C6 already carried.** C6 already taught "before filing
 a frontend fix for a missing field check, grep the type". That is about whether the data exists.

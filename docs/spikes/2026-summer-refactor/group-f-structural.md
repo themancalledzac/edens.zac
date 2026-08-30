@@ -2,6 +2,18 @@
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
 
+F2, F5, F6 and F7 shipped, plus the shipped bullets of F3. F1, F3's open bullets and F4 are on the
+live board.
+
+## Closed rows
+
+| MR  | Scope                                                                      | Outcome                                                                                                  |
+| --- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| F2  | `RendererContext` for the BoxRenderer tree                                 | −47 src / +142 test (est. −100 src / +150–250 test) · #321                                                |
+| F5  | `FullScreenModal` link + resolver cleanup                                  | −25 src / +20 test net (est. −30 src, +60–120 test) · #318 — src held; test came in UNDER                 |
+| F6  | Fold `EditModeLayer` into `RendererContext` (shared set 16 → **4**, not 3) | +53 src / +218 test (est. −20 src / +40–60 test) · #326 — #325 orphaned on a retired base; src missed in the WRONG DIRECTION |
+| F7  | Delete `onImageLoadError` from the render path (dead plumbing)             | −3 src / +8 test (est. −15 src / −20 test) · #328 — completes 16 → 3; estimate missed direction on BOTH halves |
+
 ### ✅ F2 · `RendererContext` for the BoxRenderer tree — SHIPPED
 
 **SHIPPED 2026-08-24 — PR #321, −47 src / +142 test.** New `app/components/Content/RendererContext.tsx`
@@ -384,3 +396,252 @@ assertion changed shape, because that is exactly when an assertion quietly becom
 and still passes.
 
 ---
+
+### ◐ F3 · File moves and renames — shipped bullets and cost reports (`ReorderMove` #324, `getUserPage` #336, logger labels #343; invite move REJECTED)
+
+_Moved from the live board 2026-08-29. The six open bullets stay there with their verified counts._
+
+**SHIPPED 2026-08-27 — the `getUserPage` bullet, PR #336. Src `+38/−26` (net +12), test `+58/−56`
+(net +2).** Measured with `git diff --cached --numstat -- app` and `-- tests`, summed with `awk`.
+`getUserPage` now lives in `app/lib/api/personal.ts`; `app/lib/api/user.ts` and
+`tests/lib/api/user.test.ts` are deleted and the naming trap is gone. **The bullet's `2 src / 7
+test` was exactly right** — 2 importers (`UserSpace/userSpaceData.ts:15`,
+`lib/components/CollectionPageWrapper.tsx:8` — **were quoted as `:16`/`:10`; re-derived
+2026-08-29**), 7 test files. Estimate-vs-actual: no surprise.
+
+**Suite count −1, test count unchanged.** 246 → 245 suites, 4451 → 4451 tests. `user.test.ts`'s
+three specs folded into `personal.test.ts` under the harness it already had — that file mocks
+`fetchReadApi` and keeps `ApiError` real, which is precisely what `user.test.ts` set up for itself.
+The fold cost zero new mock scaffolding.
+
+**BASELINE CORRECTION — the board's `4399` is stale. Current `main` is 246 suites / 4451 tests**,
+measured by stashing the tree and running the full suite at `d784bc5`. #324's close-out said "quote
+4399 from here on"; the E2 merges (#332/#333/#334) added 52 tests since. **Quote 4451 / 246 from
+here on**, and note that this is the second time in a row the recorded baseline aged out within
+three merges. A baseline is only good until the next merge — re-measure it, do not quote it.
+(**It aged out again within a day: #336 deleted a suite and #342 added six tests. A baseline is a
+measurement with a timestamp, not a fact.**)
+
+**What the move actually cost, and it is not the line count.** Every one of the six test files that
+mocked `@/app/lib/api/user` ALSO already mocked `@/app/lib/api/personal` separately. Moving the
+export merged twelve mock declarations into six. That is the real content of the diff: a module
+boundary that two files had to be mocked across is now one. **The reverse of this is what a future
+split costs** — see the invite-functions cost report below, where two test files need a whole
+second `jest.mock` block added for exactly this reason.
+
+**One trap found and NOT triggered, worth writing down.** `tests/lib/components/CollectionPageWrapper.test.tsx`
+mocks `personal` but never mocked `user`, so after the move its factory silently becomes
+`getUserPage`'s mock too. It survives only because that file has no `home`-slug test, and
+`getUserPage()` is called solely under `slug === HOME_SLUG && me` (`CollectionPageWrapper.tsx:75`,
+guard at `:70` — **was quoted as `:76`; re-derived 2026-08-29**).
+**Add a `home`-slug test to that file with a logged-in `meServer` and it will fail with
+`getUserPage is not a function`** until `getUserPage: jest.fn()` joins its personal factory. Not a
+defect today; a tripwire for whoever writes that test.
+
+**`share.ts:7,81` needed no edit — the bullet asked for a change that is a no-op.** Both are bare
+`{@link getUserPage}` with no module path, so they resolve (or fail to resolve) identically before
+and after. `share.ts` never imported the symbol. `core.ts:157` mentions `getInvitePreview` the same
+bare way, so the invite move has the same non-cost. **Lesson for the remaining "update the
+refs" bullets: check whether the ref names a module before budgeting for it.**
+
+**Why it was next (picked 2026-08-27).** Three reasons. Its context is
+as warm as it will get — every one of its `file:line` refs was re-verified and corrected in this
+session's drift sweep, so nothing in it is unchecked. It is small and fully specified: 2 src / 7
+test, one export moving from a 19-line file into the module that already holds its three siblings.
+And it kills the `user.ts` vs `users.ts` naming trap, which is a live hazard rather than a tidiness
+complaint — this board has twice had to disambiguate the two by hand.
+
+**Guardrail — do the `getUserPage` bullet only, and leave the invite functions alone.** The very next
+bullet (invite functions from `users.ts` → `auth.ts`) is the adjacent tempting change: it is the same
+kind of move, in the same directory, and its refs are now correct too, so a fresh session will be
+inclined to sweep both into one MR. Do not. That bullet is marked PARTLY ACCURATE on purpose — its
+DESTINATION is unresolved. The three invite functions span three different fetch perimeters
+(`getInvitePreview` server-only via `getApiBaseUrl`, `regenerateInvite` through the admin perimeter
+with the BFF secret, `acceptInvite` client-side through the BFF proxy), and `auth.ts` is client-side
+session code. Moving them into `auth.ts` mixes three perimeters into one file, which is a worse
+structure than the split it claims to fix. **If it still looks right after the `getUserPage` move,
+write down what a new `invites.ts` would cost instead of doing it.** (It was costed 2026-08-27 —
+see the invite cost report below.)
+
+**SHIPPED 2026-08-24 — PR #324, +16/−9 src (net +7), 0 test.** `ReorderMove` now lives in
+`app/types/Content.ts`. Four files, zero test files, exactly as measured. 245 suites / 4399 tests
+pass, identical to the `main` baseline at `a60d333` measured with the tree stashed. **F6 is
+unblocked.**
+
+**The judgment call, recorded because it was a live option.** No re-export was left in
+`collectionEditUtils.ts`. That file already re-exports `toggleRelation` for exactly this reason, so
+keeping the old import path working was the precedented move — and it defeats the point. A
+re-export leaves the edge nominally intact and lets the next person import the type from `edit/`
+again. All four importers were repointed instead.
+
+**`~neutral` was right, and the +7 is worth a line.** The entire net is the docblock added above the
+interface at its new home, which explains why it lives in `app/types/` rather than beside the
+functions that use it. Moving a type is net-zero by construction; the only way to spend lines is to
+explain the move, and that is a line worth spending.
+
+**Baseline correction for the board.** F2's close-out recorded the post-#321 baseline as 245 / 4398.
+Current `main` is 245 / **4399**. The extra test came from #322 or #323, not from #324 — confirmed by
+stashing and re-running, which gave the identical 245 / 4399. ~~**Quote 4399 from here on.**~~
+**SUPERSEDED 2026-08-27 — `main` at `d784bc5` is 246 / 4451.** The E2 merges moved it. See the
+baseline correction at the top of this item; 4399 was accurate for three merges and then was not.
+
+**Why it was next (picked 2026-08-24).** Not because it is valuable on its own — it is a grab-bag —
+but because one of its nine bullets is the sole blocker on F6, and F6 is the largest remaining win
+in the neighborhood F2 just left warm (`SharedRendererProps` 16 members → 3). The `ReorderMove`
+bullet is measured at four files and zero test files, so it is close to free. **Do that bullet;
+leave the other eight alone.**
+
+**Guardrail — HONORED in #324. The other eight were left untouched and verified against `main` at
+`a60d333`; each bullet now carries its verdict and its file counts.** Four were still accurate
+as written, four were partly wrong — and in every one of the four the _move_ is fine while the
+_justification_ has drifted. That is the specific failure mode this board keeps hitting: the
+one-line reason ages faster than the fact. Nothing was changed. The original guardrail text follows.
+
+**Guardrail — do the other eight bullets NOT, and report which are still accurate.** They are the
+tempting part: nine small mechanical moves look like one tidy MR, and bundling them buries a
+dependency-edge change that F6 depends on inside a rename sweep nobody will review carefully. Worse,
+several of the eight were written before A-, E- and F-group work landed and may already be done or
+wrong — `CollectionPageWrapper.tsx` "is the only component under `lib`", the `AdminPanel/` fossil
+"now only contexts", the two `logger.warn('manageUtils', …)` labels. **Check each of the eight
+against `main` and write down which are still true, without changing them.** That converts a stale
+grab-bag into eight verified one-liners for later, and it is the same move that turned E17 from a
+vague bullet into a shippable item.
+
+#### The shipped bullets, verbatim
+
+- [x] ~~`getUserPage` from the one-function `user.ts` into `personal.ts`, killing the `user.ts` vs
+      `users.ts` naming trap.~~ **SHIPPED 2026-08-27 — see the close-out above.**
+      Original text, which was accurate in every particular:
+      **STILL ACCURATE (2026-08-24); refs re-swept 2026-08-27.**
+      `app/lib/api/user.ts` is 19 lines (**was `20`**), two imports, one export (`getUserPage:10`,
+      unchanged). `users.ts` sits beside it with 13 exports.
+      `personal.ts` is the right home: it already holds the signed-in user's own reads
+      (`listSavedImageIdsServer:87` **was `:137`**, `listSavedImagesServer:105` **was `:155`**,
+      `listFollowedCollectionIdsServer:124` **was `:174`**), same `cache: 'no-store'`, same
+      null-on-401. 2 src / 7 test, and `tests/lib/api/user.test.ts` folds into
+      `tests/lib/api/personal.test.ts`. **Also update the two `{@link getUserPage}` references at
+      `app/lib/api/share.ts:7,81`** (**`:99` → `:81`**).
+      **Every drifted ref here is E2's doing** — #333's `clientFetch` conversion shortened
+      `personal.ts` to 131 lines and `share.ts` to 161. The premise is untouched; only the
+      coordinates moved.
+- [x] ~~`ReorderMove` type → `app/types/Content.ts`~~ **Done in #324.** The public tree imported it from the admin edit directory. **This bullet is the sole blocker on F6** — do it first and F6's dependency edge is one-way instead of two. As of #321 the importer is `RendererContext.tsx`, not `BoxRenderer.tsx`. **Measured, not guessed** — `grep -rln "ReorderMove" app/ tests/` against `main` at `dbc706a` returns exactly FOUR files and zero test files: `Content/RendererContext.tsx`, `Content/boxRendererUtils.ts`, `edit/collectionEditUtils.ts` (the declaration), `edit/hooks/useContentReordering.ts`. Two of the four are already on the public side, which is the whole argument for the move. A four-file, no-test-churn change.
+- [x] ~~~~Two~~ **THREE** `logger.warn('manageUtils', …)` labels in `collectionEditUtils.ts` still name
+      a module that no longer exists.~~ **SHIPPED 2026-08-28 — PR #343, MERGED, +3/−3 src, 0 test.**
+      All three (`collectionEditUtils.ts:225`, `:279`, `:305`) now read `'collectionEditUtils'`.
+      **The estimate was exactly right for once** — 1 src file, 0 test churn; suite unchanged at the
+      pre-run reading (recorded as 245 / 4454, itself stale — see the re-measure rule).
+      The bullet's own count correction (THREE, not two) also held, and the line refs had not
+      drifted since the 2026-08-25 sweep. Original filing kept for history: found by B1 (#290) and
+      deliberately left, because renaming log labels inside a test-only MR would have put a source
+      change in a diff that had none. Nothing pinned the string —
+      `git grep "'manageUtils'" -- tests/` returned nothing and `logger.warn` is a no-op under
+      `NODE_ENV === 'test'`. The one surviving `manageUtils` mention, at
+      `collectionEditUtils.test.ts:4`, is a docblock recording which file B1 merged in; that is
+      accurate history and was left alone.
+
+#### The invite-move cost report — COSTED 2026-08-27, REJECTED
+
+The bullet read: invite functions from `users.ts` → `auth.ts`. **PARTLY ACCURATE
+(2026-08-24) — the functions are where the bullet says, the destination is questionable.**
+`regenerateInvite:87`, `getInvitePreview:158`, `acceptInvite:240` in `app/lib/api/users.ts`, whose
+own docblock (`:2`) already admits the split. **All three `users.ts` refs re-verified correct
+2026-08-27 — that file did not drift.** But `auth.ts` is client-side session code (`login:48`,
+`logout:65`, `me:75`, `registerPasskey:162`, `loginWithPasskey:219` — **all five drifted, was
+`:64`/`:87`/`:104`/`:191`/`:259`**) plus one server helper (`meServer:100`, **was `:129`**),
+and the three invite functions span three different fetch perimeters:
+`getInvitePreview` is server-only via `getApiBaseUrl`, `regenerateInvite` goes through the
+admin perimeter with the BFF secret. **Re-decide the destination before moving — a new
+`invites.ts` avoids mixing three perimeters into one file.** 3 src / 6 test.
+
+**COSTED 2026-08-27, NOT SHIPPED — and the answer is don't, on grounds the bullet did not
+yet state.** Measured against `main` at `d784bc5`. All three refs re-confirmed correct:
+`regenerateInvite:87`, `getInvitePreview:158`, `acceptInvite:240` in a 264-line `users.ts`.
+
+_Mechanical cost, which is small._ About 74 lines of body + docblock move out; `users.ts`
+drops to ~190. A new `invites.ts` needs its own import block (~10 lines — `ApiError`,
+`fetchAdminPostJsonApi`, `getApiBaseUrl`, three types from `@/app/types/User`) plus a file
+docblock that has to explain the three perimeters, so call it **+25 to +35 src net**, nearly
+all of it new-file header. The three src importers are one-line swaps with nothing to merge —
+`app/invite/[token]/InviteForm.tsx:12` imports only `acceptInvite`,
+`app/invite/[token]/page.tsx:6` only `getInvitePreview`, and
+`app/(admin)/admin/users/GenerateInviteButton.tsx:10` only `regenerateInvite`. **That is
+cheaper than the `getUserPage` move was**, where both importers needed merging.
+`core.ts:157` names `getInvitePreview` in prose with no module path — no edit, same no-op as
+`share.ts:7,81` turned out to be.
+
+_Test cost, which is where it turns._ Six files. Three are path swaps
+(`tests/app/invite/page.test.tsx`, `tests/components/InviteForm.test.tsx`,
+`tests/components/GenerateInviteButton.test.tsx` — the last two import the module as a
+namespace, so `usersApi` → `invitesApi` throughout the file, not just at the top). One is a
+split: roughly 175 lines of `tests/lib/api/users.test.ts` (the `getInvitePreview:85`,
+`acceptInvite:139` and `regenerateInvite:241` describes) become a new
+`tests/lib/api/invites.test.ts` **carrying a duplicated ~30-line fetch-mock harness**. And two
+— `tests/app/admin/AdminUserSpaceEditor.test.tsx:32` and
+`tests/components/UserManagementPanel.test.tsx:25` — mock `regenerateInvite` inside a `users`
+factory alongside other members, so each needs **a whole additional `jest.mock` block**, not a
+swap. **This is the `getUserPage` move run backwards**: that one merged twelve mock
+declarations down to six, this one splits six into eight.
+
+_The reason to not do it, which is neither of those._ **Splitting these three out does not
+reduce perimeter mixing, it relocates it.** `invites.ts` would hold the same three perimeters
+`auth.ts` was rejected for holding. It is better only because its NAME predicts the mix —
+a real improvement, but a much smaller one than the bullet implies.
+
+**Worse, it splits invite issuance across two files.** `createUser:42` and `upgradeUser:109`
+both return `CreateUserResponse` carrying a fresh `inviteUrl`, and both plainly stay in
+`users.ts` as admin user-lifecycle operations. Today "where does an invite come from" has one
+answer. After the move it has two — and the file named `invites.ts` is not the one that issues
+most of them. **That is a worse boundary than the one it replaces**, and no docblock fixes it.
+
+**Verdict: leave all three where they are; the bullet is a rejection, not a move.**
+If the real complaint is the admin/public mix that `users.ts`'s own docblock (`:2`) admits,
+the boundary that would actually pay is **public invite REDEMPTION (`getInvitePreview` +
+`acceptInvite` — both unauthenticated, both driven by `app/invite/[token]/`) split from
+everything else**, leaving `regenerateInvite` beside `createUser`/`upgradeUser` where issuance
+lives. Two functions, not three, and each file ends with ONE perimeter. **Not proposed as a
+task — recorded so the next pass does not re-litigate the 3-function version from scratch.**
+
+### ☐ F1 · Decompose `useCollectionEdit.tsx` — boundary-drift history (three occurrences)
+
+_Moved from the live board 2026-08-29. The item itself is open there with the current boundaries
+and anchors; this is the record of how the boundaries drifted and what each drift taught._
+
+**The first drift (found 2026-08-25):** #313 landed on 2026-08-24, one day AFTER the boundaries
+were checked, and inserted 1 line at `:68` and 4 at `:748` — so every boundary below `:748` was +1
+and every boundary at or above it +5. Re-anchored on `const [currentState`, `const [editTab`,
+`const seedUpdateData`, `const [collectionPeople` and `const handleMediaUpload`, all of which still
+match. **The file's stated 1,747 lines was correct**, which is exactly what made this drift
+invisible: the line COUNT was refreshed after #313 and the line REFS were not, so the item looked
+verified.
+
+**It happened a SECOND time, the same way, four days later — #339 (E6 bullet 2).** Three edits at `:730`, `:765` and `:1439` produced **three different offsets**, so no single number corrects the boundaries: `+0` at or above `:730`, `+23` between `:730` and `:765`, `+17` between `:765` and `:1439`, `+11` below it. The five anchors above all still match and were re-used. **The general rule, now demonstrated twice: F1's boundaries are invalidated by ANY merge into `useCollectionEdit.tsx`, and a uniform offset is the wrong correction whenever the merge had more than one hunk.** Re-derive from the anchors, never by adding a constant.
+
+**It happened a THIRD time, on 2026-08-28, and this one is the most instructive — #341 and #342
+between them changed FOUR lines of logic and still moved the boundaries.** #341's only structural
+effect was a **Prettier collapse**: emptying `handleDeleteSuccess`'s parameter list let the
+`useCallback` fit on one line, removing 3 lines at `:1059`. #342 replaced a 10-line `map` body
+with a 5-line call at `:1101`. Two hunks, two offsets: **+0 at or above `:1058`, −3 between
+`:1059` and `:1100`, −8 at or below `:1101`.** Re-derived boundaries, verified against `main` at
+`652d5bb`: state **`:312–422`** (unchanged), update form **`:439–814`** (unchanged),
+people+gallery **`:472–873`** (unchanged), content ops **`:874–1220`**, relations
+**`:1222–1406`**, manage bar **`:1407–1459`**. **The rule now has a stronger form: it is not
+"any merge with more than one hunk" — it is ANY merge at all, including one that changes no logic
+below the edit. A formatter is a hunk.**
+
+**DEFECT found 2026-08-28 (2): two of the six boundaries had no anchor, so the re-derive rule
+could not actually be applied to them.** The item named five anchors — `const [currentState`
+(`:312`), `const [editTab` (`:422`), `const seedUpdateData` (`:439`), `const [collectionPeople`
+(`:472`), `const handleMediaUpload` (`:875`) — all five re-confirmed. But the
+**content-ops/relations** boundary and the **relations/manage-bar** boundary were bare numbers.
+Re-deriving them by offset lands `:1220` in the middle of `handleLocationsChange` (`:1217`) and
+`:1407` in the middle of `enterReorder` (`:1404`) — both mid-function, which is not a boundary.
+Anchors proposed and verified: relations starts at `const currentTags` (`:1231`), manage bar starts
+at `const enterSelect` (`:1402`). Under those, `enterReorder` straddles the relations/manage-bar
+line — that straddle is real and is a genuine finding about the split, not a bad boundary. **The
+anchors are now folded into the live item's boundary list.**
+
+**Trap found while anchoring:** anchoring the update-form end on its raw source line — a bare `);`
+— false-matched 13 lines early. Generic closing punctuation is not an anchor. The end boundaries
+were re-derived from the enclosing construct (`handleUpdate`'s dependency array,
+`const bottomBarCells`), which is why `:797 → :814` is right and the naive `);` match at `:801` is
+wrong.

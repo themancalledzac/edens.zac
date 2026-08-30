@@ -64,8 +64,9 @@ treating it as one is what has kept it stalled.
 `config/SesConfig.java`, sender at `services/EmailService.java:32`. The kill switch `email.enabled`
 defaults false (`EmailService.java:46`); both public senders return
 `SendResult(false, "email-disabled")` before any AWS call (`:69-72`, `:98-101`). Config at
-`application.properties:132-134`. Two senders exist: `sendGalleryPasswordEmail` (`:67`) and
-`sendInviteEmail` (`:97`). Covered by `src/test/java/…/services/EmailServiceTest.java`.
+`application.properties:132-134`. Three senders exist (re-derived 2026-08-29; backend #213 added
+the third): `sendGalleryPasswordEmail` (`:72`), `sendInviteEmail` (`:102`) and `sendShareLinkEmail`
+(`:134`). Covered by `src/test/java/…/services/EmailServiceTest.java`.
 
 1. **Contact → forward. Unbuilt, but already specced.** A contact submission becomes a database row
    and nothing else. `ContactForm` → `submitContactMessage`
@@ -316,3 +317,41 @@ button "sits in the collection header's filter-bar area". That stops being true 
 update it in the same commit rather than leaving a stale description behind.
 
 ---
+
+## Closed rows
+
+| MR  | Scope                                              | Outcome                       |
+| --- | -------------------------------------------------- | ----------------------------- |
+| H2a | `/user` rail copy pass + chip-style the Admin links | +319 / −117 (est. −25 src) · #302 |
+| H3  | `Send a message` into the rail as a plain button   | rode H2a · #302               |
+
+### ☐ H1 · Merge `Following` into `Collections` — history moved from the live board (2026-08-29)
+
+_The item is open on the live board, BLOCKED on the user. These paragraphs are its resolved
+history._
+
+**UNBLOCKED 2026-08-24 — the board row still said "do C8 first" after C8 had shipped.** C8
+(the stale Following-chip count) is merged, so H1's only stated dependency is gone and the item
+is COLD. Caught by the standing check for a blocker that cleared without anyone clearing the
+row; worth repeating each run, because a row that reads blocked is skipped rather than read.
+(H1 was later re-classified BLOCKED — not on C8, but on its own unanswered product questions:
+count semantics, the followed-tile marker, and the 500-row catalog fetch.)
+
+**How the no-dedup premise was established, recorded because the method matters.** It was
+established by reading both membership paths in the loader, not by comparing what renders on
+screen. Two sets that look identical in the browser prove nothing about whether the same source
+decides them, and a same-session review of five "duplicate" claims elsewhere on this board found
+only one that survived intact. This one is a source-level finding, so it does not need redoing.
+
+**The original sequencing note, now satisfied.** The stale-count bug was C8, and C8 shipped FIRST
+(#291), exactly as this note required: H1 deletes the `Following` chip, so doing H1 first would not
+have removed the staleness, it would have relocated it onto the merged `Collections` count. H1 also
+needs the tile itself to vanish on unfollow, which is strictly harder than fixing a number, because
+tiles are server-built and the provider had no way to express a removal. C8 built the client-delta
+plumbing that H1 now uses.
+
+**Ref-drift record.** The three premise refs drifted +3 and were corrected 2026-08-28 (were
+`:72`/`:65`/`:278`). Cause: #336 merged `getUserPage`'s import into the existing `personal` import
+at `userSpaceData.ts:14`, turning one line into five — the sixth shipped-file drift on this board.
+That sweep fixed only the three premise refs; the rest of the section stayed +3/+8 stale until the
+full re-derive of 2026-08-29 (now on the live item).

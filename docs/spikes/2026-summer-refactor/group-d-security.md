@@ -2,7 +2,23 @@
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
 
-All nine items merged: PR #265, #266, #274, #272, #273, #270, #253 (D7), #276, #277. Group D is closed.
+All nine items merged: PR #265, #266, #274, #272, #273, #270, #253 (D7), #276, #277. The original
+Group D closed 2026-08-24; D10 (a `getApiBaseUrl` normalization gap of the same class as D8) was
+filed 2026-08-29 and is open on the live board.
+
+## Closed rows
+
+| MR  | Scope                                                        | Outcome                                        |
+| --- | ------------------------------------------------------------ | ---------------------------------------------- |
+| D1  | Gate `POST /api/revalidate` (HIGH)                           | +175 · #265                                    |
+| D2  | Gate `clearCacheAction`                                      | +212 (est. +15) · #266                         |
+| D3  | Security headers                                             | +60 src · #274                                 |
+| D4  | Pin the CloudFront host                                      | ±1 (actual ±1) · #272                          |
+| D5  | Proxy path reject + `/cdn` matcher removal                   | ~+30 net · #273                                |
+| D6  | Shared Origin allowlist (CSRF on `/api/revalidate`)          | +75 src, +230 test (est. ±60) · #270           |
+| D7  | Wrong danger token on error text (a11y)                      | 0 (rode #253)                                  |
+| D8  | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist      | +30 src, +52 test (est. ±5 src, +2 test) · #276 |
+| D9  | Decide: redundant localhost literals in the Origin allowlist | −5 src, +20 docblock, +7 test · #277 — deleted |
 
 ---
 

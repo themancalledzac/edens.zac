@@ -1,6 +1,13 @@
 # Group G — Decisions and docs (shipped)
 
-_Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
+_Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md), plus
+superseded measurement history for the open G2 and G4. G2, G3, G4 and G5 are open on the live board._
+
+## Closed rows
+
+| MR  | Scope            | Outcome                     |
+| --- | ---------------- | --------------------------- |
+| G1  | Docs corrections | +106 / −72 (est. ±50) · #303 |
 
 ### ✅ G1 · Docs corrections — PR #303
 
@@ -24,3 +31,145 @@ The book is wrong in six places.
       there, note `docs/superpowers/specs/2026-07-06-email-ses-production.md` is itself partly stale:
       it asserts one public `EmailService` method (`:20`) and "invite email doesn't exist" (`:34`,
       `:73`), but its own C5 recommendation (`:161`) has since shipped.
+
+### ◐ G2 · Inline-comment rule — the per-file G2c inventory (superseded measurement)
+
+_Moved from the live board 2026-08-29. G2 itself is open there. This table's filter was never
+recorded, so treat every row as approximate; re-take the whole inventory in one pass (with the
+command written beside it) when G2c is picked up._
+
+**Counting method RECOVERED 2026-08-24 — #320 called this inventory unrepairable and it was not.**
+The number is **runs of consecutive `//`-only lines** (a 3-line `//` comment counts once), plus
+`{/* */}` counted separately as "JSX". Recovered by reproducing it, not by finding it written
+down: the method that matched 6 of 11 files exactly is the method.
+
+**Re-derived against `main` at `dbc706a`. Six of eleven were exact; five had drifted:**
+
+> ⚠ **`useCollectionEdit.tsx` gained one docblock in #339 (raw `/**` count 27 → 28), and this table
+> cannot be updated for it, because the table does not record how its numbers were counted.** The raw
+> count is 28 and the table says 16, so the 16 is a filtered subset — but the filter is not written
+> down anywhere in G4, so there is no way to know whether the new `adoptSaveResponse` docblock falls
+> inside it. **This is the same defect G4 exists to fix, in G4's own measurement.** Before this table
+> is used to size anything, record the command that produces it; until then treat every row as
+> approximate rather than re-deriving one row and trusting the rest.
+
+| File                            | Doc claim  | Actual                             | Rides                           |
+| ------------------------------- | ---------- | ---------------------------------- | ------------------------------- |
+| `useFullScreenImage.tsx`        | ~86 lines  | **80** lines / 37 blocks           | own decomposition; pair with F5 |
+| `CollectionPageClient.tsx`      | 24         | 24 ✓ (still 24 on 08-28)           | **nothing — see below**         |
+| `useCollectionEdit.tsx`         | 19         | **16** ⚠ stale — see above         | F1                              |
+| `CollectionContentRenderer.tsx` | 16 + 4 JSX | 16 + 4 JSX ✓                       | E8/F2                           |
+| `EditModeLayer.tsx`             | 13         | **17** (re-run 2026-08-29: **16**) | F1                              |
+| `CollectionPageWrapper.tsx`     | 9          | 9 ✓                                | —                               |
+| `ClientGalleryDownload.tsx`     | 8          | **7**                              | E9                              |
+| `CameraSettingsSection.tsx`     | 7          | **8**                              | —                               |
+| `MenuDropdown.tsx`              | 7          | 7 ✓                                | E8                              |
+| `UserManagementPanel.tsx`       | 5          | 5 ✓                                | —                               |
+| `Component.tsx`                 | 5          | 5 ✓ (re-run 2026-08-29: **6**)     | F2                              |
+
+Note `useFullScreenImage.tsx` is quoted in LINES while every other entry is in BLOCKS — that
+inconsistency is in the original and is why it looked like an outlier. It is 37 blocks, which
+is still the worst file on the list by a wide margin.
+
+**`CollectionPageClient.tsx` LOST ITS RIDE (2026-08-28).** It was pencilled to ride E7, but E7's
+main bullet shipped as a four-line guard in #337 and its two remaining bullets are in
+`EditModeLayer.tsx` and `useCollectionEdit.tsx` — neither touches this file. Its 24 blocks now
+ride nothing. `CollectionPageWrapper.tsx` (9) already rode nothing. **Two of the eleven files on
+this inventory have no carrier, which is the thing that turns G2c from "rides other refactors"
+into work someone has to schedule.** Say so when G2c is next picked up rather than re-discovering it.
+
+**Re-derived after #336/#337 and the counts did NOT move: `CollectionPageClient.tsx` is still 24,
+`CollectionPageWrapper.tsx` still 9.** Command: `awk` over each file counting runs of consecutive
+lines whose first non-whitespace is `//`. This is worth recording as a property of the metric, not
+just a result — **#337 added two `/** */` docblocks to `CollectionPageClient.tsx` and the count
+did not budge, because the metric counts `//` runs only.** So the inventory measures exactly the
+thing the project's own rule wants removed (inline comments in bodies) and is blind to the thing
+the rule wants added (docblocks). That is the right metric, and it means ordinary docblock-adding
+work cannot inflate this table. For contrast, the same files hold 15 and 3 JSDoc blocks.
+
+**The two files F2 and E17 just rewrote — `Component.tsx` and `MenuDropdown.tsx` — are both still
+exact.** #321 cut 39 lines from `Component.tsx` and #322 rewrote three declarations plus ten call
+sites in `MenuDropdown.tsx`, and neither added or removed a single `//` block. Useful calibration:
+this inventory is not as fragile as line refs are. It drifts on comment edits, not on code edits,
+so it does not need re-checking after every merge — only after a session that touched comments.
+`UserManagementPanel.tsx` lives at `app/components/UserManagementPanel/`, not under `AdminPanel/`.
+
+### ◐ G4 · Docblock standard — measurement history (baselines, the intersection pass, and the 2026-08-28 sweep's spent findings)
+
+_Moved from the live board 2026-08-29. G4 itself is open there with the standard and the current
+counts. This is the record of how the numbers were taken and what each pass found._
+
+_Raised by the user 2026-08-24 off PR #301's `revalidateLocationCaches` docblock: 30 lines of prose
+for a function that maps two location arrays to a set of tags._
+
+**Baseline, measured across `app/` 2026-08-24** (865 docblocks):
+
+| Length      | Count |            |
+| ----------- | ----- | ---------- |
+| 1–10 lines  | 643   | healthy    |
+| 11–20 lines | 169   | acceptable |
+| 21–30 lines | 37    | review     |
+| 31+ lines   | 16    | rewrite    |
+
+Separately, **57 blocks (6.6%) contain backward-looking language**: "used to" ×23, "no longer" ×11,
+a bare date ×9, "previously" ×6, "the old" ×5, "PR #N" ×2. **Twelve are both long and historical**,
+and that intersection is the priority list — start there, not with the whole 6%.
+
+**Re-measured 2026-08-24 after the intersection pass** (PR #310). The scan script counts every
+`/** … */` in `app/`, including file headers and one-liners, and finds **1,384** blocks rather than
+865 — so the raw counts below are not comparable to the baseline table, only to each other. The
+intersection came out at **19**, not 12, for that same width-of-scan reason. All 19 were done; the
+difference is measurement, not scope creep.
+
+| Measure                 | Before    | After     | Note                       |
+| ----------------------- | --------- | --------- | -------------------------- |
+| 21–30 lines             | 39        | 38        |                            |
+| 31+ lines               | 17        | 16        |                            |
+| Backward-looking        | 63 (4.6%) | 45 (3.3%) |                            |
+| **Long AND historical** | **19**    | **0**     | the priority list, cleared |
+
+Net −50 lines across 17 files, and `git diff -U0` carries **zero non-comment lines** — the docs-only
+claim is checked, not asserted. Full suite 4,325 passed.
+
+**What was left after #310.** 45 blocks still carried backward-looking language, all of them short
+enough that the line-count smell never fires on them: "used to" ×20, "no longer" ×11, "previously"
+×7, a bare date ×6, "the old" ×2, "PR #N" ×1. Several are false positives of the scan —
+`collectionEditUtils`' "listing a collection that is not there" and `CollectionPageClient`'s "ids
+that are not on screen" describe DATA state, not code history, and a regex cannot tell those apart.
+That is the same reason the no-lint-rule decision holds. A re-scan on 2026-08-25 (a looser regex
+than #310's, so not directly comparable) reported **48** against #310's 45 — after #329's removals.
+The pile is not shrinking on its own.
+
+**The sweep will not converge while new docblocks keep adding to the pile, and 2026-08-25 proved
+it.** C6 (#327) and F7 (#328) shipped fresh backward-looking docblocks — "was removed once
+measured", "whatever an earlier version of this comment said", plus board labels (`F6`, `F7`, `C6`)
+and backend PR numbers written into interfaces and test headers. The user caught it on read:
+_"comments like this that explain 'previous issues or previous state' should NOT EXIST"_ and
+_"F6 means NOTHING in this context ... we are only dealing with what the code IS and what it DOES"_.
+Removed in #329, which also took two pre-existing blocks with it (the `reorderImagesBeforeCollections`
+parenthetical in `processContentBlocks`, and `EditRendererProps`' previous-design paragraph). That
+read produced the two additions to the standard that now sit in the live item.
+
+**Why this is happening, and why the existing rule does not catch it.** `CLAUDE.md` already forbids
+inline comments and sends every "why" into the docblock, with one escape hatch: _if the docblock
+gets too big, split the function._ That escape hatch assumes a big docblock means the function does
+too much. Here it does not. `revalidateLocationCaches` is small and does one thing; its docblock is
+long because it is carrying **decision-record content that belongs in the PR and on this board**.
+The rule has no answer for that case, which is the gap this item closes.
+
+**Worked example, and a rot prediction that came true and is SPENT.** #301's docblock contained a
+paragraph beginning "Image-level location edits are not covered, and that is a known gap" — roughly
+six lines duplicating tracked item E13. The prediction was that the docblock would go false the
+moment E13 shipped. It did, and it was caught: E13 (#313) shipped and rewrote the docblock in the
+same pass. `collectionEditUtils.ts:230` now describes two live call sites, is 24 lines (down from
+the 30 that filed the item), and the "slugs must come from the saved response" trap the section
+wanted preserved is intact at `:239-242`. A tracker entry duplicated into a docblock is a comment
+with an expiry date on it — and this one expired on schedule.
+
+**From the 2026-08-28 sweep, resolved and recorded:** the row's "#327/#328 ADDED to the pile" was
+STALE — #329 cleaned them and it held; every source file those two PRs touched is clean of anchor
+terms except `useCollectionEdit.tsx:644`'s docblock, which matches `previously` (noted on the live
+item). The one `contentLayout.ts` hit ("used to hold photos-per-row steady", block start `:85`) is
+employed-to, and `git log -L` traces it to `10fb626`, not #327. The recorded per-term table summed
+to 47 rather than the 45 it stated — term overlap (`collectionSlugs.ts:43` and
+`listPanelShape.ts:97` each match two terms); the union is the right number.
