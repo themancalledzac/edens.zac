@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
+import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
-import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
 import { requireAdmin } from '@/app/utils/admin';
 import { logger } from '@/app/utils/logger';
 

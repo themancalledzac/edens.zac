@@ -1,7 +1,7 @@
 import AllClientGalleriesPage, { metadata } from '@/app/all-client-galleries/page';
-import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
+import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
 
-jest.mock('@/app/lib/components/CollectionPageWrapper', () => ({
+jest.mock('@/app/components/ContentCollection/CollectionPageWrapper', () => ({
   __esModule: true,
   default: jest.fn(() => null),
 }));

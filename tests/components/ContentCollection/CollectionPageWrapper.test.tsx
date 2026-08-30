@@ -14,9 +14,9 @@
 
 import ClientGalleryGate from '@/app/components/ClientGalleryGate/ClientGalleryGate';
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
+import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
 import * as collectionsApi from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
-import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { logger } from '@/app/utils/logger';
