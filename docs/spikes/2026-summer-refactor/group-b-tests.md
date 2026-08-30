@@ -2,13 +2,26 @@
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
 
-B1, B2, B3, B4 and B7 merged 2026-08-24 as PRs #290, #288, #287, #289 and #286 — five in one sitting, run as parallel agents in separate worktrees. B5, B6, B8 and B9 are still open on the live board.
+B1, B2, B3, B4 and B7 merged 2026-08-24 as PRs #290, #288, #287, #289 and #286 — five in one sitting, run as parallel agents in separate worktrees. B5 (#298), B6 (#294 + #297) and B9 (closed not-reproducible) are also archived below. Only B8 is still open on the live board.
 
-**Read the estimate corrections before sizing B5, B6 or B8.** Every estimate in this group came in short, in the same direction, because it counted repeated text and assumed repetition meant redundancy. Four of five duplication claims were also wrong. Both patterns are recorded per item below and hoisted into the live board's "How to use this doc".
+## Closed rows
+
+| MR  | Scope                                                | Outcome                                                                                  |
+| --- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| B1  | Merge `manageUtils.test.ts`                          | −209 net (est. −450) · #290                                                              |
+| B2  | `rowCombination` characterization dedup              | −229 (est. −250) · #288                                                                  |
+| B3  | `metadataUtils.test.ts` dedup                        | −125 (est. −200 to −300) · #287                                                          |
+| B4  | `contentLayout.test.ts` merge                        | −32 (est. −150 to −250) · #289                                                           |
+| B5  | `useCollectionEdit` fixture consolidation            | −145 actual (est. −350) · #298                                                           |
+| B6  | Fold in `CollectionContentRenderer` characterization | 0 actual (est. −150) · #294 + #297 (restore)                                             |
+| B7  | `useClickOutside` spy tests                          | −37 (est. −90) · #286                                                                    |
+| B9  | `useCollectionEdit.buffer.test.tsx` parallel flakes  | CLOSED not-reproducible 2026-08-24 — 0 repro in 22 runs / 3 worker configs; NOT fixed; CI untried |
+
+**Read the estimate corrections before sizing anything like these.** Every estimate in this group came in short, in the same direction, because it counted repeated text and assumed repetition meant redundancy: −450 → −209, −250 → −229, −200/−300 → −125, −150/−250 → −32, −90 → −37. B4 is the extreme, off by roughly an order of magnitude, because its "duplicate" describes turned out complementary — the work was merging, not deleting. B5 found the opposite failure: the board counted whole 122–169-line preambles (886 total) when only 460 of those lines were duplicated builders. Two items moved the opposite way from subtraction entirely (B3's test count went up 106 → 107; B7 gained a behavioural test). Four of five duplication claims were also wrong. Both patterns are recorded per item below and hoisted into the live board's "How to use this doc".
 
 ---
 
-### ☐ B1 · Merge `manageUtils.test.ts` — NEXT
+### ✅ B1 · Merge `manageUtils.test.ts` — PR #290
 
 - [ ] `manageUtils.test.ts` is **1,967 lines** (the board said 1,930; C4 added the
       `revalidateMetadataCache` suite). It tests `collectionEditUtils.ts` under a stale name at a
@@ -48,7 +61,7 @@ but it needs to be argued from what each test asserts, not from the two files be
 while you are here — that is B5, and it carries its own fixture-consolidation risk. Do not move
 `collectionEditUtils.ts` itself; that is F3.
 
-**SHIPPED — PR #290 (open).** `manageUtils.test.ts` deleted; `collectionEditUtils.test.ts` 190 →
+**SHIPPED — PR #290 (merged).** `manageUtils.test.ts` deleted; `collectionEditUtils.test.ts` 190 →
 1,948 lines. Suite 4,126 → 4,101, and the −25 is fully accounted for: 10 `handleApiError`, 13
 position-permutation, 2 exact duplicates. Real diff −209 net against an estimate of −450.
 
@@ -82,12 +95,12 @@ tag that is merely written down** — which is exactly why the `collection-home`
 request assertion. Method, headers and path never appear in the drift test's regexes at all. The
 intersection is one row. Keep both, and stop re-asking.
 
-### ☐ B2 · `rowCombination` characterization dedup
+### ✅ B2 · `rowCombination` characterization dedup — PR #288
 
 - [ ] `rowCombination.characterization.test.ts:481-714` — the "architecture types" half duplicates `rowCombination.test.ts`'s own describes. Both files kept a copy after an unfinished handoff. Keep the numbered scenario pins; they are still valuable while the layout engine is under active work.
 - [ ] `heroAcceptance.test.ts` is a strict subset of the unit file — delete it.
 
-**SHIPPED — PR #288 (open).** Characterization file 714 → 470, `rowCombination.heroAcceptance.test.ts`
+**SHIPPED — PR #288 (merged).** Characterization file 714 → 470, `rowCombination.heroAcceptance.test.ts`
 deleted (15 lines), unit file 1,734 → 1,764. Net −229. Suite 4,126 → 4,109: 20 cases removed, 3
 carried over.
 
@@ -107,14 +120,14 @@ carried over.
 - [x] A line was added to the characterization file's docblock saying type-level coverage belongs in
       `rowCombination.test.ts`, so the second copy does not grow back after the next handoff.
 
-### ☐ B3 · `metadataUtils.test.ts` dedup
+### ✅ B3 · `metadataUtils.test.ts` dedup — PR #287
 
 - [ ] 1,893 lines (was 2,461 — A3/PR #257 already removed the seven `getDisplay*` delegate suites).
       Still duplicated: `buildAssociationDiff` via Tags (:332) and People (:442), and the
       camera/lens/filmType triplet (:169/:207/:245). Keep one full suite per shared builder plus one
       wiring test per field, or convert to `it.each`. Est −200 to −300, not −500.
 
-**SHIPPED — PR #287 (open).** 1,893 → 1,768 lines (−125). Tests in file 106 → **107**.
+**SHIPPED — PR #287 (merged).** 1,893 → 1,768 lines (−125). Tests in file 106 → **107**.
 
 - [x] **The "camera/lens/filmType triplet" was wrong, and acting on it would have deleted real
       coverage.** There is no shared equipment builder. `buildCameraDiff` and `buildLensDiff` are two
@@ -141,11 +154,11 @@ carried over.
       while `ContentPersonModel` has none, so a shared `{id, name}` fixture fails `tsc`. The helper
       maps a slug in for tags only.
 
-### ☐ B4 · `contentLayout.test.ts` merge
+### ✅ B4 · `contentLayout.test.ts` merge — PR #289
 
 - [ ] Two merged generations left duplicate `createHeaderRow` and `processContentForDisplay` describes. Merge them, keeping the stronger assertions.
 
-**SHIPPED — PR #289 (open).** 1,587 → 1,555 lines (−32, against an estimate of −150 to −250 — off by
+**SHIPPED — PR #289 (merged).** 1,587 → 1,555 lines (−32, against an estimate of −150 to −250 — off by
 roughly an order of magnitude). Tests in file 111 → 107.
 
 - [x] **The duplicate describes exist but do not overlap.** `createHeaderRow` at `:745` and `:983`,
@@ -167,11 +180,11 @@ roughly an order of magnitude). Tests in file 111 → 107.
 - [x] The copies never contradicted each other. What looked like a contradiction is real asymmetry in
       the source, and both copies encoded it correctly — filed as **C9**.
 
-### ☐ B7 · `useClickOutside` spy tests
+### ✅ B7 · `useClickOutside` spy tests — PR #286
 
 - [ ] Drop the four listener-attachment-spy tests. They pin an implementation detail; the behavior tests already pin the outcomes.
 
-**SHIPPED — PR #286 (open).** 21 insertions, 58 deletions, net −37 (est. −90). File 21 → 18 tests;
+**SHIPPED — PR #286 (merged).** 21 insertions, 58 deletions, net −37 (est. −90). File 21 → 18 tests;
 suite 4,126 → 4,123 (four spy tests out, one behavior test in).
 
 - [x] **Two of the four spy tests asserted on a listener this hook never registers.**
@@ -266,3 +279,45 @@ loaded machine, and a cold cache. CI is the one that matters — it is different
 different core counts, and it is where an intermittent failure would actually cost someone an
 afternoon. If this resurfaces there, reopen with the CI run URL and go straight to the shared-state
 suspects named above; do not re-run the local measurement, which is now 22-for-22 uninformative.
+
+### ◐ B8 · Fill the required-coverage gaps — shipped slices (#266, #267, #295, #296)
+
+The item's open bullet (the optional `sharedObserver`/`useParallax`/`useContentReordering` slice)
+stays on the live board. The five shipped slices, moved here 2026-08-29:
+
+- [x] **First slice — the A7 Escape-path regression test — PR #267.**
+      `tests/components/ContentCollection/useCollectionEdit.escapeSelection.test.tsx`, 4 tests,
+      test-only. The effect is now at `useCollectionEdit.tsx:433-437` (drifted +1 when C1 landed, then +1 again by 2026-08-24).
+      Verified against two separate mutations, not one: deleting the effect fails the two
+      Escape-teardown tests, and dropping its `!isMultiSelectMode` guard fails the multi-select
+      preservation test. The reasoning is out of the scratchpad and into the repo.
+
+      **Test-design trap, cost one rewrite.** The multi-select preservation test must open the
+      editor through the bottom bar's `edit` cell, NOT through `handleImageClick`. In multi-select
+      mode a click only toggles the id and never opens the editor, so `editingContent` stays null,
+      `useEscapeKey` (enabled on `!!editingContent`) never attaches, and the effect never re-runs.
+      The first draft did exactly that and passed against BOTH mutants — a decoration. Note also
+      that `handleBulkEdit` is not on the hook's public API (its deps-array entry is now `:1620`,
+      was `:1617` before #341/#342 — `:1617` is `handleCancelReorder` in the same array), so the
+      bottom bar cell is the only route to it.
+
+- [x] `lib/api/share.ts` — 9 function exports + 4 type exports. **Shipped in PR #295**
+      (`tests/lib/api/share.test.ts`, 520 lines, covering all nine function exports; the four type
+      exports are exercised through the values those functions return). Est +350–500, actual +520 —
+      in range, at the top of it.
+      **This checkbox was stale, and so were the two below it.** #295 and #296 are named in this
+      item's own heading, and `share.test.ts`'s docblock opens "B8 coverage gap — `share.ts` had
+      none". The work shipped 2026-08-24; nobody ticked the boxes, so the board advertised three
+      finished slices as available for three days.
+      **Corrected 2026-08-27: `share.ts` is 161 lines, not 217.** E2's `clientFetch` conversion
+      (#333) cut 26% of it. The export counts in the original claim are still exactly right — only
+      the line count rotted, and it rotted because a later item shipped against the same file.
+- [x] `lib/api/messages.ts` — 25 lines. **Shipped in PR #295** (`tests/lib/api/messages.test.ts`,
+      98 lines). Est +80–150, actual +98 — in range.
+- [x] `lib/storage/collectionStorage.ts` — **shipped in PR #296**, and the sequencing worked as
+      written: these landed before E3's rewrite and served as its characterization net.
+      `collectionStorage.test.ts` (806) + `collectionStorage.ssr.test.ts` (121) = **+927 against an
+      estimate of +250–400 — 2.3–3.7x over**, the same test-side blowout this board has now recorded
+      four times. **Corrected 2026-08-27: the file is 274 lines, not 286** — E3 (#306) cut it after
+      this bullet was written.
+- [x] `lib/actions/clearCache.ts` — shipped with D2, PR #266. `tests/lib/actions/clearCache.test.ts`.

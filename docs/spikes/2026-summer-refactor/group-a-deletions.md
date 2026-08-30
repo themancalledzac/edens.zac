@@ -2,7 +2,21 @@
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
 
-All nine items merged: PR #255–#263. Everything here was verified zero-reference before deletion; A5 turned out to be a bug fix rather than a deletion.
+All nine items merged: PR #255–#263. Everything here was verified zero-reference before deletion; A5 turned out to be a bug fix rather than a deletion. A9's last bullet (a `CLAUDE.md` correction, not a deletion) is still open on the live board.
+
+## Closed rows
+
+| MR  | Scope                                            | Outcome                              |
+| --- | ------------------------------------------------ | ------------------------------------ |
+| A1  | Dead whole files + their tests                   | −1,261 · #255                        |
+| A2  | Dead exports in `lib/api`                        | −283 · #256                          |
+| A3  | Dead half of `metadataUtils.ts`                  | −400 src, −500 test · #257           |
+| A4  | Dead small utils, constants, type guards         | −652 · #258                          |
+| A5  | Gray overlay never paints on manage grid (BUG)   | ±40 · #260                           |
+| A6  | `CollectionListSelector` flat mode               | −223 net (−183 src/scss, −40 test) · #261 |
+| A7a | `useCollectionEdit` legacy aliases               | −8 · #259                            |
+| A7b | `enterSelect`/`enterAdd` inline copies           | −2 src · #262                        |
+| A8  | Dead SCSS in live modules + `globals.css` tokens | −327 · #263                          |
 
 ---
 
@@ -191,7 +205,49 @@ Also corrected: `barCell` and `main` appear only in comment text in that file, n
 
 ### ◐ A9 · Dead config — PR #259
 
-_Shipped bullets only. The three open bullets stayed on the live board — see_ _[A9 on the board](../2026-summer-refactor.md#-a9--dead-config--pr-259)._
+_Shipped and swept bullets only. The one open bullet (the `CLAUDE.md:22` PATH correction) stays on
+the live board — see A9 in [the board](../2026-summer-refactor.md)._
+
+**Swept for the first time on 2026-08-28. Two of the three then-open bullets described states that
+no longer existed — including the `layoutpreview` delete this board carried for FIVE sessions and
+repeatedly re-attempted. The user cleared it outside git. Nobody checked; the board just kept
+re-filing it.** That is the cost of an item stamped UNSTAMPED: not a wrong line number, five
+sessions of re-deriving a dead task.
+
+- [x] ~~`.claude/worktrees/` still holds the 6 orphaned `agent-*` directories (Mar 16, unregistered —
+      re-checked 2026-08-22). Check each for uncommitted work before deleting — that is the only
+      reason they were left in place. The `cleanup` worktree was removed by the review session (its
+      D6 branch merged, tree clean).~~ **DONE — verified 2026-08-28.** `ls -a .claude/worktrees/`
+      shows an empty directory (mtime Aug 24, i.e. cleared after the 08-22 re-check), and
+      `git worktree list` returns exactly one entry: the main checkout. Zero orphans.
+- [x] **DONE — the directory is GONE. Verified 2026-08-28: `ls "app/(admin)/admin/layoutpreview/"`
+      returns "No such file or directory" and `find app -iname "*layoutpreview*"` returns nothing.**
+      The user cleared it outside git (it was never tracked —
+      `git log --all -- "app/(admin)/admin/layoutpreview"` is empty), and `git grep` across every
+      remote branch finds `layoutpreview` only in this board file. Nothing is live anywhere.
+      **This bullet was carried for five sessions and re-attempted at least twice.** The board's own
+      advice — "stop re-attempting the delete, put the command in the handoff prompt" — was right,
+      worked, and then nobody checked whether it had worked. **The lesson is not about permissions:
+      an item that hands work to the USER needs a verification step on the next run, or it becomes
+      immortal.** Stamp such bullets with what to check, not just what to ask for.
+      **The `.next-verify` consequence is also DONE — verified 2026-08-29.** The board called the
+      stale generated type at `.next-verify/dev/types/validator.ts` "expected noise" for three
+      sessions; `.next-verify/` no longer exists and `tsc --noEmit` exits 0. Sessions should expect
+      a CLEAN type check.
+      _Original text follows._
+      ~~`app/(admin)/admin/layoutpreview/` — the untracked screenshot harness for PR #253's
+      four-panel question. Read and confirmed purposeless 2026-08-23: its own first line says
+      "TEMPORARY … Delete this directory when the screenshots are captured", and #253 merged at
+      79fbca5. Carried forward from the 08-23 log entry's "delete on sight", which did not stick
+      because it was a log line and not a tracked bullet — now it is one. **The D4 session's
+      `rm -rf` was denied by the permission gate, so this is a user action, not an agent one.**
+      Deleting it also removes the 3 comment lines G2's `.tsx` baseline has to exclude by hand.
+      **Re-attempted and re-denied 2026-08-24 — this is now confirmed reproducible, not a one-off
+      of the D4 session.** The permission gate denies `rm -rf` on this path even with bypass
+      permissions active, so no agent session can clear it. Fifth session carrying it. Stop
+      re-attempting the delete; put the command in the handoff prompt instead and let the user run
+      it. Re-read before deleting if you want: it is one file, `page.tsx`, whose first line still
+      reads "TEMPORARY — screenshot harness for the PR #253 four-panel layout question.~~
 
 - [x] `eslint.config.mjs` — ignores for nonexistent `Components/**` and `old/**`; the `pages/**` override disabling a rule that is itself commented out.
 - [x] `tsconfig.json` / `jest.config.mjs` — excludes for nonexistent `old/tests/**` and `**/__tests__/**`.

@@ -2,7 +2,9 @@
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
 
-One line per `/next` run, oldest first. The newest entry stays on the live board; everything older lives here. Three consecutive entries ending in the same `Next:` means that item is being avoided, not scheduled.
+One line per `/next` run, oldest first. The newest two entries stay on the live board; everything older lives here. Three consecutive entries ending in the same `Next:` means that item is being avoided, not scheduled.
+
+_Label scheme: same-day runs are numbered "(1)", "(2)", … in run order. The two unnumbered "2026-08-28" entries below predate the numbering and are that day's first two runs; later entries count from them, which is why the live board's numbering that day starts at "(2)". History is not renumbered._
 
 ---
 
@@ -197,7 +199,7 @@ One line per `/next` run, oldest first. The newest entry stays on the live board
 - 2026-08-23 — **Not a `/next` run: six feature requests filed from a user design review of `/user`.**
   Filed as Group H. Only H1, H2a and H3 got board rows; H2b/H4/H5/H6 are a design review, an ops
   project, a second design review and a vision item, so they went to
-  [group-h-features.md](2026-summer-refactor/group-h-features.md) with a pointer under "What to
+  [group-h-features.md](group-h-features.md) with a pointer under "What to
   build next". **The rule that decided the split is reachability, not status** — F4 and G3 are ⛔ and
   still carry rows because each has a self-sufficient live section, so H3 (a decision gating a ±40
   MR) got the same treatment and the four non-MRs did not.
@@ -313,7 +315,7 @@ exactly. One asymmetry worth knowing: the backend clamps `limit` to 200 and retu
 value; the frontend does not clamp. Nothing depends on it today.
 
 One line per `/next` run. The newest entry is here; older entries are in
-[session-log.md](2026-summer-refactor/session-log.md). Three consecutive entries ending in the same `Next:` means
+[session-log.md](session-log.md). Three consecutive entries ending in the same `Next:` means
 that item is being avoided, not scheduled — make it real work or drop it from the board.
 
 - 2026-08-24 — **ten items shipped as parallel agents**, PRs #294–#304, plus #305 (this board) and
@@ -704,7 +706,7 @@ pageType="collectionsCollection">` is one line before and one line after — so 
   (`ContentTagModel[]`) is a hard type conflict. Only the two-line strip predicate actually
   duplicates. A merge relocates the divergence into the call sites (+25 call-site lines to delete
   ~30 body lines). No follow-up MR filed. Full table in
-  [group-c-bugs.md](2026-summer-refactor/group-c-bugs.md).
+  [group-c-bugs.md](group-c-bugs.md).
 
   Housekeeping: `0324-…` and `0325-…` deleted local and remote now that #326 landed F6 on `main`
   (`git merge-base --is-ancestor 9953f19 origin/main` confirmed before deleting, not the badge).
@@ -1059,3 +1061,32 @@ pageType="collectionsCollection">` is one line before and one line after — so 
   below). Left a re-derived ref list at the top of E6 rather than patching prose in place, because
   the prose below still argues from the old numbers and rewriting it would have risked breaking the
   reasoning. **A shipped bullet invalidates its siblings' refs — re-derive them in the same commit.**
+
+- 2026-08-28 (2) — **close-out. #339 merged. E3 CLOSED with zero code — its "user decision" was
+  already answered in the source. Corrected F1's slice boundaries, the third time they have drifted.
+  Next run: E6 `_deletedIds`, then E6 bullet 3, then F3's logger labels.**
+
+  **E3 is the sixth occurrence of the board's dominant failure mode and the first of a new shape.**
+  The previous five were shipped-but-unticked. This one was answered-but-still-blocked: #306's
+  guardrail asked for the guard-deletion analysis, #306 delivered it into
+  `collectionStorage.ts:47-55`, and the board kept the question open against the user for four days.
+  Hoisted the rule — before escalating anything to the user, grep the source and the crediting PR
+  for the answer, because that is where a "report what it would cost" guardrail actually lands.
+
+  **F1's boundaries drifted for the THIRD time, and the correction method had to change.** #313 broke
+  them once with a uniform two-band offset; #339 broke them again with three hunks and therefore
+  three offsets (+23/+17/+11). No single number fixes them. Re-derived all six from the five anchors
+  F1 already names, and hoisted the rule. **Also found a trap doing it:** anchoring the update-form
+  end on its raw source line — a bare `);` — false-matched 13 lines early. Generic punctuation is
+  not an anchor.
+
+  **G4's docblock table cannot be updated and that is a defect in G4 itself.** #339 added one
+  docblock to `useCollectionEdit.tsx` (raw `/**` 27 → 28), but the table's "16" is a filtered count
+  whose filter is written down nowhere, so there is no way to know whether the new block falls
+  inside it. Flagged in place. G4 exists to fix undocumented conventions and its own measurement has
+  the same defect.
+
+  **The board is now decision-starved, not work-starved.** After E3 and E10 closed, seven items sit
+  BLOCKED on user calls (H1, C9, F4, G3, E9's `.srOnly`, G2b/G2c, E6 bullet 1) against a COLD set
+  that is F1 plus small tails. That ratio is the thing to watch: the next session should batch the
+  blocked questions in its opening message rather than picking around them.

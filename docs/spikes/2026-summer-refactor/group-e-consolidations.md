@@ -2,7 +2,27 @@
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
 
-E1 (PR #269) and E11 (PR #280). E2–E10 and E12 are still open on the live board.
+E1–E5, E8, E10, E11 and E12–E17 are archived here, plus the shipped halves of E6, E7 and E9. E6,
+E7 and E9's open remainders (and E18, filed 2026-08-29) are on the live board.
+
+## Closed rows
+
+| MR  | Scope                                                                    | Outcome                                                                                                     |
+| --- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| E1  | Parallax-card builder consolidation                                      | +98 src, +659 test (est. −120) · #269                                                                        |
+| E2  | `core.ts` fetch skeleton + `clientFetch`                                 | −115 src actual, +6 tests (est. −180 src, +150–200 test) · #333 (bullets 1–2) + #334 (bullets 3–4)           |
+| E3  | `collectionStorage.ts` generics                                          | −12 src (−46 code, +39 comment); +927 test via #296 · #306 — guards answered by #306 itself in `collectionStorage.ts:47-55`, keep them |
+| E4  | Entity-diff generics + one IMAGE guard                                   | +44 src / +177 test for the twins half (est. −80) · #311 — IMAGE-guard half STRUCK, guards are NOT duplicates |
+| E5  | Filter/sort/date duplication                                             | 0 src / +139 test (est. −50 src) · #299 — all 4 "open" bullets shipped in #299 itself (swept 08-28)          |
+| E8  | Renderer + `MenuDropdown` dedup                                          | −49 src / +90 test (est. −120 src / +150–250 test) · #319                                                    |
+| E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator)        | −79 src code-only / +176 test code-only (est. −60 src) · #304 — 5 of 7 shipped, 1 never a task, `--color-danger` kept by user decision |
+| E11 | Make cache-tag register/revalidate drift detectable                      | +277 −28 · #280                                                                                              |
+| E12 | Wire up `collections-location-${slug}`                                   | +72 src / +293 test (est. +30 src) · #301 — image-path trigger split out as E13                              |
+| E13 | Trigger `collections-location-${slug}` from the image-metadata save path | +36 src net / +165 test (est. +30 src, +60 test) · #313 — location-RENAME gap split out as E16               |
+| E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value       | −3 src / −4 test net, 36 call sites · #307 — the one estimate on this board that held                        |
+| E15 | `createHeaderRow`'s two trailing boolean params → options object         | +22 src net / 14 test call sites (est. ±15 src, ~20 sites) · #314 — stacked on #313; first call-site estimate to come in OVER |
+| E16 | Revalidate the OLD slug when a location is RENAMED                       | +40 src / +281 test across 2 slices (est. +30 src / +120 test) · #316 + #317 — src held; test half 2.3x over |
+| E17 | Collapse the inert `pageType` union to a boolean                         | +3 src (−2 code, +5 comment) / +9 test (est. −15 src / ~0 test) · #322                                       |
 
 ---
 
@@ -1260,3 +1280,282 @@ _Their final state at close, kept for forensics. The live board's table now list
 | **E5**  | ✅ CLOSED | —— swept 2026-08-28: all four "open" bullets shipped in `699441b`, inside PR #299 itself. Nothing was open. FIFTH shipped-but-unticked occurrence                                                                                                                                                                                                                                                                                                                                              |
 | **E10** | ✅ CLOSED | —— the user was asked and answered 2026-08-28: **keep `--color-danger`**, no code change. `RolesPanel.module.scss:66` is correct as written. The question was only ever open because the "other three panels" comparison was false — there is one `.deleteButton` repo-wide, so there was no majority to align with. Item is fully closed                                                                                                                                                      |
 | **E3**  | ✅ CLOSED | —— it was never a user call. #306 wrote the answer into `collectionStorage.ts:47-55`: the guards are deliberate, unreachable through this module's API but reachable from a foreign sessionStorage write or a non-string slug, where dropping them returns `undefined` through a declared `T \| null`. Pinned by mutation M3. Keep them; 0 code. **SIXTH occurrence of the board's dominant failure mode, and the first that was answered-but-still-blocked rather than shipped-but-unticked** |
+
+### ◐ E6 · `useCollectionEdit` refresh helpers — shipped bullets and close-out history (bullets 2 and 3, `_deletedIds`)
+
+_Moved from the live board 2026-08-29. Bullet 1 (the three refresh copies) is still open there,
+BLOCKED on the user. Everything below is the record of the shipped half._
+
+#### CLOSE-OUT 2026-08-28 (2) — the picked run landed in full: #341, #342, #343
+
+**All three MRs of the previous run merged.** `_deletedIds` (#341) and bullet 3 (#342) are done, so
+**E6 is down to bullet 1 alone, and bullet 1 is BLOCKED on the user.** F3's logger bullet (#343) is
+recorded in that item.
+
+| MR | What | Src | Test | Suite after |
+| --- | --- | --- | --- | --- |
+| [#341](https://github.com/themancalledzac/edens.zac/pull/341) | `_deletedIds` removed from `handleDeleteSuccess` | +28/−31 | 3 call sites edited | 245 / 4454 |
+| [#342](https://github.com/themancalledzac/edens.zac/pull/342) | `buildRemoveFromCollectionDiffs` shared | +43/−21 | +65 (6 new specs) | 245 / 4460 |
+
+**The helper did NOT go where this item predicted.** The run note said `collectionEditUtils.ts`.
+It went to `app/components/Metadata/metadataUtils.ts` — that is where `buildImageUpdateDiff` (which
+it calls) and its sibling `buildImageUpdatesForBulkEdit` live, and both call sites already imported
+from it. `useMetadataSubmit` reaches into `collectionEditUtils` for exactly one revalidate
+function; putting a diff builder there would have widened that cross-directory edge for nothing.
+**Rule: put a shared helper where its own dependencies live, not where the louder caller lives.**
+
+**Estimate vs actual — the "≈break-even" call was right, and the reason generalizes.** Bullet 3 came
+in at src net **+22**, the third consecutive E6 extraction to GROW the file (bullet 2 was +11).
+16 of the 31 new lines in `metadataUtils.ts` are the docblock the no-inline-comments rule requires;
+the dedup saves 9 lines of body against 15 lines of helper body. **The `−90 src` on this item's
+MR-board row is now definitively dead** — every bullet on E6 that could be measured came in
+positive. Any remaining item on this board that promises negative source lines from an EXTRACTION
+should be re-read as ≈+20 before it is scheduled.
+
+**A dead param is not a free deletion — Prettier moved 3 lines that no edit touched.** Emptying
+`handleDeleteSuccess`'s parameter list let Prettier collapse `useCallback(\n  async (…) => {` onto
+one line and de-indent the whole body. That is why #341 reads +28/−31 for what is four edits, and it
+is a **third** demonstration of F1's re-derive rule — this time with no helper inserted at all.
+**Formatting is a hunk. A four-line change can still move every ref below it.**
+
+**Zero test churn again, on both MRs.** #341 edited 3 existing call sites (they passed an array to a
+function that now takes none); #342 edited no existing test at all and added 6 specs for the new
+builder. The ±20 budget this item once carried has now over-estimated three times running.
+
+**The rejection test passed cleanly for the first time on this item.**
+`buildRemoveFromCollectionDiffs(images, collectionId, availableFilmTypes?)` — three params, **zero**
+behavior switches. Contrast bullet 1 at 3-of-6. That contrast is the item's most useful artifact:
+the same test that killed bullet 1 and F3's `invites.ts` green-lit this one, so it is discriminating
+rather than merely conservative.
+
+- **~~The dead `_deletedIds` parameter~~ REMOVED 2026-08-28 — PR #341, MERGED.** `handleDeleteSuccess` is now `() => Promise<void>` on `UseCollectionEditResult:285`. `MetadataModal`'s `onDeleteSuccess`/`onRemoveFromCollectionSuccess` props deliberately KEPT `(ids: number[]) => void` — `useMetadataSubmit:190/:198/:225` (**were `:189/:197/:229`; re-derived 2026-08-29**) passes real ids and its tests assert on them; a zero-arg handler is assignable, so `EditModeLayer.tsx:365-366` needed no edit. Original filing kept below.
+
+- ~~**The dead `_deletedIds` parameter is still open and is now the cheapest thing on this item.**~~
+  Untouched by bullet 2. `useCollectionEdit.tsx:1060` (**was `:1043`**, +17) still takes
+  `async (_deletedIds: number[])` and never reads it, still fed by `:1119` (**was `:1102`**)
+  computing `imageSubset.map(img => img.id)`. It is still on the public `UseCollectionEditResult`
+  type at `:285` — **that ref did NOT drift**, the interface sits above bullet 2's insertion point.
+
+> **REF DRIFT, ROUND 2 — from #341 and #342 (2026-08-28), applies on top of everything below.**
+> The file is now **1,751 lines** (was 1,759). Two hunks, two different offsets:
+> **+0 at or above `:1058`, −3 between `:1059` and `:1100`, −8 at or below `:1101`.**
+> Re-derived and re-confirmed against `main` at `652d5bb`: `adoptSaveResponse:740` (unchanged),
+> `handleUpdate:753` (unchanged), `handleMetadataSaveSuccess:1007` (unchanged),
+> `handleGifSaveSuccess:1038` (unchanged), `handleDeleteSuccess:1059` (unchanged — it is the
+> collapse point), `handleBulkRemove:1088` (**was `:1091`**), `enterReorder:1404` (**was
+> `:1412`**). **Everything in the older note below is superseded where the two disagree.**
+
+> **Ref drift from bullet 2, applies to the whole E6 section below.** `adoptSaveResponse` added 11
+> net lines at `:740`. The shift is **not uniform** — the 27-line helper inserts before
+> `handleUpdate`, then each of the two call-site collapses removes 8 more lines further down, so a
+> ref moves +23, +17 or +11 depending on which of the three edits it sits below. Every ref above
+> `:740` is unchanged. **Do not apply a single offset; use these re-derived values.**
+> `handleUpdate:730` → **`:753`**, `handleMetadataSaveSuccess:990` → **`:1007`**,
+> `handleGifSaveSuccess:1021` → **`:1038`**, `handleDeleteSuccess:1042` → **`:1059`**,
+> `handleBulkRemove:1074` → **`:1091`**, `enterReorder:1395` → **`:1412`**. File is **1759** lines,
+> not 1748. The prose further down this item still carries the pre-bullet-2 numbers; trust this list.
+
+#### The original filing — bullet 2's rationale, kept for history
+
+**Bullet 2 only — extract `adoptSaveResponse`.** Three reasons, and the third is the one
+that decided it.
+
+It is the only bullet on this item with **no behavior question attached**. `handleUpdate:745-751`
+and `enterReorder:1425-1431` are the same seven lines in the same order; the lift is mechanical and
+its correctness is checkable by reading. Bullets 1 and 3 are not like that — see below.
+
+Its refs are as fresh as they get. `git diff --name-only d784bc5..fed67e8 --
+app/components/ContentCollection/edit/` returns nothing, so nothing in this file moved under #336 or
+#337, and all six function refs were re-confirmed on `main` at `fed67e8` on 2026-08-28.
+
+And **the two things that made E6 look risky are both gone.** The ±100 test-churn budget rested on a
+call-order assertion that does not exist, and this session's sweep of the four UNSTAMPED items
+means E6 is now the largest COLD item with no user question in front of it. F1 is bigger but is
+pure size; E6 bullet 2 is small, verified, and shrinks the file F1 will later split.
+
+**Guardrail — do bullet 2 ONLY. Leave bullets 1 and 3 alone and report what changing them would
+cost.** They are the adjacent tempting changes and both look like the same kind of lift:
+
+- **Bullet 1 (the three refresh copies) is not a refactor, it is a behavior change.** The three
+  differ on four axes — `handleMetadataSaveSuccess:990` adopts LAST through `mergeNewMetadata` and
+  calls `updateImagesInCache`; `handleGifSaveSuccess:1021` adopts FIRST and **omits
+  `revalidateMetadataCache` entirely**; `handleDeleteSuccess:1042` adopts first, keeps it, and is
+  the only one that fails loudly. Consolidating means either 3–4 options params or deciding that the
+  gif path starts firing `revalidateMetadataCache`. **That decision is the user's.** Also: extend
+  `refreshCollectionAfterOperation` (`collectionEditUtils.ts:338`, already used at three of the six
+  sites) rather than writing a new helper.
+- **Bullet 3 should narrow to the diff builder before anyone touches it.** `handleBulkRemove:1090-1099`
+  and `useMetadataSubmit.ts:216-225` share a near-identical `map` body, but the handlers around it
+  differ and the confirm wording is pinned by `useCollectionEdit.bulkRemove.test.tsx:180-184`.
+  Share `buildRemoveFromCollectionDiffs`; do NOT unify the handlers or the strings.
+
+**Apply the rejection test to both before proposing either** — write the shared signature first, and
+if a third of its parameters exist only to switch behavior between callers, they are not duplicates.
+That test has now killed two items in two days (F3's `invites.ts`, E7's hook), and bullet 1 is the
+next candidate to fail it.
+
+**Also in scope if the pass is quick: the dead `_deletedIds` parameter** at
+`useCollectionEdit.tsx:1043`, never read, fed by `handleBulkRemove:1102` computing
+`imageSubset.map(img => img.id)` purely to satisfy it. It is on the public `UseCollectionEditResult`
+type at `:285`, so removing it changes callers — which is why it belongs to E6 rather than to a
+drive-by.
+
+- [x] ~~`handleUpdate` and `enterReorder` duplicate the save-adoption block → `adoptSaveResponse`.~~
+      **SHIPPED 2026-08-28 — PR #339, MERGED (`4ac6026`), +11 src / 0 test.** `adoptSaveResponse` is a
+      `useCallback` at `useCollectionEdit.tsx:740`, called at `:768` (`handleUpdate`) and `:1434`
+      (`enterReorder`; **was `:1442`, re-derived 2026-08-29**). Hook-local, not a `collectionEditUtils` export — the block mutates
+      `seededCollectionIdRef`/`seededFromAdminRef` and calls `setCurrentState`/`setUpdateData`, so a
+      module-level helper would have taken five injected params to move seven lines and would have
+      failed the rejection test.
+      **Test churn was ZERO, not ±20.** All six suites pass untouched (122 tests), full suite
+      245/245, 4454 tests. No test file was edited. The ±20 budget was still an over-estimate after
+      the ±100 one was corrected.
+      **The file GREW by 11 lines (1748 → 1759), it did not shrink.** The dedup saves 16 lines and
+      the helper costs 27, of which 9 are the docblock the project's no-inline-comments rule
+      requires. Anyone costing the remaining E6 bullets by "lines removed" should assume the same
+      shape: each extraction here trades duplicated code for a documented helper and roughly breaks
+      even. The `−90 src` figure on the MR-board row is not achievable from bullets 1 and 3 either.
+- [x] ~~`handleBulkRemove` duplicates `useMetadataSubmit.handleRemoveFromCollection` → shared builder.~~
+      **SHIPPED 2026-08-28 — PR #342, MERGED, src net +22 / +6 new tests.**
+      `buildRemoveFromCollectionDiffs` is an export of `app/components/Metadata/metadataUtils.ts`,
+      called from `useCollectionEdit.tsx:1104` and `useMetadataSubmit.ts:217` (**was `:216`; off by
+      one, re-derived 2026-08-29**). The handlers were
+      NOT unified and the confirm strings were NOT touched, exactly as the guardrail required.
+- [x] ~~Sequencing (added 2026-08-22): E6 is a slice of F1's decomposition — do E6 first or fold it
+      into F1, not both independently.~~ Superseded by events: bullets 2–3 shipped standalone, and the
+      board now recommends folding the remaining bullet 1 into F1. ~~And `useCollectionEdit.handlers.test.tsx` asserts on
+      `collectionStorage.update`/`updateFull` CALL ORDER — a consolidated helper that reorders those
+      calls moves assertions (budget ±100 test churn across the six suites).~~
+
+**VERIFIED 2026-08-27 against `main` at `d784bc5`, nothing changed. The call-order claim is FALSE
+and the churn budget with it.** `useCollectionEdit.handlers.test.tsx` (908 lines) contains **zero**
+call-order assertions on `collectionStorage.update`/`updateFull`. Its only two `collectionStorage`
+assertions are `:124-125`, both order-independent `toHaveBeenCalledWith`. The single
+`invocationCallOrder` assertion in any of the six suites is in a DIFFERENT file
+(`useCollectionEdit.test.tsx:283-285`) on DIFFERENT mocks — it pins `reorderCollectionContent`
+before `updateCollection`, the failure-safety ordering documented at `useCollectionEdit.tsx:1421`
+(WRITE A) and `:1429` (WRITE B) (**were `:1412`/`:1420`; +17 by #339, then −8 by #341/#342**), and it sits BEFORE the adoption block, so extracting `adoptSaveResponse` cannot touch
+it. **There is nothing to reorder. Budget ±20, not ±100** — the six suites hold ~122 tests total, so
+±100 would have meant rewriting 80% of them, which should have been the tell.
+
+**Drift note the bullet-2 sweep got wrong, found 2026-08-28 (2).** #339's re-derived list named six
+functions and was accurate for all six — but it did not sweep the PROSE, and the
+`refreshCollectionAfterOperation` call sites two paragraphs up sat at `:871`/`:922` for a day
+after #339 shifted them to `:888`/`:939` (+17). They are correct now. **A drift sweep that fixes
+the checklist and skips the paragraphs leaves the paragraphs wrong**, and the paragraphs are what a
+fresh session actually reads first.
+
+**And the three "copies" are not copies — consolidating them is a BEHAVIOR change, not a
+refactor.** `handleMetadataSaveSuccess:990-1019` adopts LAST through `mergeNewMetadata` and calls
+`updateImagesInCache`; `handleGifSaveSuccess:1021-1040` adopts FIRST and **omits
+`revalidateMetadataCache` entirely**; `handleDeleteSuccess:1042-1072` adopts first, keeps
+`revalidateMetadataCache`, and is the only one that fails LOUDLY (`setError` + `logger.warn`) where
+the other two return silently. Four axes of variation. One helper serves all three only with 3–4
+options params, or by accepting that the gif path starts firing `revalidateMetadataCache` and that
+adopt-ordering is normalized. **Both are decisions for the user, not mechanics** — flag them before
+starting rather than discovering them mid-PR.
+
+**Bullet 2 is the clean one and is unaffected by any of the above.** `handleUpdate:745-751` and
+`enterReorder:1425-1431` are the same seven lines in the same order. `adoptSaveResponse` is a
+straight lift with no behavior question. **If E6 is picked and time is short, do this bullet alone.**
+
+**Refs RE-CONFIRMED on `main` at `fed67e8` (2026-08-28), zero drift.** `git diff --name-only
+d784bc5..fed67e8 -- app/components/ContentCollection/edit/` returns nothing — neither #336 nor #337
+touched this directory, so every line number above still lands on its named function:
+`handleUpdate:730`, `handleMetadataSaveSuccess:990`, `handleGifSaveSuccess:1021`,
+`handleDeleteSuccess:1042`, `handleBulkRemove:1074`, `enterReorder:1395`. File is 1748 lines.
+**This item is fully specified and needs no discovery pass before it starts.**
+
+**Bullet 3 should narrow to the diff builder only.** `handleBulkRemove:1090-1099` and
+`useMetadataSubmit.ts:216-225` share a near-identical `map` body (same `filter` + same
+`buildImageUpdateDiff`), but everything around it differs — `useMetadataSubmit` wraps in `runSave`
+and closes the modal, `handleBulkRemove` manages its own loading/error and calls
+`handleDeleteSuccess`. Share `buildRemoveFromCollectionDiffs`; keep the handlers separate. **Do not
+unify the confirm strings** — `useCollectionEdit.bulkRemove.test.tsx:180-184` pins the wording.
+
+**Dead parameter found, not fixed here.** `useCollectionEdit.tsx:1043` takes
+`async (_deletedIds: number[])` and never reads it; `handleBulkRemove:1102` computes
+`imageSubset.map(img => img.id)` purely to feed it. Both sides can drop it, but it is on the public
+`UseCollectionEditResult` type at `:285`, so callers change — that makes it E6's business rather
+than a drive-by.
+
+**Where the shipped bullet 3 stood before it shipped (assessment kept for the estimate record).**
+Extracting `buildRemoveFromCollectionDiffs` from `handleBulkRemove:1107-1116` (**was `:1090-1099`** — bullet 2
+shifted it +17) and `useMetadataSubmit.ts:216-225` (unchanged, different file) removes about 10
+duplicated lines and adds a helper plus its
+docblock — the same roughly-break-even shape bullet 2 turned out to have, and it lands the helper
+in a third file. Its real value is not line count, it is that the two copies can drift; nothing
+currently pins them to each other. **Startable any time, no user decision needed**, but it should
+be sold as drift-protection, not as a size win. Do not unify the handlers or the confirm strings
+(`useCollectionEdit.bulkRemove.test.tsx:180-184` pins the wording).
+
+### ◐ E7 · Edit-grid handoff — close-out history (the waste FIXED #337; the hook REJECTED)
+
+_Moved from the live board 2026-08-29. The two remaining wasted paths are open there. Line refs in
+this section are as-measured pre-#337 (2026-08-27); the current equivalents, re-derived 2026-08-29:
+`contentBlocks` memo `:424`, grid read `:531`, `{!editLayerMounted && grid}` `:558`, `EditModeLayer`
+`:559`, `applyVisibilityScope` call `:300`, `filteredImages` `:343`, `filteredAvailableOptions`
+`:373`, `selectsEnabled` `:225`._
+
+**The item was half right, and its prescription did not follow from its own evidence.** Verified
+against `main` at `d784bc5`. The double run is real. But only the process → sort half is wasted, and
+the fix for it is a four-line guard, not a shared hook.
+
+**SHIPPED 2026-08-27 — PR #337.** `CollectionPageClient.tsx`'s `contentBlocks` memo now
+short-circuits once `editLayerMounted` is true. Src `+22/−0`, test `+87/−3` (3 new specs), measured
+with `git diff --cached --numstat` per group rather than quoted from memory.
+
+**Suite/test counts. `main` at `fed67e8` (both #336 and #337 merged) was 245 suites / 4454 tests.**
+(**That reading aged out the moment #342 merged — post-#342 the recorded figure is 245 / 4460,
+itself pending a fresh re-measure. Never quote either without stashing and re-running.**) The
+number moved THREE TIMES inside one day's work, every move legitimate:
+
+| When                  | Reading        | What moved it                             |
+| --------------------- | -------------- | ----------------------------------------- |
+| #324 close-out, 08-24 | 245 / 4399     | stamped "quote from here on"              |
+| #336 branch, 08-27    | 246 / 4451     | E2 merges (#332/#333/#334) added 52 tests |
+| #337 branch, 08-27    | 246 / 4454     | this item's 3 new specs                   |
+| `main`, 08-28         | 245 / 4454     | #336 deleted `tests/lib/api/user.test.ts` |
+
+**Every one of those was correct when taken, and all of them are wrong now.** That is the whole
+argument for the re-measure rule: a baseline is a measurement with a timestamp, not a fact about the
+repo. The 246 readings were taken while #336 was open, so they counted a suite main no longer has.
+**Re-measure by stashing the tree and running the suite; never quote a recorded number.**
+
+**What was actually being wasted.** `contentBlocks` is defined at `CollectionPageClient.tsx:407`,
+read at exactly one place (`content={contentBlocks}`, `:509`, inside `grid`), and `grid` renders
+only under `{!editLayerMounted && grid}` at `:536`. So after the edit layer mounts, every filter
+change ran a full `processContentBlocks` + `applySort` pass whose result nothing rendered.
+**Confirmed by `grep -n "contentBlocks\|editLayerMounted\|const grid"`, which returns those four
+lines and nothing else.** `EditModeLayer` is a child (`:537`), gets `filterState` as a prop, and is
+created by `dynamic()` with no `React.memo` — so memoization never prevented the double run.
+
+**The hook is rejected, and the reason is the same one that killed F3's `invites.ts`: the shared
+thing is not shared.** The two sites' filter blocks are character-identical
+(`CollectionPageClient.tsx:332-335`, `EditModeLayer.tsx:169-172`) but consume DIFFERENT `allContent`
+— the parent scopes through `applyVisibilityScope(rawContent, filterState.showHidden)` (`:284-296`),
+the layer does not (`EditModeLayer.tsx:149-152`). Same code, different domain, different output,
+both used. And the process/sort calls pass opposite arguments: `filterVisible` `true` vs `false`,
+`showProtectedCovers` absent vs `true`, `collection.*` vs `liveCollection.*`, plus a pinned-selects
+branch the layer can never reach (`selectsEnabled` requires `!editMode`, `:219-220`). `filterVisible`
+is not a flag tweak — `contentLayout.ts:415-427` shows `false` both skips `filterVisibleBlocks` AND
+runs `sortNonVisibleToBottom`. **A hook serving both sites takes 9–11 parameters, four of them pure
+behavior switches. That signature's job would be to re-describe the differences.**
+
+**The parent's filter work is NOT waste and was deliberately left alone.** `filteredContent` feeds
+`filteredImages:337` → `filteredAvailableOptions:367-394`, which drives filter-chip greying and is
+live while editing. Only `contentBlocks` is dead. Gating the wrong one would break the chips.
+
+- [x] ~~`CollectionPageClient` and `EditModeLayer` both run the full filter → process → sort pipeline, so it runs twice per filter change while editing. Extract one hook.~~ **Waste fixed by the handoff guard (#337); hook extraction rejected — see above.**
+
+### ◐ E9 · Download icon/hook, auth-card SCSS — shipped bullets (#300)
+
+_Moved from the live board 2026-08-29. The `.srOnly` bullet is still open there, blocked on a user
+decision._
+
+- [x] `ClientGalleryDownload` and `FullScreenDownloadButton` share an identical SVG and an identical download-navigate/reset-timer pattern → `DownloadIcon` plus a small hook.
+- [x] The login and invite `page.module.scss` files → one shared auth-card style — PR #300.
+      **Not byte-identical, as this item claimed.** They differ on line 1, the header comment, which
+      is why the rename shows 62% similarity rather than 100%. Lines 2–29 match
+      (`md5 1c595922f7093c94149989928905d3da`). The SVGs in bullet 1 _are_ identical apart from
+      `className` (`md5 8b73bb4e2b4833ac8c8876e74942b737`).
