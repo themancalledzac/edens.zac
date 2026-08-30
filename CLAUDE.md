@@ -19,17 +19,15 @@ alwaysApply: true
 
 ## Running Tests
 
-`npm` and `npx` are not on PATH. Use the Homebrew node binary directly:
-
 ```bash
-/opt/homebrew/bin/node node_modules/.bin/jest
+npm test
 ```
 
 Common flags:
 
-- All tests: `/opt/homebrew/bin/node node_modules/.bin/jest`
-- Single file: `/opt/homebrew/bin/node node_modules/.bin/jest tests/utils/contentLayout.test.ts`
-- Watch mode: `/opt/homebrew/bin/node node_modules/.bin/jest --watch`
+- All tests: `npm test`
+- Single file: `npm test tests/utils/contentLayout.test.ts`
+- Watch mode: `npm run test:watch`
 
 ## Formatting & Verification
 
@@ -40,11 +38,11 @@ tree rewrites unrelated files and pollutes the diff.
 
 ```bash
 # Lint fix first (matches Cursor's source.fixAll.eslint on save)
-/opt/homebrew/bin/node node_modules/.bin/eslint --fix <files>
+npx eslint --fix <files>
 # Format last (matches .prettierrc.json)
-/opt/homebrew/bin/node node_modules/.bin/prettier --write <files>
+npx prettier --write <files>
 # Type check LAST of all — an ESLint autofix can break types (see below)
-/opt/homebrew/bin/node node_modules/.bin/tsc --noEmit
+npx tsc --noEmit
 ```
 
 Always re-run `tsc` **after** `eslint --fix`, never only before. `unicorn/no-useless-undefined`
@@ -55,7 +53,7 @@ strips the argument from `jest.fn().mockResolvedValue(undefined)`, and the resul
 For SCSS files, also run Stylelint:
 
 ```bash
-/opt/homebrew/bin/node node_modules/.bin/stylelint --fix <files>
+npx stylelint --fix <files>
 ```
 
 ## Common Mistakes to Avoid
