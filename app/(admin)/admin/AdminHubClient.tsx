@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from 'react';
 
-import { AdminPanelCollapseProvider } from '@/app/components/AdminPanel/AdminPanelCollapseContext';
+import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+import { AdminPanelCollapseProvider } from '@/app/components/ListPanel/AdminPanelCollapseContext';
 import {
   type AdminPanelSeed,
   AdminPanelSeedProvider,
-} from '@/app/components/AdminPanel/AdminPanelSeedContext';
-import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+} from '@/app/components/ListPanel/AdminPanelSeedContext';
 import { type AnyContentModel, type PanelType } from '@/app/types/Content';
 
 import { withPanelFootprints } from './adminHubContent';

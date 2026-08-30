@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useMemo } from 'react';
 
-import { useAdminPanelSeed } from '@/app/components/AdminPanel/AdminPanelSeedContext';
+import { useAdminPanelSeed } from '@/app/components/ListPanel/AdminPanelSeedContext';
 import { ListPanel, ListRow, ListRows, ViewAllLink } from '@/app/components/ListPanel/ListPanel';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadError } from '@/app/components/ui/StatusText/LoadError';
