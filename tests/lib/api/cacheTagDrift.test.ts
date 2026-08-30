@@ -19,8 +19,8 @@
  * against template prefixes too.
  */
 
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 
 const ROOT = process.cwd();
 
@@ -29,6 +29,14 @@ const REGISTRATION_SOURCES = ['app/lib/api/collections.ts', 'app/lib/api/content
 
 /** The only file that names cache tags to revalidate. `/api/revalidate` takes its tags from the request. */
 const REVALIDATION_SOURCE = 'app/components/ContentCollection/edit/collectionEditUtils.ts';
+
+/** Every file under `dir`, recursively. */
+function readdirRecursive(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+    const full = join(dir, entry.name);
+    return entry.isDirectory() ? readdirRecursive(full) : [full];
+  });
+}
 
 /** Functions inside {@link REVALIDATION_SOURCE} that POST tags. Scoped so unrelated `tags:` keys are not scanned. */
 const REVALIDATION_FUNCTIONS = [
@@ -201,6 +209,40 @@ describe('cache tag drift', () => {
         raw =>
           `${raw} is in ONE_SIDED_BY_DESIGN but is no longer one-sided — it is either revalidated ` +
           'now or no longer registered. Remove the entry so the allowlist keeps meaning something.'
+      )
+    ).toEqual([]);
+  });
+
+  /**
+   * Pins {@link REVALIDATION_SOURCE}'s own premise, which every assertion above rests on and none
+   * of them check.
+   *
+   * The scan reads revalidated tags out of one file because a docblock says that file is the only
+   * one naming them. A `fetch('/api/revalidate')` added anywhere else would be invisible to this
+   * suite — the tags it posts would never be scanned, so the drift guard would keep passing while
+   * the thing it guards had a hole in it. E18 wired four new revalidation call sites, which is
+   * exactly the change that could have introduced one.
+   *
+   * Scans `app/` rather than a hand-listed set of files, so a NEW file is caught too. Matches a
+   * `fetch(` call specifically, not the bare path: several docblocks name `/api/revalidate` while
+   * describing it, and `clearCache.ts` legitimately revalidates server-side via `revalidatePath`
+   * from `next/cache`, which posts no tag and is not this guard's business.
+   */
+  it('should keep /api/revalidate confined to the one revalidation source', () => {
+    const offenders = readdirRecursive(join(ROOT, 'app'))
+      .filter(file => file.endsWith('.ts') || file.endsWith('.tsx'))
+      .map(file => relative(ROOT, file))
+      .filter(file => file !== REVALIDATION_SOURCE)
+      .filter(file =>
+        /\bfetch\(\s*["'`]\/api\/revalidate/.test(readFileSync(join(ROOT, file), 'utf8'))
+      );
+
+    expect(
+      offenders.map(
+        file =>
+          `${file} references /api/revalidate, but the drift guard only scans ` +
+          `${REVALIDATION_SOURCE}. Post cache tags through a helper there, or this suite stops ` +
+          'seeing them.'
       )
     ).toEqual([]);
   });

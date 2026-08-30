@@ -22,10 +22,12 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { revalidateLocationCaches } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { useCollectionEdit } from '@/app/components/ContentCollection/edit/useCollectionEdit';
 import {
+  deleteCollection,
   getCollectionUpdateMetadata,
   getMetadata,
   updateCollection,
 } from '@/app/lib/api/collections';
+import { updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionModel,
@@ -70,6 +72,20 @@ const mockStorageGetFull = collectionStorage.getFull as jest.MockedFunction<
 const SEATTLE: LocationModel = { id: 1, name: 'Seattle', slug: 'seattle' };
 const PORTLAND: LocationModel = { id: 2, name: 'Portland', slug: 'portland' };
 const BEND: LocationModel = { id: 3, name: 'Bend', slug: 'bend' };
+
+/**
+ * Minimal IMAGE block. `imageUrl` is not decorative: `isContentImage` keys on `contentType` AND
+ * the presence of that field, so a block without it is invisible to the selection filter.
+ */
+function makeImage(id: number, locations: LocationModel[]) {
+  return {
+    id,
+    contentType: 'IMAGE',
+    imageUrl: `https://cdn.example.com/${id}.jpg`,
+    collections: [{ collectionId: 42, title: 'Smith Wedding' }],
+    locations,
+  } as unknown as NonNullable<CollectionModel['content']>[number];
+}
 
 function makeMetadata(): GeneralMetadataDTO {
   return {
@@ -266,6 +282,79 @@ describe('useCollectionEdit — location cache revalidation on save', () => {
     expect(postedTags().sort()).toEqual([
       'collections-location-bend',
       'collections-location-portland',
+    ]);
+  });
+
+  /**
+   * E18 half A. `handleBulkRemove` refreshes this collection's own page via
+   * `handleDeleteSuccess`, but nothing fired the location tag. Per E13's backend answer, dropping
+   * an image's last collection membership flips it INTO orphan status and `getLocationPage` lists
+   * orphan images by location name — so this path changes `/location/{slug}` and has to post it.
+   */
+  it('posts the removed images locations on a bulk remove', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    (updateImages as jest.MockedFunction<typeof updateImages>).mockResolvedValue({
+      updatedImages: [],
+    });
+    const collection = makeCollection({
+      content: [
+        makeImage(1, [SEATTLE]),
+        makeImage(2, [PORTLAND]),
+        makeImage(3, [BEND]),
+      ] as CollectionModel['content'],
+    });
+    mockGetCollectionUpdateMetadata.mockResolvedValue({
+      ...makeResponse(),
+      collection,
+    });
+
+    const { result } = renderEdit(collection);
+    await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+    act(() => result.current.enterSelect());
+    act(() => result.current.handleImageClick(1));
+    act(() => result.current.handleImageClick(2));
+    expect(result.current.selectedIds.sort()).toEqual([1, 2]);
+
+    mockFetchOk();
+    const remove = result.current.bottomBarCells.find(cell => cell.key === 'remove');
+    expect(remove).toBeDefined();
+    await act(async () => {
+      remove?.onClick?.();
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(postedTags().length).toBeGreaterThan(0));
+
+    expect(postedTags()).toContain('collections-location-seattle');
+    expect(postedTags()).toContain('collections-location-portland');
+    expect(postedTags()).not.toContain('collections-location-bend');
+  });
+
+  /**
+   * E18 half A. Deleting a collection revalidated its own page, its parents' and the metadata
+   * tags, but never its locations' pages — so `/location/{slug}` kept listing a collection that
+   * no longer existed.
+   */
+  it('posts the collections locations when the collection itself is deleted', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    (deleteCollection as jest.MockedFunction<typeof deleteCollection>).mockResolvedValue({
+      success: true,
+    });
+    const collection = makeCollection({ locations: [SEATTLE, PORTLAND] });
+    mockGetCollectionUpdateMetadata.mockResolvedValue({ ...makeResponse(), collection });
+
+    const { result } = renderEdit(collection);
+    await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+    mockFetchOk();
+    await act(async () => {
+      await result.current.handleDeleteCollection();
+    });
+    await waitFor(() => expect(postedTags().length).toBeGreaterThan(0));
+
+    expect(postedTags().sort()).toEqual([
+      'collections-location-portland',
+      'collections-location-seattle',
     ]);
   });
 

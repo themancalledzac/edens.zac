@@ -66,8 +66,11 @@ export function useMetadataSubmit({
 
   const isBulkEdit = selectedIds.length > 1;
 
-  // "Remove from collection" only operates on IMAGE blocks today — the bulk diff helper is
-  // typed to ContentImageModel. Skip GIF entries; they'll be a follow-up.
+  /**
+   * The IMAGE-typed slice of the selection. "Remove from collection" and the bulk diff helpers
+   * operate on IMAGE blocks only, since `buildRemoveFromCollectionDiffs` is typed to
+   * `ContentImageModel`; GIF entries are skipped and are a follow-up.
+   */
   const imageSubset = selectedImages.filter(
     (c): c is ContentImageModel => c.contentType === 'IMAGE'
   );
@@ -76,10 +79,13 @@ export function useMetadataSubmit({
   const isGif = previewImage ? isGifContent(previewImage) : false;
   const previewImageAsGif = isGif ? (previewImage as ContentGifModel) : null;
 
-  // The single-GIF edit/delete path applies only to a non-bulk GIF selection. Bulk-edit on GIF is
-  // not supported yet — the bulk-edit path splits mixed selections, so a batch never
-  // reaches here as a "GIF edit". When set, handleSubmit/handleDelete route through the GIF
-  // endpoints; otherwise the image path runs.
+  /**
+   * The GIF/MP4 this sheet acts on, or null when the image path should run instead.
+   *
+   * Only a non-bulk GIF selection qualifies. Bulk-edit on GIF is not supported: the bulk-edit path
+   * splits mixed selections, so a batch never reaches here as a "GIF edit". When set,
+   * {@link handleSubmit} and {@link handleDelete} route through the GIF endpoints.
+   */
   const singleGifTarget = isBulkEdit ? null : previewImageAsGif;
 
   /**
@@ -169,6 +175,18 @@ export function useMetadataSubmit({
     onClose();
   };
 
+  /**
+   * Deletes the selected images (or the single visible GIF/MP4) outright.
+   *
+   * Bulk-GIF delete is not supported yet, so a GIF selection processes the single visible target
+   * through the GIF endpoint and returns.
+   *
+   * The image path revalidates `/location/{slug}` for every location the deleted images carried.
+   * `next` is empty because nothing survives the delete to hold a location, and `previous` is read
+   * off `imageSubset` before the call, which is the only moment those locations still exist
+   * anywhere on the client. Without this the location pages keep listing deleted images until
+   * `TIMING.revalidateCache` expires.
+   */
   const handleDelete = async () => {
     const imageCount = selectedIds.length;
     const noun = isGif ? 'GIF/MP4' : 'image';
@@ -182,25 +200,37 @@ export function useMetadataSubmit({
     if (!confirmed) return;
 
     await runSave(async () => {
-      // Single GIF: route to the GIF delete endpoint. Bulk-gif delete isn't supported yet — we
-      // process the single visible selection only.
       if (singleGifTarget) {
         const result = await deleteGif(singleGifTarget.id);
         if (result?.deletedId != null) {
+          void revalidateLocationCaches(singleGifTarget.locations ?? [], []);
           onDeleteSuccess?.([result.deletedId]);
           onClose();
         }
         return;
       }
 
+      const previousLocations = imageSubset.flatMap(image => image.locations ?? []);
+
       const response = await deleteImages(selectedIds);
       if (response !== null) {
+        void revalidateLocationCaches(previousLocations, []);
         onDeleteSuccess?.(response.deletedIds);
         onClose();
       }
     }, 'Failed to delete images');
   };
 
+  /**
+   * Drops the selected images from the current collection, leaving them and their metadata in the
+   * system.
+   *
+   * This revalidates `/location/{slug}` for the same reason the delete path does, but with the
+   * opposite effect on the page. Per E13's backend answer, dropping an image's last collection
+   * membership flips it INTO orphan status, and `CollectionService.getLocationPage` lists orphan
+   * images by location name — so this can ADD an image to a location page rather than remove it.
+   * Either way the page changes and the tag has to be posted.
+   */
   const handleRemoveFromCollection = async () => {
     if (!currentCollectionId) return;
 
@@ -220,8 +250,11 @@ export function useMetadataSubmit({
         availableFilmTypes
       );
 
+      const previousLocations = imageSubset.flatMap(image => image.locations ?? []);
+
       const response = await updateImages(imageUpdates);
       if (response !== null) {
+        void revalidateLocationCaches(previousLocations, []);
         onRemoveFromCollectionSuccess?.(selectedIds);
         onClose();
       }

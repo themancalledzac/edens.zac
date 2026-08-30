@@ -439,8 +439,6 @@ export function useCollectionEdit({
   const seedUpdateData = useCallback(
     (source: CollectionModel): CollectionUpdateRequest => ({
       id: source.id,
-      // Seeded (not left undefined) so buildUpdatePayload can tell "unchanged false" from
-      // "not in the form" and the InfoTab checkboxes render the stored kind.
       isClient: source.isClient ?? false,
       isBlog: source.isBlog ?? false,
       title: source.title || '',
@@ -626,14 +624,19 @@ export function useCollectionEdit({
     }, []),
   });
 
+  /**
+   * The single manage mode, resolved from the mode flags in priority order.
+   *
+   * `pick-date` is checked first: entering that pick clears every other mode flag, so nothing can
+   * outrank it. `pick-cover` outranks `edit` so the sheet steps aside for the grid while a cover
+   * is being picked — the sheet's own open flag is untouched, so cancelling the pick lands back
+   * on the sheet with the edit buffer intact. Entering a pick must never discard unsaved field
+   * edits.
+   */
   const deriveManageMode = (): ManageMode => {
-    // Checked first: entering the pick clears every other mode flag, so nothing can outrank it.
     if (captureDateTargetId !== null) return 'pick-date';
     if (reorderState.active) return 'reorder';
     if (isMultiSelectMode) return 'select';
-    // Outranks 'edit' so the sheet steps aside for the grid while a cover is being picked. The
-    // sheet's own open flag is untouched, so cancelling the pick lands back on the sheet with the
-    // edit buffer intact — entering the pick must never discard unsaved field edits.
     if (isSelectingCoverImage) return 'pick-cover';
     if (isEditSheetOpen) return 'edit';
     if (isAddMode) return 'add';
@@ -713,9 +716,11 @@ export function useCollectionEdit({
     [selectedIds, collection.content]
   );
 
-  // One parent derivation for both of its consumers (the Gallery Access section and the
-  // password-propagate confirm). The server boolean covers the whole content graph; the memoized
-  // scan is the fallback and is O(n) over the 500 loaded blocks.
+  /**
+   * One parent derivation for both of its consumers: the Gallery Access section and the
+   * password-propagate confirm. The server boolean covers the whole content graph; the memoized
+   * scan is the fallback and is O(n) over the 500 loaded blocks.
+   */
   const isParent = useMemo(
     () =>
       isParentCollection({ content: collection.content, hasChildren: currentState?.hasChildren }),
@@ -872,6 +877,12 @@ export function useCollectionEdit({
     }
   }, [collection]);
 
+  /**
+   * Uploads dropped or picked files into this collection, then refreshes it.
+   *
+   * Images are POSTed one file per request to stay under the BFF proxy's multipart cap; batching
+   * them into a single request is what that cap forbids, not a missed optimization.
+   */
   const handleMediaUpload = useCallback(
     async (files: FileList) => {
       if (!collection || files.length === 0) return;
@@ -889,7 +900,6 @@ export function useCollectionEdit({
           collection.slug,
           async () => {
             for (const file of imageFiles) {
-              // one POST per file to stay under the proxy's multipart cap
               try {
                 const formData = new FormData();
                 formData.append('files', file);
@@ -1085,6 +1095,16 @@ export function useCollectionEdit({
     }
   }, [currentState]);
 
+  /**
+   * Removes the selected images from this collection.
+   *
+   * The `revalidateLocationCaches(previous, [])` call is not about this collection's page — that
+   * is `handleDeleteSuccess`'s job. It is about `/location/{slug}`. Per E13's backend answer,
+   * dropping an image's last collection membership flips it INTO orphan status, and
+   * `CollectionService.getLocationPage` lists orphan images by location name — so this path can
+   * ADD an image to a location page it was never on. `next` is empty because nothing gains a
+   * location here; the union in the helper is what makes one-sided calls work.
+   */
   const handleBulkRemove = useCallback(async () => {
     if (selectedIds.length === 0 || !collection) return;
     const imageSubset =
@@ -1108,6 +1128,10 @@ export function useCollectionEdit({
       );
       const response = await updateImages(imageUpdates);
       if (response !== null) {
+        void revalidateLocationCaches(
+          imageSubset.flatMap(image => image.locations ?? []),
+          []
+        );
         await handleDeleteSuccess();
       }
     } catch (error_) {
@@ -1117,9 +1141,16 @@ export function useCollectionEdit({
     }
   }, [selectedIds, collection, currentState?.filmTypes, handleDeleteSuccess]);
 
+  /**
+   * Deletes this collection, then revalidates everything the deletion can have changed: its own
+   * page, its parents', the metadata tags, and its locations' pages.
+   *
+   * The home system collection is refused outright — it must never be deletable. On failure the
+   * page is deliberately left mounted (`setDeleting(false)`) so the action can be retried;
+   * success navigates away and unmounts.
+   */
   const handleDeleteCollection = useCallback(async () => {
     if (!collection) return;
-    // Safety: the home system collection must never be deletable.
     if (collection.slug === HOME_SLUG) {
       setError('The home collection cannot be deleted.');
       return;
@@ -1146,11 +1177,12 @@ export function useCollectionEdit({
         ...parentSlugs.map(parentSlug => revalidateCollectionCache(parentSlug)),
       ]);
       void revalidateMetadataCache();
+      void revalidateLocationCaches(collection.locations ?? [], []);
 
       router.push('/');
     } catch (error_) {
       setError(handleApiError(error_, 'Failed to delete collection'));
-      setDeleting(false); // stay on the page to retry; success navigates away (unmounts)
+      setDeleting(false);
     }
   }, [collection, router]);
 
@@ -1384,12 +1416,16 @@ export function useCollectionEdit({
     }
   }, [collection, router]);
 
+  /**
+   * Materializes a tag view into a real collection and navigates to it.
+   *
+   * A null response (a 204 from `fetchBase`) means the backend returned no collection to navigate
+   * to, so this throws rather than returning: the caller's catch in `SaveAsCollectionModal`
+   * surfaces it, instead of the modal closing silently with no navigation.
+   */
   const saveTagAsCollection = useCallback(
     async (sourceTagId: number, body: { visibility: CollectionVisibility }) => {
       const response = await saveCollectionFromTag(sourceTagId, body);
-      // A null response (204 from fetchBase) means the backend returned no collection to navigate
-      // to. Throw so the caller's catch (SaveAsCollectionModal) surfaces it instead of silently
-      // closing the modal with no navigation.
       if (response === null) {
         throw new Error('Save as Collection returned no collection');
       }
@@ -1401,6 +1437,19 @@ export function useCollectionEdit({
 
   const enterSelect = useCallback(() => setIsMultiSelectMode(true), []);
 
+  /**
+   * Enters reorder mode, converting a CHRONOLOGICAL collection to ORDERED first.
+   *
+   * That conversion is two writes, and the order is load-bearing. Write A materializes the full
+   * displayed (captureDate) order into `orderIndex` while the collection is still CHRONOLOGICAL —
+   * harmless, because chronological display ignores `orderIndex`, and it makes cancel safe. It is
+   * a full re-index rather than a diff so every unmoved item gets its true position persisted.
+   * Write B then switches the display mode to ORDERED. Done second so a failure in A leaves the
+   * collection CHRONOLOGICAL and visually unchanged.
+   *
+   * The reorder base is seeded from the order just persisted, not from the stale
+   * `processedContent`.
+   */
   const enterReorder = useCallback(() => {
     if (collection.displayMode !== 'CHRONOLOGICAL') {
       handleEnterReorderMode();
@@ -1415,25 +1464,17 @@ export function useCollectionEdit({
         setOperationLoading(true);
         setError(null);
 
-        // The true displayed (captureDate) order — what the viewer currently sees.
         const chronoIds = toChronologicalOrder(processedContent).map(c => c.id);
 
-        // WRITE A: materialize the full order into orderIndex while still CHRONOLOGICAL. This is
-        // harmless (chronological display ignores orderIndex) and makes cancel safe. Full
-        // re-index (not a diff) so every unmoved item gets its true position persisted.
         if (chronoIds.length > 0) {
           const fullChanges = chronoIds.map((id, i) => ({ contentId: id, newOrderIndex: i }));
           await executeReorderOperation(collection.id, fullChanges, collection.slug);
         }
 
-        // WRITE B: switch to ORDERED. Done second so a failure above leaves the collection
-        // CHRONOLOGICAL and visually unchanged.
         const payload = buildUpdatePayload({ ...updateData, displayMode: 'ORDERED' }, collection);
         const response = await updateCollection(collection.id, payload);
         if (response !== null) {
           adoptSaveResponse(response);
-
-          // Seed the reorder base from the order we just persisted (not the stale processedContent).
           handleEnterReorderMode(chronoIds);
         }
       } catch (error_) {
@@ -1456,14 +1497,23 @@ export function useCollectionEdit({
 
   const isLoading = isLoadingState || operationLoading;
 
+  /**
+   * The manage bar's cells for the current mode.
+   *
+   * `pick-date` is a one-action mode — the grid click IS the commit — so Cancel is its only cell.
+   * `pick-cover` has the same shape, but its cancel only drops the pick: `resetToBrowse` would
+   * also close a sheet the pick was launched from and reseed its buffer.
+   *
+   * In browse, Add is un-gated (D4): any collection may hold any mix of content, so holding a
+   * child collection no longer removes the ability to add images. The exit cell reads "Close"
+   * when nothing has been edited and "Cancel" once there are unsaved changes, signalling that
+   * leaving abandons them — matching the metadata sheet.
+   */
   const bottomBarCells = useMemo<EditBarCell[]>(() => {
-    // Pick-date is a one-action mode: the grid click IS the commit, so Cancel is the only cell.
     if (manageMode === 'pick-date') {
       return [{ key: 'cancel', label: 'Cancel', onClick: resetToBrowse }];
     }
 
-    // Same shape as pick-date, but cancelling only drops the pick — resetToBrowse would also
-    // close a sheet the pick was launched from and reseed its buffer.
     if (manageMode === 'pick-cover') {
       return [{ key: 'cancel', label: 'Cancel', onClick: () => setIsSelectingCoverImage(false) }];
     }
@@ -1567,8 +1617,6 @@ export function useCollectionEdit({
       ];
     }
 
-    // Disabled until admin DTO settles and no operation is in flight (including a mid-save state machine race).
-    // TODO(A3): add a "Save as Collection" browse cell when collection.derived — needs admin metadata to resolve tag slugs (tag-view URLs render TaxonomyPage, not useCollectionEdit).
     const browseBusy = isLoading || saving;
     const cells: EditBarCell[] = [
       {
@@ -1583,8 +1631,6 @@ export function useCollectionEdit({
         disabled: browseBusy,
         onClick: enterReorder,
       },
-      // Add is un-gated (D4): any collection may hold any mix of content, so holding a child
-      // collection no longer removes the ability to add images.
       {
         key: 'add',
         label: operationLoading ? 'Uploading…' : 'Add',
@@ -1599,8 +1645,6 @@ export function useCollectionEdit({
       },
     ];
     if (onExitManage) {
-      // "Close" when nothing has been edited (nothing to discard); "Cancel" once there are
-      // unsaved changes, signalling that leaving abandons them. Matches the metadata sheet.
       cells.push({
         key: 'cancel',
         label: isUpdateDirty ? 'Cancel' : 'Close',
