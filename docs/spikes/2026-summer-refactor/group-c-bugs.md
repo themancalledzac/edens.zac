@@ -2,7 +2,7 @@
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
 
-C1–C8 merged: PR #264, #281, #282, #279, #283, #327, #331, #291. C9, C10 and C11 are open on the live board.
+C1–C8 merged: PR #264, #281, #282, #279, #283, #327, #331, #291. C10 merged 2026-08-30 (#346). C9 and C11 are open on the live board.
 
 ## Closed rows
 
@@ -16,6 +16,7 @@ C1–C8 merged: PR #264, #281, #282, #279, #283, #327, #331, #291. C9, C10 and C
 | C6  | Password cover strip missing on the public card path  | +44 src / +73 test (est ±30) · #327 — premise was FALSE (backend never stripped); unification DECLINED |
 | C7  | `emailShareLink` POSTs to a route that does not exist | 0 src / +34 test (#331 total +185 −101) — FE was already complete, 409 included; unification DECLINED |
 | C8  | Unfollowing leaves the chip count stale               | +418 −22 (est. +40/+80) · #291                                                                       |
+| C10 | Exiting manage mode leaves a blank public page (HIGH) | +24 −6 src / +35 test · #346 — the section's own fix sketch was right; it under-counted the symptoms |
 
 ---
 
@@ -548,3 +549,58 @@ The fix is a decision, not a patch: build the handler — `EmailService` already
 path to reuse — or hide the input until it exists. **Do not "fix" it by swallowing the error**; that
 converts a visible 404 into a silent no-op, which is strictly worse. Whichever way it goes, it is
 paired with H4's decision 2, since both are about whether this app sends mail on a user's behalf.
+
+---
+
+### ✅ C10 · HIGH — Exiting manage mode leaves a blank public page — PR #346
+
+Filed 2026-08-29 from the adversarial review of the merged set; the regression rode in on #337's
+handoff guard. Shipped 2026-08-30 as the first MR of that run, ahead of the three picked cleanup
+items, on the rule that a live user-facing HIGH on `main` outranks cleanup.
+
+**Mechanism, as filed and confirmed exactly.** `editLayerMounted` was set true once and never reset
+(`CollectionPageClient.tsx:141-142`, `handleEditLayerMounted` only ever passed `true`). Exiting
+manage is a soft navigation — `handleExitManage` runs `router.push('/${slug}')`
+(`EditModeLayer.tsx:100-102`) and `CollectionPage.tsx:126` renders `CollectionPageClient` with no
+`key`, so the instance survives and `editMode` flips true → false on it. The public branch then
+rendered `grid` unconditionally while the `contentBlocks` memo still returned `NO_BLOCKS`, its guard
+keying on `editLayerMounted` rather than `editMode`.
+
+**The fix: derive, do not reset — and the difference is a visible frame.** The gate became
+`editLayerActive = editMode && editLayerMounted`, consumed by both the memo and the render. The
+board's own sketch offered "gate on `editMode && editLayerMounted`, **or** reset the flag on exit"
+as equivalent alternatives. They are not. A reset-on-exit `useEffect` runs after paint, so the
+public grid renders once with `[]` before the effect corrects it — the bug, briefly, on every exit.
+Deriving releases the gate in the same render the exit happens in. **Rule: when a guard must
+release on a prop change, derive it from the prop; an effect that resets state is a frame late by
+construction.**
+
+**The item under-counted its own symptoms, and the failing test is what found the second one.**
+The section described exactly one: exit renders empty. Writing the regression tests first surfaced a
+second, in the opposite direction — **re-entering** manage mode after an exit found `editLayerMounted`
+already true, so `{!editLayerMounted && grid}` rendered nothing and the fallback grid never painted
+while the edit chunk streamed. The exit test failed with `data-content-count="0"`; the re-entry test
+failed with no grid in the document at all. The reset-on-exit the board offered as the alternative
+fix turned out to be *also required*, not instead — the shipped fix does both, and each half covers a
+different direction of the transition.
+
+**Both tests were watched failing on the parent commit before the fix went in**, so the coverage
+claim is real rather than assumed. This matters here specifically: the three existing handoff tests
+(`CollectionPageClient.editMode.test.tsx:351-415`) all passed against the bug because none of them
+ever flipped `editMode` back. A test suite can be green and cover nothing in the direction that
+matters.
+
+**Est vs actual.** No numeric estimate was recorded. Actual +24 −6 src, +35 test, one source file
+and one test file. Small, and it would have been smaller still if the item had named the re-entry
+symptom.
+
+**Checked while here and found sound — do not re-investigate.** `liveEditContent`
+(`CollectionPageClient.tsx:309`) already gates on `editMode` and releases correctly on exit; it is
+the precedent the fix copied. `filterState` deliberately survives the exit, so filters set while
+managing carry into the public view — that state is URL-synced, so it reads as intended rather than
+as a leak.
+
+**Deliberately not bundled.** E7's two open bullets sit in the same neighbourhood and were left
+alone, per the item's own instruction. One thing worth knowing that is out of scope for both:
+because the exit is a soft navigation, whether freshly-saved edits appear on the public page after
+it depends on the server cache tags being invalidated — that is the E18 class, not this bug.

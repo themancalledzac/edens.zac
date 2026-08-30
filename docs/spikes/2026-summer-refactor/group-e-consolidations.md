@@ -1559,3 +1559,35 @@ decision._
       is why the rename shows 62% similarity rather than 100%. Lines 2–29 match
       (`md5 1c595922f7093c94149989928905d3da`). The SVGs in bullet 1 _are_ identical apart from
       `className` (`md5 8b73bb4e2b4833ac8c8876e74942b737`).
+
+---
+
+### ✅ E6 · `useCollectionEdit` refresh helpers — CLOSED 2026-08-30, last bullet folded into F1
+
+Bullets 2 (#339, +11 src), 3 (#342, +22 src) and `_deletedIds` (#341, −3 src) shipped with zero test
+churn. **Bullet 1 — the three copies of "refetch → adopt → storage-write → revalidate → clear
+selection" — was put to the user on 2026-08-30 and answered "leave it for the big hook rewrite".**
+E6 closes as an item; the bullet lives on as an F1 sub-task, where the full carried-forward detail
+now sits.
+
+**How the question was asked matters, and it took two attempts.** The first version led with the
+board code — "E6 bullet 1 — the three refresh paths disagree…" — and the user rejected it outright:
+*"never give me this sort of definition... this means NOTHING TO ME."* The second version described
+the behaviour instead ("saving a GIF never tells the server to drop its cached copy, so the public
+page can serve stale data for an hour — bug or intentional?") and was answered immediately.
+**Rule, hoisted: a question to the user names the screen, the action and what breaks. The item code
+is bookkeeping and belongs nowhere near it.**
+
+**The cost analysis held up and is why the standalone consolidation never shipped.** The shared
+signature needs `revalidateMetadata`, `failLoudly`, and `adoptFirst`/`transform` — three of roughly
+six parameters existing purely to switch behaviour between callers, against bullet 3's shipped
+`buildRemoveFromCollectionDiffs` which passed the same test at zero switches. The narrow
+alternative (extending `refreshCollectionAfterOperation` to fold in `revalidateCache`) saved 6–9
+lines across three sites and still changed GIF-path behaviour, so it did not clear the user gate
+either. **Both readings pointed at F1, and the user's answer agreed.**
+
+**The behaviour gap is real and remains open inside F1**: `handleGifSaveSuccess` omits
+`revalidateMetadataCache` entirely, so the public page can serve stale metadata for up to
+`TIMING.revalidateCache` (3600s) after a GIF save. Two of the three current
+`refreshCollectionAfterOperation` callers skip server-cache revalidation the same way. Pre-existing,
+not introduced in-window; E18 tracks the location-tag half of the same class.

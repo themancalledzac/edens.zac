@@ -2,7 +2,7 @@
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
 
-All nine items merged: PR #255–#263. Everything here was verified zero-reference before deletion; A5 turned out to be a bug fix rather than a deletion. A9's last bullet (a `CLAUDE.md` correction, not a deletion) is still open on the live board.
+All nine items merged: PR #255–#263, and A9's last bullet closed 2026-08-30 (#347). Everything here was verified zero-reference before deletion; A5 turned out to be a bug fix rather than a deletion. **Group A is fully closed.**
 
 ## Closed rows
 
@@ -17,6 +17,7 @@ All nine items merged: PR #255–#263. Everything here was verified zero-referen
 | A7a | `useCollectionEdit` legacy aliases               | −8 · #259                            |
 | A7b | `enterSelect`/`enterAdd` inline copies           | −2 src · #262                        |
 | A8  | Dead SCSS in live modules + `globals.css` tokens | −327 · #263                          |
+| A9  | Dead config + the CLAUDE.md PATH correction      | #259, closed by #347 (+15 −21, docs)  |
 
 ---
 
@@ -203,10 +204,10 @@ Shipped at −327 across 10 files. The executor warning below was correct and he
 
 Also corrected: `barCell` and `main` appear only in comment text in that file, not as selectors.
 
-### ◐ A9 · Dead config — PR #259
+### ✅ A9 · Dead config — PR #259, closed by PR #347
 
-_Shipped and swept bullets only. The one open bullet (the `CLAUDE.md:22` PATH correction) stays on
-the live board — see A9 in [the board](../2026-summer-refactor.md)._
+**Closed 2026-08-30 (#347). The last bullet was the `CLAUDE.md:22` PATH correction; the write-up is
+at the end of this section.**
 
 **Swept for the first time on 2026-08-28. Two of the three then-open bullets described states that
 no longer existed — including the `layoutpreview` delete this board carried for FIVE sessions and
@@ -256,3 +257,43 @@ sessions of re-deriving a dead task.
 - [x] `.gitignore` — duplicated entries from two concatenated templates.
 - [x] `.cursor/rules/cursor_rules.mdc` — literally titled "Databricks Project Rules". Its frontmatter
       description was already correct for this repo, so this was a heading fix, not a regeneration.
+
+#### A9's last bullet — the PATH claim — PR #347
+
+The claim was that `npm` and `npx` are not on PATH, so every command in the docs was spelled as a
+full Homebrew binary path. It was wrong, and this was its **sixth** consecutive confirmation:
+`which npm npx node` returns all three under `/opt/homebrew/bin`; `npm --version` and
+`npx --version` both print 11.8.0; `node --version` prints v25.3.0. Every command the docs spelled
+long-form was then run under `npm`/`npx` on the branch before the edit: `npm test`,
+`npm test <file>` (args pass through with no `--`), `npm run type-check`, `npx jest`, `npx eslint`,
+`npx prettier`, `npx stylelint`, `npx tsc`.
+
+**The board's scope was wrong, and the error is instructive. The item tracked one file; the false
+sentence lived in three.** `CLAUDE.md:22`, `ai_guidelines/ai_test.md:158` and
+`ai_guidelines/ai_lint.md:11` each carried it verbatim, each followed by its own block of long-form
+commands. CLAUDE.md's guidelines table points agents at both of the others, so fixing only the
+tracked location would have left the claim in force everywhere it was actually read. **The board
+recorded where the defect was FILED, not where it APPEARED** — and five re-verifications of the
+fact never re-checked the blast radius, because re-confirming a claim is false is not the same as
+re-counting where it is written. When an item is a wrong sentence, grep the sentence.
+
+Done-condition is met and exceeded: `grep -rn --include='*.md' -e "not on PATH" -e "homebrew/bin"`
+returns nothing outside `node_modules` and this board's own archive.
+
+**The six agent allowlists needed no change, as the item predicted, and this was verified rather
+than assumed.** Ten `.claude/agents/*.md` files carry a `tools:` block; six carry
+`Bash(npm…)`/`Bash(npx…)` entries — `code-reviewer`, `debugger`, `implementer`, `linter-fixer`,
+`refactor-rename`, `test-writer`. Every script name they reference exists in `package.json`
+(`lint`, `type-check`, `test`), `Bash(npm run lint:*)` covers the `npm run lint:fix` that
+`linter-fixer.md:26` instructs, and the `.claude/agents/README.md` capability table matches all six
+frontmatter blocks.
+
+**One finding, deliberately not fixed, and it is not a factual error.** Neither `scss-reviewer` nor
+`code-reviewer` carries a stylelint entry, so neither can run the `npx stylelint --fix` that
+CLAUDE.md's "Formatting & Verification" section requires for SCSS. That is a scoping decision about
+what those agents may do, and restructuring agent definitions was explicitly out of scope. Filed
+here rather than acted on.
+
+**Est vs actual.** Estimated as a one-file paragraph deletion; actual +15 −21 across three files,
+still docs-only. The direction of the miss — three times the file count — is the same shape as the
+"count the duplicated construct, not the block it sits in" bias already recorded for Group B.

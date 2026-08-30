@@ -2,8 +2,9 @@
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
 
-F2, F5, F6 and F7 shipped, plus the shipped bullets of F3. F1, F3's open bullets and F4 are on the
-live board.
+F2, F5, F6 and F7 shipped, plus the shipped bullets of F3 — which now include the
+`CollectionPageWrapper` move (#348) and the `AdminPanel/` fold (#349), both merged 2026-08-30. F1,
+F3's four remaining bullets and F4 are on the live board.
 
 ## Closed rows
 
@@ -397,7 +398,7 @@ and still passes.
 
 ---
 
-### ◐ F3 · File moves and renames — shipped bullets and cost reports (`ReorderMove` #324, `getUserPage` #336, logger labels #343; invite move REJECTED)
+### ◐ F3 · File moves and renames — shipped bullets and cost reports (`ReorderMove` #324, `getUserPage` #336, logger labels #343, `CollectionPageWrapper` #348, `AdminPanel/` fold #349; invite move REJECTED)
 
 _Moved from the live board 2026-08-29. The six open bullets stay there with their verified counts._
 
@@ -645,3 +646,67 @@ anchors are now folded into the live item's boundary list.**
 were re-derived from the enclosing construct (`handleUpdate`'s dependency array,
 `const bottomBarCells`), which is why `:797 → :814` is right and the naive `);` match at `:801` is
 wrong.
+
+---
+
+#### F3 · `CollectionPageWrapper.tsx` out of `app/lib/components/` — PR #348
+
+Merged 2026-08-30. It was the only component under `app/lib/`; `find app/lib -name '*.tsx'`
+returned exactly this one file, against `actions/clearCache.ts`, twelve files in `api/` and
+`storage/collectionStorage.ts`.
+
+Landed at `app/components/ContentCollection/CollectionPageWrapper.tsx`, beside the `CollectionPage`
+it renders. The three test files moved with it from `tests/lib/components/` to
+`tests/components/ContentCollection/`, so the test tree keeps mirroring the source tree. **Both
+`components/` directories are now gone** — `app/lib/` and `tests/lib/` are each exactly
+`actions/ api/ storage/`.
+
+**Est vs actual: exact, both halves.** The board said 3 src / 6 test and it was 3 src / 6 test —
+`app/page.tsx:3`, `app/all-client-galleries/page.tsx:1`, `app/[slug]/page.tsx:5`; then
+`slug-page.metadata.test.tsx` and `slug-page.manage.test.tsx` and `all-client-galleries/page.test.tsx`
+for the mock paths, plus the three moved files. Total diff +11 −11 across 10 files, plus 4 renames.
+Nothing inside the moved file changed: it imports entirely through `@/app/...` aliases.
+
+**The guardrail earned its place.** The board warned that the glob
+`CollectionPageWrapper.*.test.tsx` matches only two of the three test files — `.meTile` and
+`.allCollectionsTile`; the third is `CollectionPageWrapper.test.tsx` with no middle segment. The
+move was driven off the import path instead. **Generalizable: a filename glob with a middle wildcard
+silently excludes the unsuffixed base file. Enumerate movers by the import they carry, not by their
+name shape.**
+
+The four other `CollectionPageWrapper` hits in `app/` are prose inside docblocks
+(`ClientGalleryGate.tsx:30`, `useCollectionEdit.tsx:1161`, `personal.ts:89`,
+`contentTypeGuards.ts:181`). They name the component, not the path, so they stayed accurate and
+were left alone.
+
+#### F3 · Fold `AdminPanel/` into `ListPanel/` — PR #349
+
+Merged 2026-08-30. `app/components/AdminPanel/` held no component — only
+`AdminPanelCollapseContext.tsx` and `AdminPanelSeedContext.tsx`, both left behind by an earlier
+refactor. Both now live in `ListPanel/` and the directory is gone, taking `app/components/` from 37
+entries to **36**.
+
+**Est vs actual: exact again.** 5 src / 3 test as written — `AdminPanelRenderer.tsx:5`,
+`RolesPanel.tsx:16`, `UserManagementPanel.tsx:7`, `CollectionsPanel.tsx:7`,
+`AdminHubClient.tsx:5,9`; tests at `AdminPanelRenderer.test.tsx:8`, `RolesPanel.test.tsx:12`,
+`CollectionsPanel.test.tsx:13`. +11 −11 across 10 files plus 2 renames with zero content change.
+The board's "four of the five importers already import from `ListPanel/` too" was confirmed — all
+but `AdminHubClient`.
+
+**Filenames and exported symbols were deliberately kept.** `AdminPanelCollapseContext`,
+`AdminPanelSeedContext`, `useAdminPanelCollapse`, `AdminPanelSeedProvider` all keep their names.
+They hold state for the admin hub as a whole, not for the `ListPanel` component, so renaming to
+match the new directory would make them less accurate — and would turn a two-file move into a
+symbol rename across eight files. **Rule: a fold moves files; it does not rename the concepts
+inside them just to match the folder.**
+
+**A side effect worth knowing, because the number moves without an assertion behind it.** The suite
+went 4460 → 4462 on this MR alone. `tests/components/panelStyleReferences.test.ts` walks
+`app/components/ListPanel/` with `readdirSync` and generates one case per `.tsx`, so the two
+arriving contexts each got a generated case. **Both are vacuous** — neither file reads `styles.x`,
+so the test's `if (referenced.length === 0) return` fires immediately. The early return is
+deliberate in that test's design, so nothing needed changing. Recorded because a suite count that
+rises without new coverage reads as progress and is not.
+
+`AdminPanelRenderer.tsx` and its `.module.scss` live in `app/components/Content/` and were left
+there, per the item's guardrail.
