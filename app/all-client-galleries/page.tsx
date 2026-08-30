@@ -1,4 +1,4 @@
-import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
+import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
 
 export const dynamic = 'force-dynamic';
 

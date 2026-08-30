@@ -16,7 +16,7 @@ jest.mock('@/app/lib/api/collections', () => ({
   getCollectionBySlug: jest.fn(),
 }));
 
-jest.mock('@/app/lib/components/CollectionPageWrapper', () => ({
+jest.mock('@/app/components/ContentCollection/CollectionPageWrapper', () => ({
   __esModule: true,
   default: jest.fn(() => null),
 }));

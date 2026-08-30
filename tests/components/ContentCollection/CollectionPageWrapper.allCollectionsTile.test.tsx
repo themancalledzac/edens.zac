@@ -1,5 +1,5 @@
+import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
 import * as collectionsApi from '@/app/lib/api/collections';
-import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { ALL_COLLECTIONS_TILE_ID } from '@/app/utils/allCollectionsContentBlock';

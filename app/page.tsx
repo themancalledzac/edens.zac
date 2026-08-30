@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
+import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
 import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 
 export const metadata: Metadata = {
