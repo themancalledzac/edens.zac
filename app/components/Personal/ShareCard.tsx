@@ -29,7 +29,16 @@ export interface ShareCardProps {
 
 type Phase = 'idle' | 'pending' | 'error';
 
-/** Map a failed share action to user-facing copy. */
+/**
+ * Map a failed share action to user-facing copy. Anything unmapped falls through to the caller's
+ * `fallback`, which reads as transient — so a status only earns a branch here when retrying is
+ * the wrong advice, or when the right advice is more specific than "try again".
+ *
+ * The 429 is the share-email limiter (5 per sender per hour, 200 a day across everyone). It fires
+ * before the backend reveals the token, so it can never coexist with the 409 and the link is
+ * always intact when it arrives — hence "wait", and deliberately no nudge toward Reset, which
+ * would cut off whoever already holds the link over a limit that clears by itself.
+ */
 function mapError(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
     if (error.status === 401) return 'Your session has expired. Sign in again to manage your link.';
@@ -37,6 +46,9 @@ function mapError(error: unknown, fallback: string): string {
       return 'This link was created before links could be re-shown. Reset it to get one you can copy.';
     }
     if (error.status === 403) return 'You no longer have access to that gallery.';
+    if (error.status === 429) {
+      return 'Too many share emails just now. Your link still works — wait a little and send it again.';
+    }
   }
   return fallback;
 }

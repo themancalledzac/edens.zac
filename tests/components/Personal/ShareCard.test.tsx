@@ -50,31 +50,34 @@ describe('ShareCard', () => {
     jest.clearAllMocks();
   });
 
+  /** The whole point: the link is readable on every visit, not only the one that made it. */
   it('shows the live link so it can be sent again without a reset', () => {
     render(<ShareCard read={{ ok: true, settings: settings() }} />);
 
-    // The whole point: the link is readable on every visit, not only the one that made it.
     expect(screen.getByText(`${window.location.origin}/s/tok-123`)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /copy link/i })).toBeInTheDocument();
   });
 
+  /**
+   * A failure says nothing about whether a link exists. Offering "Link to share" here would read
+   * as "you have none" to someone whose link is out there working.
+   */
   it('does not offer to create a link when the read failed', () => {
     render(<ShareCard read={{ ok: false }} />);
 
-    // A failure says nothing about whether a link exists. Offering "Link to share" here would
-    // read as "you have none" to someone whose link is out there working.
     expect(screen.queryByRole('button', { name: /link to share/i })).not.toBeInTheDocument();
     expect(screen.getByText(/unavailable right now/i)).toBeInTheDocument();
   });
 
+  /** The paragraph that used to explain what a share link is has gone; the button carries it. */
   it('offers to create one only when the read genuinely says there is none', () => {
     render(<ShareCard read={{ ok: true, settings: null }} />);
 
     expect(screen.getByRole('button', { name: /link to share/i })).toBeInTheDocument();
-    // The paragraph that used to explain what a share link is has gone; the button carries it.
     expect(screen.queryByText(/no account or password/i)).not.toBeInTheDocument();
   });
 
+  /** Sending to a second person must never cut off the first. */
   it('emails the existing link without minting a new one', async () => {
     mockEmail.mockResolvedValue({ sent: true, reason: null });
     render(<ShareCard read={{ ok: true, settings: settings() }} />);
@@ -85,7 +88,6 @@ describe('ShareCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /^send$/i }));
 
     await waitFor(() => expect(mockEmail).toHaveBeenCalledWith('mum@example.com'));
-    // Sending to a second person must never cut off the first.
     expect(mockRotate).not.toHaveBeenCalled();
     expect(await screen.findByText(/sent to mum@example.com/i)).toBeInTheDocument();
   });
@@ -111,6 +113,7 @@ describe('ShareCard', () => {
     expect(await screen.findByText(`${window.location.origin}/s/tok-new`)).toBeInTheDocument();
   });
 
+  /** A gallery someone else let them into is not theirs to pass on by default. */
   it('offers granted galleries as opt-ins, unchecked by default', async () => {
     mockAdd.mockResolvedValue();
     render(
@@ -123,7 +126,6 @@ describe('ShareCard', () => {
     );
 
     const box = screen.getByRole('checkbox', { name: /someone else wedding/i });
-    // A gallery someone else let them into is not theirs to pass on by default.
     expect(box).not.toBeChecked();
 
     fireEvent.click(box);
@@ -146,6 +148,12 @@ describe('ShareCard', () => {
     expect(await screen.findByText(/session has expired/i)).toBeInTheDocument();
   });
 
+  /**
+   * Asserts on "re-shown", not the shared closing sentence: the token-null hint ends in the same
+   * "reset it to get one you can copy", so a regex on that tail passes even if `mapError` never
+   * runs. This is the branch the backend explicitly cares about. The generic fallback is ruled
+   * out separately because it reads as transient, and a retry never succeeds for this link.
+   */
   it('names the pre-V58 link problem on a 409 rather than offering a retry', async () => {
     mockEmail.mockRejectedValue(new ApiError('conflict', 409));
     render(<ShareCard read={{ ok: true, settings: settings() }} />);
@@ -155,12 +163,28 @@ describe('ShareCard', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /^send$/i }));
 
-    // Asserts on "re-shown", not the shared closing sentence: the token-null hint ends in the
-    // same "reset it to get one you can copy", so a regex on that tail passes even if mapError
-    // never runs. This is the branch the backend explicitly cares about.
     expect(await screen.findByText(/before links could be re-shown/i)).toBeInTheDocument();
-    // The generic fallback reads as transient, but a retry never succeeds for this link.
     expect(screen.queryByText(/could not send that email/i)).not.toBeInTheDocument();
+  });
+
+  /**
+   * The limiter (backend #233) runs BEFORE `revealToken`, so a 429 and a 409 can never describe
+   * the same request — and the link is provably untouched when one arrives. The copy has to say
+   * "wait", and must not send the sender to Reset, which would cut off whoever holds the link
+   * over a limit that clears on its own.
+   */
+  it('tells a rate-limited sender to wait, rather than blaming the link', async () => {
+    mockEmail.mockRejectedValue(new ApiError('too many requests', 429));
+    render(<ShareCard read={{ ok: true, settings: settings() }} />);
+
+    fireEvent.change(screen.getByLabelText(/send the link to this email/i), {
+      target: { value: 'mum@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^send$/i }));
+
+    expect(await screen.findByText(/too many share emails/i)).toBeInTheDocument();
+    expect(screen.queryByText(/could not send that email/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/reset it to get one you can copy/i)).not.toBeInTheDocument();
   });
 
   it('explains a lost gallery grant on a 403 rather than a generic failure', async () => {
