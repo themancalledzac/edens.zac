@@ -27,17 +27,14 @@ import { isLocalEnvironment } from '@/app/utils/environment';
  *
  * Admin-ness comes from the row-level `isAdmin` flag, NOT session identity.
  *
- * LOCAL/DEV IS OPEN, and this function was the last thing pretending otherwise. Every other
- * layer of the local stack already serves admin anonymously and says so in as many words:
- * `proxy.ts` returns `NextResponse.next()` for the whole (admin) group when
- * {@link isLocalEnvironment} ("Allow freely in local/dev to speed up iteration"); the BFF
- * proxy's anonymous-admin reject is gated on `NODE_ENV === 'production'` and its comment
- * reads "dev is unaffected (localhost admin has no login)"; and the local backend answers
- * `/api/admin/users`, `/api/admin/roles` and `/api/admin/messages` with 200 and real rows to
- * a request carrying no cookie at all. Only `/api/auth/me` 401s locally — so `meServer()`
- * returned null, and this redirected to `/login` a developer whose next click would have been
- * served anonymously anyway. That inconsistency is what made `/admin` unreachable to anything
- * without a hand-driven browser login, agents included.
+ * LOCAL/DEV IS OPEN AT THE FRONTEND, and this function was the last frontend layer pretending
+ * otherwise: `proxy.ts` passes the whole (admin) group through when {@link isLocalEnvironment},
+ * and the BFF proxy's anonymous-admin reject is production-only. Gating here redirected an
+ * anonymous local developer to `/login` before either mattered.
+ *
+ * The BACKEND is a separate perimeter and is not open — `/api/admin/**` requires `hasRole('ADMIN')`
+ * in every profile since backend #243. So the local admin shell renders while its data 401s until
+ * a real session exists. That is the backend gate working, not a frontend layer to loosen.
  *
  * What scopes the bypass is the BUILD's env, not the host it runs on. `isLocalEnvironment()` is
  * `NEXT_PUBLIC_ENV === 'local' || NODE_ENV === 'development'`; `next build` sets
