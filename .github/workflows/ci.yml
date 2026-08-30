@@ -1,0 +1,58 @@
+# Frontend verification on every pull request and every push to main.
+#
+# Runs the same four checks CLAUDE.md prescribes locally — type check, ESLint,
+# Stylelint, Jest — so a claim that they pass stops being local-only.
+#
+# One job, not four: `npm ci` dominates the wall clock, and splitting the checks
+# would pay for it once per job. Every check step is `if: always()` so a single
+# run reports all four verdicts instead of stopping at the first failure.
+#
+# Node 22 is the top of the `engines` range in package.json (`>=20 <23`).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Type check, lint, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        if: always()
+        run: npm run type-check
+
+      - name: ESLint
+        if: always()
+        run: npm run lint:js
+
+      - name: Stylelint
+        if: always()
+        run: npm run lint:css
+
+      - name: Jest
+        if: always()
+        run: npm test -- --ci
