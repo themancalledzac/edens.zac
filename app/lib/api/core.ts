@@ -1,5 +1,6 @@
 import { isLocalEnvironment } from '@/app/utils/environment';
 import { logger } from '@/app/utils/logger';
+import { configuredAppOrigin } from '@/app/utils/originAllowlist';
 
 const READ = 'read';
 const ADMIN = 'admin';
@@ -66,6 +67,16 @@ export async function getServerCookieHeader(): Promise<string | null> {
 /**
  * Base API URL for an endpoint type. Browser uses the relative same-origin proxy (LAN-reachable
  * in dev, BFF in prod); server-side hits the backend directly on localhost in dev, else the proxy.
+ *
+ * The production server-side arm goes through {@link configuredAppOrigin} rather than reading
+ * `NEXT_PUBLIC_APP_URL` raw, so a trailing slash in the env var cannot produce
+ * `https://host//api/proxy/...`. That is the same normalization `/api/revalidate` and the BFF
+ * apply to the Origin allowlist; sharing the one helper is what keeps the two from disagreeing
+ * about what the env var means.
+ *
+ * An unset or unparseable value still yields a relative URL here, which Node `fetch` rejects at
+ * the call site. That is unchanged and deliberate at this size — it is a deploy that never
+ * configured its own URL, and every arm of this function is exercised only after that.
  */
 export function getApiBaseUrl(endpointType: string): string {
   if (typeof window !== 'undefined') {
@@ -74,7 +85,7 @@ export function getApiBaseUrl(endpointType: string): string {
   if (isLocalEnvironment()) {
     return `http://localhost:8080/api/${endpointType}`;
   }
-  return `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/proxy/api/${endpointType}`;
+  return `${configuredAppOrigin() ?? ''}/api/proxy/api/${endpointType}`;
 }
 
 /**

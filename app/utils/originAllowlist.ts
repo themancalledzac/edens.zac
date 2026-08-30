@@ -26,8 +26,13 @@
  * hands back the literal string `"null"`, which is also what a browser sends from a sandboxed
  * iframe or an opaque redirect, so admitting it would let those callers through. Dropped for
  * that reason, not for tidiness.
+ *
+ * Exported for {@link getApiBaseUrl} in `app/lib/api/core.ts`, which builds production
+ * server-side fetch URLs from the same env var and needs the same normalization. A second
+ * normalizer is what D10 was filed to avoid — the two must not be able to disagree about what
+ * `NEXT_PUBLIC_APP_URL` means.
  */
-function configuredAppOrigin(): string | null {
+export function configuredAppOrigin(): string | null {
   const raw = process.env.NEXT_PUBLIC_APP_URL;
   if (!raw) return null;
 
