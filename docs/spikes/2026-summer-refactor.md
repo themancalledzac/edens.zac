@@ -60,6 +60,33 @@ are repo-root-relative by convention — they are checked against the repo root,
   mapper that renders it before filing anything — C7's `mapError` already covered 401/403/409.
 - **Read the sibling repo's source and tests, never a paraphrase** — including a paraphrase on this
   board, and including the sentence after the one that supports you (C6 died on the next clause).
+- **Read the OTHER repo's board and HEAD before stamping an item BLOCKED-on-user.** Two of this
+  board's nine user-blocked rows were answered on 2026-08-30 by facts already sitting in
+  `edens.zac.backend`: G5's wrap-vs-bless was decided in its `.claude/CLAUDE.md` and its HEAD commit
+  message, and C9's premise turned out to be a backend defect. A question the other repo already
+  answered costs the user nothing and eats a session if nobody looks.
+- **A backend change can silently falsify a frontend standing instruction, and nothing watches for
+  it.** Backend #243 made `/api/admin/**` unconditionally gated and thereby made `CLAUDE.md`'s
+  "Localhost Admin Needs No Login" Critical Rule false — a rule that tells agents *not to
+  investigate* the breakage it now causes (G6). When either repo changes an auth perimeter, a
+  response shape, or a local-dev affordance, grep the other repo's `CLAUDE.md` and guidelines for
+  claims about it in the same pass.
+- **A "should we tolerate this bad state?" item is often a "why does this bad state exist?" item.**
+  C9 was costed as a rendering decision for a week; one look at where the value is produced turned
+  it into a backend bug and closed the frontend side at zero code. Trace the value to its writer
+  before costing a way to live with it.
+- **A guard that must release on a prop change must be DERIVED from that prop, never reset by an
+  effect.** An effect runs after paint, so a reset-on-exit renders the broken frame once every time.
+  C10's own fix sketch offered the two as equivalent; they are not.
+- **When an item is a wrong sentence, grep the sentence.** A9 tracked one file and the false claim
+  lived in three, because the board recorded where the defect was FILED, not where it APPEARED.
+  Five re-verifications of "this claim is false" never re-checked how many places carried it.
+- **A filename glob with a middle wildcard silently excludes the unsuffixed base file.**
+  `CollectionPageWrapper.*.test.tsx` matches `.meTile` and `.allCollectionsTile` but not
+  `CollectionPageWrapper.test.tsx`. Enumerate movers by the import they carry, not their name shape.
+- **A suite count that rises without a new assertion is not coverage.** Directory-walking generators
+  (`tests/components/panelStyleReferences.test.ts` uses `readdirSync` + `it.each`) mint a case per
+  file, so any MOVE into a watched directory changes the total. Say which of a delta is generated.
 - **Cross-repo `file:line` refs are outside every drift sweep here.** Re-verify them by hand against
   that repo's `origin/main` whenever such an item is picked up.
 - Every MR ends with the standard verification: scoped `eslint --fix` → `prettier --write` → `tsc --noEmit` → full `jest`.
@@ -118,6 +145,12 @@ are repo-root-relative by convention — they are checked against the repo root,
   `styles.<key>` both stay green; only `next build` fails. Guards:
   `tests/styles/scssImportResolution.test.ts` (files), `tests/components/panelStyleReferences.test.ts`
   (keys, panels only). Any MR touching SCSS verifies by `next build` or a resolution assertion.
+  **Sizing commands, recorded 2026-08-30 so the number stops drifting** — files importing a CSS
+  module: `grep -rlE "from '.*\.module\.(scss|css)'" app --include='*.ts' --include='*.tsx' | wc -l`
+  → **105**; distinct key names: `grep -rhoE '\bstyles\.[A-Za-z_][A-Za-z0-9_]*' app --include='*.ts' --include='*.tsx' | sort -u | wc -l`
+  → **402**. Both were recorded as 104/401 and were wrong when written. **A `styles.<key>` regex is
+  not the whole surface: 10 files import a module under another name** (`cbStyles` ×5,
+  `modalStyles` ×4, `variantStyles` ×1) and a guard sized off this pair would skip them silently.
   (The repo-wide key-guard decision is in the blocked-questions table.)
 - **A test that cannot fail is this board's most common defect.** Prove it with a control: run the
   old test against broken source. After ANY copy change, sweep `queryBy…` +
@@ -160,64 +193,54 @@ scorecard below keeps the est/actual pairs that still matter.
 
 | MR  | Scope                                                             | Status                                                                                                                                                  |
 | --- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A9  | Dead config                                                       | ◐ PR #259 — one bullet open, and it is a `CLAUDE.md:22` correction, not a deletion. COLD, picked                                                        |
 | B8  | Fill the required-coverage gaps                                   | ◐ 5 of 6 — #266, #267, #295 (share+messages), #296 (collectionStorage); only the optional bullet is open                                                |
-| C9  | Dimensionless cover renders no header, missing cover does         | ☐ BLOCKED (user) — fall back or deliberate? est ±20 src, +40 test; contrast already test-pinned                                                          |
-| C10 | Exiting manage mode leaves a blank public page (HIGH)             | ☐ COLD — **recommended next MR**; regression via #337's memo guard; test spec in the section                                                            |
+| C9  | Dimensionless cover renders no header, missing cover does         | ☐ BLOCKED — **on backend Bug #21, not on the user**. Answered 2026-08-30: never fall back. FE ships nothing until the backend stops writing `0`         |
 | C11 | `mapError` has no 429 branch for the share-email limiter          | ☐ COLD — small; backend #233 added the 429 after C7 closed                                                                                              |
 | D10 | `getApiBaseUrl` concatenates `NEXT_PUBLIC_APP_URL` raw            | ☐ COLD — reuse `configuredAppOrigin()`; same class as D8                                                                                                |
-| E6  | `useCollectionEdit` refresh helpers                               | ◐ bullets 2 (#339), 3 (#342) and `_deletedIds` (#341) shipped, test churn 0; **only bullet 1 left, BLOCKED (user)** — fails the rejection test at 3-of-6 |
 | E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook)           | ◐ waste FIXED ✅ #337; hook REJECTED (9–11 params); two smaller wasted paths open; its guard's exit bug is C10                                           |
 | E9  | Download icon/hook, auth-card SCSS, `.srOnly`                     | ◐ PR #300 — both COLD bullets shipped; srOnly ⛔ user call                                                                                              |
 | E18 | Location-tag revalidation gaps (4 unwired paths + stale previous) | ☐ COLD — fixes and tests specified in the section                                                                                                       |
 | F1  | Decompose `useCollectionEdit.tsx`                                 | ☐ COLD — largest open item, wants its own session; all six boundaries now anchored                                                                      |
-| F3  | File moves and renames                                            | ◐ `ReorderMove` ✅ #324 · `getUserPage` ✅ #336 · logger labels ✅ #343 · invite bullet REJECTED · **six bullets open** (CPW + AdminPanel picked)        |
+| F3  | File moves and renames                                            | ◐ `ReorderMove` #324 · `getUserPage` #336 · logger labels #343 · `CollectionPageWrapper` #348 · `AdminPanel/` fold #349 · invite REJECTED · **four bullets open** |
 | F4  | `TaxonomyPage` ← `LocationPageClient`                             | ⛔ USER DECISION                                                                                                                                        |
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)   | ◐ wording PR #268; G2a COLD, G2b ⛔ scope confirm, G2c ⛔ rides refactors                                                                                |
 | G3  | `/user/selects` decision                                          | ⛔ USER DECISION — delete or rebuild                                                                                                                    |
 | G4  | Docblock standard — length, structure, and no history             | ◐ intersection pass done (#310); ~26 real history blocks + ~17 uncounted label blocks; read, don't regex                                                 |
-| G5  | Bare-array responses — coordinate with backend MR 20              | ⛔ USER DECISION — wrap-vs-bless; phased plan in the section                                                                                            |
+| G6  | `CLAUDE.md`'s localhost-admin rule is now FALSE (backend #243)     | ☐ COLD — **recommended next MR**; a Critical Rule instructing agents not to investigate a real breakage                                                 |
 | H1  | Merge `Following` into `Collections` on `/user`                   | ☐ BLOCKED (user) — count semantics, followed-tile marker, and the 500-row catalog fetch                                                                 |
 
-### NEXT RUN — updated 2026-08-29
+### NEXT RUN — updated 2026-08-30
 
-**First MR: C10.** A live user-facing HIGH bug on `main` outranks cleanup — exiting manage mode
-leaves the public page blank until a hard reload. Fully specified under Group C, regression-test
-spec included.
+**First MR: G6.** A Critical Rule in `CLAUDE.md` is factually false as of backend #243 (merged
+2026-08-30), and it is the worst kind of false: it tells every agent *not* to investigate the thing
+that is now broken. Local admin work will fail at the backend with a 401 while the rule says "do
+not 'fix' any of those as a security hole and do not ask the user to log in for you." Fully
+specified under Group G.
 
-**Ask the blocked questions in the opening message, batched.** Each has a fully specified item
-behind it, so an answer becomes an MR in the same session instead of the next one's problem:
+**Then, in order:**
 
-1. **C9 — should a dimensionless cover fall back to the text-only header?** Today `coverImage`
-   absent renders a header; present-but-dimensionless renders nothing. Falling back is the smaller
-   change and makes the paths agree. Est ±20 src / +40 test; the item is otherwise complete.
-2. **E6 bullet 1 — should the GIF save path start firing `revalidateMetadataCache`, and should
-   adopt-ordering be normalized?** The only thing left on E6; a behavior change, not a refactor.
-3. **G5 — wrap the 13 bare-array endpoints (phased) or bless bare arrays?** The backend board is
-   waiting on the same answer.
-4. **The repo-wide `styles.<key>` guard** — see the blocked-questions table.
+1. **C11** — the 429 branch in `ShareCard`'s `mapError`. Cheapest fully-specified item on the
+   board (+5 src / +15 test), and it banks an MR early.
+2. **D10** — `getApiBaseUrl` reuses `configuredAppOrigin()`. Small, self-contained, refs verified
+   2026-08-30.
+3. **E18** — location-tag revalidation gaps. Four unwired paths plus the stale-`previous` defect;
+   fixes and tests specified, all refs verified 2026-08-30.
 
-**Then the run picked 2026-08-28 (3), still verified and unstarted:**
+**No blocked-on-user questions are outstanding for this run.** The 2026-08-30 session asked C9 and
+the GIF-refresh question and got both answered; C9's answer moved it to the backend and the
+GIF question folded into F1. The remaining user-blocked items (H1, F4, G3, `.srOnly`, G2b, the CSS
+guard) are all product or policy calls that no item in this run depends on. Batch them whenever the
+user has a sitting — but do not hold this run for them.
 
-1. **A9's `CLAUDE.md:22` correction.** `which npm npx node` resolves all three under
-   `/opt/homebrew/bin`; `npm --version` prints 11.8.0 (confirmed a FIFTH time 2026-08-28). Fix the
-   false "npm and npx are not on PATH" paragraph. _Guardrail: fix the PATH claim only. Do NOT
-   restructure the agent definitions or re-scope what any agent may do — the 6 allowlists already
-   use plain `npm`/`npx`, which work._
-2. **F3's `CollectionPageWrapper.tsx` out of `app/lib/components/`.** 3 src / 6 test; counts
-   re-verified 2026-08-29. _Guardrail: the glob `CollectionPageWrapper.*.test.tsx` matches only TWO
-   of the three test files — do not drive the move off the glob._
-3. **F3's `AdminPanel/` fold into `ListPanel/`.** Exactly two context files; 5 src / 3 test.
-   _Guardrail: `AdminPanelRenderer.tsx` + its `.module.scss` live in `app/components/Content/`,
-   NOT in `AdminPanel/`. Leave them where they are._
+**Re-derive refs between MRs only if an MR lands in a file a later one reads.** G6 is docs-only.
+C11, D10 and E18 touch disjoint trees (`ShareCard.tsx`, `lib/api/core.ts`, and the
+`useCollectionEdit`/`useMetadataSubmit` pair).
 
-**Re-derive refs between MRs only if an MR lands in a file a later one reads.** C10 touches
-`CollectionPageClient.tsx`, which no other pick reads; the three picked MRs touch disjoint trees.
+**Deliberately NOT in this run:** F1, still the largest open item with boundaries invalidated three
+times; it wants a session of its own. G2's inventory needs a single clean re-measure before any
+migration is scheduled — see the correction under G2.
 
-**Deliberately NOT in this run:** F1. It is the largest open item and its boundaries have been
-invalidated three times; it wants a session of its own.
-
-### State of the open items (re-stamped 2026-08-29)
+### State of the open items (re-stamped 2026-08-30)
 
 Every open item is COLD or BLOCKED, and every BLOCKED one names its question and who answers it. An
 item blocked on an unwritten question reads as available and then eats a session. (The 2026-08-26
@@ -227,30 +250,32 @@ is in [lessons.md](2026-summer-refactor/lessons.md).)
 
 | Item        | State              | If blocked: the question, and who answers it                                                                                                                                                                                                                                                                            |
 | ----------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **C10**     | COLD               | —— HIGH bug, recommended next MR; fully specified                                                                                                                                                                                                                                                                        |
-| **E6**      | BLOCKED — **user** | —— down to bullet 1 alone: **should the GIF save path start firing `revalidateMetadataCache`, and should adopt-ordering be normalized?** It fails the rejection test at 3-of-6 behavior-switching params, so it is a behavior change, not a refactor. Nothing else on E6 is startable                                     |
+| **G6**      | COLD               | —— **recommended next MR.** `CLAUDE.md`'s "Localhost Admin Needs No Login" Critical Rule is false as of backend #243; it instructs agents not to investigate the breakage it now causes                                                                                                                                   |
 | **E7**      | COLD               | —— the waste shipped as a handoff guard (#337); the hook is REJECTED with measurement. Two smaller wasted paths open (`EditModeLayer.tsx:280` reorder path; third `processContentBlocks` caller at `useCollectionEdit.tsx:556`)                                                                                            |
 | **E18**     | COLD               | —— four unwired revalidation paths + the stale-`previous` defect; fixes and tests specified                                                                                                                                                                                                                              |
 | **B8**      | COLD               | —— 5 of 6 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                                                                                                     |
 | **F3**      | COLD               | —— `ReorderMove`, `getUserPage` and the logger labels shipped; the invite bullet is COSTED and REJECTED (do not re-open the 3-function version). **Six bullets open.** `CollectionPageWrapper` (3 src / 6 test) and the `AdminPanel/` fold (5 src / 3 test) re-verified 2026-08-29 and are the two freshest               |
-| **A9**      | COLD               | —— one bullet: the factual correction to `CLAUDE.md:22` — `npm`/`npx`/`node` all resolve, `npm --version` 11.8.0. The `.next-verify` tsc noise is gone; expect a CLEAN `tsc --noEmit`                                                                                                                                     |
-| **G4**      | COLD               | —— count reproduces (1413 blocks / 49 hits, re-run 2026-08-29) but ~23 are false positives; ~26 real + ~17 board-label blocks must be read block-by-block, not regexed                                                                                                                                                    |
+| **G4**      | COLD               | —— count reproduces (**1415** blocks / 49 hits, re-run 2026-08-30; was 1413 at `cb6b87d` — the 49 hits and their per-term split are unchanged and exact) but ~23 are false positives; ~26 real + ~17 board-label blocks must be read block-by-block, not regexed                                                                                                                                                    |
 | **C11**     | COLD               | —— one `mapError` branch + one test                                                                                                                                                                                                                                                                                      |
 | **D10**     | COLD               | —— reuse `configuredAppOrigin()` in `core.ts`; docblock fix rides along                                                                                                                                                                                                                                                  |
 | **F1**      | COLD               | —— largest open item; no unanswered question, just size                                                                                                                                                                                                                                                                  |
 | **H1**      | BLOCKED — **user** | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? Also: accept a 500-row catalog fetch on every `/user` load, or ask the backend to return followed collections on the user-page read?                                                        |
-| **C9**      | BLOCKED — **user** | Should a cover with no `imageWidth`/`imageHeight` fall back to the text-only header, or is rendering nothing deliberate?                                                                                                                                                                                                  |
+| **C9**      | BLOCKED — **backend** | —— **ANSWERED 2026-08-30 and re-routed. Never fall back.** The user's answer ("we should NEVER HAVE AN IMAGE WITHOUT height/width") made this a data-integrity question about the backend, filed there as Bug #21. The FE ships nothing until the backend stops writing `0`                                             |
 | **F4**      | BLOCKED — **user** | Stated in the item                                                                                                                                                                                                                                                                                                       |
 | **G3**      | BLOCKED — **user** | Delete `/user/selects` or rebuild it                                                                                                                                                                                                                                                                                     |
 | **E9**      | BLOCKED — **user** | `.srOnly`: SCSS `%placeholder`, yes or no? Both COLD bullets shipped in #300                                                                                                                                                                                                                                              |
 | **G2**      | BLOCKED — **user** | G2b: does the migration (and the `error` flip) cover `.ts` util/lib files? Evidence says yes (the global rule covers every language; #268's standard covers plain function bodies) — a confirm, not a design question. G2c rides other refactors. G2a is COLD                                                              |
-| **G5**      | BLOCKED — **user** | Wrap the 13 bare-array endpoints `{content: [...]}`-style via the phased plan, or bless bare arrays in the backend CLAUDE.md? The backend board carries the other half of this row                                                                                                                                        |
-| CSS guard   | BLOCKED — **user** | Extend the panel `styles.<key>` guard repo-wide? Sized: 104 files under `app/` import a CSS module, 401 distinct `styles.<key>` reads. One generic test vs per-component assertions — see the CSS rule in "How to use this doc"                                                                                            |
+| CSS guard   | BLOCKED — **user** | Extend the panel `styles.<key>` guard repo-wide? **Re-measured 2026-08-30: 105 files, 402 distinct keys — both were off by one when written, and neither moved this session.** Commands recorded in the CSS rule in "How to use this doc". **10 files import a CSS module under a name other than `styles`, so a `styles.<key>` regex silently skips them** |
 
-**Nine of the nineteen rows are blocked on the same person, and none of the nine is blocked on
-work.** That is the board's real bottleneck — a single sitting answering H1, C9, F4, G3, E9's
-`.srOnly`, G2b, E6 bullet 1, G5 and the CSS guard would unblock more than any refactor on the list.
-Put them to the user as one batch.
+**Six of the fifteen rows are blocked on the user, down from nine of nineteen.** The 2026-08-30
+session cleared three by asking two questions and reading one other repo: C9 and E6 bullet 1 were
+answered directly, and G5 was closed by a backend decision that had already merged. **Two of the
+three cost no user time at all** — the answer was sitting in `edens.zac.backend`'s HEAD commit and
+its `.claude/CLAUDE.md`. Read the other repo before adding a row to the blocked list.
+
+The six that remain — H1, F4, G3, E9's `.srOnly`, G2b, and the CSS guard — are genuine product or
+policy calls. None of them blocks the current run. Put them to the user as one batch when there is
+a sitting for it, but do not treat them as a bottleneck on shipping.
 
 **Shipped write-ups are not on this page.** Closed items live in
 [`2026-summer-refactor/`](2026-summer-refactor/), one file per group (each with a "Closed rows"
@@ -283,40 +308,22 @@ item by item; both causes are known and neither is going away.
 
 ---
 
-## Group A — Pure deletions — ✅ CLOSED except one A9 bullet
+## Group A — Pure deletions — ✅ FULLY CLOSED
 
-All nine items merged (#255–#263). Full write-ups, closed rows and A9's swept bullets:
-[group-a-deletions.md](2026-summer-refactor/group-a-deletions.md). A9's one open bullet is below —
-a `CLAUDE.md` correction, not a deletion.
+All nine items merged (#255–#263); A9's last bullet — the `CLAUDE.md` PATH correction — closed
+2026-08-30 (#347). Full write-ups and closed rows:
+[group-a-deletions.md](2026-summer-refactor/group-a-deletions.md). **Nothing in Group A is open.**
 
-### ◐ A9 · Dead config — PR #259 — one bullet open: the CLAUDE.md:22 correction
-
-Two of the three bullets were already done when swept 2026-08-28 (worktrees cleared; `layoutpreview`
-deleted by the user outside git) — the record is in the
-[archive](2026-summer-refactor/group-a-deletions.md). The `.next-verify` type-check noise this item
-once tracked is also gone: `.next-verify/` does not exist and `tsc --noEmit` exits 0 (verified
-2026-08-29). **Sessions should expect a CLEAN type check.**
-
-- [ ] `.claude/agents/` — the diagnosis is settled: the `CLAUDE.md:22` line "`npm` and `npx` are
-      not on PATH" is simply WRONG. `which npm npx node` returns all three under
-      `/opt/homebrew/bin`, and `npm --version` prints **11.8.0** — re-confirmed a FIFTH time
-      2026-08-28. **The work is deleting that CLAUDE.md paragraph, not editing allowlists** — ten
-      `.claude/agents/*.md` files carry a `tools:` block, only 6 carry `Bash(npm…)`/`Bash(npx…)`
-      entries (`code-reviewer`, `debugger`, `implementer`, `linter-fixer`, `refactor-rename`,
-      `test-writer`), and those already use plain `npm`/`npx`, which work. The seventh `grep -l`
-      hit is `.claude/agents/README.md`, documentation. **Cost of the stale line, measured:** every
-      session runs `/opt/homebrew/bin/node node_modules/.bin/jest` because CLAUDE.md says to; it
-      works, so nothing ever failed loudly enough to prompt a re-check. A false instruction that
-      still produces working commands is invisible indefinitely. Done when `CLAUDE.md` no longer
-      claims npm/npx are off PATH.
 
 ---
 
 ## Group B — Test-suite reductions — shipped except B8's optional bullet
 
 B1–B7 and B9 closed — write-ups, estimate corrections and closed rows:
-[group-b-tests.md](2026-summer-refactor/group-b-tests.md). The suite is 51,446 lines against 37,211
-source lines. Hygiene is otherwise excellent: zero skips, zero `.only`, zero snapshots, zero stale
+[group-b-tests.md](2026-summer-refactor/group-b-tests.md). The suite is **57,306 lines against 36,685 source lines** (re-measured 2026-08-30:
+`find tests -type f \( -name '*.ts' -o -name '*.tsx' \) -exec cat {} + | wc -l`, same for `app`).
+The board carried 51,446/37,211 — stale by ~5,900 test lines, and nobody re-ran it because the
+number reads as measured. **Do not quote this figure without re-running the command beside it.** Hygiene is otherwise excellent: zero skips, zero `.only`, zero snapshots, zero stale
 TODOs.
 
 ### ◐ B8 · Fill the required-coverage gaps — 5 of 6 shipped (#266, #267, #295, #296); only the optional bullet is open
@@ -334,41 +341,11 @@ The project rule requires tests for these and they had none. The five shipped sl
 
 ---
 
-## Group C — Bug fixes — C1–C8 shipped; C9, C10, C11 open
+## Group C — Bug fixes — C1–C8 and C10 shipped; C9 and C11 open
 
-C1–C8 merged (#264, #281, #282, #279, #283, #327, #331, #291). Full write-ups and closed rows:
-[group-c-bugs.md](2026-summer-refactor/group-c-bugs.md). C4's `collections-location-${slug}` report became E12.
-
-### ☐ C10 · HIGH — Exiting manage mode leaves a blank public page
-
-Filed 2026-08-29 from the adversarial review of the merged set; the regression rode in on #337's
-handoff guard. **Recommended next MR — a live user-facing HIGH bug on `main` outranks the cleanup
-picks.**
-
-Mechanism, every ref verified in source 2026-08-29:
-
-- `editLayerMounted` is set true once and never reset — `CollectionPageClient.tsx:141-142` is the
-  declaration and the sole setter (`handleEditLayerMounted` only ever passes `true`).
-- Exiting manage is a soft navigation: `handleExitManage` runs `router.push('/${slug}')`
-  (`EditModeLayer.tsx:100-102`), which preserves client state — the same non-remount that entering
-  manage relies on — and `CollectionPage.tsx:126` renders `CollectionPageClient` with no `key`, so
-  the instance survives and `editMode` flips true → false on it.
-- After exit the public branch renders `grid` unconditionally (`CollectionPageClient.tsx:572`)
-  while the `contentBlocks` memo still returns `NO_BLOCKS` — its guard (`:424-427`) keys on
-  `editLayerMounted`, not `editMode`. Empty page until a hard reload.
-
-- [ ] Fix: reset or re-key the guard so the memo resumes producing blocks when `editMode` goes
-      false (e.g. gate on `editMode && editLayerMounted`, or reset the flag on exit).
-- [ ] Regression test pinning the difference: mount with `editMode=true`, await the layer mount,
-      rerender with `editMode=false`, assert the grid's `content` prop is non-empty — today it
-      receives `[]`. **No existing test covers the transition** — the three handoff tests
-      (`tests/components/ContentCollection/CollectionPageClient.editMode.test.tsx:351-415`) never
-      flip `editMode` back, so all three pass against the bug.
-
-The riskiest interaction on the merged set, worth keeping in view while fixing: the memo guard keys
-on a never-reset flag while BOTH manage-mode transitions are deliberately non-remounting soft
-navigations — the fix for E7's waste broke E7's own exit path. E7's two open bullets sit in the
-same neighborhood; do not bundle them in.
+C1–C8 merged (#264, #281, #282, #279, #283, #327, #331, #291); **C10 merged 2026-08-30 (#346)**.
+Full write-ups and closed rows: [group-c-bugs.md](2026-summer-refactor/group-c-bugs.md). C4's
+`collections-location-${slug}` report became E12.
 
 ### ☐ C11 · `mapError` has no 429 branch for the share-email rate limiter
 
@@ -381,34 +358,54 @@ rate-limited sender sees the generic failure copy.
 - [ ] Add a 429 branch with rate-limit copy, plus one test beside the 403/409 coverage
       `ShareCard.test.tsx` already carries from #331. Est +5 src, +15 test.
 
-### ☐ C9 · A dimensionless cover renders no header; a missing cover renders one
+### ☐ C9 · A dimensionless cover renders no header — ANSWERED 2026-08-30, now BLOCKED on backend Bug #21
 
 Found by B4 (#289) while merging the duplicated `createHeaderRow` describes. Both test copies
-encoded it correctly, so it is behaviour as written rather than a regression — but the two paths
-disagree in a way that reads more like an oversight than a decision, and nothing had recorded it.
+encoded it correctly, so it is behaviour as written rather than a regression.
 
-- [ ] `coverImage` absent (`undefined` **or** `null`) → `createTextOnlyHeaderRow`, which returns a
-      one-item TEXT row when metadata exists. A collection with a description and no cover renders
-      a header.
-- [ ] `coverImage` present but missing `imageWidth`/`imageHeight` → `null` unconditionally, metadata
-      ignored. The same collection with a broken cover renders nothing.
-- [ ] **The decision is the user's:** should a dimensionless cover fall back to the text-only
-      header, or is rendering nothing deliberate? Falling back is the smaller change and makes the
-      paths agree. Rendering nothing may be intentional if a cover that failed to measure signals a
-      broken collection worth hiding — but nothing says so.
-- [x] ~~Whichever way it goes, pin it.~~ **Already pinned — corrected 2026-08-29.** B4's own commit
-      (`26ee572`) landed the contrast in `tests/utils/contentLayout.test.ts`: `:1329`/`:1341` pin
-      text-only-when-absent and `:1355-1367` pins null-when-dimensionless ("should return null when
-      coverImage has no dimensions, even with metadata"), all in one describe. Flipping either path
-      fails a test today. If the user answers "deliberate", C9 closes with zero code.
+The two paths, both re-verified 2026-08-30 (`contentLayout.ts:644-646` and `:650-652`, byte-identical
+since E15 changed the signature):
 
-Est ±20 src, +40 test if the answer is "fall back". It needs the answer before it needs code.
+- `coverImage` absent (`undefined` **or** `null`) → `createTextOnlyHeaderRow`, a one-item TEXT row
+  when metadata exists. A collection with a description and no cover renders a header.
+- `coverImage` present but missing `imageWidth`/`imageHeight` → `null` unconditionally, metadata
+  ignored. The same collection with a broken cover renders nothing.
 
-**Premise re-verified 2026-08-24 after E15 changed `createHeaderRow`'s signature.** E15 converted
-the trailing booleans to an options object and touched nothing else: the `!collection.coverImage →
-createTextOnlyHeaderRow` branch and the `!coverBlock.imageWidth || !coverBlock.imageHeight → null`
-branch are byte-identical (re-confirmed 2026-08-29 at `contentLayout.ts:644-646` and `:650-652`).
-Any C9 test written now must use the new `{ isMobile, forceRail }` call shape.
+**The user answered on 2026-08-30, and the answer re-routed the item rather than settling it: never
+fall back.** Verbatim: *"why would a cover image ever have no image width or height? This seems more
+like an edge case BUG or underlying issue from the backend... we should NEVER HAVE AN IMAGE WITHOUT
+height/width... we should NEVER be caught in this situation."* So the frontend adds no fallback, and
+the existing pins stay as they are — `tests/utils/contentLayout.test.ts:1329`/`:1341` and
+`:1355-1367` already fail if either branch flips.
+
+**What the answer turned this into, chased down the same session.** The premise "this should never
+happen" is not true today, and the frontend is not where it is fixable:
+
+- `ImageProcessingService.applyMetadataToEntity:465-468` writes
+  `parseIntegerOrDefault(metadata.get("imageWidth"), 0)` — **the default is `0`, not null**. So a
+  photo whose dimensions cannot be determined is persisted as `0 x 0`, not as a null.
+- The backend already tries hard first: `ensureDimensions`/`ensureDimensionsFromPath` read width
+  and height off the image header when EXIF lacks them (`putDimensionsFromHeader:399-420`). **That
+  fallback fails soft in three places** — null input stream, no `ImageReader` for the format, or a
+  swallowed `IOException` — and each one lands on `0`. The realistic trigger is the no-reader
+  branch: RAW or HEIC without a plugin.
+- `0` is falsy in JS, so `!coverBlock.imageWidth` catches it exactly like `undefined` and the
+  header disappears.
+- **The sibling path gets it wrong the other way.** `parallaxCard.ts:135-136` falls back to a
+  1000px square via `raw.imageWidth ?? SQUARE_FALLBACK_SIDE` — but `??` catches only
+  null/undefined, so a `0` sails through the fallback built for exactly this case. One sentinel,
+  two consumers, two different wrong answers.
+
+- [ ] **BLOCKED on the backend, not on the user.** Filed as **Bug #21** on the backend board
+      (`ai_docs/reviews/2026-08-22-backend-cleanup-spike.md`, PR
+      [#244](https://github.com/themancalledzac/edens.zac.backend/pull/244)). When the backend
+      defaults to `null` instead of `0`, `parallaxCard`'s `??` fallback starts working on its own
+      and this item closes with **zero frontend code**. Do not pre-empt it with a frontend guard —
+      that is the fallback the user explicitly rejected.
+
+**Lesson, hoisted to "How to use this doc":** a "should we handle this bad state?" item is often a
+"why does this bad state exist?" item wearing a costume. Ask where the value is produced before
+costing a way to tolerate it.
 
 ---
 
@@ -442,46 +439,11 @@ that Node `fetch` rejects. Same cosmetic-env-becomes-outage class D8 was filed f
 
 ## Group E — Consolidations
 
-Behavior-preserving refactors. E1–E5, E8 and E10–E17 shipped — full write-ups and closed rows:
-[group-e-consolidations.md](2026-summer-refactor/group-e-consolidations.md). E6, E7, E9 and E18
-are open below.
-
-### ◐ E6 · `useCollectionEdit` refresh helpers — only bullet 1 left, BLOCKED on the user
-
-Bullets 2 (#339, +11 src), 3 (#342, +22 src) and `_deletedIds` (#341, −3 src) shipped with zero
-test churn — close-out, ref-drift record and the original filing are in the
-[archive](2026-summer-refactor/group-e-consolidations.md). **Bullet 1 is the whole item now, and it
-needs a product answer before anyone can start it: should the GIF save path start firing
-`revalidateMetadataCache`, and should adopt-ordering be normalized?**
-
-- [ ] Three copies of "refetch → adopt → storage-write → revalidate → clear selection"
-      (`handleMetadataSaveSuccess`, `handleGifSaveSuccess`, `handleDeleteSuccess`) → one
-      `refreshAfterContentMutation`.
-
-**Cost measured (2026-08-28, refs re-verified 2026-08-29 on the 1,751-line file) — it fails the
-rejection test.** The shared signature needs `revalidateMetadata: boolean` (the gif path omits the
-call), `failLoudly: boolean` (only `handleDeleteSuccess` carries the loud missing-slug guard at
-`:1061-1065`; all three `setError` in their catch blocks, `:1032`/`:1053`/`:1084`), and an
-`adoptFirst: boolean` or `transform` callback (`handleMetadataSaveSuccess:1007` adopts LAST through
-`mergeNewMetadata` and calls `updateImagesInCache`; `handleGifSaveSuccess:1038` adopts FIRST and
-**omits `revalidateMetadataCache` entirely**; `handleDeleteSuccess:1059` adopts first and keeps
-it). That is three of roughly six parameters existing purely to switch behavior between callers —
-contrast bullet 3's shipped `buildRemoveFromCollectionDiffs`, which passed the same test at zero
-switches. The only version that passes is the narrow one: extend `refreshCollectionAfterOperation`
-(`collectionEditUtils.ts:338` — the family is six sites: used by `handleMediaUpload:875` at `:888`,
-`handleTextBlockSubmit:927` at `:939`, and `useCaptureDateSelection.ts:61`; NOT by the three
-above) to fold in `revalidateCache`. That saves roughly 6–9 lines across three sites and still
-changes gif-path behavior, so **it does not clear the user gate either. Recommend folding bullet 1
-into F1, which has to touch these three functions anyway.**
-
-**Fact that strengthens the narrow option (adversarial review, 2026-08-28): two of the three
-current `refreshCollectionAfterOperation` callers skip server-cache revalidation entirely.**
-`handleMediaUpload` (`useCollectionEdit.tsx:875-925`) and `handleTextBlockSubmit` (`:927-964`) run
-through the helper — which never touches cache tags (`collectionEditUtils.ts:338-359`) — and add
-no call of their own; only `useCaptureDateSelection.ts:70` follows up with
-`revalidateCollectionCache`. New uploads and text blocks reach the public `collection-${slug}` page
-only when `TIMING.revalidateCache` (3600s) expires. Pre-existing, not introduced in-window. E18
-tracks the location-tag half of this class; extending the helper is where both halves would meet.
+Behavior-preserving refactors. E1–E5, E8 and E10–E17 shipped, and **E6 closed 2026-08-30** — its
+last bullet was answered by the user and folded into F1, so E6 is no longer scheduled as its own
+item. Full write-ups and closed rows:
+[group-e-consolidations.md](2026-summer-refactor/group-e-consolidations.md). E7, E9 and E18 are
+open below.
 
 ### ◐ E7 · Edit-grid handoff — the waste is FIXED (#337); the hook is REJECTED; two paths open
 
@@ -489,7 +451,7 @@ The parent's double pipeline was fixed by a four-line handoff guard (#337, +22 s
 shared-hook proposal was REJECTED with measurement — a hook serving both sites takes 9–11
 parameters, four of them pure behavior switches. The close-out and full rejection analysis are in
 the [archive](2026-summer-refactor/group-e-consolidations.md). **Guardrail: the parent's remaining
-filter work (`filteredContent` → `filteredImages:343` → `filteredAvailableOptions:373`) is NOT
+filter work (`filteredContent:356` → `filteredImages:361` → `filteredAvailableOptions:391`; **all three re-derived 2026-08-30 — #346 shifted them +18**) is NOT
 waste — it drives filter-chip greying while editing. Only `contentBlocks`-shaped work is dead
 while the layer is mounted.** The #337 guard's own exit-path bug is filed as **C10** (Group C,
 HIGH) — fix that first and do not bundle these bullets into it.
@@ -502,7 +464,10 @@ HIGH) — fix that first and do not bundle these bullets into it.
 - [ ] **A third `processContentBlocks` caller the item never mentioned.**
       `useCollectionEdit.tsx:556-568` (`processedContent`) uses the layer's argument set
       (`false, id, displayMode, true`) on unfiltered `collection.content ?? []` with no `applySort`.
-      Worth knowing before anyone counts call sites again — there are three, not two.
+      Worth knowing before anyone counts call sites again — there are three, not two, **in the
+      collection-page path. Repo-wide there are FIVE** (re-counted 2026-08-30):
+      `TaxonomyPage.tsx:13` and `LocationPageClient.tsx:81` are the other two, and neither is in
+      this item's scope. Say which number you mean when quoting it.
 
 ### ◐ E9 · Download icon/hook, auth-card SCSS, `.srOnly` — PR #300; srOnly ⛔
 
@@ -584,7 +549,11 @@ shipped — full write-ups, closed rows, F3's shipped bullets and F1's boundary-
       2026-08-29, every one now anchored:** state `:312–422` (`const [currentState` →
       `const [editTab`), update form `:439–814` (`const seedUpdateData`; end anchored on
       `handleUpdate`'s dependency array), people+gallery `:472–873` (`const [collectionPeople`),
-      content ops `:874–1220` (`const handleMediaUpload` at `:875`), relations `:1222–1406`
+      content ops `:874–1220` (`const handleMediaUpload` at `:875`) — **the `:1220` END is WRONG,
+      found 2026-08-30: `:1220` sits mid-`handleLocationsChange`, which starts `:1217` and is a
+      RELATIONS concern. Pre-existing, not merge drift; it was already wrong on 2026-08-29. The
+      anchored ends are sound, this un-anchored one is not — re-derive it by anchor before
+      splitting** — relations `:1222–1406`
       (anchor `const currentTags` at `:1231`), manage bar `:1407–1459` (anchor `const enterSelect`
       at `:1402`). `enterReorder:1404` **straddles** the relations/manage-bar boundary — a real
       finding about the split, not a bad boundary. **These boundaries are invalidated by ANY merge
@@ -596,10 +565,28 @@ shipped — full write-ups, closed rows, F3's shipped bullets and F1's boundary-
 - [ ] This also dissolves `EditModeLayer`'s FOUR `exhaustive-deps` suppressions (`:135`, `:205`,
       `:212`, `:219` — re-verified 2026-08-29).
 
-E6 bullet 1 (the three refresh copies) is recommended to fold in here once the user answers its
-question — F1 has to touch those three functions anyway.
+**Absorbed from E6 on 2026-08-30 (user decision), and it is a behaviour change, not a refactor.**
+E6's last bullet — three copies of "refetch → adopt → storage-write → revalidate → clear selection"
+in `handleMetadataSaveSuccess:1007`, `handleGifSaveSuccess:1038` and `handleDeleteSuccess:1059` —
+was put to the user as "bug or intentional?" and answered **"leave it for the big hook rewrite"**.
+F1 has to touch all three functions anyway. Carry these facts, measured on 2026-08-28 and
+re-verified 2026-08-30:
 
-### ◐ F3 · File moves and renames — `ReorderMove` (#324), `getUserPage` (#336) and the logger labels (#343) SHIPPED; invite move REJECTED; six bullets open
+- The GIF path **omits `revalidateMetadataCache` entirely** and adopts FIRST; the metadata path
+  adopts LAST through `mergeNewMetadata` and calls `updateImagesInCache`; the delete path adopts
+  first and keeps the revalidate. Only `handleDeleteSuccess` carries the loud missing-slug guard
+  (`:1061-1065`); all three `setError` in their catch blocks (`:1032`/`:1053`/`:1084`).
+- A shared helper needs `revalidateMetadata`, `failLoudly` and `adoptFirst`/`transform` — **three
+  of roughly six parameters existing purely to switch behaviour between callers.** That is why the
+  standalone consolidation was rejected; inside F1 the same change is a split, not a parameterised
+  merge.
+- **User-visible consequence, unfixed until F1:** after saving a GIF the public page can serve stale
+  metadata until `TIMING.revalidateCache` (3600s) expires. Two of the three
+  `refreshCollectionAfterOperation` callers (`handleMediaUpload:875` at `:888`,
+  `handleTextBlockSubmit:927` at `:939`) skip server-cache revalidation the same way; only
+  `useCaptureDateSelection.ts:70` follows up. E18 tracks the location-tag half of this class.
+
+### ◐ F3 · File moves and renames — `ReorderMove` (#324), `getUserPage` (#336), logger labels (#343), `CollectionPageWrapper` (#348) and the `AdminPanel/` fold (#349) SHIPPED; invite move REJECTED; four bullets open
 
 Shipped close-outs, the mock-declaration lesson and the full invite cost report:
 [group-f-structural.md](2026-summer-refactor/group-f-structural.md). Each open bullet below carries
@@ -615,17 +602,6 @@ rename sweep nobody reviews carefully.
       `deleteAdminMessage`); `submitContactMessage` posts to the public
       `/api/proxy/api/public/messages`, so it belongs in that file rather than a new one. 1 src / 3
       test.
-- [ ] `CollectionPageWrapper.tsx` out of `app/lib/components/` — it is the only component under
-      `lib`. **STILL ACCURATE (re-verified 2026-08-29); picked.** `find app/lib -name '*.tsx'`
-      returns exactly this one file. The rest of `app/lib/` is `actions/clearCache.ts`, 12 files in
-      `api/`, and `storage/collectionStorage.ts`. **3 src / 6 test** — src importers are exactly
-      `app/[slug]/page.tsx:5`, `app/all-client-galleries/page.tsx:1`, `app/page.tsx:3`; the other
-      `CollectionPageWrapper` hits in `app/` are prose inside docblocks (`ClientGalleryGate.tsx:30`,
-      `useCollectionEdit.tsx:1161`, `personal.ts:89`, `contentTypeGuards.ts:181`) and move nothing.
-      The three `tests/lib/components/CollectionPageWrapper*` files move with it. One caution on the
-      wording: the glob `CollectionPageWrapper.*.test.tsx` matches only TWO files
-      (`.allCollectionsTile`, `.meTile`); the third is `CollectionPageWrapper.test.tsx` with no
-      middle segment. The count of three is right, the glob is not — don't drive the move off it.
 - [ ] `fullscreen-image.module.scss` → `FullScreenModal.module.scss`. **PARTLY ACCURATE — the move
       is fine, the original justification was wrong.** `app/styles/` holds THREE files:
       `auth-card.module.scss`, `fullscreen-image.module.scss`, `globals.css`; after the move it
@@ -636,23 +612,21 @@ rename sweep nobody reviews carefully.
       (re-verified 2026-08-29); `tests/styles/breakpointConsistency.test.ts` walks `app/`
       recursively (`:18` — **was quoted `:17`; corrected 2026-08-29**) so it needs no update, but
       its docblock (`:2`) names the file in prose and goes stale on rename — no code edit.
+      **Collision found 2026-08-30: one of E9's six `.srOnly` copies lives in this very file.**
+      Whichever of the two ships second inherits the other's churn. Not a blocker; do the rename
+      first if both are ever scheduled, since it is the smaller diff.
 - [ ] Rename the lowercase `auth/` and `messages/` component directories. **PARTLY ACCURATE — both
       are lowercase, but the bullet omits a third and needs to say why.** `app/components/` has
-      **37 entries** (re-counted 2026-08-29; was quoted 36) and THREE are lowercase: `auth/`,
+      **36 entries** (`ls app/components | wc -l`, re-run 2026-08-30 — was 37 until #349 deleted
+      `AdminPanel/`; the 2026-08-29 count of 37 was correct when taken) and THREE are lowercase: `auth/`,
       `messages/`, `ui/`. The other 34 are PascalCase, the documented convention. **`ui/` should
       stay lowercase and the bullet must say so**, or whoever picks this up will "fix" it: `ui/` is
       a namespace holding 23 PascalCase component folders (`ui/Button/Button.tsx`,
       `ui/Modal/Modal.tsx`, …), not a component. `auth/` and `messages/` hold exactly one file each
       — `auth/MeProvider.tsx`, `messages/MessageRow.tsx` — so they are components misfiled as
       namespaces. 9 src / 9 test combined.
-- [ ] Fold the `AdminPanel/` fossil (now only contexts) into `ListPanel/`. **STILL ACCURATE
-      (re-verified 2026-08-29); picked.** `app/components/AdminPanel/` holds two files, both
-      contexts: `AdminPanelCollapseContext.tsx` and `AdminPanelSeedContext.tsx`. No component.
-      **`AdminPanelRenderer.tsx` + its `.module.scss` live in `app/components/Content/`, not here**
-      — worth knowing so nobody hunts for them. Four of the five importers already import from
-      `ListPanel/` too, so the pairing matches how the code is used. 5 src / 3 test.
 - [ ] `collectionEditUtils.ts` log labels are consistent-stale no more, but still inconsistent
-      (found 2026-08-28 while shipping #343): `:437` logs under `'replayMoves'` — the FUNCTION
+      (found 2026-08-28 while shipping #343): `:437` logs under `'replayMoves'` (the call is `:437`, the label string sits on `:438`) — the FUNCTION
       name, where the other three (`:225`/`:279`/`:305`) now use the MODULE name. Not stale
       (`replayMoves` exists at `:432`; re-verified 2026-08-29), so #343 left it. **The open
       question is which convention this repo wants**: `useCollectionEdit.tsx` logs under
@@ -683,9 +657,63 @@ rename sweep nobody reviews carefully.
 
 ## Group G — Decisions and docs
 
+G1 shipped (#303) and **G5 closed 2026-08-30 with zero frontend code** — the backend blessed bare
+arrays in its own `CLAUDE.md` (#243), which was the decision G5 was waiting on. Write-ups and closed
+rows: [group-g-decisions.md](2026-summer-refactor/group-g-decisions.md). G2, G3, G4 and the new G6
+are open below.
+
 G1 shipped (#303) — write-up and closed row in
 [group-g-decisions.md](2026-summer-refactor/group-g-decisions.md), along with G2's superseded
 per-file inventory and G4's measurement history. G2, G3, G4 and G5 are open below.
+
+### ☐ G6 · HIGH — `CLAUDE.md`'s "Localhost Admin Needs No Login" rule is now FALSE
+
+Filed 2026-08-30 while reading the backend repo to settle G5. **Recommended next MR.** This is not
+a docs nicety: the rule instructs every agent *not to investigate* a breakage that is now real.
+
+`CLAUDE.md:14` (Critical Rules) currently claims local `/admin` is reachable anonymously "at every
+layer", enumerating four, and ends: *"Do not 'fix' any of those as a security hole and do not ask
+the user to log in for you."* **The fourth layer is no longer true.** Backend
+[#243](https://github.com/themancalledzac/edens.zac.backend/pull/243) merged 2026-08-30 and removed
+the `app.admin.enforce-authz` toggle that let local dev fall through to `permitAll`.
+
+Verified in backend source, not from the commit message:
+
+- `SecurityConfig.java:75-76` — `.requestMatchers("/api/admin/**").hasRole("ADMIN")`, with no
+  profile condition, and a 401 authentication entry point.
+- `SecurityConfig.java:41-42` docblock — "Both write tiers sat behind `app.admin.enforce-authz`
+  until 2026-08-30, which let local dev fall through to `permitAll`. **That toggle is gone and the
+  gate is unconditional in every profile.**"
+- `/api/edit/**` went the same way, to `hasRole("USER")`.
+
+**Why this is worse than an ordinary stale doc.** The frontend's own three layers still pass
+anonymously by design — `proxy.ts` passes the route group, the BFF's anonymous-admin reject is
+production-only, and `requireAdmin()` returns early on `isLocalEnvironment()`. So the admin page
+still *renders* locally; it is the data fetch behind it that now gets a 401. An agent hitting that
+will read the Critical Rule, see "do not fix this, do not ask the user to log in", and conclude the
+401 must be something else. **A false instruction that forbids investigation is strictly worse than
+one that merely misleads** — this is the same class A9 just closed, with the failure mode inverted:
+A9's stale line produced working commands and so stayed invisible; this one produces a confusing
+failure and actively deflects the diagnosis.
+
+- [ ] Correct the fourth clause of `CLAUDE.md:14` — the local backend now requires an admin session
+      on `/api/admin/**`. Keep the first three layers' description, which is still accurate and is
+      still worth protecting from well-meaning "security fixes".
+- [ ] Say what a local session now requires, so the rule answers the question it raises instead of
+      leaving the next agent to rediscover it.
+- [ ] Check whether `tests/utils/admin.test.ts` encodes the old backend assumption anywhere. The
+      frontend gates it covers are unchanged, so this is expected to be a no-op — confirm rather
+      than assume.
+- [ ] **Guardrail: do not "fix" the three frontend layers.** They are deliberate and the rule is
+      right about them. Only the backend clause is false. If the local flow turns out to need a
+      frontend change too, report what it would cost rather than making it in this MR.
+
+Est: ~4 docs lines, 0 src. The verification is reading the backend config, which is done and
+recorded above.
+
+**Cross-repo note.** The consequence is logged on the backend board's session log too, so the trail
+runs both ways. A backend security change silently falsifying a frontend standing instruction is a
+class of breakage neither board was watching for — see the rule now in "How to use this doc".
 
 ### ◐ G2 · Inline-comment rule — DECIDED 2026-08-22: keep and enforce; G2a COLD, G2b/G2c ⛔
 
@@ -697,15 +725,26 @@ The review recommended relaxing the rule; the user overruled it. The standard: n
 
 Inventory at decision time: 15 JSX `{/* */}` comments + 504 `//` lines in 226 blocks across 56 files (AST sweep of comments inside function/component bodies; module-scope headers and `eslint-`/`@ts-` directives excluded). Line refs drift as MRs land — regenerate the sweep before each migration MR.
 
-**⛔ Scope call found 2026-08-22: that inventory was a `.tsx`-only sweep.** Re-run then: `.tsx` =
-506 lines / 228 blocks / 55 files. But `.ts` files under `app/` add **416 lines / 174 blocks / 35
-files** the inventory never counted — `app/**` total 922 / 402 / 90. The decided standard (#268:
+**⛔ Scope call found 2026-08-22: that inventory was a `.tsx`-only sweep.** Recorded then: `.tsx` =
+506 lines / 228 blocks / 55 files, `.ts` adding 416 / 174 / 35, `app/**` total 922 / 402 / 90.
+
+> **⚠ Every `//` figure in this item is UNCHECKED as of 2026-08-30 and must not be quoted.** An
+> attempt to re-derive them found the recorded `awk` block-counter is a *different metric* from the
+> AST sweep that produced the recorded numbers, and three filter variants bracket neither: raw awk
+> gives `.ts` 603/239; excluding `eslint-`/`@ts-`/`prettier-` directives gives `.ts` 603, `.tsx`
+> 532; additionally requiring ≥2-space indent as a proxy for "inside a body" gives `.tsx` 494,
+> `.ts` 450. **The `.ts` gap runs in opposite directions depending on the filter**, which proves the
+> original filter was neither. Only the JSX half reproduces exactly: `grep -rho '{/\*' app --include='*.tsx' | wc -l` → **15**.
+> **Re-take the entire inventory in one pass and write the command down beside the number before
+> scheduling any migration.** Sizing G2b off the current figures would be sizing off nothing. The decided standard (#268:
 "plain function bodies") covers `.ts` too; the inventory said otherwise. USER decides: does G2b's
 migration (and the `error` flip) cover `.ts` util/lib files, roughly doubling it? **The evidence
 says yes** — the user's global rule covers every language and #268's wording covers plain function
 bodies — so this is a confirm, not an open design question. If yes, ten more heavy files join
-G2c's ride-along list: `metadataUtils.ts` (38 blocks), `rowCombination.ts` (15),
-`contentLayout.ts` (15), `contentFilter.ts` (13), the proxy `route.ts` (10), `userSpaceData.ts`
+G2c's ride-along list, **three counts corrected 2026-08-30**: `metadataUtils.ts` (38 blocks — and
+it lives at `app/components/Metadata/`, **not** `app/utils/` as this list implies),
+`rowCombination.ts` (**31, not 15 — the largest single error on this list**),
+`contentLayout.ts` (15), `contentFilter.ts` (**16, not 13**), the proxy `route.ts` (10), `userSpaceData.ts`
 (10), `useMetadataState.ts` (9), `useParallax.ts` (8), `core.ts` (5 — **was `7`; corrected
 2026-08-27**), `rowStructureAlgorithm.ts` (6).
 
@@ -713,7 +752,7 @@ G2c's ride-along list: `metadataUtils.ts` (38 blocks), `rowCombination.ts` (15),
       **Feasibility verified empirically 2026-08-22** on the repo's ESLint 9.36 + typescript-eslint
       8.29: the selector flags `{/* */}` (and bare `{}` — acceptable bonus) and not real
       expressions; a commented-out `no-restricted-syntax` stub already sits at
-      `eslint.config.mjs:78-84` (re-verified 2026-08-29); the local rule is ~50–60 lines inline in
+      `eslint.config.mjs:78-85` (re-verified 2026-08-29); the local rule is ~50–60 lines inline in
       flat config, no new deps. COLD — startable today.
 - [ ] **G2b · Mechanical migration — light files (~45 files with 1–5 blocks).** Hoist each comment into the docblock of the function it explains. A comment explaining a mid-function statement with no declaration to attach to is the split signal: extract a named helper/hook so the docblock has a home.
 - [ ] **G2c · Heavy files ride their refactors — do NOT migrate standalone.** Their comment volume
@@ -772,7 +811,7 @@ against `\bused to\b`, `\bno longer\b`, `\bpreviously\b`, `\bthe old\b`, `PR #\d
 previously 7, bare date 6, the-old 4, PR-number 1). **~23 of the 49 are false positives** — the
 employed-to reading ("Used to categorize images"), `@throws … no longer exists` runtime state,
 dates inside code examples — so **~26 are genuine. And the regex MISSES pure history with no anchor
-term** (`contentRatingUtils.ts:35`'s retired-model note, `contentLayout.ts:93`'s "bit-for-bit what
+term** (`contentRatingUtils.ts:35`'s retired-model note, `contentLayout.ts:96`'s "bit-for-bit what
 it was before"), so 26 is a floor. **Every hit needs reading; this item cannot be finished by
 running the regex.**
 
@@ -784,7 +823,7 @@ running the regex.**
 `useCollectionEdit.tsx:193` (D3/D4), `StructureTab.tsx:34` (D4), `clearCache.ts:37` (D1/D2),
 `core.ts:101` (E2), `api/revalidate/route.ts:7` (D6) — plus **6 inline `//` comments**:
 `useCollectionEdit.tsx:1571` (`TODO(A3)`), `useCollectionEdit.tsx:1586` (D4),
-`CollectionPageClient.tsx:322` and `:356` (D7), `useCoverImageSelection.ts:51` (D3),
+`CollectionPageClient.tsx:340` and `:356` (D7), `useCoverImageSelection.ts:51` (D3),
 `EditModeLayer.tsx:249` (D3) — all six re-verified 2026-08-29. Only 2 of the 19 overlap the 49.
 Watch one false positive: `contentRatingUtils.ts:35`'s `H5★` is a five-star horizontal rating, not
 item H5. The worst single offender is `collectionEditUtils.ts:284-293` — board label, PR number,
@@ -817,33 +856,6 @@ but cannot tell history from a live constraint, so a rule would either be trivia
 would fire on the docblocks worth keeping. Decide whether a rule is wanted after the manual pass
 has established what the standard looks like in this codebase.
 
-### ⛔ G5 · Bare-array API responses — coordinate with backend MR 20 — USER DECISION
-
-Filed 2026-08-29 from the cross-repo contract review. 17 backend read endpoints return top-level
-JSON arrays; the backend board carries "wrap bare arrays in `{content: [...]}`" as its MR 20
-decision row, and until now **this board carried nothing** — the wrap would break FE parsing, and
-the decision lived only on the board of the repo that would do the breaking.
-
-The FE consumes 13 of the 17 directly as `T[]` — ~14 call sites in 6 files, no unwrap layer, all
-re-verified 2026-08-29: `adminHome.ts:12`, `roles.ts:27/:73/:90`, `users.ts:56/:203/:219`,
-`personal.ts:97/:115/:134`, `selects.ts:32/:53`, `content.ts:42/:58`. Four endpoints have no FE
-consumer at all (people, cameras, lenses, ratings).
-
-- [ ] **The decision is the user's: wrap the 13 via the phased plan below, or bless bare arrays in
-      the backend's CLAUDE.md and close both boards' rows.** Neither side schedules a wrap MR until
-      this is answered.
-
-Phased plan if wrapping (no breakage at any step):
-
-1. BE wraps the 4 consumer-less endpoints anytime — zero coordination.
-2. FE first for the 13: tolerant parse `T[] | { content: T[] }` at the ~14 call sites (precedent:
-   `parseCollectionArrayResponse` in `collections.ts` already accepts both shapes); ~15 FE test
-   files touched.
-3. BE wraps all 13 in one MR (92 array-shape assertions, 25 test methods, 8 files, per the backend
-   row's own sizing).
-4. FE drops the tolerance.
-
-The other half of this row lives on the backend board as its MR 20 decision row.
 
 ---
 
@@ -964,6 +976,53 @@ against real merge timestamps on 2026-08-24; only the labels were inconsistent. 
 Same-day runs are numbered "(1)", "(2)", … in run order; 2026-08-28's first two runs predate the
 numbering, so that day's numbered entries start at "(2)"._
 
+- 2026-08-30 — **shipped the full picked run plus the HIGH bug ahead of it: #346 (C10), #347 (A9),
+  #348 (F3 `CollectionPageWrapper`), #349 (F3 `AdminPanel/` fold). Four MRs, all merged.** Plus one
+  cross-repo filing, [backend #244](https://github.com/themancalledzac/edens.zac.backend/pull/244).
+  Suite baseline re-measured: **245 suites / 4,464 tests**, `tsc --noEmit` exit 0.
+  **Two blocked questions asked at the START, and both answers changed the board more than any
+  code would have.** C9's answer ("we should NEVER HAVE AN IMAGE WITHOUT height/width") re-routed
+  the item out of this repo entirely — chasing the premise found
+  `ImageProcessingService:465-468` defaulting dimensions to **`0`, not null**, which `!width`
+  catches and `?? SQUARE_FALLBACK_SIDE` does not. C9 now blocks on backend Bug #21 and will close
+  with zero frontend code. E6 bullet 1 was answered "leave it for the big hook rewrite", so E6
+  closed and its last bullet is now an F1 sub-task.
+  **A third blocked row closed for free, by reading the other repo.** G5 (wrap-vs-bless bare
+  arrays) had sat BLOCKED-on-user; the backend blessed them in its own `.claude/CLAUDE.md` on
+  2026-08-30 (#243). Nobody had looked. **Blocked-on-user is down 9-of-19 to 6-of-15, and two of
+  the three cost the user nothing.** Rule hoisted.
+  **One new HIGH filed, found the same way: G6.** Backend #243 also made `/api/admin/**`
+  unconditionally gated, which falsifies `CLAUDE.md:14`'s "Localhost Admin Needs No Login" Critical
+  Rule — a rule that tells agents *not to investigate* the breakage it now causes. Verified at
+  `SecurityConfig.java:75-76`, not from the commit message. Recommended next MR.
+  **Est vs actual — the two MOVE items were EXACT, both halves.** F3 predicted 3 src / 6 test and
+  5 src / 3 test; both landed precisely, at +11 −11 each. **Group F move counts, re-verified the
+  same week, are trustworthy in a way Group E consolidation estimates are not** — the standing bias
+  note is about extractions, and should not be read as distrust of a move count. A9 was the miss:
+  scoped as one file, actual three, because the board recorded where the false sentence was FILED
+  rather than where it APPEARED.
+  **C10's item under-counted its own symptoms, and writing the test first is what caught it.** The
+  section named one symptom (exit renders empty); the failing test surfaced a second in the opposite
+  direction (re-entry paints no fallback grid at all). Both tests were watched failing before the
+  fix. The three pre-existing handoff tests all passed against the bug because none ever flipped
+  `editMode` back.
+  **Verification sweep: 6 wrong numbers, 5 drifted refs, 1 pre-existing bad boundary.** Wrong:
+  `app/components/` 37→**36** (this session's own #349), G4 blocks 1413→**1415**, the CSS-guard pair
+  104/401→**105/402** (already wrong when written, unmoved by this session), the Group B suite
+  baseline 51,446/37,211→**57,306/36,685** (stale by ~5,900 lines), G2's `rowCombination.ts` 15→**31**
+  and `contentFilter.ts` 13→**16**. Drifted: E7's three guardrail refs +18, G4's two D7 refs +18,
+  `contentLayout.ts:93`→`:96`, G2a's stub `:78-84`→`:78-85`. **F1's content-ops range end `:1220` is
+  WRONG and was already wrong on 08-29** — it sits mid-`handleLocationsChange`, a relations concern;
+  the un-anchored boundary failed exactly as F1's own anchoring rule predicted.
+  **G2's whole `//` inventory is now UNCHECKED and must not be quoted.** Three filter variants
+  bracket neither recorded figure and the `.ts` gap runs in opposite directions depending on the
+  filter, which proves the original method was neither. Re-take in one pass with the command
+  written down before scheduling G2b.
+  **Process:** MemPalace was unreachable all session (ConnectionRefused, localhost:8787), so the
+  protocol's searches did not run and the two verification sweeps were plain filesystem passes.
+  Next: G6, then C11, D10, E18.
+
+
 - 2026-08-29 — **applied the 2026-08-28 nine-agent split review (both repos' boards) to this
   board: corrections, five new items, and the slim-down restructure. No code MR — this is the
   board pass the review produced.**
@@ -1003,39 +1062,6 @@ numbering, so that day's numbered entries start at "(2)"._
   Next: C10 first, then the picked three (A9's CLAUDE.md fix, F3's `CollectionPageWrapper` move,
   F3's `AdminPanel/` fold), with the blocked questions batched in the opening message.
 
-- 2026-08-28 (3) — **shipped the full picked run: #341 (E6 `_deletedIds`), #342 (E6 bullet 3), #343
-  (F3 logger labels). Three MRs, all merged. E6 is now down to one BLOCKED bullet.** First time a
-  run of three was picked and all three landed.
-  **Estimate vs actual, and it settles a pattern.** Src came in at −3, +22 and +3/−3; test churn was
-  0, 0 and 0 (#342 added 6 new specs but edited no existing test). **Three consecutive sessions have
-  now over-estimated test churn on E6** against a ±20 budget that was itself a correction of a ±100
-  budget. Retire the budget. Meanwhile `−90 src` on E6's board row is dead: every measured bullet
-  came in POSITIVE, because each extraction trades duplicated body for a documented helper and the
-  docblock is not optional here. **Applied forward: any board item promising negative source lines
-  from an EXTRACTION should be re-read as ≈+20 before it is scheduled.**
-  **Bullet 3's helper went somewhere the board did not predict** — `metadataUtils.ts`, not
-  `collectionEditUtils.ts`, because that is where `buildImageUpdateDiff` and its sibling builder
-  already live and where both call sites already imported from. Rule recorded in E6's archive:
-  put a shared helper where its dependencies live, not where the louder caller lives.
-  **F1's boundaries were invalidated a THIRD time, and this one is the sharpest case yet** — #341
-  changed four lines and moved 3 more purely through a **Prettier collapse** when the parameter list
-  emptied. The rule tightens from "any merge with more than one hunk" to **"any merge at all; a
-  formatter is a hunk."** Also found a real defect in F1: two of its six boundaries were bare
-  numbers with no anchor, and re-deriving them by offset lands mid-function. Anchors proposed and
-  now adopted.
-  **Drift fixed: 6 refs.** `refreshCollectionAfterOperation`'s call sites (`:871`/`:922` →
-  `:888`/`:939`) had been wrong for a day — **#339's sweep fixed its checklist and skipped the
-  prose**, which is what a fresh session reads first. Plus `:1169`→`:1161`, `:1412`/`:1420`→
-  `:1421`/`:1429`, `:1579`→`:1571`, `:1594`→`:1586`, and F1's six boundaries re-derived.
-  **Filed one new bullet** under F3: `collectionEditUtils.ts:437` logs under `'replayMoves'` (a
-  function name) where the other three now use the module name — not stale, so #343 left it, but the
-  file's convention is still unwritten.
-  **Process fix outside the board:** the repo had `deleteBranchOnMerge: false` and 311 remote
-  branches, so GitHub never auto-retargeted #342 when its base #341 merged — auto-retarget fires on
-  branch DELETION, not on merge. Setting is now on. **Do not promise another system's automatic
-  behavior without checking the setting that governs it.**
-  Next: A9's `.claude/agents/` bullet, then F3's `CollectionPageWrapper` and `AdminPanel/` moves.
-
 ## Verified fine — do not re-investigate
 
 - `app/[slug]/page.tsx`'s double `getCollectionBySlug` is deduped by Next request memoization; it is not a single-fetch violation. `meServer` is wrapped in React `cache()`.
@@ -1066,3 +1092,22 @@ numbering, so that day's numbered entries start at "(2)"._
   committed `.env`, no open redirects, CSRF origin-allowlist on writes, SSRF-safe URL building,
   size caps with post-buffer recheck, correct `Set-Cookie` forwarding, careful share/invite/
   gallery-gate flows.
+- Checked 2026-08-30 while fixing C10 and found sound: `liveEditContent`
+  (`CollectionPageClient.tsx:309`) already gates on `editMode` and releases correctly on manage-mode
+  exit — it is the precedent C10's fix copied. `filterState` deliberately survives the exit (it is
+  URL-synced), so filters set while managing carrying into the public view is intended, not a leak.
+- The six agent allowlists carrying `Bash(npm…)`/`Bash(npx…)` are correct (re-verified 2026-08-30,
+  A9's close-out): every script name they reference exists in `package.json`,
+  `Bash(npm run lint:*)` covers `npm run lint:fix`, and `.claude/agents/README.md`'s capability
+  table matches all six frontmatter blocks. **Known gap, not a defect:** neither `scss-reviewer` nor
+  `code-reviewer` can run stylelint — a scoping call, recorded in the A9 archive.
+- G5's premise and arithmetic (14 call sites in 6 files, `/user/selects` appearing twice → 13
+  distinct endpoints) reconciled exactly on 2026-08-30 immediately before the item closed. The
+  count was right; only the decision was missing.
+- These recorded numbers re-measured EXACT on 2026-08-30 and need no re-checking soon:
+  `useCollectionEdit.tsx` 1,751 lines and all eight F1 boundary anchors; `sharedObserver` 116 /
+  `useParallax` 161 / `useContentReordering` 197, all three still untested; `.srOnly` in 6 SCSS
+  modules; `contactApi.ts` 61 lines with `ContactResult` at `:6-8` and 1 src / 3 test; `app/styles/`
+  holding three files; 87 style files; 23 `ui/` primitives; 55 closed rows across the archives;
+  G4's 49 history hits and their per-term split (21/12/7/6/4/1). **All of E6's, E18's, D10's, C11's
+  and H1's refs resolved CORRECT** — H1's thirteen `userSpaceData.ts` anchors included.

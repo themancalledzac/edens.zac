@@ -1,7 +1,7 @@
 # Group G — Decisions and docs (shipped)
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md), plus
-superseded measurement history for the open G2 and G4. G2, G3, G4 and G5 are open on the live board._
+superseded measurement history for the open G2 and G4. **G5 closed 2026-08-30.** G2, G3, G4 and the new G6 are open on the live board._
 
 ## Closed rows
 
@@ -173,3 +173,35 @@ item). The one `contentLayout.ts` hit ("used to hold photos-per-row steady", blo
 employed-to, and `git log -L` traces it to `10fb626`, not #327. The recorded per-term table summed
 to 47 rather than the 45 it stated — term overlap (`collectionSlugs.ts:43` and
 `listPanelShape.ts:97` each match two terms); the union is the right number.
+
+---
+
+### ✅ G5 · Bare-array API responses — CLOSED 2026-08-30 with zero frontend code
+
+Filed 2026-08-29 from the cross-repo contract review: 17 backend read endpoints return top-level
+JSON arrays, the frontend consumes 13 of them directly as `T[]` across ~14 call sites in 6 files
+with no unwrap layer, and the wrap-vs-bless decision lived only on the backend's board.
+
+**Answered by the backend, and it had already merged before this board noticed.** Backend
+[#243](https://github.com/themancalledzac/edens.zac.backend/pull/243) landed 2026-08-30 and blessed
+bare arrays in its own `.claude/CLAUDE.md`:
+
+> A list endpoint MAY return a top-level JSON array. Wrapping it in an object is not required
+> (decided 2026-08-30: the frontend consumes bare arrays directly, and 17 endpoints already ship
+> this way). Prefer an object when the response carries anything besides the list itself, such as
+> paging or a total.
+
+Its commit message says the same: "closes MR 20 without touching the 17 endpoints." **So the
+frontend ships nothing.** No tolerant parse, no phased migration, no test churn. The four-step plan
+this item carried is dead and was archived with it rather than left as an open box.
+
+**The premise and arithmetic were sound — only the decision was missing.** Re-verified 2026-08-30
+immediately before closing: 14 call sites in 6 files, of which `/user/selects` appears twice, giving
+13 distinct endpoints. `adminHome.ts:12`, `roles.ts:27/:73/:90`, `users.ts:56/:203/:219`,
+`personal.ts:97/:115/:134`, `selects.ts:32/:53`, `content.ts` (the two fetch calls are at `:39` and
+`:56`; the board's `:42`/`:58` pointed at the `next:` options object below each — a small anchoring
+miss, now moot).
+
+**The lesson, hoisted: read the other repo's board and HEAD before stamping BLOCKED-on-user.** This
+row sat blocked on a decision that was already made and written down in the other repository. It
+cost nothing to check and would have cost a session to schedule around.

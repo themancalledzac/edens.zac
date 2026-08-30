@@ -1090,3 +1090,36 @@ pageType="collectionsCollection">` is one line before and one line after — so 
   BLOCKED on user calls (H1, C9, F4, G3, E9's `.srOnly`, G2b/G2c, E6 bullet 1) against a COLD set
   that is F1 plus small tails. That ratio is the thing to watch: the next session should batch the
   blocked questions in its opening message rather than picking around them.
+
+- 2026-08-28 (3) — **shipped the full picked run: #341 (E6 `_deletedIds`), #342 (E6 bullet 3), #343
+  (F3 logger labels). Three MRs, all merged. E6 is now down to one BLOCKED bullet.** First time a
+  run of three was picked and all three landed.
+  **Estimate vs actual, and it settles a pattern.** Src came in at −3, +22 and +3/−3; test churn was
+  0, 0 and 0 (#342 added 6 new specs but edited no existing test). **Three consecutive sessions have
+  now over-estimated test churn on E6** against a ±20 budget that was itself a correction of a ±100
+  budget. Retire the budget. Meanwhile `−90 src` on E6's board row is dead: every measured bullet
+  came in POSITIVE, because each extraction trades duplicated body for a documented helper and the
+  docblock is not optional here. **Applied forward: any board item promising negative source lines
+  from an EXTRACTION should be re-read as ≈+20 before it is scheduled.**
+  **Bullet 3's helper went somewhere the board did not predict** — `metadataUtils.ts`, not
+  `collectionEditUtils.ts`, because that is where `buildImageUpdateDiff` and its sibling builder
+  already live and where both call sites already imported from. Rule recorded in E6's archive:
+  put a shared helper where its dependencies live, not where the louder caller lives.
+  **F1's boundaries were invalidated a THIRD time, and this one is the sharpest case yet** — #341
+  changed four lines and moved 3 more purely through a **Prettier collapse** when the parameter list
+  emptied. The rule tightens from "any merge with more than one hunk" to **"any merge at all; a
+  formatter is a hunk."** Also found a real defect in F1: two of its six boundaries were bare
+  numbers with no anchor, and re-deriving them by offset lands mid-function. Anchors proposed and
+  now adopted.
+  **Drift fixed: 6 refs.** `refreshCollectionAfterOperation`'s call sites (`:871`/`:922` →
+  `:888`/`:939`) had been wrong for a day — **#339's sweep fixed its checklist and skipped the
+  prose**, which is what a fresh session reads first. Plus `:1169`→`:1161`, `:1412`/`:1420`→
+  `:1421`/`:1429`, `:1579`→`:1571`, `:1594`→`:1586`, and F1's six boundaries re-derived.
+  **Filed one new bullet** under F3: `collectionEditUtils.ts:437` logs under `'replayMoves'` (a
+  function name) where the other three now use the module name — not stale, so #343 left it, but the
+  file's convention is still unwritten.
+  **Process fix outside the board:** the repo had `deleteBranchOnMerge: false` and 311 remote
+  branches, so GitHub never auto-retargeted #342 when its base #341 merged — auto-retarget fires on
+  branch DELETION, not on merge. Setting is now on. **Do not promise another system's automatic
+  behavior without checking the setting that governs it.**
+  Next: A9's `.claude/agents/` bullet, then F3's `CollectionPageWrapper` and `AdminPanel/` moves.
