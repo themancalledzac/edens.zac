@@ -8,17 +8,15 @@
 
 ## Post-Change Commands
 
-`npm` and `npx` are not on PATH. Use the Homebrew node binary directly:
-
 ```bash
 # Run ESLint
-/opt/homebrew/bin/node node_modules/.bin/eslint app/ --max-warnings 0
+npx eslint app/ --max-warnings 0
 
 # Fix auto-fixable issues
-/opt/homebrew/bin/node node_modules/.bin/eslint app/ --fix
+npx eslint app/ --fix
 
 # Run TypeScript type checking
-/opt/homebrew/bin/node node_modules/.bin/tsc --noEmit
+npx tsc --noEmit
 ```
 
 ## Common ESLint Issues & Fixes
