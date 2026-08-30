@@ -13,7 +13,7 @@ import {
   useState,
 } from 'react';
 
-import { useAdminPanelSeed } from '@/app/components/AdminPanel/AdminPanelSeedContext';
+import { useAdminPanelSeed } from '@/app/components/ListPanel/AdminPanelSeedContext';
 import { ListPanel, ListRow, ListRows } from '@/app/components/ListPanel/ListPanel';
 import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';

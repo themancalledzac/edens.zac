@@ -4,8 +4,8 @@ import { useRouter } from 'next/navigation';
 import { type ReactNode, useCallback, useMemo, useState } from 'react';
 
 import { GenerateInviteButton } from '@/app/(admin)/admin/users/GenerateInviteButton';
-import { useAdminPanelSeed } from '@/app/components/AdminPanel/AdminPanelSeedContext';
 import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
+import { useAdminPanelSeed } from '@/app/components/ListPanel/AdminPanelSeedContext';
 import { ListPanel, ListRow, ListRows } from '@/app/components/ListPanel/ListPanel';
 import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIdentityModal';
 import { Button } from '@/app/components/ui/Button/Button';

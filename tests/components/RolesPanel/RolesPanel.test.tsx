@@ -9,7 +9,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import { AdminPanelSeedProvider } from '@/app/components/AdminPanel/AdminPanelSeedContext';
+import { AdminPanelSeedProvider } from '@/app/components/ListPanel/AdminPanelSeedContext';
 import { RolesPanel } from '@/app/components/RolesPanel/RolesPanel';
 import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { ApiError } from '@/app/lib/api/core';

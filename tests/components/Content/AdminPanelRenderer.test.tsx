@@ -2,11 +2,11 @@ import '@testing-library/jest-dom';
 
 import { fireEvent, render, screen } from '@testing-library/react';
 
+import { AdminPanelRenderer } from '@/app/components/Content/AdminPanelRenderer';
 import {
   AdminPanelCollapseProvider,
   type AdminPanelCollapseValue,
-} from '@/app/components/AdminPanel/AdminPanelCollapseContext';
-import { AdminPanelRenderer } from '@/app/components/Content/AdminPanelRenderer';
+} from '@/app/components/ListPanel/AdminPanelCollapseContext';
 import type { ContentPanelModel } from '@/app/types/Content';
 
 interface PanelProps {

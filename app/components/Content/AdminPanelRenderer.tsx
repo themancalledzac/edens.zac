@@ -2,8 +2,8 @@
 
 import { type ComponentType } from 'react';
 
-import { useAdminPanelCollapse } from '@/app/components/AdminPanel/AdminPanelCollapseContext';
 import { CollectionsPanel } from '@/app/components/CollectionsPanel/CollectionsPanel';
+import { useAdminPanelCollapse } from '@/app/components/ListPanel/AdminPanelCollapseContext';
 import { MessagesPanel } from '@/app/components/MessagesPanel/MessagesPanel';
 import { RolesPanel } from '@/app/components/RolesPanel/RolesPanel';
 import UserManagementPanel from '@/app/components/UserManagementPanel/UserManagementPanel';

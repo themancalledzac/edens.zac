@@ -10,8 +10,8 @@
 
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
-import { AdminPanelSeedProvider } from '@/app/components/AdminPanel/AdminPanelSeedContext';
 import CollectionsPanel from '@/app/components/CollectionsPanel/CollectionsPanel';
+import { AdminPanelSeedProvider } from '@/app/components/ListPanel/AdminPanelSeedContext';
 import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import * as collectionsApi from '@/app/lib/api/collections';
 import { type CollectionListModel, type GeneralMetadataDTO } from '@/app/types/Collection';
