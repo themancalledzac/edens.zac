@@ -23,8 +23,19 @@ import { isAllowedWriteOrigin } from '@/app/utils/originAllowlist';
  *
  * The session check alone does not stop CSRF — the browser attaches that cookie to cross-site
  * POSTs too — so the request must also carry an allowed `Origin`, via the same helper the proxy
- * uses. The Origin check applies in every environment, local included: the allowlist already
- * covers the dev ports and LAN origins, so localhost admin still needs no login (D6).
+ * uses. The Origin check applies in every environment, local included, and it is NOT gated the
+ * same way the cookie check above is. `isLocalEnvironment()` is
+ * `NEXT_PUBLIC_ENV === 'local' || NODE_ENV === 'development'`, while the dev-port and LAN
+ * allowance inside `isAllowedWriteOrigin` is `NODE_ENV === 'development'` only
+ * (`originAllowlist.ts:86`). `next dev` satisfies both, so ordinary local work is unaffected and
+ * localhost admin still needs no login there (D6).
+ *
+ * A local PRODUCTION build is the gap: `NEXT_PUBLIC_ENV=local` plus `next start` sets
+ * `NODE_ENV=production`, so the cookie gate is skipped while `http://localhost:3000` matches
+ * neither the configured app origin nor the now-inactive dev-port regex — every revalidate 403s.
+ * Silently, because the client callers resolve the fetch on a 403 and their catch never fires.
+ * Availability-only and fails closed; no server code POSTs this route (every caller is
+ * `'use client'`), so D6+D8 still admit every real production caller.
  *
  * Order matters. The session check runs first so an anonymous caller still gets 401 rather than
  * a 403 that would suggest the origin was the problem.

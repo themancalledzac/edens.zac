@@ -15,9 +15,11 @@ import {
   fetchEditPatchJsonApi,
   fetchEditPostJsonApi,
   fetchReadApi,
+  getApiBaseUrl,
   getServerCookieHeader,
   throwFromResponse,
 } from '@/app/lib/api/core';
+import { isLocalEnvironment } from '@/app/utils/environment';
 import { logger } from '@/app/utils/logger';
 
 // Mock fetch globally
@@ -404,14 +406,15 @@ describe('getApiBaseUrl — dev routes browser calls through the same-origin pro
   });
 
   afterEach(() => {
-    // Restore window to whatever it was before
     Object.defineProperty(global, 'window', { value: originalWindow, writable: true });
   });
 
+  /**
+   * Simulates any browser — e.g. a phone on the LAN at <lan-ip>:3000. The exact hostname must
+   * NOT matter: the call is same-origin and the Next server proxies it to the backend, so no
+   * device ever talks to the backend directly.
+   */
   it('routes browser reads through the relative /api/proxy path (reachable from any LAN device, no CORS)', async () => {
-    // Simulate any browser — e.g. a phone on the LAN at <lan-ip>:3000. The exact hostname must
-    // NOT matter: the call is same-origin and the Next server proxies it to the backend, so no
-    // device ever talks to the backend directly.
     Object.defineProperty(global, 'window', {
       value: { location: { hostname: '192.168.68.60' } },
       writable: true,
@@ -455,8 +458,8 @@ describe('getApiBaseUrl — dev routes browser calls through the same-origin pro
     );
   });
 
+  /** No window → server runtime. The Next server reaches the dev backend on localhost directly. */
   it('calls the backend directly on localhost for server-side (RSC) reads', async () => {
-    // No window → server runtime. The Next server reaches the dev backend on localhost directly.
     Object.defineProperty(global, 'window', { value: undefined, writable: true });
 
     const mockResponse = {
@@ -476,13 +479,82 @@ describe('getApiBaseUrl — dev routes browser calls through the same-origin pro
   });
 });
 
+/**
+ * The production server-side arm of `getApiBaseUrl`, which is the only one that reads
+ * `NEXT_PUBLIC_APP_URL`. It used to interpolate the env var raw, so a trailing slash — a
+ * difference with no meaning anywhere else — produced `https://host//api/proxy/...` on every
+ * server-side fetch. D8 normalized the same env var for the Origin allowlist and left this
+ * consumer; D10 points both at the one `configuredAppOrigin()` so they cannot disagree.
+ *
+ * `isLocalEnvironment` is mocked true for the rest of this file, so these cases flip it and put
+ * it back rather than relying on suite order.
+ */
+describe('getApiBaseUrl — production server-side normalizes NEXT_PUBLIC_APP_URL', () => {
+  const originalWindow = global.window;
+  const originalAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (isLocalEnvironment as jest.Mock).mockReturnValue(false);
+    Object.defineProperty(global, 'window', { value: undefined, writable: true });
+  });
+
+  afterEach(() => {
+    (isLocalEnvironment as jest.Mock).mockReturnValue(true);
+    process.env.NEXT_PUBLIC_APP_URL = originalAppUrl;
+    Object.defineProperty(global, 'window', { value: originalWindow, writable: true });
+  });
+
+  it('builds a single-slash URL from a clean app URL', () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://zacedens.com';
+
+    expect(getApiBaseUrl('read')).toBe('https://zacedens.com/api/proxy/api/read');
+  });
+
+  /** The defect D10 was filed for: `https://zacedens.com//api/proxy/api/read` before the fix. */
+  it('drops a trailing slash instead of emitting a doubled one', () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://zacedens.com/';
+
+    expect(getApiBaseUrl('read')).toBe('https://zacedens.com/api/proxy/api/read');
+    expect(getApiBaseUrl('read')).not.toContain('com//');
+  });
+
+  /**
+   * `configuredAppOrigin()` reduces to a bare origin, so a value someone pasted with a path on
+   * it cannot bury `/api/proxy` underneath that path.
+   */
+  it('reduces a value carrying a path to its bare origin', () => {
+    process.env.NEXT_PUBLIC_APP_URL = 'https://zacedens.com/gallery';
+
+    expect(getApiBaseUrl('admin')).toBe('https://zacedens.com/api/proxy/api/admin');
+  });
+
+  /**
+   * Unset stays a relative URL, which Node `fetch` rejects at the call site. Pinned as the known
+   * behaviour rather than as a good one — a deploy that never set its own URL is broken either
+   * way, and this records which failure it gets.
+   */
+  it('yields a relative URL when the env var is unset', () => {
+    delete process.env.NEXT_PUBLIC_APP_URL;
+
+    expect(getApiBaseUrl('read')).toBe('/api/proxy/api/read');
+  });
+
+  /** Local/dev is unaffected: it never reaches the env var at all. */
+  it('still goes straight to the local backend when local', () => {
+    (isLocalEnvironment as jest.Mock).mockReturnValue(true);
+    process.env.NEXT_PUBLIC_APP_URL = 'https://zacedens.com/';
+
+    expect(getApiBaseUrl('read')).toBe('http://localhost:8080/api/read');
+  });
+});
+
 describe('getServerCookieHeader', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const nextHeaders = require('next/headers') as { cookies: jest.Mock };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Ensure we're in the server environment (no window)
     Object.defineProperty(global, 'window', { value: undefined, writable: true });
   });
 
@@ -553,7 +625,6 @@ describe('admin fetchers forward the server session cookie (SSR)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Server runtime (no window) so getServerCookieHeader reads the cookie store.
     Object.defineProperty(global, 'window', { value: undefined, writable: true });
     nextHeaders.cookies.mockResolvedValue({
       getAll: () => [{ name: 'ezac_session', value: 'sess-token' }],
@@ -645,9 +716,11 @@ describe('throwFromResponse', () => {
       text: jest.fn().mockResolvedValue(payload),
     }) as unknown as Response;
 
+  /**
+   * Callers branch on status, not copy — ShareCard's `mapError` turns 401/403/409/429 into four
+   * different sentences, so a dropped status silently collapses them into one.
+   */
   it('carries the response status onto the ApiError', async () => {
-    // Callers branch on status, not copy — ShareCard's mapError turns 401/403/409 into three
-    // different sentences, so a dropped status silently collapses them into one.
     await expect(throwFromResponse(respond(409, 'application/json', {}))).rejects.toMatchObject({
       name: 'ApiError',
       status: 409,
@@ -666,13 +739,14 @@ describe('throwFromResponse', () => {
     ).rejects.toThrow('from the backend');
   });
 
+  /** This is the branch users.ts deliberately does NOT share — see users.test.ts. */
   it('falls back to the whole JSON body when there is no message field', async () => {
-    // This is the branch users.ts deliberately does NOT share — see users.test.ts.
     await expect(
       throwFromResponse(respond(400, 'application/json', { error: 'no message key' }))
     ).rejects.toThrow(JSON.stringify({ error: 'no message key' }));
   });
 
+  /** A malformed error body must not replace the error; the status still has to survive. */
   it('falls back to the status when the body cannot be parsed', async () => {
     const res = {
       status: 500,
@@ -680,7 +754,6 @@ describe('throwFromResponse', () => {
       json: jest.fn().mockRejectedValue(new Error('bad json')),
     } as unknown as Response;
 
-    // A malformed error body must not replace the error; the status still has to survive.
     await expect(throwFromResponse(res)).rejects.toThrow('API error: 500');
     await expect(throwFromResponse(res)).rejects.toMatchObject({ status: 500 });
   });
@@ -719,7 +792,6 @@ describe('clientFetch', () => {
     (global.fetch as jest.Mock).mockClear();
     await clientFetch('/api/proxy/thing', { method: 'DELETE' });
     const [, noBody] = (global.fetch as jest.Mock).mock.calls[0];
-    // A DELETE with a JSON content-type and no body is what the old hand-written calls avoided.
     expect(noBody.body).toBeUndefined();
     expect(noBody.headers).toBeUndefined();
   });
@@ -747,9 +819,11 @@ describe('clientFetch', () => {
     });
   });
 
+  /**
+   * 204-returning mutations are the majority of the converted call sites; parsing them would
+   * throw on an empty body.
+   */
   it('does not read the body of a successful response', async () => {
-    // 204-returning mutations are the majority of the converted call sites; parsing them would
-    // throw on an empty body.
     const res = ok();
     (global.fetch as jest.Mock).mockResolvedValue(res);
 
