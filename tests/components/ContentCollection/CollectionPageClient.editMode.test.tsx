@@ -411,6 +411,41 @@ describe('CollectionPageClient — editMode true', () => {
       expect(parentPasses.length).toBeGreaterThan(0);
       expect(screen.getByTestId('grid')).toHaveAttribute('data-content-count', '2');
     });
+
+    /**
+     * Exiting manage mode is a soft navigation — `router.push('/${slug}')` keeps the
+     * `CollectionPageClient` instance alive and flips `editMode` back to false on it. The handoff
+     * gate must let go at that point, or the public grid renders the empty stand-in until a hard
+     * reload.
+     */
+    it('resumes producing blocks for the public grid when manage mode is exited', async () => {
+      const collection = makeCollection({ displayMode: 'ORDERED', content: filterableContent });
+
+      const { rerender } = render(<CollectionPageClient collection={collection} editMode />);
+      await flush();
+
+      rerender(<CollectionPageClient collection={collection} />);
+
+      expect(screen.getByTestId('grid')).toHaveAttribute('data-content-count', '2');
+    });
+
+    /**
+     * Re-entering manage mode after an exit must paint the fallback grid again while the edit
+     * chunk streams, exactly as the first entry does.
+     */
+    it('paints the fallback grid again when manage mode is re-entered', async () => {
+      const collection = makeCollection({ displayMode: 'ORDERED', content: filterableContent });
+
+      const { rerender } = render(<CollectionPageClient collection={collection} editMode />);
+      await flush();
+      rerender(<CollectionPageClient collection={collection} />);
+
+      rerender(<CollectionPageClient collection={collection} editMode />);
+
+      expect(screen.getByTestId('grid')).toHaveAttribute('data-content-count', '2');
+
+      await flush();
+    });
   });
 
   describe('Escape key — manage-mode exit guard', () => {

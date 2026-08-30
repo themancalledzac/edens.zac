@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
@@ -137,9 +137,27 @@ export default function CollectionPageClient({
   railExtras = null,
   alwaysShowFilterBar = false,
 }: CollectionPageClientProps) {
-  // Public grid is the loading fallback until EditModeLayer mounts and takes over.
   const [editLayerMounted, setEditLayerMounted] = useState(false);
   const handleEditLayerMounted = useCallback(() => setEditLayerMounted(true), []);
+
+  /**
+   * True only while the edit layer both exists and owns the grid. Both manage-mode transitions are
+   * soft navigations that preserve this component instance, so `editLayerMounted` alone outlives
+   * the layer it describes: after an exit it would still read true against an unmounted layer and
+   * hold the public grid empty. Deriving the handoff from `editMode` releases it in the same render
+   * the exit happens in, with no empty frame.
+   */
+  const editLayerActive = editMode && editLayerMounted;
+
+  /**
+   * Clears the mounted flag on exit so a later re-entry paints the public fallback grid again while
+   * the edit chunk streams, exactly as the first entry does.
+   */
+  useEffect(() => {
+    if (!editMode) {
+      setEditLayerMounted(false);
+    }
+  }, [editMode]);
 
   const { initialCriteria, syncToUrl } = useFilterUrlState();
 
@@ -412,7 +430,7 @@ export default function CollectionPageClient({
 
   /**
    * Blocks for the public grid, which renders only while the edit layer has not mounted (see
-   * `{!editLayerMounted && grid}` below).
+   * `{!editLayerActive && grid}` below).
    *
    * Once the layer mounts it renders its own grid from its own `processContentBlocks` + `applySort`
    * pass, called with different arguments — `filterVisible: false` and `showProtectedCovers: true`
@@ -422,7 +440,7 @@ export default function CollectionPageClient({
    * chip availability while editing.
    */
   const contentBlocks = useMemo(() => {
-    if (editLayerMounted) {
+    if (editLayerActive) {
       return NO_BLOCKS as AnyContentModel[];
     }
 
@@ -445,7 +463,7 @@ export default function CollectionPageClient({
     const pinned = buildPinnedSelects(ordered, new Set(pinnedSelectedIds));
     return [...pinned, ...ordered];
   }, [
-    editLayerMounted,
+    editLayerActive,
     filteredContent,
     collection.id,
     collection.displayMode,
@@ -555,7 +573,7 @@ export default function CollectionPageClient({
 
   const content = editMode ? (
     <>
-      {!editLayerMounted && grid}
+      {!editLayerActive && grid}
       <EditModeLayer
         collection={collection}
         chunkSize={density}
