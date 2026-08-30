@@ -561,6 +561,91 @@ describe('useMetadataSubmit — location cache revalidation on image save', () =
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
+  /**
+   * E18 half A. Deleting an image removes it from every `/location/{slug}` that listed it as an
+   * orphan, and nothing fired the tag — the page kept showing a deleted image for up to
+   * `TIMING.revalidateCache`. `next` is empty because nothing survives the delete.
+   */
+  it('posts the deleted images locations, so a location page stops listing them', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    mockDeleteImages.mockResolvedValueOnce({ deletedIds: [1, 2] });
+
+    const { result } = renderSubmit({
+      selectedImages: [img(1, { locations: [SEATTLE] }), img(2, { locations: [PORTLAND] })],
+      selectedIds: [1, 2],
+    });
+
+    await runAct(() => result.current.handleDelete());
+
+    expect(postedTags().sort()).toEqual([
+      'collections-location-portland',
+      'collections-location-seattle',
+    ]);
+  });
+
+  it('posts nothing on delete when the images carried no location', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    mockDeleteImages.mockResolvedValueOnce({ deletedIds: [1] });
+
+    const { result } = renderSubmit({
+      selectedImages: [img(1, { locations: [] })],
+      selectedIds: [1],
+    });
+
+    await runAct(() => result.current.handleDelete());
+
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not post the delete tags when the delete itself fails', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    mockDeleteImages.mockResolvedValueOnce(null);
+
+    const { result } = renderSubmit({
+      selectedImages: [img(1, { locations: [SEATTLE] })],
+      selectedIds: [1],
+    });
+
+    await runAct(() => result.current.handleDelete());
+
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  /**
+   * E18 half A, the case that reads backwards. Per E13's backend answer, dropping an image's last
+   * collection membership flips it INTO orphan status, and `getLocationPage` lists orphan images
+   * by location name — so removing an image from a collection can ADD it to a location page. The
+   * page changes either way, so the tag has to be posted.
+   */
+  it('posts the removed images locations, since a removal can add an orphan to a location page', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    mockUpdateImages.mockResolvedValueOnce({ updatedImages: [] });
+
+    const { result } = renderSubmit({
+      selectedImages: [img(1, { locations: [SEATTLE] })],
+      selectedIds: [1],
+      currentCollectionId: 42,
+    });
+
+    await runAct(() => result.current.handleRemoveFromCollection());
+
+    expect(postedTags()).toEqual(['collections-location-seattle']);
+  });
+
+  it('posts the GIF location when a single GIF is deleted', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    mockDeleteGif.mockResolvedValueOnce({ deletedId: 5 });
+
+    const { result } = renderSubmit({
+      selectedImages: [gif(5, { locations: [PORTLAND] }) as unknown as ContentImageModel],
+      selectedIds: [5],
+    });
+
+    await runAct(() => result.current.handleDelete());
+
+    expect(postedTags()).toEqual(['collections-location-portland']);
+  });
+
   it('completes the save when revalidation rejects, rather than surfacing a network error', async () => {
     globalThis.fetch = jest.fn().mockRejectedValue(new Error('network down'));
     const onSaveSuccess = jest.fn();
