@@ -64,19 +64,27 @@ home-only version of it short of forking the wrapper or threading a flag through
 keep `instant = false` so it is not _validated_, but it still gets the restructured tree. So the
 guardrail's premise — that the wrapper change can be confined — does not hold either.
 
+**Adopted 2026-08-31 (decision #12): full speed.** Step 1 is shipped; steps 2 and 3 stand as
+written, and PF12 landing removes the reason to hold step 2.
+
 **Revised work list**, in order, each a sitting:
 
-1. Fix `Footer`'s `new Date()`. Independent of everything else and worth doing on its own.
+1. ~~Fix `Footer`'s `new Date()`.~~ **SHIPPED (#375).** The year renders from a Client Component.
+   Next documents two escapes for synchronous IO during prerender — Suspense plus `connection()`,
+   or a Client Component. Suspense would have made the footer a streamed hole on every page, so
+   the year popped in after paint; a client leaf costs a few bytes and keeps the footer in the
+   static shell. Worth carrying forward: `instant = false` does NOT clear synchronous-IO errors
+   (`migrating-to-cache-components.md:85`), so this genuinely blocked every route, not just home.
 2. The mechanical PR: `cacheComponents: true`, delete 19 `force-dynamic` exports, codemod
    `instant = false` onto the segments. Verify `next build` and the full suite. No behavior change
    intended, but this is where fetch-caching semantics shift app-wide, so it wants its own review.
 3. Convert home: Suspense around `resolveSsrViewport()` and `meServer()` in the wrapper, and decide
    what `/[slug]` and `/all-client-galleries` do with the same tree.
 
-**Sequencing risk worth naming.** Merging to `main` auto-deploys to production in ~15 minutes and
-CI does not gate it (see `CLAUDE.md`, and PF12). Step 2 changes caching semantics for every route
-at once, which is the wrong shape to land through an ungated deploy — **PF12 is worth doing
-first**.
+**Sequencing risk, now retired.** Merging to `main` still auto-deploys to production in ~15
+minutes, but since PF12 only a commit with green CI can get to `main`. Step 2 changes caching
+semantics for every route at once, which was the wrong shape to land through an ungated deploy;
+that condition is gone.
 
 Budget the test side. PF8 broke two suites purely by splitting two pages around Suspense
 boundaries; this splits the wrapper three routes render through.
@@ -109,18 +117,6 @@ Related backend item that should precede any second public endpoint: generalize 
 config (`application.properties:79-80` is contact-specific) into a per-path map — see AU1, which
 needs it for the forgot-password trigger.
 
-## PF12 · Gate the auto-deploy on CI — COLD, mostly console work
-
-PF9 established that `main` auto-deploys to production inside ~15 minutes with no in-repo deploy
-config. PF5 established that CI now runs on every PR. **Nothing connects them**: a merge to `main`
-deploys whether or not CI passed, and CI's `push: [main]` run races the deploy rather than gating
-it.
-
-The fix is in the host's console (branch protection requiring the CI check, plus the host's own
-"wait for checks" setting if it has one), not in this repo — which is why it is small but not a
-code change. Worth doing precisely because the deploy is fast: a red merge is live before anyone
-reads the CI email.
-
 ## Audit debt (no rows yet — re-derive before working)
 
 From `006-frontend-audit.md`'s retained-unique findings, verified still true: no runtime schema
@@ -131,6 +127,45 @@ unlinked labels, `window.confirm`) is untriaged AND its file paths are stale
 against current paths first — the findings may be live, the line numbers are not.
 
 ## Closed
+
+### ✅ PF12 · Gate the auto-deploy on CI — applied 2026-08-31 (no PR; repo + host settings)
+
+`main` had **no protection of any kind** — `gh api repos/themancalledzac/edens.zac/branches/main/protection`
+returned 404 and `rulesets` returned `[]`. Every merge, and every direct push, reached production
+in ~15 minutes whether CI passed or not.
+
+Applied via `gh api -X PUT .../branches/main/protection`:
+
+- required status check `Type check, lint, test`, `strict: true` (branch must be current with
+  `main` before merging, which is what catches a merge neither PR run saw)
+- `enforce_admins: true`
+- `allow_force_pushes: false`, `allow_deletions: false`
+- no required reviews, and `required_linear_history` left off — sole maintainer, merge commits
+
+The check context is the CI job's `name`, `Type check, lint, test`, confirmed against a live PR's
+`gh pr checks` rather than read off the workflow file.
+
+**`enforce_admins: true` is the whole item, not a detail.** Every push to this repo is by an admin,
+so protection that admins bypass would have changed nothing. The cost is real and worth stating:
+the owner can no longer push straight to `main`, and an emergency fix means either a PR with green
+CI or temporarily turning the setting off.
+
+**The row's second half does not exist.** It called for "the host's wait-for-checks setting,
+console-only". Amplify has no such setting. `aws amplify update-branch` exposes `--enable-auto-build`
+and nothing resembling a required-check or wait-for-CI option, and the app has zero webhooks
+(`aws amplify list-webhooks` → `[]`). The branch is `enableAutoBuild: true`, which is the
+auto-deploy; the app-level `enableBranchAutoBuild: false` governs newly created branches, not this
+one.
+
+**So branch protection alone closes the hole**, and no Amplify change was made. Only green commits
+can reach `main` now, so the commit Amplify deploys on push is green by construction. The race the
+row described — CI's `push: [main]` run finishing after the deploy — is now harmless, because the
+PR run already gated the merge.
+
+Gating Amplify itself remains possible but is a build-out, not a setting: turn off
+`enableAutoBuild`, create an incoming webhook, and call it from a workflow that runs after CI
+succeeds on `main`. That buys little on top of protection and adds a stored webhook secret, so it
+is not filed as work — noted here so the next session does not re-derive it.
 
 ### ✅ PF9 · Record the deploy target — PR #365, 2026-08-31
 

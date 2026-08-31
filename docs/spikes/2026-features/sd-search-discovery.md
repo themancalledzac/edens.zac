@@ -16,11 +16,26 @@ non-blocking: `convertCollectionContentToParallax` hard-codes `locations: []` on
 
 From the 004 location-filter-bar plan's unshipped tail, verified absent from
 `app/types/GalleryFilter.ts` (state today: `selectedTags`, `selectedPeople`, `selectedCameras`,
-`selectedLenses`, `selectedLocations`, `selectedDates`):
+`selectedLenses`, `selectedLocations`, `selectedYears`, `selectedDates`):
 
 - Focal-length range filters (Wide/Normal/Tele)
 - Film-stock secondary filter, conditional on Film active with 2+ stocks
-- Year filter chips
+- ~~Year filter chips~~ **SHIPPED (#376).** `selectedYears` ('YYYY'), `?year=`, flat chips
+  collapsing to a dropdown above eight, single-choice like days and lenses. The row filed this
+  beside the other three as a peer and it is not one: year is the only dimension here that reaches
+  COLLECTION tiles, matched on their own `collectionDate`, so `/all-collections` got its first
+  working time filter rather than a fourth facet on pages that already had several. It also needs
+  no image-count floor — `MIN_IMAGES_FOR_DATE_FILTER` exists because splitting a small collection
+  by day gives chips of one photo each, which is not true of years.
+
+  Two defects the browser pass caught that the suite could not. `year` was missing from
+  `FILTER_PARAM_KEYS` while `contentFilter.filterParamKeys.test.ts` — the drift guard for exactly
+  that — passed green, because its `EVERY_CRITERION` fixture did not set `years`; an omitted key
+  sticks in the URL forever once its filter is cleared. And `/all-collections` printed "No images
+  match your filters" above three matching tiles: the empty state read `filteredImages.length === 0`
+  on a page that has zero images at every moment. Nothing could reach that state before, since the
+  page surfaced no filter at all, so it was fixed in the same MR and now counts tiles too.
+
 - ~~Active-filter summary with individually removable badges + "Clear all"~~ **SHIPPED (#373).**
   This section had it right and the board row did not: `resetAll` and its trailing × were already
   built, so only the badge summary was missing. Every selected value in a surfaced array dimension
