@@ -16,8 +16,9 @@ export const metadata: Metadata = {
 /**
  * Landing page; renders the 'home' collection via the shared CollectionPageWrapper.
  *
- * @todo Remove force-dynamic once backend removes the `blocks_per_page` column reference.
- *   Restore: `export const revalidate = 3600; export const dynamic = 'error';`
+ * Not prerenderable — `CollectionPageWrapper` awaits `headers()` and `cookies()`. `force-dynamic`
+ * is explicit so a fetch added here later is not cached with per-viewer data. ISR was investigated
+ * and dropped: PF4 in docs/spikes/2026-features/pf-performance-platform.md.
  */
 export const dynamic = 'force-dynamic';
 

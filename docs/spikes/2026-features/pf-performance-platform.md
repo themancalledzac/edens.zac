@@ -21,26 +21,27 @@ time in the FE. Scope that first; upload-time is the likely answer and makes thi
 
 Three small independent slices; can land as one MR or three.
 
-## PF4 · Restore ISR on the home page — likely UNBLOCKED, one live check first
+## PF13 · Make the home page genuinely static (Cache Components / PPR) — COLD, real work
 
-`app/page.tsx:22` is `export const dynamic = 'force-dynamic'`; the restore recipe sits in the
-`@todo` at `:19-20` (both refs re-verified 2026-08-31). Every visitor pays a live Spring fetch on
-the hottest page.
+Created by PF4's closure. PF4 asked for a segment-config flip and there is no flip to make; the
+question it was really asking — can the hottest page stop rendering per request? — is still open,
+and the answer is a render-path change.
 
-**The stated blocker appears to have cleared.** The row says it waits on the backend
-`blocks_per_page` schema fix. Re-run against the backend's `origin/main` on 2026-08-31:
+The home page renders per request because two things in `CollectionPageWrapper` need the request:
 
-```bash
-git grep -c "blocks_per_page\|blocksPerPage" origin/main -- src/   # → zero hits
-```
+- `resolveSsrViewport()` reads the User-Agent through `headers()`, so the BoxTree composes
+  server-side at the right width and the first client render matches (no hydration shift).
+- `meServer()` reads `cookies()` for the principal, which decides whether the "Me" tile exists and
+  is `no-store` by necessity. That fetch, not the collection fetch, is the per-visitor cost —
+  measured at one `/api/auth/me` hit per render.
 
-The column reference is gone from backend source. **This was not checked by re-reading the row —
-the command was run.** What that does NOT prove is that the *deployed* backend carries that
-version, which is the only thing standing between here and flipping the flag.
+Making the page static means moving both behind Suspense boundaries so the shell prerenders and
+only the personalized slots stream. That is the `next-cache-components` skill's territory
+(`use cache`, `cacheLife`, `cacheTag`) and it touches the shared wrapper, so it lands on
+`/[slug]` too. Size it as its own sitting or two, not a config change.
 
-So: before restoring ISR, confirm the deployed backend serves the home collection without the
-column reference — now cheap, since PF9 pinned production. If it does, this is a two-line change
-plus a live check, well under a sitting.
+Worth knowing before anyone starts: the collection fetch is already cached (see PF4 below), so the
+prize here is the render and the `/auth/me` round trip, not the Spring call.
 
 ## PF6 · External error tracking
 
@@ -119,7 +120,7 @@ recalled:
   is `[75]`.
 
 So `qualities: [65]` on its own **400s every image on the site**. The work is therefore
-`qualities: [65]` in config *plus* `quality={65}` at the `next/image` call sites — a render-path
+`qualities: [65]` in config _plus_ `quality={65}` at the `next/image` call sites — a render-path
 change with tests attached, which is why it is not PF1.
 
 **Measured prize: 13.3%.** At `w=1920`, q65 is 258,556 bytes against q75's 298,282. Measured
@@ -132,7 +133,7 @@ Call sites to thread the prop through (8 `sizes=` declarations as of 2026-08-31,
 `LocationCollections.tsx:26`, `MediaPreview.tsx:106`. A single shared default would be better than
 eight literals — scope that first.
 
-## PF11 · Reconcile the Node version — COLD, one decision then one line
+## PF11 · Reconcile the Node version — COLD, decision answered, ready to build
 
 `package.json` `engines.node` is `>=20 <23`. The dev machine runs **25.3.0**. PF5's CI now pins
 **22** — the top of the declared range — so CI tests a runtime nobody develops on, and development
@@ -142,6 +143,29 @@ Nothing is broken by this today (npm only warns without `engine-strict`), which 
 will sit. Either `engines` is stale and should widen to include 25, or the dev environment should
 drop to 22. `tests/ci/ciWorkflow.test.ts` already asserts the CI pin satisfies `engines`, so the two
 cannot silently diverge further — whichever way it is resolved, that test keeps them honest.
+
+**Answered 2026-08-30.** The user asked for "whatever is best long term practice" rather than
+picking one of the two offered options, so neither half is taken on its own:
+
+1. `engines.node` becomes `">=20"` — a floor, with no upper bound. The `<23` is what created this
+   problem: an upper bound in `engines` is a promise about versions that did not exist when it was
+   written, and it ages into a false failure every time Node ships a major. This app is not a
+   published library, so nothing downstream needs the ceiling.
+2. Add a `.nvmrc` naming the blessed version. That is the file that should carry "what we actually
+   run", because it is the one `nvm use` reads.
+3. Point CI at that file — `node-version-file: .nvmrc` in place of `node-version: '22'`. Otherwise
+   the pin and the blessed version are two literals that drift, which is the same defect one level
+   up.
+
+The blessed version is a live question the build should settle rather than this doc: Node 22 went
+to Maintenance when 24 became Active LTS, so **24 is the better pin than 22** — but check the
+release schedule when picking this up rather than trusting that sentence. Either way the dev
+machine's 25.3.0 stays legal under the widened floor, so nothing forces the user to switch
+runtimes as part of this.
+
+`tests/ci/ciWorkflow.test.ts` already asserts the CI pin satisfies `engines`; it will need
+updating to read the pin out of `.nvmrc` instead of the workflow literal, and that assertion is
+what keeps the three in agreement afterwards.
 
 ## PF12 · Gate the auto-deploy on CI — COLD, mostly console work
 
@@ -165,6 +189,60 @@ unlinked labels, `window.confirm`) is untriaged AND its file paths are stale
 against current paths first — the findings may be live, the line numbers are not.
 
 ## Closed
+
+### ✅ PF4 · Restore ISR on the home page — closed as VOID, PR #360, 2026-08-30
+
+No behavior change shipped. The MR replaced the `@todo` in `app/page.tsx` with what the
+measurements actually showed, because the comment was sending each new reader down the same
+dead end. All three of the item's premises were tested; none held.
+
+**1. The backend blocker really is gone.** Not inferred from source this time — asked of
+production:
+
+```
+GET https://zacedens.com/api/proxy/api/read/collections/home?page=0 → 200, full block payload
+```
+
+**2. The `@todo`'s recipe cannot build.** Applying `export const revalidate = 3600; export const
+dynamic = 'error'` and running `next build`:
+
+```
+Error occurred prerendering page "/".
+Route / with `dynamic = "error"` couldn't be rendered statically because it used `headers()`.
+```
+
+`CollectionPageWrapper` awaits `resolveSsrViewport()` (which calls `next/headers`) and
+`meServer()` (which calls `cookies()`). `force-static` is not the escape hatch either: it makes
+both return empty, which costs the mobile SSR viewport and the logged-in "Me" tile.
+
+**3. The stated benefit does not exist.** "Every visitor pays a live Spring fetch" is false. The
+Next 16 docs say `force-dynamic` is "equivalent to `fetchCache = 'force-no-store'`"
+(`node_modules/next/dist/docs/01-app/02-guides/caching-without-cache-components.md:97-99`), which
+is what made the claim look right. That default governs only _unannotated_ fetches, and
+`getCollectionBySlug` is annotated — `next: { revalidate: 3600, tags: ['collection-home'] }` —
+so it keeps its cache entry.
+
+Measured with a mock backend counting hits per path, behind a real `next build` + `next start`:
+
+| Arm                             | Page renders | `/api/read/collections/home` | `/api/auth/me` |
+| ------------------------------- | ------------ | ---------------------------- | -------------- |
+| `force-dynamic` present (today) | 8            | **1**                        | 8              |
+| `force-dynamic` removed         | 6            | **1**                        | 6              |
+
+Identical. The collection fetch is cached either way; `/auth/me` is per-render by design.
+
+**`force-dynamic` was kept.** It is strictly redundant — `headers()` already forces the route
+dynamic — but it is the safer default: an unannotated fetch added to this tree later would
+otherwise be silently cached with per-viewer data. Removing it buys nothing measurable and adds
+that footgun.
+
+**Harness note for whoever re-runs this.** Next persists its fetch cache under `<distDir>/cache`
+and `next build` does not clear it. Reusing one `NEXT_BUILD_DIR` across both arms leaked the
+first arm's warm cache into the second and reported _zero_ backend fetches — a clean-looking
+number that was pure artifact. Use a separate `distDir` per arm.
+
+**What survives** is the underlying question, refiled as PF13: the page still renders per request,
+and making it not do so is a Cache Components / PPR change to the shared wrapper.
 
 ### ✅ PF1 · Image bytes — PR #358, merged 2026-08-31
 
@@ -236,4 +314,3 @@ widening `engines` is a call, not a cleanup. Filed as PF11.
 
 **The deploy-automation report the row asked for is now obsolete, and that is the finding.** It was
 written assuming nothing deployed automatically. Production disproved that at close-out — see PF9.
-
