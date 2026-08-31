@@ -124,4 +124,3 @@ were used as-is and behaved as documented.
 **Tests were mutation-proved, not assumed.** Collapsing the two empty states, counting the corpus
 instead of the filtered result, and dropping the film mapping each red the tests claiming to cover
 them.
-
