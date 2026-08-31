@@ -45,13 +45,31 @@ Backend #243 (merged 2026-08-30) removed the `app.admin.enforce-authz` toggle:
 `SecurityConfig.java:75-76` now gates `/api/admin/**` behind `hasRole('ADMIN')` unconditionally in
 every profile (`/api/edit/**` likewise behind `hasRole('USER')`). The frontend's three anonymous
 local layers still pass, so local `/admin` renders but every data fetch 401s. The refactor board's
-G6 **shipped 2026-08-31 as PR #351** and fixed the now-false `CLAUDE.md` Critical Rule;
-**this item builds the missing capability**: a sanctioned way to get a local admin session
-(documented bootstrap login, seeded dev admin, or a dev-profile session mint). The corrected
-rule already names the ingredients — `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD` in
-`docker-compose.yml` + `AdminBootstrap.java`, then `POST /api/auth/login` — so this is packaging
-an existing flow, not inventing one. Without it, all local admin
-development is broken for agents and slow for the user.
+G6 **shipped 2026-08-31 as PR #351** and fixed the now-false `CLAUDE.md` Critical Rule.
+
+**Re-scoped 2026-08-31 (6): documentation, not capability.** The paragraph that used to sit here
+said this was "packaging an existing flow" out of `ADMIN_BOOTSTRAP_EMAIL` /
+`ADMIN_BOOTSTRAP_PASSWORD` + `POST /api/auth/login`. Those ingredients do not combine.
+`AdminBootstrap.java:50-63` uses the password only to seed a user that does not exist yet; for an
+existing account it flips `is_admin`, logs "already admin but ADMIN_BOOTSTRAP_PASSWORD is still
+set", and returns without ever setting a password. `docker exec edenszacbackend-backend-1 printenv`
+shows the variable present and empty, so there is nothing to substitute even if it did work.
+
+**The login form at `/login` already works, and always did.** `application-dev.properties:9` sets
+`app.auth.cookie-secure=false`, so `ezac_session` survives plain http; the BFF re-emits
+`Set-Cookie` to the browser (`app/api/proxy/[...path]/route.ts:178-181`, pinned by
+`tests/api/proxy/route.test.ts:34`); sessions last 60 days. The friction was discoverability —
+nothing said a login was needed, and the panels hang on "Loading users…" rather than reporting the 401.
+
+**Do not build a dev-only session-minting route**, which was one of the options listed here. The
+backend has no local database: port 5432 is an autossh tunnel to the production EC2, and the
+container's `SPRING_DATASOURCE_URL` is `host.docker.internal:5432/edens_zac`. Such a route would
+mint production admin sessions from an unauthenticated localhost endpoint. For the same reason an
+agent cannot self-serve a session here, and should not try — the only working password is the
+owner's own.
+
+**What ships instead:** the README's Getting Started gains a "Working on admin pages" section
+covering the login step and the production-database warning. That is the whole item.
 
 ## Deferred by design (no rows — do not resurrect without a decision)
 

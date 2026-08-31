@@ -111,41 +111,41 @@ reportToService()` seam (it does not exist — `logger.ts` is 14 lines of `conso
 
 Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra work.
 
-| Item | Scope                                                             | Repo    | Status                                                                                    |
-| ---- | ----------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
-| SD2  | Enrich `locations` on collection blocks                           | BE      | ☐ COLD — small; makes the shipped `/collections` location filter work                     |
-| SD3  | Filter-bar dimension gaps (focal length, film stock, row merge)   | FE      | ☐ COLD — sliceable; badges #373 and year chips #376 shipped, three slices left            |
-| SD4  | `/explore` as a real drill-down explorer (Option C)               | FE      | ☐ BLOCKED — reconcile with refactor-board H5 design review first                          |
-| SD5  | Verify people/location chip-click-to-filter                       | FE      | ☐ COLD — cheap verification task                                                          |
-| RC1  | Populate `parents` on public reads + `isFilm` backfill            | BE      | ☐ COLD — unblocks RC2's public rendering; two verified data bugs                          |
-| RC2  | Similar-collections v1 (metadata-graph score + Related swap)      | BE+FE   | ☐ BLOCKED — user: spike decisions D1–D4                                                   |
-| RC3  | Collections_List render mode (embedded hub as card-row)           | BE+FE   | ☐ COLD — small; no new entity                                                             |
-| RC4  | Suggested collections (admin suggestion rows)                     | BE+FE   | ☐ BLOCKED — needs CT3 engine + RC1 metadata quality                                       |
-| RC5  | CLIP/pgvector embedding tier                                      | BE+ML   | ☐ BLOCKED — user: spike decision D6 (infra commitment)                                    |
-| CT1  | Collections-as-tags spec refresh against the typeless model       | docs    | ☐ COLD — produces a current D1–D12 matrix for CT2                                         |
-| CT2  | Adjudicate the collections-as-tags decision matrix                | user    | ☐ BLOCKED — user; after CT1                                                               |
-| CT3  | Saved-filter engine (AND-tag query, `source` column, sync)        | BE+FE   | ☐ BLOCKED — on CT2                                                                        |
-| CT4  | Blog-as-date surface (`/blog` stream, per-day entries)            | BE+FE   | ☐ BLOCKED — on CT2                                                                        |
-| CT5  | Auto-tag: `POST /collections/{id}/auto-tag` + admin button        | BE+FE   | ☐ COLD — independent of CT2                                                               |
-| CT6  | Tag `type`/visibility model                                       | BE      | ☐ COLD — design confirm, then small schema work                                           |
-| AU1  | Self-serve password reset                                         | BE+FE   | ☐ COLD — plan written and verified current                                                |
-| AU2  | Passkey credential list + revoke, enrollment-state UI             | BE+FE   | ☐ BLOCKED — user: endpoint shape (admin, user-facing, or both)                            |
-| AU4  | Local admin dev-session affordance (post backend #243)            | FE+BE   | ☐ COLD — unblocked 08-31: G6 landed as #351, so the corrected rule now states the reality |
-| EM1  | SES production checklist (verify domain, DKIM, sandbox exit)      | OPS     | ☐ COLD — ops; user drives the AWS console half                                            |
-| EM2  | New-recipient-only gallery send flow                              | BE+FE   | ☐ BLOCKED — backend: one field is both the stored list and the send list (verified 08-31) |
-| EM3  | Contact-owner notification + `user_invite.created_by`             | BE      | ☐ COLD — two small backend items                                                          |
-| EM4  | Gallery-password design pass (precedes any BCrypt work)           | user    | ☐ BLOCKED — user; backend board PARKED BCrypt behind it                                   |
-| MA1  | Manage rail restructure (per-field PATCH, delete edit sheet)      | FE(+BE) | ☐ BLOCKED — backend `PATCH /collections/{id}` still absent (re-checked 08-31); it is MR 1 |
-| MA2  | `staging` system collection                                       | BE+FE   | ☐ BLOCKED — user: `HIDDEN` vs `UNLISTED` seed visibility                                  |
-| MA3  | Mobile-first admin Phase 3 remainder                              | FE      | ☐ BLOCKED — user: does the dark-admin premise survive its partial reversal?               |
-| MA4  | Messages admin: retention TTL, read/delete/search, notify channel | BE+FE   | ☐ COLD — sliceable                                                                        |
-| MA5  | Admin collections list at 100× (paged/filtered/sorted)            | BE+FE   | ☐ COLD — low priority until collection count grows                                        |
-| MA6  | User change log + non-admin canonical mutation path               | BE+FE   | ☐ BLOCKED — user: §10 decisions in the logged-in-flow review                              |
-| PF2  | Blur placeholders (`blurDataURL`)                                 | FE      | ☐ COLD                                                                                    |
-| PF6  | External error tracking                                           | FE      | ☐ BLOCKED — user: Sentry vs CloudWatch                                                    |
-| PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)          | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                        |
-| PF13 | Home page genuinely static (Cache Components / PPR)               | FE      | ☐ ADOPTED (decision #12) — step 1 shipped #375; steps 2–3 remain, and PF12 now clears     |
-| LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build          | FE      | ☐ BLOCKED — user: two competing designs, neither built                                    |
+| Item | Scope                                                             | Repo    | Status                                                                                          |
+| ---- | ----------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------- |
+| SD2  | Enrich `locations` on collection blocks                           | BE      | ☐ COLD — small; makes the shipped `/collections` location filter work                           |
+| SD3  | Filter-bar dimension gaps (focal length, film stock, row merge)   | FE      | ☐ COLD — sliceable; badges #373 and year chips #376 shipped, three slices left                  |
+| SD4  | `/explore` as a real drill-down explorer (Option C)               | FE      | ☐ BLOCKED — reconcile with refactor-board H5 design review first                                |
+| SD5  | Verify people/location chip-click-to-filter                       | FE      | ☐ COLD — cheap verification task                                                                |
+| RC1  | Populate `parents` on public reads + `isFilm` backfill            | BE      | ☐ COLD — unblocks RC2's public rendering; two verified data bugs                                |
+| RC2  | Similar-collections v1 (metadata-graph score + Related swap)      | BE+FE   | ☐ BLOCKED — user: spike decisions D1–D4                                                         |
+| RC3  | Collections_List render mode (embedded hub as card-row)           | BE+FE   | ☐ COLD — small; no new entity                                                                   |
+| RC4  | Suggested collections (admin suggestion rows)                     | BE+FE   | ☐ BLOCKED — needs CT3 engine + RC1 metadata quality                                             |
+| RC5  | CLIP/pgvector embedding tier                                      | BE+ML   | ☐ BLOCKED — user: spike decision D6 (infra commitment)                                          |
+| CT1  | Collections-as-tags spec refresh against the typeless model       | docs    | ☐ COLD — produces a current D1–D12 matrix for CT2                                               |
+| CT2  | Adjudicate the collections-as-tags decision matrix                | user    | ☐ BLOCKED — user; after CT1                                                                     |
+| CT3  | Saved-filter engine (AND-tag query, `source` column, sync)        | BE+FE   | ☐ BLOCKED — on CT2                                                                              |
+| CT4  | Blog-as-date surface (`/blog` stream, per-day entries)            | BE+FE   | ☐ BLOCKED — on CT2                                                                              |
+| CT5  | Auto-tag: `POST /collections/{id}/auto-tag` + admin button        | BE+FE   | ☐ COLD — independent of CT2                                                                     |
+| CT6  | Tag `type`/visibility model                                       | BE      | ☐ COLD — design confirm, then small schema work                                                 |
+| AU1  | Self-serve password reset                                         | BE+FE   | ☐ COLD — plan written and verified current                                                      |
+| AU2  | Passkey credential list + revoke, enrollment-state UI             | BE+FE   | ☐ BLOCKED — user: endpoint shape (admin, user-facing, or both)                                  |
+| AU4  | Local admin dev-session affordance (post backend #243)            | docs    | ☐ COLD — no affordance to build: the `/login` form already works. Docs only, and the DB is prod |
+| EM1  | SES production checklist (verify domain, DKIM, sandbox exit)      | OPS     | ☐ COLD — ops; user drives the AWS console half                                                  |
+| EM2  | New-recipient-only gallery send flow                              | BE+FE   | ☐ BLOCKED — backend: one field is both the stored list and the send list (verified 08-31)       |
+| EM3  | Contact-owner notification + `user_invite.created_by`             | BE      | ☐ COLD — two small backend items                                                                |
+| EM4  | Gallery-password design pass (precedes any BCrypt work)           | user    | ☐ BLOCKED — user; backend board PARKED BCrypt behind it                                         |
+| MA1  | Manage rail restructure (per-field PATCH, delete edit sheet)      | FE(+BE) | ☐ BLOCKED — backend `PATCH /collections/{id}` still absent (re-checked 08-31); it is MR 1       |
+| MA2  | `staging` system collection                                       | BE+FE   | ☐ BLOCKED — user: `HIDDEN` vs `UNLISTED` seed visibility                                        |
+| MA3  | Mobile-first admin Phase 3 remainder                              | FE      | ☐ BLOCKED — user: does the dark-admin premise survive its partial reversal?                     |
+| MA4  | Messages admin: retention TTL, read/delete/search, notify channel | BE+FE   | ☐ COLD — sliceable                                                                              |
+| MA5  | Admin collections list at 100× (paged/filtered/sorted)            | BE+FE   | ☐ COLD — low priority until collection count grows                                              |
+| MA6  | User change log + non-admin canonical mutation path               | BE+FE   | ☐ BLOCKED — user: §10 decisions in the logged-in-flow review                                    |
+| PF2  | Blur placeholders (`blurDataURL`)                                 | FE      | ☐ COLD                                                                                          |
+| PF6  | External error tracking                                           | FE      | ☐ BLOCKED — user: Sentry vs CloudWatch                                                          |
+| PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)          | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                              |
+| PF13 | Home page genuinely static (Cache Components / PPR)               | FE      | ☐ ADOPTED (decision #12) — step 1 shipped #375; steps 2–3 remain, and PF12 now clears           |
+| LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build          | FE      | ☐ BLOCKED — user: two competing designs, neither built                                          |
 
 **Not on this board, deliberately:** everything with a row on
 [2026-summer-refactor.md](2026-summer-refactor.md) (H1's `/user` merge, F4's TaxonomyPage
@@ -382,11 +382,31 @@ development now needs a real admin session and no local login/dev-session afford
 (refactor board) fixed the false `CLAUDE.md` rule; this item builds the missing capability —
 likely a documented local bootstrap login flow.
 
-**Unblocked 2026-08-31: G6 shipped as PR #351.** The corrected rule now states the reality this
-item has to build against — the admin shell renders locally while its data 401s, and a real
-session comes from `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD` (`docker-compose.yml`,
-`AdminBootstrap.java`) plus `POST /api/auth/login`. So the affordance is a documented or scripted
-version of that flow, not a new mechanism.
+**Re-scoped 2026-08-31 (6): there is no affordance to build, and the premise above was wrong.**
+Two things, both verified by running commands rather than reading.
+
+`ADMIN_BOOTSTRAP_PASSWORD` cannot produce a login. `AdminBootstrap.java:50-63` uses it only to seed
+a user that does not yet exist; when the account already exists it flips `is_admin` and returns,
+logging "already admin but ADMIN_BOOTSTRAP_PASSWORD is still set". It never sets a password. And it
+is empty on this machine anyway — `docker exec edenszacbackend-backend-1 printenv` shows
+`ADMIN_BOOTSTRAP_PASSWORD=` with no value.
+
+The flow that DOES work is the login form that already exists. The dev profile sets
+`app.auth.cookie-secure=false` (`application-dev.properties:9`) so `ezac_session` survives plain
+http, and the BFF re-emits `Set-Cookie` to the browser (`app/api/proxy/[...path]/route.ts:178-181`,
+pinned by `tests/api/proxy/route.test.ts:34`). Sessions last 60 days. So the friction was never a
+missing mechanism — it was that nothing told anyone a login was needed, and the panels hang on
+"Loading users…" instead of saying so.
+
+**The finding that outranks the item.** There is no local database. Port 5432 is an autossh tunnel
+to the production EC2 (`ps aux | grep ssh.*5432` → `-L 5432:localhost:5432 ec2-user@<prod-ip>`),
+and the backend container's `SPRING_DATASOURCE_URL` is `host.docker.internal:5432/edens_zac`. Every
+admin mutation made at localhost edits live production rows. That belongs in the docs far more than
+a login recipe does, and it is why a dev-only session-minting route must NOT be built: it would
+mint production admin sessions from an unauthenticated localhost endpoint.
+
+**An agent cannot self-serve here, by design.** The only working password is the owner's own. That
+is correct against a production database and should not be engineered around.
 
 ## Group EM — Email & client galleries
 
