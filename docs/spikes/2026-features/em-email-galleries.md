@@ -1,6 +1,7 @@
 # EM — Email & client galleries
 
-_Context file for board items EM1–EM5 on [2026-features.md](../2026-features.md)._
+_Context file for the EM items on [2026-features.md](../2026-features.md) — 1 shipped (EM5,
+#370); its write-up is in the Closed section below._
 
 ## EM1 · SES production checklist (ops)
 
@@ -51,12 +52,29 @@ Download-All UX rewrite is NOT buildable as specced (the backend 302s to a presi
 constraint, `useDownloadNavigation.ts:19-24`); what remains is a UX question, folded into this
 design pass.
 
-## EM5 · Email-disabled warning callout
-
-Zero `EMAIL_ENABLED`/email-disabled strings exist in `app/` — the admin gallery access UI gives no
-hint that saving will NOT send email while the flag is off. One callout in the access section,
-driven by a config read the BFF can expose. Small; good first-MR material.
-
 ## Closed
 
-_Nothing yet._
+### ☑ EM5 · Email-disabled warning callout — SHIPPED (#370)
+
+The admin gallery access section now warns, after a save, that the client was not emailed and the
+password has to be passed on by hand. Keyed on the backend's `reason === 'email-disabled'` through
+a shared `isEmailDisabled` helper in `app/utils/emailSendReason.ts`, surfaced as
+`galleryEmailDisabled` on `useCollectionEdit` and rendered by `InfoTab`.
+
+**No config read, by design.** `email.enabled` is a Spring property with no DTO or controller
+behind it, so a pre-emptive banner is not buildable from this repo. What it would cost, since the
+question will come back: a backend field on some existing admin read (or a new endpoint), the DTO
+and controller change to carry it, plus the FE read — a backend item, not a frontend one. The
+post-send callout needs none of that, which is why it is the shape that shipped.
+
+**The row's premise was half wrong and the correction is worth keeping.** It said zero
+email-disabled handling existed in `app/`. True of the literal strings, misleading in substance:
+`ShareCard` already rendered "Email is not switched on right now — copy the link and send it
+yourself" — but on `sent === false` alone, without looking at the reason. So every send failure
+blamed the switch, including ones where email was on and something else broke, sending the owner
+to check a setting that was already correct. That is now keyed on the reason too, with the other
+failures getting their own sentence. Grepping for a string found the gap in one surface and missed
+the bug in the other; the behavior was what needed reading.
+
+Landed +2 tests on the helper's wire spelling, +4 on the callout's presence and absence, and +1 on
+`ShareCard`'s non-disabled branch.

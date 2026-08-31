@@ -104,6 +104,24 @@ describe('ShareCard', () => {
     expect(await screen.findByText(/email is not switched on/i)).toBeInTheDocument();
   });
 
+  /**
+   * A send can fail for reasons that have nothing to do with the site-wide switch, and telling the
+   * owner email is off when it is on sends them chasing a setting that is already correct. Only
+   * the `email-disabled` reason earns that sentence.
+   */
+  it('does not blame the email switch for a send that failed some other way', async () => {
+    mockEmail.mockResolvedValue({ sent: false, reason: 'ses-rejected' });
+    render(<ShareCard read={{ ok: true, settings: settings() }} />);
+
+    fireEvent.change(screen.getByLabelText(/send the link to this email/i), {
+      target: { value: 'mum@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^send$/i }));
+
+    expect(await screen.findByText(/did not go out/i)).toBeInTheDocument();
+    expect(screen.queryByText(/email is not switched on/i)).not.toBeInTheDocument();
+  });
+
   it('replaces the displayed link after a reset', async () => {
     mockRotate.mockResolvedValue(settings({ token: 'tok-new' }));
     render(<ShareCard read={{ ok: true, settings: settings() }} />);

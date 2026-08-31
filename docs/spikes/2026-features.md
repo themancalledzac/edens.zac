@@ -102,7 +102,6 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | EM2  | New-recipient-only gallery send flow                               | FE      | ☐ COLD — UI addition, plan written                                                        |
 | EM3  | Contact-owner notification + `user_invite.created_by`              | BE      | ☐ COLD — two small backend items                                                          |
 | EM4  | Gallery-password design pass (precedes any BCrypt work)            | user    | ☐ BLOCKED — user; backend board PARKED BCrypt behind it                                   |
-| EM5  | Email-disabled warning callout in gallery admin                    | FE      | ☐ COLD — small                                                                            |
 | MA1  | Manage rail restructure (per-field PATCH, delete edit sheet)       | FE(+BE) | ☐ BLOCKED — backend `PATCH /collections/{id}` still absent (re-checked 08-31); it is MR 1 |
 | MA2  | `staging` system collection                                        | BE+FE   | ☐ BLOCKED — user: `HIDDEN` vs `UNLISTED` seed visibility                                  |
 | MA3  | Mobile-first admin Phase 3 remainder                               | FE      | ☐ BLOCKED — user: does the dark-admin premise survive its partial reversal?               |
@@ -134,16 +133,13 @@ because `pinnedWidthSpread` turned out to constrain only side-by-side panel colu
 stack. That reframing is what made it answerable in one pass; the write-up is in
 [2026-features/ly-layout-decisions.md](2026-features/ly-layout-decisions.md).
 
-1. **EM5** — the email-disabled callout. **Re-specified 2026-08-31 and the shape is not what the
-   row implied.** `email.enabled` is a backend-internal Spring property
-   (`application.properties:131`) and **no DTO or controller exposes it**, so a config-driven
-   banner is not buildable. What is: all three send paths short-circuit while disabled and return
-   the literal reason `"email-disabled"` on `SendResult(boolean sent, String reason)`, reaching the
-   wire as `ShareModels.ShareEmailResult`. So this is a post-send callout keyed on
-   `reason === 'email-disabled'`. The frontend reads neither today (0 hits for both strings in
-   `app/`).
-   **Guardrail: do not add an endpoint or an env passthrough to expose the flag.** If a pre-emptive
-   banner is what is actually wanted, that is a backend item — report what it would cost and stop.
+1. ~~**EM5** — the email-disabled callout.~~ **SHIPPED (#370)** as the post-send callout keyed on
+   `reason === 'email-disabled'`, no config read. The re-spec held: `email.enabled` has no DTO or
+   controller behind it, so a pre-emptive banner stays a backend item and its cost is written up in
+   the group file. One correction for the record — "the frontend reads neither today" was true of
+   the literal strings and wrong about the behavior. `ShareCard` already had the copy, keyed on
+   `sent === false` rather than the reason, so it blamed the email switch for every failure. Fixed
+   in the same MR. Grepping for a string missed a bug that reading the behavior would have caught.
 
 2. **PF13** — make the home page genuinely static. Context is warm: PF8 just added Suspense
    boundaries to `/explore` and `/search` and deliberately left `CollectionPageWrapper` alone
@@ -357,11 +353,6 @@ The backend board PARKED BCrypt on 2026-08-24: the design pass must first answer
 passwords should do, reconciling admin re-share, the fingerprint-derived shared-unlock cookie, and
 revocation-on-change. `docs/003` and `docs/000` still list BCrypt as ready-to-build — they are
 wrong; do not start it.
-
-### ☐ EM5 · Email-disabled warning callout — COLD, small
-
-No `EMAIL_ENABLED`/email-disabled string exists anywhere in `app/` — the admin gallery UI gives no
-hint that sends are off. One callout in the access section.
 
 ## Group MA — Admin & manage surfaces
 

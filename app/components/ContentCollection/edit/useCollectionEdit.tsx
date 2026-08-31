@@ -53,6 +53,7 @@ import {
   isGifContent,
   isParentCollection,
 } from '@/app/utils/contentTypeGuards';
+import { isEmailDisabled } from '@/app/utils/emailSendReason';
 import { buildLocationsDiff, convertLocationsToModels } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
 import { manageHref } from '@/app/utils/manageUrl';
@@ -230,6 +231,13 @@ export interface UseCollectionEditResult {
   setGalleryEmail: (value: string) => void;
   gallerySaving: boolean;
   galleryStatus: string | null;
+  /**
+   * True when the last save asked for an email and the backend skipped it because sending is off
+   * site-wide. Distinct from `galleryStatus` because it is not a transient outcome: the client was
+   * not notified and will not be by retrying, so the surface owes the admin a standing warning
+   * rather than a status line. Cleared on the next save.
+   */
+  galleryEmailDisabled: boolean;
   handleSaveAccess: () => Promise<void>;
   handleClearPassword: () => Promise<void>;
 
@@ -516,6 +524,7 @@ export function useCollectionEdit({
   const [galleryPassword, setGalleryPasswordInput] = useState('');
   const [galleryEmail, setGalleryEmail] = useState('');
   const [galleryStatus, setGalleryStatus] = useState<string | null>(null);
+  const [galleryEmailDisabled, setGalleryEmailDisabled] = useState(false);
   const [gallerySaving, setGallerySaving] = useState(false);
 
   /** Identity gate for the staged-field seed below; mirrors the edit buffer's `seeded*` refs. */
@@ -826,6 +835,7 @@ export function useCollectionEdit({
     }
     setGallerySaving(true);
     setGalleryStatus(null);
+    setGalleryEmailDisabled(false);
     try {
       const emails = galleryEmail.trim()
         ? galleryEmail
@@ -843,11 +853,15 @@ export function useCollectionEdit({
         emails,
         propagateToChildren,
       });
+      const emailDisabled = !result.emailsSent && isEmailDisabled(result.reason);
+      setGalleryEmailDisabled(emailDisabled);
       if (emails) {
         setGalleryStatus(
           result.emailsSent
             ? `Password saved and sent to ${result.emails.join(', ')}.`
-            : `Password saved, email not sent${result.reason ? ` (${result.reason})` : ''}.`
+            : emailDisabled
+              ? 'Password saved. Email was not sent.'
+              : `Password saved, email not sent${result.reason ? ` (${result.reason})` : ''}.`
         );
       } else {
         setGalleryStatus('Password saved. No email sent.');
@@ -865,6 +879,7 @@ export function useCollectionEdit({
     if (!collection) return;
     setGallerySaving(true);
     setGalleryStatus(null);
+    setGalleryEmailDisabled(false);
     try {
       const result = await saveGalleryAccess(collection.id, { password: null });
       setGalleryStatus('Password cleared. Gallery is now unprotected.');
@@ -1736,6 +1751,7 @@ export function useCollectionEdit({
     setGalleryEmail,
     gallerySaving,
     galleryStatus,
+    galleryEmailDisabled,
     handleSaveAccess,
     handleClearPassword,
 

@@ -120,3 +120,11 @@
   font-size: var(--text-sm);
   color: var(--color-on-surface-muted);
 }
+
+.emailDisabledNotice {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--color-warning);
+  font-size: var(--text-sm);
+  color: var(--color-warning);
+}
