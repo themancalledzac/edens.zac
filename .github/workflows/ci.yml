@@ -7,7 +7,9 @@
 # would pay for it once per job. Every check step is `if: always()` so a single
 # run reports all four verdicts instead of stopping at the first failure.
 #
-# Node 22 is the top of the `engines` range in package.json (`>=20 <23`).
+# The Node version comes from `.nvmrc`, which is the one place it is written down.
+# `engines.node` in package.json is a floor, not a second pin; `tests/ci/ciWorkflow.test.ts`
+# asserts the blessed version clears it.
 name: CI
 
 on:
@@ -35,7 +37,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies

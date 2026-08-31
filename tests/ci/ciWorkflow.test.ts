@@ -9,11 +9,12 @@
  * because it is trusted. Each script is matched as an invoked command rather than as a
  * substring, so `lint:js:fix` cannot stand in for `lint:js`.
  *
- * A drifting Node pin is the second. CI passing on a runtime the repo does not claim to
- * support proves nothing about the runtime it does, and the drift is invisible in a diff
- * that touches only one of the two files. The bound is read from `engines.node` rather than
- * hardcoded, so widening the supported range is a one-file change and narrowing it below the
- * pinned version fails here.
+ * A drifting Node version is the second. CI passing on a runtime the repo does not claim to
+ * support proves nothing about the runtime it does. There used to be two literals to drift —
+ * the workflow's own pin and `engines.node` — so the workflow now reads `.nvmrc`, and these
+ * tests hold that arrangement in place: the blessed version lives in `.nvmrc` alone, the
+ * workflow keeps reading it rather than reverting to an inline pin, and `engines.node` stays
+ * a floor the blessed version clears.
  */
 
 import { readFileSync } from 'node:fs';
@@ -22,7 +23,10 @@ import { join } from 'node:path';
 const ROOT = process.cwd();
 const WORKFLOW_PATH = join(ROOT, '.github', 'workflows', 'ci.yml');
 
+const NVMRC_PATH = join(ROOT, '.nvmrc');
+
 const workflow = readFileSync(WORKFLOW_PATH, 'utf8');
+const nvmrc = readFileSync(NVMRC_PATH, 'utf8').trim();
 const packageJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as {
   engines: { node: string };
   scripts: Record<string, string>;
@@ -45,7 +49,7 @@ function invokesScript(script: string): boolean {
 
 /**
  * Evaluates a major version against the comparators in an `engines`-style range such as
- * `">=20 <23"`. Only major-level comparators are read, which is all this repo pins.
+ * `">=22"`. Only major-level comparators are read, which is all this repo declares.
  */
 function majorSatisfies(major: number, range: string): boolean {
   const comparators = [...range.matchAll(/(>=|<=|>|<)\s*(\d+)/g)];
@@ -74,11 +78,20 @@ describe('CI workflow', () => {
     expect(workflow).toMatch(/^\s*pull_request:/m);
   });
 
-  it('pins a Node major that satisfies engines.node', () => {
-    const pinned = /node-version: '(\d+)'/.exec(workflow);
-    expect(pinned).not.toBeNull();
+  it('takes its Node version from .nvmrc rather than a second literal', () => {
+    expect(workflow).toMatch(/^\s*node-version-file: \.nvmrc$/m);
+    expect(workflow).not.toMatch(/node-version:/);
+  });
 
-    const major = Number(pinned?.[1]);
-    expect(majorSatisfies(major, packageJson.engines.node)).toBe(true);
+  it('blesses a bare Node major in .nvmrc', () => {
+    expect(nvmrc).toMatch(/^\d+$/);
+  });
+
+  it('blesses a Node major that satisfies engines.node', () => {
+    expect(majorSatisfies(Number(nvmrc), packageJson.engines.node)).toBe(true);
+  });
+
+  it('declares engines.node as a floor with no upper bound', () => {
+    expect(packageJson.engines.node).not.toMatch(/<\s*\d/);
   });
 });
