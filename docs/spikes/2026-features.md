@@ -148,7 +148,7 @@ stack. That reframing is what made it answerable in one pass; the write-up is in
    `sent === false` rather than the reason, so it blamed the email switch for every failure. Fixed
    in the same MR. Grepping for a string missed a bug that reading the behavior would have caught.
 
-2. **PF13** — **NOT BUILT; re-sized instead (#371).** The guardrail "PPR the home page only" is
+2. **PF13** — **NOT BUILT; re-sized instead (#372).** The guardrail "PPR the home page only" is
    not satisfiable: `cacheComponents` is an app-wide flag in Next 16.3.1 and enabling it errors 19
    of 21 route segments at once, on top of a root-layout `new Date()` that blocks every prerender.
    Stopped and reported rather than turning a one-sitting item into an app-wide migration through
