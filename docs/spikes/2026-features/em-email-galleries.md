@@ -44,9 +44,29 @@ into a read-only existing-recipients list plus an add-one field, and narrow the 
 address. Same deliverable, different starting point, and the "addition, not modification" sizing
 should not be trusted.
 
-**Collision warning:** MA1 deletes `InfoTab.tsx`; if both are scheduled, sequence deliberately or
-build EM2 against MA1's rail. MA1 is blocked on a backend endpoint that is still absent, so EM2
-going first is currently the safe order.
+**BLOCKED on the backend, verified 2026-08-31 (5) — and the frontend was never the constraint.**
+Two passes argued about whether `InfoTab` had a recipient field. It does, and it does not matter.
+`recipient_emails` has exactly one writer, `CollectionRepository.saveGalleryAccess`, which
+overwrites the whole array with what the request sent; `CollectionService.updateGalleryAccess` then
+mails every address in that same array. One field is both the stored recipient list and the send
+list, so the frontend can only choose which half to break: send `[new]` and the stored list is
+reduced to one address, or send the merged list and everyone is re-mailed, which is today.
+
+No third path exists. `sendGalleryPasswordEmail` has one caller (that write path),
+`CollectionAdminController` exposes one `@PostMapping`, and `CollectionRepository.save` writes
+neither column on UPDATE — its docblock states both are owned exclusively by `saveGalleryAccess`.
+All re-run against the backend's `origin/main`.
+
+**MR 1 is backend:** split the list to store from the list to notify — a `notifyEmails` on
+`GalleryAccessRequest`, or append semantics on `emails` with the notify set derived from what was
+new. **The backend-board row is still owed** — on 2026-08-31 that repo was mid-work in another
+session (branch `perf/mr19-21-location-endpoint-n1`, dirty tree), so nothing was written there.
+File it in the next backend session, under the cross-repo section. The frontend reshape follows the
+backend MR, unchanged from the description above.
+
+**Collision, unchanged:** MA1 deletes `InfoTab.tsx`, so any EM2 frontend built there is thrown
+away. MA1 is itself blocked on an absent `PATCH /collections/{id}`, so both items now wait on
+backend MRs — EM2's is the smaller. The ordering question is moot until one of them lands.
 
 ## EM3 · Contact-owner notification + `user_invite.created_by`
 
