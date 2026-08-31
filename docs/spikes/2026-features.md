@@ -103,6 +103,13 @@ reportToService()` seam (it does not exist — `logger.ts` is 14 lines of `conso
   the PF13 section went on describing in the present tense as a live blocker. The third principle
   says drift lives in the neighbourhood of what shipped — the sharpest case of that is what YOU
   just shipped, and it is the case a sweep run before merging cannot see.
+- **A verified feature can still be the wrong feature. Ask before adding a facet.** SD3's
+  focal-length dimension was built to this board's spec, passed 4648 tests, was checked against
+  live data and browser-verified — then dropped before merge because it was not wanted. Every
+  guardrail here is about building the thing _right_; none of them asks whether to build it at all.
+  For a slice whose whole value is "one more way to narrow a list", on a bar that already carries
+  several, the cheap check is a question up front, not a browser pass at the end. Applies to the
+  remaining SD3 slices first.
 - **A fix is not verified by the absence of the string it moved.** PF13 step 1 shipped as #375 and
   the board recorded its blocker CLEARED, on the evidence that
   `grep -c 'new Date' app/components/Footer/Footer.tsx` returns 0. It does — the call moved to
@@ -126,7 +133,7 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | Item | Scope                                                             | Repo    | Status                                                                                    |
 | ---- | ----------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
 | SD2  | Enrich `locations` on collection blocks                           | BE      | ☐ COLD — small; makes the shipped `/collections` location filter work                     |
-| SD3  | Filter-bar dimension gaps (film stock, row merge)                 | FE      | ☐ COLD — sliceable; badges #373, year #376, focal length #379 shipped, two slices left    |
+| SD3  | Filter-bar dimension gaps (film stock, row merge)                 | FE      | ☐ COLD — badges #373 and year #376 shipped; focal length BUILT AND DROPPED (user, #379)   |
 | SD4  | `/explore` as a real drill-down explorer (Option C)               | FE      | ☐ BLOCKED — reconcile with refactor-board H5 design review first                          |
 | SD5  | Verify people/location chip-click-to-filter                       | FE      | ☐ COLD — cheap verification task                                                          |
 | RC1  | Populate `parents` on public reads + `isFilm` backfill            | BE      | ☐ COLD — unblocks RC2's public rendering; two verified data bugs                          |
@@ -183,13 +190,20 @@ was written to produce: PF13 step 2 is not the mechanical item this board descri
    `connection()`, or stop deriving the year at runtime at all. Small; it unblocks nothing on its
    own, so it can ride along with something else.
 
-3. **SD3 · film-stock secondary filter.** The remaining cheap slice, conditional on Film + 2+
-   stocks. Warm from #373, #376 and #379 — the same shape a fourth time. **Guardrail: one
-   dimension per MR**, and check stock coverage against live data before sizing it, the way #379
-   did. The data question inverts here: film collections are exactly the ones #379 found carry no
-   EXIF, so film stock is the one dimension whose data lives where focal length's did not.
+3. **Ask before building another filter dimension — do not just take the next SD3 slice.** The
+   focal-length slice was built, verified and then dropped because it was not wanted (see the SD3
+   row). That is a signal about direction, not about that one dimension: the bar is not short of
+   facets, and the next slice should be confirmed as wanted before it is written. Film stock is the
+   only remaining dimension on the list; put it to the user as decision #13 rather than scheduling
+   it.
 
-**Re-derive refs between MRs?** 1 and 2 are disjoint from each other and from 3.
+   If it is wanted: conditional on Film + 2+ stocks, warm from #373 and #376, **one dimension per
+   MR**, and check coverage against live data first. The data question inverts from focal length's
+   — film collections are exactly the ones that carry no EXIF, so stock is the one dimension whose
+   data lives where focal length's did not.
+
+**Re-derive refs between MRs?** 1 and 2 are disjoint from each other, and 3 is a question rather
+than an MR.
 
 **Not scheduled, and why.** PF13 steps 2 and 3 as previously written are off the board until MR 1
 lands — the flag flip cannot be verified against its own guardrail while every read is
@@ -591,8 +605,11 @@ _Newest first, local dates. One line per `/next` run: what shipped (PR numbers),
 what's next. Older entries move to
 [2026-features/session-log.md](2026-features/session-log.md)._
 
-- 2026-08-31 (6) — shipped **SD3 focal-length ranges (#379)**; **PF13 step 2 attempted and stopped
-  as blocked**, which is what its guardrail was for. **SD3's open data question is answered, yes**:
+- 2026-08-31 (6) — **nothing shipped.** SD3's focal-length slice was built and verified as **#379**
+  and then **dropped by the user before merge** — not wanted, and the stated direction is fewer
+  lens-related filters rather than more. **PF13 step 2 attempted and stopped as blocked**, which is
+  what its guardrail was for. Two items, two different kinds of stop; the board's job now is to not
+  re-propose either. **SD3's open data question was answered along the way, and it is yes**:
   207 of 281 sampled images carry `focalLength` (74%), near-uniformly `'24 mm'`, and the gap is
   film rather than focal length — `dolomites-film` 0/30, `lisbon-film` 0/23 — so the dimension
   self-hides on film pages through the existing gate. The parser was restored from `266c56c`
@@ -605,8 +622,10 @@ what's next. Older entries move to
   both it and a Suspense boundary, while `/collections` 500'd calling the backend mid-build and `/`
   timed out at 60s × 3. **The real blocker was nowhere in the row** — `cookies()` sits inside
   `fetchBase`, so no read can enter a `use cache` scope, and the six tagged fetches would silently
-  stop caching. Both lessons hoisted into "How to use this doc". Next: PF13 MR 1 (hoist the cookie
-  forwarding), then SD3's film-stock slice.
+  stop caching. Three lessons hoisted into "How to use this doc" — including the one #379 taught,
+  which none of the existing guardrails would have caught: a facet can be built correctly and still
+  be unwanted. Next: PF13 MR 1 (hoist the cookie forwarding), re-do step 1, and **ask** whether the
+  film-stock dimension is wanted before building it.
 
 - 2026-08-31 (5) — shipped **PF13 step 1 (#375)**, **SD3 year chips (#376)**, and closed **PF12**
   by applying branch protection. **Decision #12 answered: adopt Cache Components, full speed**, so
