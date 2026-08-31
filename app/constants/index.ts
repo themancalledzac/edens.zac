@@ -138,15 +138,22 @@ export const TIMING = {
 // IMAGE DEFAULTS
 // =============================================================================
 
+/**
+ * Image render defaults. `defaultWidth`/`defaultHeight` are the fallback dimensions when an image
+ * arrives without them; `minParallaxAR`/`maxParallaxAR` clamp parallax covers.
+ *
+ * `quality` is one constant because Next 16 has no default-quality setting and the optimizer 400s
+ * on any value outside `images.qualities` — so `next.config.js` and every call site must agree.
+ * `tests/config/imageQuality.test.ts` enforces that.
+ */
 export const IMAGE = {
-  // Fallback dimensions when actual dimensions unavailable
-  defaultWidth: 1300, // Matches pageMaxWidth
-  defaultHeight: 867, // Maintains ~3:2 aspect ratio with defaultWidth
+  defaultWidth: 1300,
+  defaultHeight: 867,
 
-  // Aspect ratio (w/h) bounds for parallax collection covers
-  // Clamps cover images to a [4:5, 5:4] range so they're never too tall or too wide
-  minParallaxAR: 4 / 5, // 0.8 — never taller than 5:4
-  maxParallaxAR: 5 / 4, // 1.25 — never wider than 5:4
+  minParallaxAR: 4 / 5,
+  maxParallaxAR: 5 / 4,
+
+  quality: 65,
 } as const;
 
 // =============================================================================

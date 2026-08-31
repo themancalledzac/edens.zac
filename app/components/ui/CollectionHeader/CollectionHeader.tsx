@@ -1,5 +1,7 @@
 import Image from 'next/image';
 
+import { IMAGE } from '@/app/constants';
+
 import styles from './CollectionHeader.module.scss';
 
 export interface CollectionHeaderCover {
@@ -45,6 +47,7 @@ export function CollectionHeader({ title, count, cover }: CollectionHeaderProps)
           fill
           sizes={cover.sizes ?? '(min-width: 768px) 240px, 140px'}
           className={styles.cover}
+          quality={IMAGE.quality}
           priority
         />
       </div>

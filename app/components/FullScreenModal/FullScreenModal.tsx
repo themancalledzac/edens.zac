@@ -217,6 +217,7 @@ export function FullScreenModal({
                 width={currentImage.imageWidth || IMAGE.defaultWidth}
                 height={currentImage.imageHeight || IMAGE.defaultHeight}
                 className={`${styles.fullScreenImage} ${currentImageLoaded ? styles.fullScreenImageLoaded : ''}`}
+                quality={IMAGE.quality}
                 priority
                 onLoad={() => {
                   setLoadedImageIds(prev => {

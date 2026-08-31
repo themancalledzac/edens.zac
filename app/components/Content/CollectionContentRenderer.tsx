@@ -15,6 +15,7 @@ import { Badge } from '@/app/components/ui/Badge/Badge';
 import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { InlineEditableText } from '@/app/components/ui/InlineEditableText/InlineEditableText';
 import { Tile } from '@/app/components/ui/Tile/Tile';
+import { IMAGE } from '@/app/constants';
 import { useParallax } from '@/app/hooks/useParallax';
 import {
   type ContentGifModel,
@@ -411,6 +412,7 @@ export default function CollectionContentRenderer({
                             fill
                             sizes="(max-width: 768px) 140px, 200px"
                             className={cbStyles.metadataSiblingCardImage}
+                            quality={IMAGE.quality}
                           />
                           <span className={cbStyles.metadataSiblingCardOverlay}>
                             <span className={cbStyles.metadataSiblingCardTitle}>{item.value}</span>
@@ -668,6 +670,7 @@ export default function CollectionContentRenderer({
     width: imageWidth,
     height: imageHeight,
     sizes: `(max-width: 768px) 100vw, ${Math.round(validWidth)}px`,
+    quality: IMAGE.quality,
     loading: priority ? ('eager' as const) : ('lazy' as const),
     priority: priority ?? false,
     fetchPriority: priority ? ('high' as const) : undefined,

@@ -107,32 +107,6 @@ docs that disagree. Small, COLD, no decision needed. The one residual the user m
 is Amplify specifically versus a hand-rolled Next server behind CloudFront; nothing on this board
 depends on which.
 
-## PF10 · Lower image quality to 65 — COLD, and NOT config-only
-
-Split out of PF1, which could not do it. The 002 chapter's "set `quality` ~65" predates Next 16's
-API and is impossible as a config change. Two facts, read from the installed source rather than
-recalled:
-
-- `next/image` sends **75** whenever no `quality` prop is given —
-  `node_modules/next/dist/shared/lib/get-img-props.js:459`, `qualityInt || 75`.
-- The optimizer **rejects rather than clamps** anything outside `images.qualities` —
-  `node_modules/next/dist/server/image-optimizer.js:657`, HTTP 400. `imageConfigDefault.qualities`
-  is `[75]`.
-
-So `qualities: [65]` on its own **400s every image on the site**. The work is therefore
-`qualities: [65]` in config _plus_ `quality={65}` at the `next/image` call sites — a render-path
-change with tests attached, which is why it is not PF1.
-
-**Measured prize: 13.3%.** At `w=1920`, q65 is 258,556 bytes against q75's 298,282. Measured
-2026-08-30 through the optimizer on a local dev server with `qualities: [65, 70, 75]` temporarily
-allowed; q70 was 278,238 if a middle setting is preferred.
-
-Call sites to thread the prop through (8 `sizes=` declarations as of 2026-08-31,
-`grep -rn 'sizes=' app/ --include='*.tsx'`): `CollectionContentRenderer.tsx:412` and `:670`,
-`Component.tsx:246`, `BoxRenderer.tsx:159-160`, `CoverCard.tsx:64`, `CollectionHeader.tsx:46`,
-`LocationCollections.tsx:26`, `MediaPreview.tsx:106`. A single shared default would be better than
-eight literals — scope that first.
-
 ## PF11 · Reconcile the Node version — COLD, decision answered, ready to build
 
 `package.json` `engines.node` is `>=20 <23`. The dev machine runs **25.3.0**. PF5's CI now pins
@@ -189,6 +163,57 @@ unlinked labels, `window.confirm`) is untriaged AND its file paths are stale
 against current paths first — the findings may be live, the line numbers are not.
 
 ## Closed
+
+### ✅ PF10 · Image quality 65 — PR #361, 2026-08-30
+
+`images.qualities: [65]` in `next.config.js`, `IMAGE.quality` in `app/constants/index.ts`, and
+`quality={IMAGE.quality}` at every optimized `<Image>`. Guard test:
+`tests/config/imageQuality.test.ts`.
+
+**The row's work list was wrong.** It said "8 `sizes=` declarations" and listed them. That grep
+conflates three unrelated things:
+
+- `BoxRenderer.tsx:159-160` and `Component.tsx:246` pass `sizes={sizesMap}` — the BoxTree
+  dimensions map. Nothing to do with `next/image`.
+- `LocationCollections.tsx:26` passes `sizes` to `CoverCard`, which forwards it to its own
+  `<Image>` — the same call site as `CoverCard.tsx:64`, counted twice.
+- It missed five real render sites that carry no `sizes` prop at all: `FullScreenModal.tsx:210`,
+  `About.tsx:15`, `CollectionsPanel.tsx:100`, `EditModeLayer.tsx:338`, and the
+  `<Image {...imageProps} />` spread at `CollectionContentRenderer.tsx:690`.
+
+The right unit is the `<Image>` render site. There are ten; two (`MediaPreview.tsx:46` and `:101`)
+are `unoptimized` and bypass the optimizer entirely, so **eight** needed the prop. Same number as
+the row, different set — which is exactly the way this could have shipped broken.
+
+**Why a miss breaks rather than slows.** Verified against a running optimizer, same image, w=1920:
+
+```
+q=65  →  200, 408,696 bytes, image/webp
+q=75  →  400, 44 bytes
+```
+
+75 is what `next/image` sends when the prop is absent. So a forgotten `quality` is a broken image
+in production. That is what the guard test is for, and why `qualities` is `[65]` alone rather than
+`[65, 75]`: the permissive list would let a miss degrade silently into no savings, whereas CI now
+fails loudly instead.
+
+**Measured saving**, same image, WebP as a browser receives it:
+
+| Width | q75     | q65     | Saving    |
+| ----- | ------- | ------- | --------- |
+| 1920  | 469,408 | 408,696 | **12.9%** |
+| 1080  | 139,786 | 122,736 | **12.2%** |
+
+Consistent with the 13.3% recorded pre-build on a different image.
+
+**One judgment call worth a second opinion.** `FullScreenModal` is the surface where someone is
+deliberately looking closely at a photograph, and it now gets the same 65 as a thumbnail. That is
+what the item specified and it is applied uniformly, but if any surface deserves its own tier this
+is the one. Making it so is cheap now: add a second constant, extend `qualities` to both values,
+and the guard test keeps them in agreement.
+
+The stale claim "Quality is not settable here in Next 16" was corrected in `next.config.js` — the
+_allowlist_ is settable; only a _default_ is not.
 
 ### ✅ PF4 · Restore ISR on the home page — closed as VOID, PR #360, 2026-08-30
 

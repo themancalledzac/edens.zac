@@ -1,5 +1,7 @@
 import Image from 'next/image';
 
+import { IMAGE } from '@/app/constants';
+
 import styles from './About.module.scss';
 
 /**
@@ -18,6 +20,7 @@ export function About() {
             width={1000}
             height={750}
             className={styles.profileImage}
+            quality={IMAGE.quality}
           />
         </div>
         <div className={styles.textContainer}>

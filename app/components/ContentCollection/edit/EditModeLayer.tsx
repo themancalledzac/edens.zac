@@ -20,6 +20,7 @@ import MetadataModal from '@/app/components/Metadata/MetadataModal';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
 import { EditBar } from '@/app/components/ui/EditBar/EditBar';
 import { IconButton } from '@/app/components/ui/IconButton/IconButton';
+import { IMAGE } from '@/app/constants';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type AnyContentModel } from '@/app/types/Content';
@@ -335,7 +336,13 @@ export default function EditModeLayer({
                   onClick={() => edit.handleCoverImageClick(img.id)}
                   aria-label={`Set ${img.title || 'image'} as cover`}
                 >
-                  <Image src={img.imageUrl} alt={img.title || ''} width={96} height={64} />
+                  <Image
+                    src={img.imageUrl}
+                    alt={img.title || ''}
+                    width={96}
+                    height={64}
+                    quality={IMAGE.quality}
+                  />
                 </button>
               ))}
             </div>

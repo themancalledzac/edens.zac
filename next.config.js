@@ -94,10 +94,13 @@ const nextConfig = {
     minimumCacheTTL: 86400, // Cache optimized images for 24 hours
     // Sources are 2500px on the long edge, so 2560/3200/3840 returned the same bytes as 2048;
     // capping at 2048 halves the largest request. Intermediates stay — browsers round up to the
-    // next candidate, so removing one costs bytes. Quality is not settable here in Next 16.
+    // next candidate, so removing one costs bytes.
     // Measurements: docs/spikes/2026-features/pf-performance-platform.md
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
     imageSizes: [128, 256, 384],
+    // An allowlist, not a default — anything outside it is a 400. Must match IMAGE.quality, which
+    // every optimized next/image passes; both pinned by tests/config/imageQuality.test.ts.
+    qualities: [65],
   },
   turbopack: {
     root: process.cwd(),
