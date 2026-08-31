@@ -73,6 +73,9 @@ export function toCollectionDimensions(
   options: CollectionInfoOptions
 ): Partial<Record<ArrayFilterKey, ToolbarDimension>> {
   const dims: Partial<Record<ArrayFilterKey, ToolbarDimension>> = {};
+  if (options.years.filterable && options.years.values.length > 0) {
+    dims.selectedYears = { label: 'Year', options: options.years.values };
+  }
   if (options.dates.filterable && options.dates.values.length > 0) {
     dims.selectedDates = {
       label: 'Date',

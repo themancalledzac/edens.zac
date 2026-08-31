@@ -469,6 +469,7 @@ export default function CollectionContentRenderer({
                         selectedLenses: collectionFilter.filteredAvailable.lenses,
                         selectedLocations: collectionFilter.filteredAvailable.locations,
                         selectedDates: collectionFilter.filteredAvailable.dates,
+                        selectedYears: collectionFilter.filteredAvailable.years,
                       }
                     : null
                 }

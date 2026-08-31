@@ -20,6 +20,7 @@ export interface CollectionInfoOptions {
   lenses: DimensionData;
   locations: DimensionData;
   dates: DimensionData;
+  years: DimensionData;
   showHighlyRated: boolean;
   showDateSort: boolean;
   /** Whether to render the admin-only Hidden toggle. */
@@ -35,6 +36,7 @@ export type FilteredAvailableOptions = {
   lenses: readonly string[];
   locations: readonly string[];
   dates: readonly string[];
+  years: readonly string[];
 } | null;
 
 interface CollectionFilterContextValue {

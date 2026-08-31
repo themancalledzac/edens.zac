@@ -3,8 +3,10 @@ import { join } from 'node:path';
 
 import {
   captureDayKey,
+  captureYearKey,
   dayLabels,
   distinctDays,
+  distinctYears,
   formatDayLabel,
 } from '@/app/utils/collectionDates';
 import { formatDateRange } from '@/app/utils/formatDateRange';
@@ -114,5 +116,31 @@ describe('formatDayLabel month abbreviations', () => {
       expect(fromRange).toMatch(/^[A-Z][a-z]{2}$/);
       expect(formatDayLabel(dayKey, [dayKey])).toBe(`${fromRange} 15`);
     }
+  });
+});
+
+describe('captureYearKey', () => {
+  it('reads the year from a zoneless capture timestamp', () => {
+    expect(captureYearKey('2026-07-20T18:32:00')).toBe('2026');
+  });
+
+  it('reads the year from a plain collection date', () => {
+    expect(captureYearKey('2019-08-01')).toBe('2019');
+  });
+
+  it('returns null for a missing or unusable date', () => {
+    expect(captureYearKey(null)).toBeNull();
+    // eslint-disable-next-line unicorn/no-useless-undefined
+    expect(captureYearKey(undefined)).toBeNull();
+    expect(captureYearKey('')).toBeNull();
+    expect(captureYearKey('not-a-date')).toBeNull();
+  });
+});
+
+describe('distinctYears', () => {
+  it('de-duplicates and sorts ascending, ignoring unusable dates', () => {
+    expect(
+      distinctYears(['2026-07-20T10:00:00', '2019-08-01', '2026-01-02T00:00:00', null, 'nope'])
+    ).toEqual(['2019', '2026']);
   });
 });
