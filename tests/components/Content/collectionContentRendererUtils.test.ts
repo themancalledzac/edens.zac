@@ -19,6 +19,7 @@ const options = (overrides: Partial<CollectionInfoOptions> = {}): CollectionInfo
   lenses: dim([], false),
   locations: dim([], false),
   dates: dim([], false),
+  years: dim([], false),
   showHighlyRated: false,
   showDateSort: false,
   showHiddenToggle: false,
@@ -56,6 +57,16 @@ describe('toCollectionDimensions', () => {
     expect(result.selectedLenses).toEqual({ label: 'Lens', options: ['35mm'] });
   });
 
+  it('surfaces years as bare labels when filterable', () => {
+    const result = toCollectionDimensions(options({ years: dim(['2024', '2026'], true) }));
+    expect(result.selectedYears).toEqual({ label: 'Year', options: ['2024', '2026'] });
+  });
+
+  it('omits years when not filterable', () => {
+    const result = toCollectionDimensions(options({ years: dim(['2026'], false) }));
+    expect(result.selectedYears).toBeUndefined();
+  });
+
   it('surfaces dates with human labels when filterable', () => {
     const dims = toCollectionDimensions({
       people: { values: [], filterable: true },
@@ -63,6 +74,7 @@ describe('toCollectionDimensions', () => {
       lenses: { values: [], filterable: true },
       locations: { values: [], filterable: true },
       dates: { values: ['2026-07-20', '2026-07-21'], filterable: true },
+      years: { values: [], filterable: false },
       showHighlyRated: false,
       showDateSort: false,
       showHiddenToggle: false,
@@ -82,6 +94,7 @@ describe('toCollectionDimensions', () => {
       lenses: { values: [], filterable: true },
       locations: { values: [], filterable: true },
       dates: { values: ['2026-07-20'], filterable: false },
+      years: { values: [], filterable: false },
       showHighlyRated: false,
       showDateSort: false,
       showHiddenToggle: false,

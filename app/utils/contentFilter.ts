@@ -16,7 +16,12 @@ import {
   type ContentImageModel,
 } from '@/app/types/Content';
 import { type FilmFilter, type FilterState } from '@/app/types/GalleryFilter';
-import { captureDayKey, distinctDays } from '@/app/utils/collectionDates';
+import {
+  captureDayKey,
+  captureYearKey,
+  distinctDays,
+  distinctYears,
+} from '@/app/utils/collectionDates';
 import { isCollectionCard } from '@/app/utils/contentRatingUtils';
 import { isGifContent } from '@/app/utils/contentTypeGuards';
 
@@ -46,6 +51,11 @@ export interface ContentFilterCriteria {
   dateTo?: string;
   /** Calendar days ('YYYY-MM-DD') to include (OR logic - matches if captured on ANY of these) */
   dates?: readonly string[];
+  /**
+   * Calendar years ('YYYY') to include (OR logic). Unlike `dates`, this also narrows COLLECTION
+   * tiles, matched against their own `collectionDate` — see {@link collectionRefMatchesCriteria}.
+   */
+  years?: readonly string[];
   /** Filter to film images only */
   isFilm?: boolean;
   /** Filter to black & white images only */
@@ -159,6 +169,7 @@ export function filterContent(
     criteria.dateFrom !== undefined ||
     criteria.dateTo !== undefined ||
     (criteria.dates && criteria.dates.length > 0) ||
+    (criteria.years && criteria.years.length > 0) ||
     criteria.isFilm !== undefined ||
     criteria.blackAndWhite !== undefined ||
     (criteria.collectionIds && criteria.collectionIds.length > 0);
@@ -229,6 +240,11 @@ export function filterContent(
     if (criteria.dates && criteria.dates.length > 0) {
       const day = captureDayKey(item.captureDate);
       if (!day || !criteria.dates.includes(day)) return false;
+    }
+
+    if (criteria.years && criteria.years.length > 0) {
+      const year = captureYearKey(item.captureDate);
+      if (!year || !criteria.years.includes(year)) return false;
     }
 
     if (criteria.isFilm !== undefined && (item.isFilm ?? false) !== criteria.isFilm) {
@@ -634,6 +650,9 @@ export function parseFilterFromParams(
   const dates = getAll('date');
   if (dates.length > 0) criteria.dates = dates;
 
+  const years = getAll('year');
+  if (years.length > 0) criteria.years = years;
+
   const query = get('q');
   if (query) criteria.query = query;
 
@@ -674,6 +693,7 @@ export const FILTER_PARAM_KEYS = [
   'tag',
   'camera',
   'date',
+  'year',
   'q',
   'from',
   'to',
@@ -701,6 +721,7 @@ export function serializeFilterToParams(criteria: ContentFilterCriteria): URLSea
   for (const t of criteria.tags ?? []) params.append('tag', t);
   for (const c of criteria.cameras ?? []) params.append('camera', c);
   for (const d of criteria.dates ?? []) params.append('date', d);
+  for (const y of criteria.years ?? []) params.append('year', y);
 
   if (criteria.query) params.set('q', criteria.query);
   if (criteria.dateFrom) params.set('from', criteria.dateFrom);
@@ -746,6 +767,7 @@ export interface CollectionFilterDimensions {
   lenses: FilterDimension;
   locations: FilterDimension;
   dates: FilterDimension;
+  years: FilterDimension;
 }
 
 /**
@@ -764,6 +786,11 @@ export interface CollectionFilterDimensions {
  *   and this parameter does not change that. See {@link isDateable}, which
  *   already treats dated GIFs as chronologically participating. Without this, a day whose
  *   content is entirely GIFs would have no chip and become unreachable.
+ *
+ * `years` differs from `dates` twice over: it also draws on collection refs' own `collectionDate`,
+ * and it carries no image-count floor. A collection spans days but sits in one year, so Year is
+ * the only time dimension a collection-dominant page can offer; and a small two-year collection is
+ * the case Year exists to serve, which `MIN_IMAGES_FOR_DATE_FILTER` would suppress.
  */
 export function extractCollectionFilterOptions(
   images: ContentImageModel[],
@@ -783,6 +810,12 @@ export function extractCollectionFilterOptions(
   const dates = distinctDays([
     ...images.map(img => img.captureDate),
     ...datedGifs.map(gif => gif.captureDate),
+  ]);
+
+  const years = distinctYears([
+    ...images.map(img => img.captureDate),
+    ...datedGifs.map(gif => gif.captureDate),
+    ...collectionRefs.map(ref => ref.collectionDate),
   ]);
 
   // cameras/lenses/locations: need 2+ distinct values AND canFilter (length>=2 alone
@@ -823,6 +856,10 @@ export function extractCollectionFilterOptions(
       // already be guaranteed true here, making it redundant.
       filterable: dates.length >= 2 && images.length >= MIN_IMAGES_FOR_DATE_FILTER,
     },
+    years: {
+      values: years,
+      filterable: years.length >= 2,
+    },
   };
 }
 
@@ -851,6 +888,7 @@ export function buildCollectionCriteria(filterState: FilterState): ContentFilter
       ? { locations: filterState.selectedLocations }
       : {}),
     ...(filterState.selectedDates.length > 0 ? { dates: filterState.selectedDates } : {}),
+    ...(filterState.selectedYears.length > 0 ? { years: filterState.selectedYears } : {}),
   };
 }
 
@@ -865,15 +903,16 @@ export function hasAnyActiveFilter(filterState: FilterState): boolean {
     filterState.selectedCameras.length > 0 ||
     filterState.selectedLenses.length > 0 ||
     filterState.selectedLocations.length > 0 ||
-    filterState.selectedDates.length > 0
+    filterState.selectedDates.length > 0 ||
+    filterState.selectedYears.length > 0
   );
 }
 
 /**
  * Whether a COLLECTION-ref block satisfies the collection-applicable criteria.
  *
- * A collection tile carries only the dimensions the backend aggregates onto it
- * (tags/people/locations) — it has no camera/lens/film/date of its own. Image-only
+ * A collection tile carries its aggregated tags/people/locations plus its own `collectionDate`,
+ * which is what `years` matches on — it has no camera/lens/film/capture day. Image-only
  * criteria are therefore NOT applied here (they never hide a collection tile), so
  * toggling e.g. a film filter on a mixed page leaves collection tiles in place.
  * Since D7 the toolbar surfaces the camera/lens/lens-type dimensions on any page
@@ -914,6 +953,11 @@ export function collectionRefMatchesCriteria(
     if (!criteria.locations.some(loc => locationNames.includes(loc.toLowerCase()))) return false;
   }
 
+  if (criteria.years && criteria.years.length > 0) {
+    const year = captureYearKey(ref.collectionDate);
+    if (!year || !criteria.years.includes(year)) return false;
+  }
+
   return true;
 }
 
@@ -944,9 +988,15 @@ export function applyCollectionFilters(
     // already lets it participate in chronological sort. An undated GIF keeps passing through
     // unconditionally -- there is no day to match against. This is an intentional asymmetry
     // with undated IMAGES, which DO drop out once a day is selected (see filterContent above).
-    if (isGifContent(item) && item.captureDate && criteria.dates && criteria.dates.length > 0) {
-      const day = captureDayKey(item.captureDate);
-      return day !== null && criteria.dates.includes(day);
+    if (isGifContent(item) && item.captureDate) {
+      if (criteria.dates && criteria.dates.length > 0) {
+        const day = captureDayKey(item.captureDate);
+        if (day === null || !criteria.dates.includes(day)) return false;
+      }
+      if (criteria.years && criteria.years.length > 0) {
+        const year = captureYearKey(item.captureDate);
+        if (year === null || !criteria.years.includes(year)) return false;
+      }
     }
     // Other non-image blocks (text, panels, undated GIFs) are structural -- never filtered out.
     return true;
@@ -1075,7 +1125,8 @@ export function hasFilterableOptions(
     baseOptions.cameras.values.length > 0 ||
     baseOptions.lenses.values.length > 0 ||
     baseOptions.locations.filterable ||
-    baseOptions.dates.filterable
+    baseOptions.dates.filterable ||
+    baseOptions.years.filterable
   );
 }
 

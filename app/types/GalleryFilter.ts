@@ -35,6 +35,11 @@ export interface FilterState {
   readonly selectedCameras: readonly string[];
   readonly selectedLenses: readonly string[];
   readonly selectedLocations: readonly string[];
+  /**
+   * Calendar years ('YYYY') to include. The coarse counterpart to {@link selectedDates}: a year
+   * also narrows COLLECTION tiles by their own `collectionDate`, which a capture day cannot do.
+   */
+  readonly selectedYears: readonly string[];
   /** ISO calendar days ('YYYY-MM-DD') to include. OR logic: an image matches any selected day. */
   readonly selectedDates: readonly string[];
 }
@@ -49,11 +54,13 @@ export const INITIAL_FILTER_STATE: FilterState = Object.freeze({
   selectedCameras: Object.freeze([] as readonly string[]),
   selectedLenses: Object.freeze([] as readonly string[]),
   selectedLocations: Object.freeze([] as readonly string[]),
+  selectedYears: Object.freeze([] as readonly string[]),
   selectedDates: Object.freeze([] as readonly string[]),
 });
 
 /** Keys of FilterState whose value is a readonly string array. */
 export type ArrayFilterKey =
+  | 'selectedYears'
   | 'selectedDates'
   | 'selectedTags'
   | 'selectedPeople'
@@ -64,10 +71,11 @@ export type ArrayFilterKey =
 /**
  * The canonical list of array dimensions in {@link FilterState} — the single source of truth for
  * "which keys are arrays" (mirrors the array fields in {@link INITIAL_FILTER_STATE}). Consumers
- * iterate this to surface dropdowns and detect active array filters. `selectedDates` is listed
- * first so Date leads the dropdown fallback rendering.
+ * iterate this to surface dropdowns and detect active array filters. The two time dimensions lead
+ * the dropdown fallback rendering, coarse before fine: Year, then Date.
  */
 export const ARRAY_FILTER_KEYS: readonly ArrayFilterKey[] = [
+  'selectedYears',
   'selectedDates',
   'selectedTags',
   'selectedPeople',
@@ -121,12 +129,16 @@ export function cycleFilmFilter(current: FilmFilter): FilmFilter {
 
 /**
  * Array dimensions whose values are mutually exclusive on a single item, making a multi-select
- * meaningless in both combine modes: an image has exactly one capture day and exactly one lens.
- * Two dates OR two disjoint sets (a selection that only ever widens the result); two lenses AND
- * two disjoint sets (a selection that always yields nothing — see `lensMatchMode: 'AND'` in
- * `buildCollectionCriteria`). Both are therefore single-choice, not accumulating.
+ * meaningless in both combine modes: an image has exactly one capture day, one capture year and
+ * one lens. Two dates or two years OR two disjoint sets (a selection that only ever widens the
+ * result); two lenses AND two disjoint sets (a selection that always yields nothing — see
+ * `lensMatchMode: 'AND'` in `buildCollectionCriteria`). All three are single-choice.
  */
-const EXCLUSIVE_FILTER_KEYS: readonly ArrayFilterKey[] = ['selectedDates', 'selectedLenses'];
+const EXCLUSIVE_FILTER_KEYS: readonly ArrayFilterKey[] = [
+  'selectedYears',
+  'selectedDates',
+  'selectedLenses',
+];
 
 /**
  * Toggle a value in one of the array dimensions and emit a Partial update.

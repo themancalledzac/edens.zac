@@ -19,6 +19,13 @@ describe('Footer', () => {
     expect(github).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
+  it('renders the copyright line with the current year', () => {
+    const { container } = render(<Footer />);
+
+    const copyright = container.querySelector('p');
+    expect(copyright?.textContent).toBe(`© ${new Date().getFullYear()} Zac Edens`);
+  });
+
   it('is not a nav surface — links only to socials, no internal routes', () => {
     render(<Footer />);
     const hrefs = screen.getAllByRole('link').map(link => link.getAttribute('href'));

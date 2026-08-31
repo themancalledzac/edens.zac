@@ -1,3 +1,4 @@
+import { CopyrightYear } from './CopyrightYear';
 import styles from './Footer.module.scss';
 
 /**
@@ -26,7 +27,9 @@ export function Footer() {
           GitHub
         </a>
       </nav>
-      <p className={styles.copyright}>© {new Date().getFullYear()} Zac Edens</p>
+      <p className={styles.copyright}>
+        © <CopyrightYear /> Zac Edens
+      </p>
     </footer>
   );
 }

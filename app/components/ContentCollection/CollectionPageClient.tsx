@@ -178,6 +178,7 @@ export default function CollectionPageClient({
     selectedCameras: initialCriteria.cameras ?? [],
     selectedLocations: initialCriteria.locations ?? [],
     selectedDates: initialCriteria.dates ?? [],
+    selectedYears: initialCriteria.years ?? [],
   };
 
   const [filterState, setFilterState] = useState<FilterState>(initialFilterState);
@@ -361,6 +362,18 @@ export default function CollectionPageClient({
   const filteredImages = useMemo(() => filteredContent.filter(isImageContent), [filteredContent]);
 
   /**
+   * Whether the filter emptied the page. Collection tiles count alongside images: a
+   * collection-dominant page like /all-collections has zero images at every moment, so keying this
+   * on images alone claimed nothing matched while the matching tiles were on screen. Structural
+   * blocks (text, panels, undated GIFs) are excluded because the filter never removes them, and
+   * counting them would suppress the message on a page that genuinely emptied.
+   */
+  const nothingMatched = useMemo(
+    () => filteredImages.length === 0 && filteredContent.filter(isContentCollection).length === 0,
+    [filteredImages, filteredContent]
+  );
+
+  /**
    * Photos-per-row anchor, measured on the UNFILTERED content.
    *
    * Width-cost scales with rating, so without this a filter that shifts the rating mix silently
@@ -392,14 +405,14 @@ export default function CollectionPageClient({
     if (!hasActiveFilters) return null;
     const dims = extractCollectionFilterOptions(filteredImages, allCollections);
 
-    // `dates` and `lenses` are single-valued per image, so each is SELF-EXCLUSIVE: deriving its
+    // `dates`, `years` and `lenses` are single-valued per image, so each is SELF-EXCLUSIVE: deriving its
     // availability from `filteredImages` -- which already reflects that dimension's own active
     // selection -- collapses every other option to "unavailable" the instant one is picked, and a
     // disabled chip cannot be switched to. Re-derive each from a pass with its OWN key omitted, so
     // its options never grey each other out while an option ruled out by a DIFFERENT active filter
     // (e.g. camera) still greys out correctly. Both are single-choice in the toolbar
     // (`EXCLUSIVE_FILTER_KEYS`), which is what makes switching the only reachable move.
-    const availabilityWithout = (key: 'dates' | 'lenses'): CollectionFilterDimensions => {
+    const availabilityWithout = (key: 'dates' | 'years' | 'lenses'): CollectionFilterDimensions => {
       const { [key]: _omitted, ...selfExcluded } = criteria;
       const content = applyCollectionFilters(allContent, allImages, selfExcluded);
       const gifs = content.filter(
@@ -414,6 +427,7 @@ export default function CollectionPageClient({
       lenses: availabilityWithout('lenses').lenses.values,
       locations: dims.locations.values,
       dates: availabilityWithout('dates').dates.values,
+      years: availabilityWithout('years').years.values,
     };
   }, [hasActiveFilters, filteredImages, allCollections, criteria, allContent, allImages]);
 
@@ -588,8 +602,8 @@ export default function CollectionPageClient({
   ) : (
     <>
       {grid}
-      {hasActiveFilters && filteredImages.length === 0 && (
-        <EmptyState align="page">No images match your filters.</EmptyState>
+      {hasActiveFilters && nothingMatched && (
+        <EmptyState align="page">Nothing matches your filters.</EmptyState>
       )}
     </>
   );
