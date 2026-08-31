@@ -51,14 +51,24 @@ The documented incremental path is opt-OUT, not opt-in: enable the flag, delete 
 codemod, `npx @next/codemod@canary cache-components-instant-false ./app`), then convert routes one
 at a time. `instant` is real in 16.3.1 — `next/dist/build/segment-config/app/app-segment-config.js:144`.
 
-**One hard blocker that `instant = false` explicitly cannot defer — CLEARED by #375.**
-Synchronous IO during prerender is a build error regardless of opt-out, and
-`app/components/Footer/Footer.tsx` called `new Date().getFullYear()` from a server component in the
-**root layout**, so that one line failed the prerender of every route in the app. #375 moved the
-year into a Client Component; `grep -c 'new Date' app/components/Footer/Footer.tsx` returns **0**
-as of 2026-08-31 (5). Kept here because it is the reason step 1 existed, and because the same trap
-applies to any `Date`, `Math.random()` or `crypto.randomUUID()` added to a prerendered server
-component later.
+**One hard blocker that `instant = false` cannot defer — NOT cleared by #375, corrected
+2026-08-31 (6).** Synchronous IO during prerender is a build error regardless of opt-out.
+`Footer.tsx` called `new Date().getFullYear()` from a server component in the **root layout**, so
+that one line failed the prerender of every route. #375 moved the year into a Client Component,
+and `grep -c 'new Date' app/components/Footer/Footer.tsx` does return **0** — but the call did not
+go away, it moved to `app/components/Footer/CopyrightYear.tsx`, and **a Client Component is still
+server-rendered during prerender**. The read still happens at build time.
+
+Proven by build, not by reading. With the flag on and the 19 exports deleted, `next build` failed
+to prerender `/_not-found` — a route with no data fetching at all, rendering the root layout plus
+`StatusPage`. Replacing `new Date().getFullYear()` with a literal and rebuilding, changing nothing
+else, made `/_not-found` build. One variable moved.
+
+`CopyrightYear.tsx`'s own docblock states the opposite and is wrong: isolating the read in a Client
+Component is true, and "so no Server Component reads Date synchronously" is true, but neither
+implies the prerender is clear. Of Next's two documented escapes — Suspense plus `connection()`, or
+a Client Component — step 1 took the one that does not work here. The same trap applies to any
+`Date`, `Math.random()` or `crypto.randomUUID()` anywhere in a prerendered tree, client or server.
 
 **What `/[slug]` inherits — the question the guardrail asked.** `CollectionPageWrapper` is rendered
 by `app/page.tsx`, `app/[slug]/page.tsx` and `app/all-client-galleries/page.tsx`. Restructuring its
@@ -67,22 +77,78 @@ home-only version of it short of forking the wrapper or threading a flag through
 keep `instant = false` so it is not _validated_, but it still gets the restructured tree. So the
 guardrail's premise — that the wrapper change can be confined — does not hold either.
 
-**Adopted 2026-08-31 (decision #12): full speed.** Step 1 is shipped; steps 2 and 3 stand as
-written, and PF12 landing removes the reason to hold step 2.
+**Adopted 2026-08-31 (decision #12): full speed.** Step 2 was then attempted on 2026-08-31 (6)
+and stopped as blocked; see the build evidence below. Step 3 was not started, per its own
+precondition.
 
 **Revised work list**, in order, each a sitting:
 
-1. ~~Fix `Footer`'s `new Date()`.~~ **SHIPPED (#375).** The year renders from a Client Component.
-   Next documents two escapes for synchronous IO during prerender — Suspense plus `connection()`,
-   or a Client Component. Suspense would have made the footer a streamed hole on every page, so
-   the year popped in after paint; a client leaf costs a few bytes and keeps the footer in the
-   static shell. Worth carrying forward: `instant = false` does NOT clear synchronous-IO errors
-   (`migrating-to-cache-components.md:85`), so this genuinely blocked every route, not just home.
-2. The mechanical PR: `cacheComponents: true`, delete 19 `force-dynamic` exports, codemod
-   `instant = false` onto the segments. Verify `next build` and the full suite. No behavior change
-   intended, but this is where fetch-caching semantics shift app-wide, so it wants its own review.
-3. Convert home: Suspense around `resolveSsrViewport()` and `meServer()` in the wrapper, and decide
-   what `/[slug]` and `/all-client-galleries` do with the same tree.
+1. **Hoist cookie forwarding out of `fetchBase`.** This is the real MR 1 and it was not on the
+   list. `getServerCookieHeader()` is awaited inside `fetchBase`
+   (`app/lib/api/core.ts:269`), which every server-side backend read funnels through, so no read
+   can be wrapped in `use cache` — `cookies()` in a cached scope throws
+   `next-request-in-use-cache`, and per `use-cache.md:196` that failure "can pass `next build` and
+   fail under `next start`". Pass the cookie header in as an argument, or give the cacheable reads
+   a cookie-free path. Until this lands, nothing else in the list is reachable.
+2. **Re-do step 1 properly.** Move the footer year to Suspense plus `connection()`, or drop the
+   dynamic year outright (a copyright line does not need to be live). The Client Component does not
+   escape the prerender.
+3. **Decide what the build does about the backend.** Five of the 19 `force-dynamic` exports exist
+   precisely so `next build` never calls the backend — the canonical comment is at
+   `app/tag/[slug]/page.tsx:11-17`. Deleting them makes the build fetch, which is what failed
+   below. `instant = false` does not prevent it. Either the cacheable reads get build-time-safe
+   fallbacks, or those routes need `generateStaticParams` returning nothing meaningful, or they
+   stay dynamic by another means.
+4. **Then** the flag flip and the codemod, with the six tagged fetches rewritten as `use cache`
+   helpers carrying `cacheLife`/`cacheTag` so `/api/revalidate` still has something to invalidate.
+5. **Then** convert home: Suspense around `resolveSsrViewport()` and `meServer()` in the wrapper,
+   and decide what `/[slug]` and `/all-client-galleries` do with the same tree.
+
+### ATTEMPTED AND STOPPED 2026-08-31 (6) — step 2 is not mechanical
+
+Run under the guardrail "no behaviour change intended; verify with `next build` plus the full
+suite, not by reasoning". The build is what disproved it. Every number below is from a command,
+and each is reproducible by re-running it.
+
+**Baseline.** `next build` on `main` succeeds. Every route reports `ƒ` (dynamic) except
+`/_not-found`; 3 static pages generated. Nothing prerenders today.
+
+**Flag alone.** `cacheComponents: true` and nothing else: the build fails with
+`Route segment config "dynamic" is not compatible with nextConfig.cacheComponents` listing exactly
+**19 files**. The board's count was right.
+
+**Full mechanical migration.** Delete all 19 exports, then
+`npx @next/codemod@canary cache-components-instant-false ./app --force` — it adds
+`export const instant = false` to **21 files** (19 pages + both layouts), each with a TODO comment.
+The build now attempts 22 static pages instead of 3, and **fails**:
+
+- `/_not-found` — the root-layout `new Date()` above.
+- `/collections` — `ApiError: During prerendering, fetch() rejects when the prerender is complete`,
+  thrown at `app/lib/api/core.ts:236` via `getScopedAllCollections`
+  (`app/lib/api/collections.ts:130`), called from `app/collections/page.tsx:100`. This is the
+  build-container-cannot-reach-the-backend case the force-dynamic comments were written for.
+- `/` and `/search` — `Failed to build ... because it took more than 60 seconds`, three attempts
+  each, then the export exits. `/search` fails **despite already having a Suspense boundary and
+  `instant = false`**, which is the clearest single sign that the codemod is not the escape hatch
+  the row assumed.
+
+**Why `instant = false` does not rescue any of it.** It is a validation opt-out, not a rendering
+one. `migrating-to-cache-components.md` says plainly that it "does not force the route to be
+dynamic" and does not clear synchronous-IO build errors. The build still renders the tree, so it
+still calls the backend and still evaluates `new Date()`.
+
+**The behaviour change the guardrail was watching for is real and is in the fetches.** Under
+`cacheComponents` a bare `fetch` is dynamic; `next: { revalidate, tags }` applies only inside a
+`use cache` scope. Six call sites currently cache on `TIMING.revalidateCache = 3600` with tags —
+`collections-index`, `collection-{slug}`, `collections-location-{slug}` (`app/lib/api/collections.ts:84,108,151`),
+`content-tags`, `content-locations`, `search-images` (`app/lib/api/content.ts:42,58,139`). All six
+silently stop being cached, and `revalidateTag` in `app/api/revalidate/route.ts:62,69` loses its
+targets. That is a change to the hottest reads on the site, landing invisibly.
+
+**One more thing to weigh before adopting.** The `fetch` Data Cache persists across deployments and
+instances; `use cache` defaults to in-memory, scoped to one deployment and discarded on instance
+teardown. On Amplify Lambda the 1-hour collection cache becomes per-instance unless a cache handler
+or `use cache: remote` is configured. Measure before assuming it is a wash.
 
 **Sequencing risk, now retired.** Merging to `main` still auto-deploys to production in ~15
 minutes, but since PF12 only a commit with green CI can get to `main`. Step 2 changes caching

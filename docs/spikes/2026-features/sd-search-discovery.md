@@ -18,8 +18,61 @@ From the 004 location-filter-bar plan's unshipped tail, verified absent from
 `app/types/GalleryFilter.ts` (state today: `selectedTags`, `selectedPeople`, `selectedCameras`,
 `selectedLenses`, `selectedLocations`, `selectedYears`, `selectedDates`):
 
-- Focal-length range filters (Wide/Normal/Tele)
-- Film-stock secondary filter, conditional on Film active with 2+ stocks
+- ⛔ **Focal-length range filters (Wide/Normal/Tele) — BUILT AND DROPPED 2026-08-31 (6). Do not
+  rebuild.** Written in full as **#379**, verified, then closed unmerged on the user's call: the
+  dimension is not wanted, and the direction is fewer lens-related filters rather than more. Lens
+  itself stays exactly as it is — that was asked and confirmed. Nothing merged; `main` never
+  carried it.
+
+  The rest of this entry is kept because the work was done and the findings are real, so nobody
+  re-derives them. What it would have been: `selectedFocalRanges`,
+  `?focal=`, a dropdown with `optionLabels` mapping `wide`/`normal`/`tele` to Wide/Normal/Tele,
+  single-choice like lenses and years. It needed no `FilterToolbar` change at all — the
+  `ARRAY_FILTER_KEYS` loop renders a dropdown for any dimension a page supplies, so the whole
+  render cost was one entry in `toCollectionDimensions`. 8 source files, 6 test files, +475/−10,
+  4648 tests green.
+
+  **The open data question is answered: the metadata is there.** Sampled 281 images across 15
+  collections against the live backend — 207 carry `focalLength` (74%), and the format is
+  near-uniformly `'24 mm'` (206 of 207, plus one bare `'50mm'` and decimals like `'25.5 mm'`), all
+  inside the parser's 4–2000mm sanity range. The gap is film, not focal length: `dolomites-film`
+  0/30, `lisbon-film` 0/23, `nyc-film` 1/12, `california-2026` 0/10, because film scans carry no
+  EXIF, while digital collections run at or near 100%. Verified in the browser that the dimension
+  self-hides on `/dolomites-film` through the existing two-value `filterable` gate.
+
+  **This is the first dimension whose options are a derived vocabulary rather than observed
+  values.** Every other one lists what is in the data; the three bands are fixed, so
+  `extractCollectionFilterOptions` reports which of them the images populate. Practical difference:
+  an empty year simply never gets a chip, whereas a band has to be computed as populated.
+
+  **The parser was restored from `266c56c`, not rewritten.** It and its 22-case suite were deleted
+  as orphans three weeks after the old `selectedLensTypes` dimension was removed — and that removal
+  was "lens NAMES beat lens types once lens names exist", not "the bucketing is wrong". Focal range
+  cuts across lenses in a way names cannot, which the live data shows directly: 24mm (51) and 70mm
+  (43) dominate, one 24-70mm zoom at both extremes. A prior 2026-06-01 decision had suppressed the
+  dimension when a single zoom spanned two buckets, on the reasoning that the dropdown showed the
+  same images either way. That does not hold — 24mm and 70mm are different photographs — so the
+  gate is bucket-count ≥ 2 with no lens-count guard, which would have suppressed it exactly where
+  it is most useful.
+
+  **None of that verification mattered to the outcome, and that is the lesson.** The dimension
+  worked, on real data, in the browser. It was dropped because it was not wanted. No guardrail on
+  this board asks that question — they all assume the item should exist and only check that it is
+  built correctly. Hoisted into "How to use this doc" on the main board: for a slice whose value is
+  "one more way to narrow a list", ask first.
+
+  Two things #376's write-up warned about, both handled in the same commit: `EVERY_CRITERION` in
+  the drift guard gained `focalRanges` (without it the guard silently stops guarding), and
+  `availabilityWithout('focalRanges')` re-derives availability with its own key omitted, so picking
+  one band does not grey out the other two. Browser-verified: with Tele selected, Wide and Normal
+  stay enabled.
+
+- Film-stock secondary filter, conditional on Film active with 2+ stocks — **do not start without
+  asking.** It is the last remaining dimension on this list, and the one immediately after a
+  dimension that was built and rejected. Confirm it is wanted first. If it is, note the data
+  question inverts: film collections are exactly the ones #379 found carry no EXIF, so stock is the
+  one dimension whose data lives where focal length's did not — check coverage against the live
+  backend before sizing it.
 - ~~Year filter chips~~ **SHIPPED (#376).** `selectedYears` ('YYYY'), `?year=`, flat chips
   collapsing to a dropdown above eight, single-choice like days and lenses. The row filed this
   beside the other three as a peer and it is not one: year is the only dimension here that reaches
