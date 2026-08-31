@@ -194,7 +194,7 @@ scorecard below keeps the est/actual pairs that still matter.
 | MR  | Scope                                                             | Status                                                                                                                                                            |
 | --- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | B8  | Fill the required-coverage gaps                                   | ◐ 5 of 6 — #266, #267, #295 (share+messages), #296 (collectionStorage); only the optional bullet is open                                                          |
-| C9  | Dimensionless cover renders no header, missing cover does         | ☐ BLOCKED — **on backend Bug #21, not on the user**. Answered 2026-08-30: never fall back. FE ships nothing until the backend stops writing `0`                   |
+| C9  | Dimensionless cover renders no header, missing cover does         | ☐ **UNBLOCKED 2026-08-31** — backend Bug #21 shipped (#249), defaults are `null`. Closes at zero FE code **if** no pre-#249 `0 x 0` rows survive; check first     |
 | C11 | `mapError` has no 429 branch for the share-email limiter          | ☐ COLD — small; backend #233 added the 429 after C7 closed                                                                                                        |
 | D10 | `getApiBaseUrl` concatenates `NEXT_PUBLIC_APP_URL` raw            | ☐ COLD — reuse `configuredAppOrigin()`; same class as D8                                                                                                          |
 | E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook)           | ◐ waste FIXED ✅ #337; hook REJECTED (9–11 params); two smaller wasted paths open; its guard's exit bug is C10                                                    |
@@ -208,15 +208,22 @@ scorecard below keeps the est/actual pairs that still matter.
 | G4  | Docblock standard — length, structure, and no history             | ◐ intersection pass done (#310); ~26 real history blocks + ~17 uncounted label blocks; read, don't regex                                                          |
 | H1  | Merge `Following` into `Collections` on `/user`                   | ☐ BLOCKED (user) — count semantics, followed-tile marker, and the 500-row catalog fetch                                                                           |
 
-### NEXT RUN — updated 2026-08-31
+### NEXT RUN — updated 2026-08-31 (3)
 
 **G6 shipped as PR #351** (2026-08-31) — it was this block's "first MR" and is now closed; write-up
 in [group-g-decisions.md](2026-summer-refactor/group-g-decisions.md).
 
+**Do C9 first, ahead of everything below.** It is not new work — it is a box that may already be
+ready to tick. Backend Bug #21 shipped as #249 and met C9's own stated closing condition, and this
+board did not know for a day. The whole cost is one check for surviving pre-#249 `0 x 0` rows; if
+there are none, C9 closes at zero frontend code. An item that is already done is cheaper than the
+cheapest item that is not.
+
 **In order:**
 
 1. **C11** — the 429 branch in `ShareCard`'s `mapError`. Cheapest fully-specified item on the
-   board (+5 src / +15 test), and it banks an MR early.
+   board (+5 src / +15 test), and it banks an MR early. **C14 (+2 src / +15 test) is now cheaper
+   and can ride the same sitting** — two renamed query params, disjoint tree.
 2. **D10** — `getApiBaseUrl` reuses `configuredAppOrigin()`. Small, self-contained, refs verified
    2026-08-30.
 3. **E18** — location-tag revalidation gaps. Four unwired paths plus the stale-`previous` defect;
@@ -225,8 +232,8 @@ in [group-g-decisions.md](2026-summer-refactor/group-g-decisions.md).
 **No blocked-on-user questions are outstanding for this run.** The 2026-08-30 session asked C9 and
 the GIF-refresh question and got both answered; C9's answer moved it to the backend and the
 GIF question folded into F1. The remaining user-blocked items (H1, F4, G3, `.srOnly`, G2b, the CSS
-guard) are all product or policy calls that no item in this run depends on. Batch them whenever the
-user has a sitting — but do not hold this run for them.
+guard, and C15 and H7 added 2026-08-31 (3)) are all product or policy calls that no item in this run
+depends on. Batch them whenever the user has a sitting — but do not hold this run for them.
 
 **Re-derive refs between MRs only if an MR lands in a file a later one reads.**
 C11, D10 and E18 touch disjoint trees (`ShareCard.tsx`, `lib/api/core.ts`, and the
@@ -244,36 +251,44 @@ stamp missed six items, and all four swept later turned out wrong — **UNSTAMPE
 use it rather than guessing, then actually sweep it.** The shipped-but-unticked history behind that
 is in [lessons.md](2026-summer-refactor/lessons.md).)
 
-| Item      | State                 | If blocked: the question, and who answers it                                                                                                                                                                                                                                                                                                                |
-| --------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **E7**    | COLD                  | —— the waste shipped as a handoff guard (#337); the hook is REJECTED with measurement. Two smaller wasted paths open (`EditModeLayer.tsx:280` reorder path; third `processContentBlocks` caller at `useCollectionEdit.tsx:556`)                                                                                                                             |
-| **E18**   | COLD                  | —— four unwired revalidation paths + the stale-`previous` defect; fixes and tests specified                                                                                                                                                                                                                                                                 |
-| **B8**    | COLD                  | —— 5 of 6 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                                                                                                                                       |
-| **F3**    | COLD                  | —— `ReorderMove`, `getUserPage` and the logger labels shipped; the invite bullet is COSTED and REJECTED (do not re-open the 3-function version). **Six bullets open.** `CollectionPageWrapper` (3 src / 6 test) and the `AdminPanel/` fold (5 src / 3 test) re-verified 2026-08-29 and are the two freshest                                                 |
-| **G4**    | COLD                  | —— count reproduces (**1415** blocks / 49 hits, re-run 2026-08-30; was 1413 at `cb6b87d` — the 49 hits and their per-term split are unchanged and exact) but ~23 are false positives; ~26 real + ~17 board-label blocks must be read block-by-block, not regexed                                                                                            |
-| **C11**   | COLD                  | —— one `mapError` branch + one test                                                                                                                                                                                                                                                                                                                         |
-| **C12**   | COLD                  | —— `.metadataToggle` still steps 36 → 40px against a 44px tap target; SaveHeart's identical gap closed in #367                                                                                                                                                                                                                                              |
-| **C13**   | COLD                  | —— `app/[slug]/page.tsx` metadata says "Zac Eden"; `/search`, `/tag` and `/location` all say "Zac Edens". One word                                                                                                                                                                                                                                          |
-| **G7**    | COLD                  | —— six `describe('Vercel BFF proxy …')` names in `tests/api/proxy/route.test.ts`; production is Amplify (feature-board PF9, #365)                                                                                                                                                                                                                           |
-| **D10**   | COLD                  | —— reuse `configuredAppOrigin()` in `core.ts`; docblock fix rides along                                                                                                                                                                                                                                                                                     |
-| **F1**    | COLD                  | —— largest open item; no unanswered question, just size                                                                                                                                                                                                                                                                                                     |
-| **H1**    | BLOCKED — **user**    | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? Also: accept a 500-row catalog fetch on every `/user` load, or ask the backend to return followed collections on the user-page read?                                                                                         |
-| **C9**    | BLOCKED — **backend** | —— **ANSWERED 2026-08-30 and re-routed. Never fall back.** The user's answer ("we should NEVER HAVE AN IMAGE WITHOUT height/width") made this a data-integrity question about the backend, filed there as Bug #21. The FE ships nothing until the backend stops writing `0`                                                                                 |
-| **F4**    | BLOCKED — **user**    | Stated in the item                                                                                                                                                                                                                                                                                                                                          |
-| **G3**    | BLOCKED — **user**    | Delete `/user/selects` or rebuild it                                                                                                                                                                                                                                                                                                                        |
-| **E9**    | BLOCKED — **user**    | `.srOnly`: SCSS `%placeholder`, yes or no? Both COLD bullets shipped in #300                                                                                                                                                                                                                                                                                |
-| **G2**    | BLOCKED — **user**    | G2b: does the migration (and the `error` flip) cover `.ts` util/lib files? Evidence says yes (the global rule covers every language; #268's standard covers plain function bodies) — a confirm, not a design question. G2c rides other refactors. G2a is COLD                                                                                               |
-| CSS guard | BLOCKED — **user**    | Extend the panel `styles.<key>` guard repo-wide? **Re-measured 2026-08-30: 105 files, 402 distinct keys — both were off by one when written, and neither moved this session.** Commands recorded in the CSS rule in "How to use this doc". **10 files import a CSS module under a name other than `styles`, so a `styles.<key>` regex silently skips them** |
+| Item      | State              | If blocked: the question, and who answers it                                                                                                                                                                                                                                                                                                                |
+| --------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **E7**    | COLD               | —— the waste shipped as a handoff guard (#337); the hook is REJECTED with measurement. Two smaller wasted paths open (`EditModeLayer.tsx:280` reorder path; third `processContentBlocks` caller at `useCollectionEdit.tsx:556`)                                                                                                                             |
+| **E18**   | COLD               | —— four unwired revalidation paths + the stale-`previous` defect; fixes and tests specified                                                                                                                                                                                                                                                                 |
+| **B8**    | COLD               | —— 5 of 6 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                                                                                                                                       |
+| **F3**    | COLD               | —— `ReorderMove`, `getUserPage` and the logger labels shipped; the invite bullet is COSTED and REJECTED (do not re-open the 3-function version). **Six bullets open.** `CollectionPageWrapper` (3 src / 6 test) and the `AdminPanel/` fold (5 src / 3 test) re-verified 2026-08-29 and are the two freshest                                                 |
+| **G4**    | COLD               | —— count reproduces (**1415** blocks / 49 hits, re-run 2026-08-30; was 1413 at `cb6b87d` — the 49 hits and their per-term split are unchanged and exact) but ~23 are false positives; ~26 real + ~17 board-label blocks must be read block-by-block, not regexed                                                                                            |
+| **C11**   | COLD               | —— one `mapError` branch + one test                                                                                                                                                                                                                                                                                                                         |
+| **C12**   | COLD               | —— `.metadataToggle` still steps 36 → 40px against a 44px tap target; SaveHeart's identical gap closed in #367                                                                                                                                                                                                                                              |
+| **C13**   | COLD               | —— `app/[slug]/page.tsx` metadata says "Zac Eden"; `/search`, `/tag` and `/location` all say "Zac Edens". One word                                                                                                                                                                                                                                          |
+| **C14**   | COLD               | —— `getCollectionsByLocation` sends `page`/`size`; the location endpoint reads `collectionPage`/`collectionSize` and drops both. Two renamed params. **Cheapest item on the board**                                                                                                                                                                         |
+| **C15**   | BLOCKED — **user** | Should `/location/{slug}` read the location endpoint's own `images` array instead of `searchImages({ locationId })`? The two return different sets (orphans only vs every image at the location), so it changes what the page shows. Cost of not deciding is zero — the props are wrong on paper and right in practice                                      |
+| **C16**   | COLD               | —— `imageWidth`/`imageHeight` declared non-nullable; backend #249 now writes `null`. No runtime change; the value is in what `tsc` complains about after the widening                                                                                                                                                                                       |
+| **H7**    | BLOCKED — **user** | Is passkey management on `/admin/users/[id]` wanted? Backend #257 built both routes; this repo calls neither                                                                                                                                                                                                                                                |
+| **G7**    | COLD               | —— six `describe('Vercel BFF proxy …')` names in `tests/api/proxy/route.test.ts`; production is Amplify (feature-board PF9, #365)                                                                                                                                                                                                                           |
+| **D10**   | COLD               | —— reuse `configuredAppOrigin()` in `core.ts`; docblock fix rides along                                                                                                                                                                                                                                                                                     |
+| **F1**    | COLD               | —— largest open item; no unanswered question, just size                                                                                                                                                                                                                                                                                                     |
+| **H1**    | BLOCKED — **user** | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? Also: accept a 500-row catalog fetch on every `/user` load, or ask the backend to return followed collections on the user-page read?                                                                                         |
+| **C9**    | COLD               | —— **UNBLOCKED 2026-08-31.** Backend Bug #21 shipped (#249): both dimension defaults are `null`, verified in that repo's `origin/main`. Closes at zero FE code **if** no pre-#249 `0 x 0` rows survive — #249 added no backfill, so check before ticking                                                                                                    |
+| **F4**    | BLOCKED — **user** | Stated in the item                                                                                                                                                                                                                                                                                                                                          |
+| **G3**    | BLOCKED — **user** | Delete `/user/selects` or rebuild it                                                                                                                                                                                                                                                                                                                        |
+| **E9**    | BLOCKED — **user** | `.srOnly`: SCSS `%placeholder`, yes or no? Both COLD bullets shipped in #300                                                                                                                                                                                                                                                                                |
+| **G2**    | BLOCKED — **user** | G2b: does the migration (and the `error` flip) cover `.ts` util/lib files? Evidence says yes (the global rule covers every language; #268's standard covers plain function bodies) — a confirm, not a design question. G2c rides other refactors. G2a is COLD                                                                                               |
+| CSS guard | BLOCKED — **user** | Extend the panel `styles.<key>` guard repo-wide? **Re-measured 2026-08-30: 105 files, 402 distinct keys — both were off by one when written, and neither moved this session.** Commands recorded in the CSS rule in "How to use this doc". **10 files import a CSS module under a name other than `styles`, so a `styles.<key>` regex silently skips them** |
 
-**Six of the fifteen rows are blocked on the user, down from nine of nineteen.** The 2026-08-30
-session cleared three by asking two questions and reading one other repo: C9 and E6 bullet 1 were
-answered directly, and G5 was closed by a backend decision that had already merged. **Two of the
-three cost no user time at all** — the answer was sitting in `edens.zac.backend`'s HEAD commit and
-its `.claude/CLAUDE.md`. Read the other repo before adding a row to the blocked list.
+**Eight of the twenty-two rows are blocked on the user** (re-counted 2026-08-31 (3); the standing
+"six of fifteen" line had been stale by three rows since C12/C13/G7 were filed without updating it).
+The 2026-08-30 session cleared three by asking two questions and reading one other repo: C9 and E6
+bullet 1 were answered directly, and G5 was closed by a backend decision that had already merged.
+**Two of the three cost no user time at all** — the answer was sitting in `edens.zac.backend`'s HEAD
+commit and its `.claude/CLAUDE.md`. Read the other repo before adding a row to the blocked list.
+**It paid a second time on 2026-08-31 (3):** C9's backend blocker had already shipped as #249, and
+nothing here knew.
 
-The six that remain — H1, F4, G3, E9's `.srOnly`, G2b, and the CSS guard — are genuine product or
-policy calls. None of them blocks the current run. Put them to the user as one batch when there is
-a sitting for it, but do not treat them as a bottleneck on shipping.
+The eight that remain — H1, F4, G3, E9's `.srOnly`, G2b, the CSS guard, and the two filed
+2026-08-31 (3) (C15's grid-source question and H7's is-this-wanted) — are genuine product or policy
+calls. None of them blocks the current run. Put them to the user as one batch when there is a
+sitting for it, but do not treat them as a bottleneck on shipping.
 
 **Shipped write-ups are not on this page.** Closed items live in
 [`2026-summer-refactor/`](2026-summer-refactor/), one file per group (each with a "Closed rows"
@@ -338,11 +353,17 @@ The project rule requires tests for these and they had none. The five shipped sl
 
 ---
 
-## Group C — Bug fixes — C1–C8 and C10 shipped; C9 and C11 open
+## Group C — Bug fixes — C1–C8 and C10 shipped; C9, C11–C16 open
 
 C1–C8 merged (#264, #281, #282, #279, #283, #327, #331, #291); **C10 merged 2026-08-30 (#346)**.
 Full write-ups and closed rows: [group-c-bugs.md](2026-summer-refactor/group-c-bugs.md). C4's
 `collections-location-${slug}` report became E12.
+
+**C14, C15 and C16 were filed 2026-08-31 (3) from a backend-side cross-repo review** — they were
+found by an agent reading `edens.zac.backend`, not this repo. Every backend `file:line` below was
+re-resolved by hand against `edens.zac.backend`'s `origin/main` at `9a8f70f` on the day of filing,
+per this board's cross-repo rule. Re-verify them the same way before acting; they are outside every
+drift sweep here.
 
 ### ☐ C11 · `mapError` has no 429 branch for the share-email rate limiter
 
@@ -384,7 +405,132 @@ which is a second place the byline now lives.
 - [ ] Fix the one string, and decide whether the byline should come from a shared constant rather
       than four literals. Est +1 src if literal, +6 src if consolidated.
 
-### ☐ C9 · A dimensionless cover renders no header — ANSWERED 2026-08-30, now BLOCKED on backend Bug #21
+### ☐ C14 · `getCollectionsByLocation` sends `page` and `size`; the location endpoint reads neither
+
+Filed 2026-08-31 (3) from the backend cross-repo review. **Live, mild. Cheapest item on the board.**
+
+`app/lib/api/collections.ts:150` builds the query string as
+`` `/collections/location/${encodeURIComponent(slug)}?page=${page}&size=${size}` ``. The backend's
+handler takes four differently-named params — `collectionPage`, `collectionSize`, `imagePage`,
+`imageSize` (`CollectionControllerProd.getLocationPage`, backend
+[#258](https://github.com/themancalledzac/edens.zac.backend/pull/258) tree). Spring binds none of
+`page`/`size` and drops them silently, so every request gets the defaults.
+
+**Why nothing looks broken.** The backend's `collectionSize` default is `35` and
+`PAGINATION.collectionPageSize` is also `35` (`app/constants/index.ts:175`), so today the ignored
+value and the applied value happen to agree. The defect is that
+`getCollectionsByLocation(slug, page, size)` at `app/lib/api/collections.ts:142-144` advertises two
+parameters that do nothing: any caller asking for page 1 silently gets page 0. There is no such
+caller yet — `app/location/[slug]/page.tsx:81` calls it with the slug alone — so this is a trap for
+the next one, not a bug a user can see.
+
+**Do not copy the fix to the two sibling calls.** `?page=&size=` is correct at
+`collections.ts:83` (`/collections`) and `:107` (`/collections/${slug}`); only the location route
+renamed its params. Check each route's own handler rather than sweeping the pattern.
+
+- [ ] Rename the two query params to `collectionPage` and `collectionSize` in
+      `getCollectionsByLocation`. Recommended test: assert the fetched URL contains
+      `collectionPage=1` when the function is called with page 1 — today it contains `page=1`, so
+      the test fails before the fix and passes after. Est +2 src / +15 test.
+
+### ☐ C15 · `LocationPage` props are typed image-only; the backend field they name is now mixed content — BLOCKED on a product decision
+
+Filed 2026-08-31 (3) from the backend cross-repo review. **Dormant. Do not rush it — the fix is
+worthless until the product question below is answered.**
+
+**What the backend changed.** [#258](https://github.com/themancalledzac/edens.zac.backend/pull/258)
+widened `LocationPageResponse.images` from `List<ContentModels.Image>` to `List<ContentModel>`. The
+orphan queries were renamed `findOrphanContentByLocationName`/`countOrphanContentByLocationName`
+and now predicate on `content_type IN ('IMAGE', 'GIF')` instead of joining `content_image`. A
+location-tagged GIF serializes into that array with `contentType: "GIF"`.
+
+**What this repo declares.** Both props are still image-only:
+
+- `app/components/LocationPage/LocationPage.tsx:14` — `images: ContentImageModel[]`
+- `app/components/LocationPage/LocationPageClient.tsx:29` — `images: ContentImageModel[]`
+
+**Why it is dormant, and this is the part the backend board had wrong.** Neither prop is fed by
+that endpoint. `app/location/[slug]/page.tsx:80-83` fetches two things in parallel:
+`getCollectionsByLocation(location.slug)` and `searchImages({ locationId: location.id })`.
+`getCollectionsByLocation` (`app/lib/api/collections.ts:142-158`) hands the body to
+`parseCollectionArrayResponse` (`:55-68`), which returns `data.content ?? data.collections ??
+data.items` — it takes `.collections` and throws `.images`, `.location`, `.totalCollections` and
+`.totalImages` away. The `images` prop comes from `searchImages`
+(`app/lib/api/content.ts:128-153`), which hits `/api/read/content/images/search` and returns
+images only, untouched by #258. **No GIF can reach this page today**, whatever the prop says.
+
+**What would actually happen if one did.** Nothing crashes and no tile renders blank.
+`LocationPageClient.tsx:55-57` already narrows before rendering, so the GIF is dropped from the
+grid. But the _unfiltered_ array still feeds the count and all three filter helpers:
+
+- `LocationPage.tsx:41` — `count={images.length}` on `CollectionHeader`
+- `LocationPageClient.tsx:44` — `extractFilterOptions(images)`
+- `LocationPageClient.tsx:46` — `computeFilterVisibility(images)`
+- `LocationPageClient.tsx:64` — `computeFilterCounts(images, ...)`
+
+So the symptom is an off-by-one header — "12 photos" over 11 tiles — plus filter counts that
+include a row the grid does not show. Not a crash, not a wrong aspect ratio.
+
+**Copy the precedent; do not invent one.** `CollectionPageClient.tsx:317-359` already solves this
+exact shape. It holds mixed `allContent`, derives `allImages = allContent.filter(isImageContent)`
+at `:322` purely to compute filter dimensions, and passes the mixed set to the renderer. Everything
+downstream of `LocationPageClient` already accepts mixed content — `filterContent`
+(`app/utils/contentFilter.ts:147`), `extractFilterOptions` (`:280`), `computeFilterCounts`
+(`:492`), `processContentBlocks` (`app/utils/contentLayout.ts:408-414`) and
+`ContentBlockWithFullScreen` (`app/components/Content/ContentBlockWithFullScreen.tsx:26`).
+**Only `computeFilterVisibility` (`contentFilter.ts:421`) is image-typed**, which is why the
+precedent narrows for that one call and nothing else. `normalizeContentToRendererProps`
+(`app/utils/contentRendererUtils.ts`) already has a GIF branch emitting `isGif`/`thumbnailUrl`, so
+the renderer needs nothing new.
+
+**Fix shape, when it is wanted.** Widen both props to `ViewableContent`
+(`app/types/Content.ts:443` — exactly `ContentImageModel | ContentParallaxImageModel |
+ContentGifModel`, the right union for a page showing stills and GIFs and nothing else). Keep an
+`isImageContent` narrowing for the `computeFilterVisibility` call. Delete the
+`contentType === 'IMAGE'` filter at `LocationPageClient.tsx:55-57`. **Leave `coverImage` at
+`LocationPage.tsx:15` as `ContentImageModel | null`** — a GIF makes a poor header cover, and
+`app/location/[slug]/page.tsx:87` picks it from the `searchImages` result either way.
+
+- [ ] **BLOCKED — user, and it is a product call, not a typing call.** Should `/location/{slug}`
+      switch from `searchImages({ locationId })` to the location endpoint's own `images` array?
+      They do not return the same set. `LocationPageResponse.images` holds **only orphans** — the
+      content at that location not already held by any listed collection — while `searchImages`
+      returns **every** image at the location. Moving would remove from the grid the images already
+      visible inside a collection card above it. That may well be the intent, but it changes what
+      the page shows, and it is the only path by which #258's GIF work ever becomes visible here.
+      **Cost of not deciding is zero** — the props are wrong on paper and right in practice.
+- [ ] If the answer is yes: widen the props as above, and drop the second round-trip. The backend
+      also carries a live N+1 on that endpoint (it hydrates the orphan array per-entity); confirm
+      it is fixed there before routing the page through it.
+- [ ] If the answer is no: widen the props anyway as type hygiene, or record the decision that the
+      page is deliberately images-only and close this item. Est +6 src / +25 test either way.
+
+### ☐ C16 · `imageWidth` / `imageHeight` are declared non-nullable and the backend now writes `null`
+
+Filed 2026-08-31 (3) from the backend cross-repo review. **Type accuracy only. No runtime change,
+and that is verified rather than assumed.**
+
+Backend [#249](https://github.com/themancalledzac/edens.zac.backend/pull/249) changed both defaults
+in `ImageProcessingService.applyMetadataToEntity` from `0` to `null`
+(`parseIntegerOrDefault(metadata.get("imageWidth"), null)`). The wire type was already `Integer`,
+so only the value moved, and only when the image-header read fails — RAW or HEIC with no
+`ImageReader` plugin.
+
+`app/types/Content.ts:156-157` declares `imageWidth?: number; imageHeight?: number`, which cannot
+hold the value the backend now sends.
+
+**Nothing renders differently.** `getContentDimensions` (`app/utils/contentTypeGuards.ts`) gates on
+`if (block.imageWidth && block.imageHeight)`; `0` and `null` are both falsy, so both land on the
+same fallback chain (`width`/`height`, then 1300 at 3:2). This is a declaration that is false, not
+a bug a user can reach.
+
+- [ ] Widen to `imageWidth?: number | null; imageHeight?: number | null`, then run `tsc --noEmit`
+      and fix whatever the widening surfaces — the value of this item is entirely in what the
+      compiler then complains about. Est +2 src, unknown call-site churn until the compiler is run.
+      **This is C9's sibling, not a duplicate of it:** C9 is about the header that disappears, this
+      is about the type. See the C9 update below — the same backend PR unblocked it.
+
+### ☐ C9 · A dimensionless cover renders no header — UNBLOCKED 2026-08-31: backend Bug #21 shipped
 
 Found by B4 (#289) while merging the duplicated `createHeaderRow` describes. Both test copies
 encoded it correctly, so it is behaviour as written rather than a regression.
@@ -422,12 +568,24 @@ happen" is not true today, and the frontend is not where it is fixable:
   null/undefined, so a `0` sails through the fallback built for exactly this case. One sentinel,
   two consumers, two different wrong answers.
 
-- [ ] **BLOCKED on the backend, not on the user.** Filed as **Bug #21** on the backend board
-      (`ai_docs/reviews/2026-08-22-backend-cleanup-spike.md`, PR
-      [#244](https://github.com/themancalledzac/edens.zac.backend/pull/244)). When the backend
-      defaults to `null` instead of `0`, `parallaxCard`'s `??` fallback starts working on its own
-      and this item closes with **zero frontend code**. Do not pre-empt it with a frontend guard —
-      that is the fallback the user explicitly rejected.
+**UNBLOCKED 2026-08-31 (3). Backend Bug #21 shipped as
+[#249](https://github.com/themancalledzac/edens.zac.backend/pull/249) and this item's own condition
+for closing is met.** Verified by reading the backend's `origin/main`, not the commit message: both
+defaults in `ImageProcessingService.applyMetadataToEntity` now read
+`parseIntegerOrDefault(metadata.get("imageWidth"), null)`. The backend fixed the sentinel only and
+deliberately left the frontend fallbacks alone, which is what this item asked for. So
+`parallaxCard.ts:135-136`'s `?? SQUARE_FALLBACK_SIDE` now catches the value it was written for.
+
+**One thing the backend PR does not do, and it decides whether this closes at zero code: there is
+no backfill.** #249 changed what new writes persist. Any row written as `0 x 0` before it is still
+`0 x 0`, and `??` still sails past those. Settle that before ticking the box.
+
+- [ ] **Check for surviving `0 x 0` rows before closing.** If none exist, close this item with
+      **zero frontend code** as designed and delete nothing else. If some do, the question is a
+      backend backfill — still not a frontend fallback. Do not pre-empt either with a frontend
+      guard; that is the fallback the user explicitly rejected on 2026-08-30.
+- [ ] Leave the existing pins alone — `tests/utils/contentLayout.test.ts:1329`/`:1341` and
+      `:1355-1367` already fail if either branch flips, and they stay correct under both outcomes.
 
 **Lesson, hoisted to "How to use this doc":** a "should we handle this bad state?" item is often a
 "why does this bad state exist?" item wearing a costume. Ask where the value is produced before
@@ -860,6 +1018,28 @@ came in; only H1 remains board work. H2a and H3 shipped (#302) — write-ups and
 are a design review, an ops project, a second design review and a vision item — no rows, detail in
 the same file, reached from "What to build next".
 
+**H7 was added 2026-08-31 (3)** from the backend cross-repo review and did not come from that
+design review.
+
+### ☐ H7 · Passkey management on the admin user page — the backend routes exist, nothing calls them
+
+Filed 2026-08-31 (3) from the backend cross-repo review. **A product item, not a defect.** Nothing
+is broken and nothing is drifting; two endpoints were built and the UI for them was not.
+
+Backend [#257](https://github.com/themancalledzac/edens.zac.backend/pull/257) added
+`GET /api/admin/users/{id}/passkeys` and `DELETE /api/admin/users/{id}/passkeys/{credentialId}`
+(`AdminUserController`, row types in `UserRequests.java`). The delete deregisters one authenticator
+without disabling the account, which is the whole point of it — today the only recovery for a lost
+key is heavier.
+
+This repo has `registerPasskey` in `app/lib/api/auth.ts` and neither a list nor a deregister call.
+`/admin/users/[id]` has nowhere to show or revoke an authenticator.
+
+- [ ] **BLOCKED — user: is this wanted?** If yes, add `listPasskeys`/`deregisterPasskey` to
+      `app/lib/api/users.ts` and a section on the admin user detail page. Sized after the design,
+      not before. Related auth-surface work is tracked as AU4 on the feature board
+      ([2026-features.md](2026-features.md)); check there before scheduling either.
+
 ### ☐ H1 · Merge `Following` into `Collections` on `/user` — BLOCKED (user): count semantics, tile marker, catalog fetch
 
 `Collections` should show owned, tagged and followed collections in one list. Unfollowing a
@@ -969,6 +1149,38 @@ against real merge timestamps on 2026-08-24; only the labels were inconsistent. 
 Same-day runs are numbered "(1)", "(2)", … in run order; 2026-08-28's first two runs predate the
 numbering, so that day's numbered entries start at "(2)"._
 
+- 2026-08-31 (3) — no MRs; **docs-only, filed from a review run in `edens.zac.backend`, not here.**
+  A backend-side agent compared both repos and produced five frontend-owed findings. Filed as
+  **C14** (`getCollectionsByLocation` sends `page`/`size`; the location endpoint reads
+  `collectionPage`/`collectionSize` and drops both), **C15** (the `LocationPage` props are
+  image-typed while backend #258 widened `LocationPageResponse.images` to mixed content), **C16**
+  (`imageWidth`/`imageHeight` declared non-nullable; backend #249 now writes `null`) and **H7**
+  (backend #257's two passkey routes have no consumer here). The fifth was **already shipped as G6
+  (#351)** and is recorded under "Verified fine" instead of filed twice.
+  **The headline is a box that was ready to tick and nobody knew: C9 is UNBLOCKED.** It had sat
+  BLOCKED-on-backend since 2026-08-30 waiting for Bug #21; Bug #21 shipped as backend #249 the same
+  week, and C9's own stated closing condition ("when the backend defaults to `null` instead of `0`")
+  is met. Verified in that repo's `origin/main`, not from the commit message. One caveat found while
+  checking and written into the item: **#249 added no backfill**, so pre-#249 `0 x 0` rows would
+  still slip past `parallaxCard`'s `??`. C9 now leads the next run — an item that may already be
+  done is cheaper than the cheapest one that is not.
+  **This is the second consecutive run where reading the other repo closed a blocked row for free**
+  (2026-08-30 did it three times). The rule was already hoisted; what this run adds is that it works
+  in the pull direction too — the backend shipped our blocker and had no way to tell us.
+  **One archived claim corrected rather than annotated.** `group-e-consolidations.md`'s E13 bullet
+  said a location-tagged GIF "can never appear on `/location/{slug}`" because the orphan queries
+  joined `content_image`. Backend #258 replaced that join with a `content_type IN ('IMAGE','GIF')`
+  predicate, so the reason is false. The conclusion survives only because this repo discards the
+  field — rewritten to say so, and to say it collapses if C15 is answered "yes".
+  **Correction to what the backend board believed, carried into C15:** it recorded the GIF widening
+  as live-breaking against a `ContentImageModel[]` prop. `/location/[slug]` never reads
+  `LocationPageResponse.images` — `parseCollectionArrayResponse` takes `.collections` and throws the
+  rest away, and the grid is fed by a separate `searchImages({ locationId })` call. The item is
+  dormant, and the worst case if a GIF did arrive is an off-by-one header count, not a crash.
+  **Stale count fixed in passing:** "six of the fifteen rows are blocked on the user" had been wrong
+  by three rows since C12/C13/G7 were filed without updating it. Now eight of twenty-two.
+  Next: C9's check, then C11 + C14 together, then D10, E18.
+
 - 2026-08-31 (2) — no MRs here; **three items filed from the feature board's PF9/PF11/PF8 run**
   (#365/#366/#367), per this repo's rule that cleanup and bug fixes live on this board rather than
   that one. **C12**: `.metadataToggle` still carries the 36 → 40px tap-target gap that #367 closed
@@ -991,93 +1203,17 @@ numbering, so that day's numbered entries start at "(2)"._
   bloat; the rule that produced the cut now lives in `~/.claude/CLAUDE.md`, global rather than
   repo-local, because the inline-comment ban it completes was already global. Next: C11, D10, E18.
 
-- 2026-08-30 — **shipped the full picked run plus the HIGH bug ahead of it: #346 (C10), #347 (A9),
-  #348 (F3 `CollectionPageWrapper`), #349 (F3 `AdminPanel/` fold). Four MRs, all merged.** Plus one
-  cross-repo filing, [backend #244](https://github.com/themancalledzac/edens.zac.backend/pull/244).
-  Suite baseline re-measured: **245 suites / 4,464 tests**, `tsc --noEmit` exit 0.
-  **Two blocked questions asked at the START, and both answers changed the board more than any
-  code would have.** C9's answer ("we should NEVER HAVE AN IMAGE WITHOUT height/width") re-routed
-  the item out of this repo entirely — chasing the premise found
-  `ImageProcessingService:465-468` defaulting dimensions to **`0`, not null**, which `!width`
-  catches and `?? SQUARE_FALLBACK_SIDE` does not. C9 now blocks on backend Bug #21 and will close
-  with zero frontend code. E6 bullet 1 was answered "leave it for the big hook rewrite", so E6
-  closed and its last bullet is now an F1 sub-task.
-  **A third blocked row closed for free, by reading the other repo.** G5 (wrap-vs-bless bare
-  arrays) had sat BLOCKED-on-user; the backend blessed them in its own `.claude/CLAUDE.md` on
-  2026-08-30 (#243). Nobody had looked. **Blocked-on-user is down 9-of-19 to 6-of-15, and two of
-  the three cost the user nothing.** Rule hoisted.
-  **One new HIGH filed, found the same way: G6.** Backend #243 also made `/api/admin/**`
-  unconditionally gated, which falsifies `CLAUDE.md:14`'s "Localhost Admin Needs No Login" Critical
-  Rule — a rule that tells agents _not to investigate_ the breakage it now causes. Verified at
-  `SecurityConfig.java:75-76`, not from the commit message. Recommended next MR.
-  **Est vs actual — the two MOVE items were EXACT, both halves.** F3 predicted 3 src / 6 test and
-  5 src / 3 test; both landed precisely, at +11 −11 each. **Group F move counts, re-verified the
-  same week, are trustworthy in a way Group E consolidation estimates are not** — the standing bias
-  note is about extractions, and should not be read as distrust of a move count. A9 was the miss:
-  scoped as one file, actual three, because the board recorded where the false sentence was FILED
-  rather than where it APPEARED.
-  **C10's item under-counted its own symptoms, and writing the test first is what caught it.** The
-  section named one symptom (exit renders empty); the failing test surfaced a second in the opposite
-  direction (re-entry paints no fallback grid at all). Both tests were watched failing before the
-  fix. The three pre-existing handoff tests all passed against the bug because none ever flipped
-  `editMode` back.
-  **Verification sweep: 6 wrong numbers, 5 drifted refs, 1 pre-existing bad boundary.** Wrong:
-  `app/components/` 37→**36** (this session's own #349), G4 blocks 1413→**1415**, the CSS-guard pair
-  104/401→**105/402** (already wrong when written, unmoved by this session), the Group B suite
-  baseline 51,446/37,211→**57,306/36,685** (stale by ~5,900 lines), G2's `rowCombination.ts` 15→**31**
-  and `contentFilter.ts` 13→**16**. Drifted: E7's three guardrail refs +18, G4's two D7 refs +18,
-  `contentLayout.ts:93`→`:96`, G2a's stub `:78-84`→`:78-85`. **F1's content-ops range end `:1220` is
-  WRONG and was already wrong on 08-29** — it sits mid-`handleLocationsChange`, a relations concern;
-  the un-anchored boundary failed exactly as F1's own anchoring rule predicted.
-  **G2's whole `//` inventory is now UNCHECKED and must not be quoted.** Three filter variants
-  bracket neither recorded figure and the `.ts` gap runs in opposite directions depending on the
-  filter, which proves the original method was neither. Re-take in one pass with the command
-  written down before scheduling G2b.
-  **Process:** MemPalace was unreachable all session (ConnectionRefused, localhost:8787), so the
-  protocol's searches did not run and the two verification sweeps were plain filesystem passes.
-  Next: G6, then C11, D10, E18.
-
-- 2026-08-29 — **applied the 2026-08-28 nine-agent split review (both repos' boards) to this
-  board: corrections, five new items, and the slim-down restructure. No code MR — this is the
-  board pass the review produced.**
-  **Corrections applied, ~45 across the five review reports.** Statuses (H1 → BLOCKED-user
-  everywhere; B8's arithmetic to 5-of-6 — no enumeration ever reached "8 of 9"; F3 to six open
-  bullets, its rejected invite bullet struck rather than left as an open box). Counts (blocked
-  footnote re-derived; "92 style files" → 87; the pinned 245/4454 suite figure retired in favour
-  of re-measure). Stale refs (H1 fully re-derived — the 08-28 sweep had fixed only its three
-  premise refs; E7's close-out refs stamped pre-#337 with current equivalents; E6's micro-drifts;
-  F1's first-bullet boundary set replaced with the verified current set and its two unanchored
-  boundaries anchored). Stale prose (`.next-verify` is gone and `tsc --noEmit` exits 0 — sessions
-  should expect a CLEAN type check; C9's "pin it" bullet was already pinned by B4's own tests in
-  `tests/utils/contentLayout.test.ts`; G2's dead layoutpreview parenthetical and superseded
-  inventory blockquote removed; E6's dangling self-referencing line-number paragraph deleted and
-  the no-line-number rule added to "How to use this doc"). One review claim did not reproduce and
-  was left alone: no malformed link exists in group-h-features.md (all `(admin)` links use the
-  valid angle-bracket form and every target resolves).
-  **Five new items filed, each with a row and a section in the same edit:** **C10** (HIGH — exiting
-  manage mode leaves a blank public page; #337's memo guard keys on never-reset `editLayerMounted`
-  while exit is a soft navigation; recommended next MR, ahead of the picked run), **C11** (429
-  branch missing in ShareCard's `mapError` for backend #233's rate limiter), **E18** (four mutation
-  paths never fire `collections-location-${slug}`, plus the wired paths read the page-load prop —
-  with the backend-only-write accepted-risk note), **D10** (`getApiBaseUrl` concatenates
-  `NEXT_PUBLIC_APP_URL` raw — Group D reopens with one row), **G5** (⛔ bare-array coordination
-  with backend MR 20 — the FE counterpart row that review found missing, phased plan recorded).
-  The blocked-questions table gains G5 and the repo-wide `styles.<key>` guard call: **9 of 19 open
-  rows now wait on the user.**
-  **Restructure, per the review's move-map: 1,981 → ~980 lines.** "How to use this doc" distilled
-  to ≤3-line rules with the incident narratives moved to the new
-  `2026-summer-refactor/lessons.md`; the 55 closed MR rows became one-line ledgers under "Closed
-  rows" in each group archive; shipped-bullet history for A9/B8/E6/E7/E9/F3/H1 and F1's
-  drift sagas moved to their group files; the archive's own defects fixed (group-b's
-  header/status contradictions, three doubled-path links in the archive session log, group-h's
-  stale "two senders" line, group-c's "the thing the backend is waiting on" overstatement).
-  **Deliberately skipped: the per-item re-estimate slice**, per this board's own
-  estimate-bias note — both structural causes are known; stop recalibrating item by item.
-  Next: C10 first, then the picked three (A9's CLAUDE.md fix, F3's `CollectionPageWrapper` move,
-  F3's `AdminPanel/` fold), with the blocked questions batched in the opening message.
-
 ## Verified fine — do not re-investigate
 
+- **Admin and edit routes being auth-gated in dev is already handled — do not file it again.** The
+  backend cross-repo review of 2026-08-31 (3) reported it as a new frontend-owed finding: backend
+  [#243](https://github.com/themancalledzac/edens.zac.backend/pull/243) removed
+  `app.admin.enforce-authz` rather than pinning it true, so `/api/admin/**` and `/api/edit/**` are
+  gated in every profile and local dev is no longer login-free on the write surface. That is
+  **G6**, shipped as **#351** on 2026-08-31 — `CLAUDE.md`'s Critical Rule was corrected in the same
+  pass. Write-up in [group-g-decisions.md](2026-summer-refactor/group-g-decisions.md); the
+  dev-session affordance follow-up is AU4 on [2026-features.md](2026-features.md). No frontend code
+  change was ever needed; developers needed to know, and now the rule says so.
 - `app/[slug]/page.tsx`'s double `getCollectionBySlug` is deduped by Next request memoization; it is not a single-fetch violation. `meServer` is wrapped in React `cache()`.
 - The admin hub's count-fetch and lazy panel fetch are different queries by design.
 - BFF proxy internals — body buffering, cookie re-emission, size caps, origin allowlist, sanitized IP order — all check out and are test-pinned.
