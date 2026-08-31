@@ -3,6 +3,7 @@
  */
 
 import {
+  collectActiveFilterBadges,
   computeHasActiveFilters,
   isOptionAvailable,
 } from '@/app/components/ui/FilterToolbar/filterToolbarUtils';
@@ -83,5 +84,75 @@ describe('computeHasActiveFilters', () => {
       highlyRatedOnly: true,
     };
     expect(computeHasActiveFilters(state, ARRAY_FILTER_KEYS, true)).toBe(true);
+  });
+});
+
+describe('collectActiveFilterBadges', () => {
+  const dimensions = {
+    selectedCameras: { label: 'Camera' },
+    selectedTags: { label: 'Tag' },
+    selectedDates: { label: 'Date', optionLabels: { '2026-07-20': 'Jul 20' } },
+  };
+
+  it('returns nothing when no array dimension is selected', () => {
+    expect(collectActiveFilterBadges(INITIAL_FILTER_STATE, dimensions, ARRAY_FILTER_KEYS)).toEqual(
+      []
+    );
+  });
+
+  it('names each badge by its dimension and value', () => {
+    const state: FilterState = { ...INITIAL_FILTER_STATE, selectedCameras: ['Nikon FM2'] };
+    expect(collectActiveFilterBadges(state, dimensions, ARRAY_FILTER_KEYS)).toEqual([
+      {
+        key: 'selectedCameras',
+        value: 'Nikon FM2',
+        label: 'Camera: Nikon FM2',
+        removeLabel: 'Remove Nikon FM2 from Camera',
+      },
+    ]);
+  });
+
+  it('prefers a dimension display label over the raw value', () => {
+    const state: FilterState = { ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] };
+    expect(collectActiveFilterBadges(state, dimensions, ARRAY_FILTER_KEYS)[0]?.label).toBe(
+      'Date: Jul 20'
+    );
+  });
+
+  it('flattens several dimensions in arrayKeys order', () => {
+    const state: FilterState = {
+      ...INITIAL_FILTER_STATE,
+      selectedCameras: ['Nikon FM2'],
+      selectedTags: ['sunset', 'coast'],
+    };
+    expect(
+      collectActiveFilterBadges(state, dimensions, ARRAY_FILTER_KEYS).map(b => b.label)
+    ).toEqual(['Tag: sunset', 'Tag: coast', 'Camera: Nikon FM2']);
+  });
+
+  /**
+   * Without a dropdown there is no label to render, and inventing one would surface an internal
+   * state key to a reader. The toolbar skips unsurfaced dimensions everywhere else too.
+   */
+  it('skips a dimension the page does not surface', () => {
+    const state: FilterState = { ...INITIAL_FILTER_STATE, selectedLenses: ['Zeiss 80mm'] };
+    expect(collectActiveFilterBadges(state, dimensions, ARRAY_FILTER_KEYS)).toEqual([]);
+  });
+
+  /**
+   * The flat date chips already show their own selection, so summarising them would print the
+   * same fact twice a few pixels apart.
+   */
+  it('honours excludeKeys so an already-visible dimension is not repeated', () => {
+    const state: FilterState = {
+      ...INITIAL_FILTER_STATE,
+      selectedDates: ['2026-07-20'],
+      selectedTags: ['sunset'],
+    };
+    expect(
+      collectActiveFilterBadges(state, dimensions, ARRAY_FILTER_KEYS, ['selectedDates']).map(
+        b => b.label
+      )
+    ).toEqual(['Tag: sunset']);
   });
 });

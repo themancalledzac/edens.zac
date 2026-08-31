@@ -21,8 +21,12 @@ From the 004 location-filter-bar plan's unshipped tail, verified absent from
 - Focal-length range filters (Wide/Normal/Tele)
 - Film-stock secondary filter, conditional on Film active with 2+ stocks
 - Year filter chips
-- Active-filter summary with individually removable badges + "Clear all" (`resetAll` exists; the
-  badge summary does not)
+- ~~Active-filter summary with individually removable badges + "Clear all"~~ **SHIPPED (#373).**
+  This section had it right and the board row did not: `resetAll` and its trailing × were already
+  built, so only the badge summary was missing. Every selected value in a surfaced array dimension
+  now renders as a removable chip after the controls (`collectActiveFilterBadges`), which is the
+  only place the bar says WHICH values are selected — a dropdown trigger shows active state and
+  nothing more. Flat date chips are excluded, since they already show their own selection.
 - Proportional layout algorithm merging short filter-bar rows
 
 Related smaller stragglers from the 2026-08-02 consolidation follow-ups: restore `selectedLenses`

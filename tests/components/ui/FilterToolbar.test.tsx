@@ -627,3 +627,59 @@ describe('FilterToolbar', () => {
     });
   });
 });
+
+describe('FilterToolbar active-filter summary', () => {
+  const dimensions = {
+    selectedCameras: { label: 'Camera', options: ['Nikon FM2', 'Leica M6'] },
+    selectedTags: { label: 'Tag', options: ['sunset', 'coast'] },
+  };
+
+  it('names the selected value, which the dropdown trigger never does', () => {
+    renderToolbar({
+      dimensions,
+      filterState: { ...INITIAL_FILTER_STATE, selectedCameras: ['Nikon FM2'] },
+    });
+    expect(
+      screen.getByRole('button', { name: 'Remove Nikon FM2 from Camera' })
+    ).toBeInTheDocument();
+  });
+
+  it('removes only the badge clicked, leaving the rest of the dimension alone', () => {
+    const { onFilterChange } = renderToolbar({
+      dimensions,
+      filterState: { ...INITIAL_FILTER_STATE, selectedTags: ['sunset', 'coast'] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Remove sunset from Tag' }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedTags: ['coast'] });
+  });
+
+  it('shows nothing while no dimension is selected', () => {
+    renderToolbar({ dimensions });
+    expect(screen.queryByRole('button', { name: /^Remove / })).not.toBeInTheDocument();
+  });
+
+  /**
+   * Flat date chips already carry their own selected state, so a badge for the same day would
+   * state it twice. Above MAX_FLAT_DATE_CHIPS the dates collapse into a dropdown and the badge
+   * becomes the only place the selection is legible — both directions are pinned here.
+   */
+  it('does not repeat a date that is already a flat chip', () => {
+    renderToolbar({
+      dimensions: { selectedDates: { label: 'Date', options: ['2026-07-20', '2026-07-21'] } },
+      filterState: { ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] },
+    });
+    expect(screen.queryByRole('button', { name: /^Remove / })).not.toBeInTheDocument();
+  });
+
+  it('summarises a date once the dimension has collapsed into a dropdown', () => {
+    const options = Array.from(
+      { length: MAX_FLAT_DATE_CHIPS + 1 },
+      (_, i) => `2026-07-${String(i + 10).padStart(2, '0')}`
+    );
+    renderToolbar({
+      dimensions: { selectedDates: { label: 'Date', options } },
+      filterState: { ...INITIAL_FILTER_STATE, selectedDates: [options[0]!] },
+    });
+    expect(screen.getByRole('button', { name: 'Remove 2026-07-10 from Date' })).toBeInTheDocument();
+  });
+});

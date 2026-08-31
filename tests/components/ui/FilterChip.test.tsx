@@ -131,13 +131,36 @@ describe('FilterChip', () => {
     });
 
     it('scrolls when asked, for a chip that leaves the page it sits on', () => {
-      // A cross-page jump that keeps the old offset lands the reader partway down a page they have
-      // never seen. AdminCard's four destinations are the callers that need this.
       render(<FilterChip label="Admin hub" href="/admin" scroll />);
       expect(screen.getByRole('link', { name: /admin hub/i })).toHaveAttribute(
         'data-scroll',
         'true'
       );
+    });
+  });
+
+  describe('ariaLabel', () => {
+    /**
+     * The active-filter badges read `Tags: sunset` on screen, which opens with the same word as
+     * the `Tags` dropdown trigger beside them and never says the chip removes the filter. The
+     * override is what separates the two by name.
+     */
+    it('overrides the accessible name without changing the visible text', () => {
+      render(
+        <FilterChip
+          label="Tags: sunset"
+          ariaLabel="Remove sunset from Tags"
+          active
+          onToggle={jest.fn()}
+        />
+      );
+      expect(screen.getByRole('button', { name: 'Remove sunset from Tags' })).toBeInTheDocument();
+      expect(screen.getByText('Tags: sunset')).toBeInTheDocument();
+    });
+
+    it('leaves the visible label as the accessible name when unset', () => {
+      render(<FilterChip label="Film" onToggle={jest.fn()} />);
+      expect(screen.getByRole('button', { name: 'Film' })).toBeInTheDocument();
     });
   });
 });
