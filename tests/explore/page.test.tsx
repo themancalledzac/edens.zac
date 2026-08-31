@@ -16,13 +16,14 @@ jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
+import { ExploreDirectory } from '@/app/explore/ExploreDirectory';
 import ExplorePage from '@/app/explore/page';
 import { getMetadata } from '@/app/lib/api/collections';
 import { makeMetadata } from '@/tests/fixtures/collectionEditFixtures';
 
 const mockGetMetadata = getMetadata as jest.MockedFunction<typeof getMetadata>;
 
-describe('ExplorePage', () => {
+describe('ExploreDirectory', () => {
   beforeEach(() => {
     mockGetMetadata.mockReset();
   });
@@ -35,7 +36,7 @@ describe('ExplorePage', () => {
       })
     );
 
-    render(await ExplorePage());
+    render(await ExploreDirectory());
 
     expect(screen.getByRole('heading', { name: 'Locations' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Tags' })).toBeInTheDocument();
@@ -67,7 +68,7 @@ describe('ExplorePage', () => {
       })
     );
 
-    render(await ExplorePage());
+    render(await ExploreDirectory());
 
     // 2 tags + 2 locations = 4 directory links (People removed from the directory).
     expect(screen.getAllByRole('link')).toHaveLength(4);
@@ -83,7 +84,7 @@ describe('ExplorePage', () => {
       })
     );
 
-    render(await ExplorePage());
+    render(await ExploreDirectory());
 
     expect(screen.getByRole('link', { name: 'Patagonia' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Nowhere' })).not.toBeInTheDocument();
@@ -92,7 +93,7 @@ describe('ExplorePage', () => {
   it('renders a fallback message when metadata fails to load', async () => {
     mockGetMetadata.mockResolvedValue(null);
 
-    render(await ExplorePage());
+    render(await ExploreDirectory());
 
     expect(screen.getByText(/unable to load/i)).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
@@ -101,9 +102,28 @@ describe('ExplorePage', () => {
   it('renders a friendly empty state when metadata has no entries', async () => {
     mockGetMetadata.mockResolvedValue(makeMetadata());
 
-    render(await ExplorePage());
+    render(await ExploreDirectory());
 
     expect(screen.getByText(/nothing to explore yet/i)).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * The route itself is synchronous — that is the point of the split. The heading is in the first
+ * paint while the directory is still suspended, so a slow `getMetadata()` no longer holds the
+ * whole response.
+ */
+describe('ExplorePage', () => {
+  it('paints the heading while the directory is still suspended', () => {
+    mockGetMetadata.mockResolvedValue(
+      makeMetadata({ tags: [{ id: 1, name: 'Mountains', slug: 'mountains' }] })
+    );
+
+    render(<ExplorePage />);
+
+    expect(screen.getByRole('heading', { name: 'Explore' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Tags' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Mountains' })).not.toBeInTheDocument();
   });
 });

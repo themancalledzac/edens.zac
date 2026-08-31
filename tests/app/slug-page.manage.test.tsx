@@ -1,12 +1,26 @@
+/**
+ * Tests for the `?manage=1` entry into the collection route.
+ *
+ * `CollectionJsonLd` is stubbed: it is an async server component that reads the collection,
+ * and this suite covers the manage wiring rather than structured data. It is asserted only for
+ * presence in the public case and absence in edit mode.
+ */
+
 import { render } from '@testing-library/react';
 
 import CollectionPage from '@/app/[slug]/page';
 import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
+import { CollectionJsonLd } from '@/app/components/StructuredData/CollectionJsonLd';
 import { requireAdmin } from '@/app/utils/admin';
 
 jest.mock('@/app/components/ContentCollection/CollectionPageWrapper', () => ({
   __esModule: true,
   default: jest.fn(() => null),
+}));
+
+jest.mock('@/app/components/StructuredData/CollectionJsonLd', () => ({
+  __esModule: true,
+  CollectionJsonLd: jest.fn(() => null),
 }));
 
 jest.mock('@/app/utils/admin', () => ({
@@ -15,6 +29,7 @@ jest.mock('@/app/utils/admin', () => ({
 
 const mockWrapper = CollectionPageWrapper as unknown as jest.Mock;
 const mockRequireAdmin = requireAdmin as jest.MockedFunction<typeof requireAdmin>;
+const mockJsonLd = CollectionJsonLd as unknown as jest.Mock;
 
 async function renderPage(slug: string, manage?: string) {
   const element = await CollectionPage({
@@ -43,6 +58,7 @@ describe('app/[slug]/page.tsx — ?manage=1 entry (isAdmin-gated via requireAdmi
     expect(mockWrapper).toHaveBeenCalledTimes(1);
     expect(mockWrapper.mock.calls[0][0]).toMatchObject({ slug: 'film', editMode: false });
     expect(mockRequireAdmin).not.toHaveBeenCalled();
+    expect(mockJsonLd).toHaveBeenCalledTimes(1);
   });
 
   it('passes editMode=true and calls requireAdmin when ?manage=1 in local dev', async () => {
@@ -51,6 +67,7 @@ describe('app/[slug]/page.tsx — ?manage=1 entry (isAdmin-gated via requireAdmi
 
     expect(mockWrapper).toHaveBeenCalledTimes(1);
     expect(mockWrapper.mock.calls[0][0]).toMatchObject({ slug: 'film', editMode: true });
+    expect(mockJsonLd).not.toHaveBeenCalled();
     expect(mockRequireAdmin).toHaveBeenCalledTimes(1);
   });
 

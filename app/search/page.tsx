@@ -1,9 +1,10 @@
 import { type Metadata } from 'next';
+import { Suspense } from 'react';
 
-import { SEARCH_RESULT_LIMIT } from '@/app/components/SearchPage/searchFilters';
-import SearchPageClient from '@/app/components/SearchPage/SearchPageClient';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
-import { searchImages } from '@/app/lib/api/content';
+
+import { SearchLoadingBody } from './SearchLoadingBody';
+import { SearchResults } from './SearchResults';
 
 export const metadata: Metadata = {
   title: 'Search — Zac Edens Photography',
@@ -15,19 +16,25 @@ export const metadata: Metadata = {
   },
 };
 
-// See app/tag/[slug]/page.tsx for the rationale; this route also reads filter state from
-// search params, which a prerendered page has no access to.
+/**
+ * See app/tag/[slug]/page.tsx for the rationale; this route also reads filter state from
+ * search params, which a prerendered page has no access to.
+ */
 export const dynamic = 'force-dynamic';
 
 /**
- * The public search route. Fetches the corpus once; read failures fall through to `error.tsx`.
+ * The public search route.
+ *
+ * The corpus fetch is the largest read on the site and used to sit in front of the whole
+ * response. It now streams inside a Suspense boundary, so the shell and heading flush first and
+ * only the grid waits. Read failures still fall through to `error.tsx`.
  */
-export default async function SearchRoute() {
-  const images = await searchImages({ size: SEARCH_RESULT_LIMIT });
-
+export default function SearchRoute() {
   return (
     <PageShell>
-      <SearchPageClient images={images} />
+      <Suspense fallback={<SearchLoadingBody />}>
+        <SearchResults />
+      </Suspense>
     </PageShell>
   );
 }
