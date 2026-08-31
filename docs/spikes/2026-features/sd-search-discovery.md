@@ -148,6 +148,38 @@ or file what's broken as a concrete bug.
 
 ## Closed
 
+### ✅ SD5 · Verify chip-click-to-filter — SETTLED 2026-08-31 (7)
+
+**They never filtered, and that is not a regression.** Only `FilterToolbar` chips filter. The chips
+a visitor actually sees on a photo — Tags and People in the fullscreen viewer — were plain `<div>`s
+in the same pill styling as the Collections chips beside them, which ARE links. They read as
+interactive and did nothing.
+
+The docblock that made this look like a bug was itself the bug. `GalleryFilter.ts` said
+`toggleArrayFilter` was "shared by the filter toolbar and the tag-click handlers in
+CollectionContentRenderer". That stopped being true at `81ca206` (2026-08-03), which deliberately
+removed collection tag chips and their handler. The item read as "did something break?" when the
+answer was "it was removed on purpose and one line never got updated". Corrected in #382.
+
+**Tag half shipped as #382.** Tags now link to `/tag/{slug}` — the data and the destination both
+already existed, so it mirrors the Collections branch directly below it. +55/−8 across 3 files.
+
+**People half split out as SD6**, because it is not a one-liner and hiding it inside a "verify"
+item would lose it.
+
+**What holds — do not re-investigate.** Per-surface, verified 2026-08-31 (7): fullscreen Location
+and Collections chips link correctly; `/explore` chips link correctly; `/location/[slug]` renders
+working Tags and People dropdowns; `/tag/[slug]` has no filter bar at all (header + grid only);
+collection pages deliberately surface no Tags dimension. Tags being absent from the collection
+filter bar is a product decision from `81ca206`, not an omission — do not "restore" it without
+asking.
+
+**One thing deliberately left alone.** A `filterItems` block at `CollectionContentRenderer.tsx:381`
+renders `type: 'text'` items and `buildMetadataItems` never emits that type, so it looks dead. It
+was NOT deleted: `textItems` is a prop, and a backend TEXT block's `items` legitimately allows
+`type: 'text'`, so "dead" is not provable from this repo alone. Confirm against the backend's text
+block payload before removing it.
+
 ### ✅ SD1 · The public `/search` route — PR #357, merged 2026-08-31
 
 Shipped `app/search/` (page, `error.tsx`, `loading.tsx` + module) and

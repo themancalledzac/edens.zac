@@ -66,6 +66,19 @@ development is broken for agents and slow for the user.
 
 ## Closed
 
+### ✅ AU4 · Local admin dev-session affordance — SHIPPED #383 as documentation
+
+There was no affordance to build; the `/login` form always worked. Full write-up in
+[au-auth-accounts.md](2026-features/au-auth-accounts.md).
+
+**The one fact that must not get lost with the item: the local backend writes to production.**
+Port 5432 is an autossh tunnel to the production EC2 (`ps aux | grep 'ssh.*5432'` →
+`-L 5432:localhost:5432 ec2-user@<prod-ip>`), and the backend container's `SPRING_DATASOURCE_URL`
+is `host.docker.internal:5432/edens_zac`. There is no local Postgres. Every admin mutation made at
+localhost edits live production rows. This is repeated here rather than only in the archive because
+it constrains **every** admin item on this board — MA1, MA2, MA3, MA4, MA5 and MA6 all mutate admin
+data, and none of them should be tested by bulk-editing through the local admin UI.
+
 ### ✅ AU3 · Enforce `UserStatus.DISABLED` — closed 2026-08-31 with no work; already shipped upstream
 
 The item's own first step was "confirm S-1 hasn't shipped." It had. Run, not re-read, on 2026-08-31:
