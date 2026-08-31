@@ -119,6 +119,8 @@ If a literal is _mostly_ static but contains one props-derived field (e.g. an `a
 
 ## Common Mistakes to Avoid
 
+- ❌ Writing comments inside function bodies, component bodies, or JSX (`{/* ... */}`) — prose belongs in docblocks only, and those stay short. See `ai_guidelines/ai_docs.md`
+- ❌ Docblocks that narrate an investigation — measurements and rejected alternatives go in the PR and the `docs/spikes/` group file
 - ❌ Using `'use client'` unnecessarily - prefer Server Components
 - ❌ Importing from `pages/` or legacy directories
 - ❌ Using `any` type - always use proper TypeScript types
