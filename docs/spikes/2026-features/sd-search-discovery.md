@@ -4,13 +4,36 @@ _Context file for board items SD1–SD5 on [2026-features.md](../2026-features.m
 
 ## SD2 · Backend: enrich `locations` on collection blocks
 
-`SyntheticCollectionResolver.java` batch-loads tags only (docblock `:78`, `.withTags(...)` at
-`:109`) and never enriches `locations`, so the location dimension of the shipped `/collections`
-filter bar matches nothing. The FE is complete and waiting: `collectionRefMatchesCriteria` already
-matches on locations. Mirror the tags batch-load with a `withLocations` wither. Secondary,
-non-blocking: `convertCollectionContentToParallax` hard-codes `locations: []` on the card
-(filtering runs pre-conversion). Source: `2026-08-05-collections-page-filter-bar-design.md` §4 and
-`docs/004-content-discovery.md:28`. Cross-repo — file on the backend board when picked up.
+**MR open: backend [#277](https://github.com/themancalledzac/edens.zac.backend/pull/277).** Filed on
+the backend board as #24 in the same pass.
+
+The diagnosis was right and the prescription was wrong, in the cheap direction.
+`SyntheticCollectionResolver` did drop locations, so the location dimension of the shipped
+`/collections` filter bar matched nothing, and the FE was complete and waiting
+(`collectionRefMatchesCriteria` matches on `ref.locations`).
+
+But "mirror the tags batch-load with a `withLocations` wither" asked for work that was already
+done. `CollectionProcessingUtil.batchConvertToBasicModels:92-93` already runs
+`locationRepository.findLocationsByCollectionIds` once for the whole page, and `buildBasicModel`
+already sets `CollectionModel.locations`. The resolver simply never read the field. So the fix was
+one component on the `ContentModels.Collection` record plus a copy in `fromCollectionModel` — no
+new repository method, no new query, no migration, no added N+1.
+
+Hence no `withLocations`. `withTags` exists because tags are fetched AFTER conversion; locations
+arrive on the model, so a wither nobody calls would be dead code.
+
+Confirmed non-issue: `convertCollectionContentToParallax` hard-coding `locations: []` does not
+matter, because `applyCollectionFilters` runs on the raw `collection.content` before
+`processContentBlocks` reaches the parallax converter.
+
+Additive API change — the synthetic list views, the tag view and the `/user` page all gain a
+`locations` array of `{id, name, slug}` on each `COLLECTION` block.
+
+**`people` has the identical gap and was deliberately not bundled** — see SD7 on the board, and
+backend board #25. Same three files, same zero added queries; splitting it costs a second edit of
+the same 20-component positional constructor.
+
+Source: `2026-08-05-collections-page-filter-bar-design.md` §4 and `docs/004-content-discovery.md:28`.
 
 ## SD3 · Filter-bar dimension gaps
 
