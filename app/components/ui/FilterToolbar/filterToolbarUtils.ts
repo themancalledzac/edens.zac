@@ -45,3 +45,60 @@ export function computeHasActiveFilters(
     arrayKeys.some(k => (filterState[k] as readonly string[]).length > 0)
   );
 }
+
+/** The parts of a toolbar dimension a summary badge needs: its name, and how to render a value. */
+interface BadgeDimension {
+  label: string;
+  optionLabels?: Record<string, string>;
+}
+
+/** One selected value, named well enough to stand on its own away from its dropdown. */
+export interface ActiveFilterBadge {
+  key: ArrayFilterKey;
+  value: string;
+  /** Dimension and value together, e.g. `Camera: Nikon FM2` — the badge's whole visible text. */
+  label: string;
+  /**
+   * Accessible name, e.g. `Remove Nikon FM2 from Camera`. The visible text cannot serve as one:
+   * it opens with the same word as the dropdown trigger a few chips away, so the two announce
+   * alike, and it never says that activating the badge removes the filter.
+   */
+  removeLabel: string;
+}
+
+/**
+ * Every selected value across the surfaced array dimensions, flattened into badges.
+ *
+ * The bar shows a dropdown as active but never says WHICH values are selected, so the only way to
+ * read the current filter was to open each dropdown in turn. These badges are that answer, and
+ * removing one is a plain toggle of the value it names.
+ *
+ * Two deliberate omissions. Dimensions the page does not surface are skipped — with no dropdown
+ * there is no label to render, and this slice does not invent one. Anything already visible as its
+ * own chip is skipped via `excludeKeys`, which is how the flat date chips avoid appearing twice;
+ * the standalone toggles (Order, Highly Rated, Film, Hidden) are left out for the same reason,
+ * since each is lit in the bar already.
+ */
+export function collectActiveFilterBadges(
+  filterState: FilterState,
+  dimensions: Partial<Record<ArrayFilterKey, BadgeDimension>>,
+  arrayKeys: readonly ArrayFilterKey[],
+  excludeKeys: readonly ArrayFilterKey[] = []
+): ActiveFilterBadge[] {
+  const badges: ActiveFilterBadge[] = [];
+  for (const key of arrayKeys) {
+    if (excludeKeys.includes(key)) continue;
+    const dimension = dimensions[key];
+    if (!dimension) continue;
+    for (const value of filterState[key] as readonly string[]) {
+      const shown = dimension.optionLabels?.[value] ?? value;
+      badges.push({
+        key,
+        value,
+        label: `${dimension.label}: ${shown}`,
+        removeLabel: `Remove ${shown} from ${dimension.label}`,
+      });
+    }
+  }
+  return badges;
+}

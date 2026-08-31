@@ -22,6 +22,13 @@ interface FilterChipBaseProps {
   tone?: FilterChipTone;
   /** 'unavailable' greys out and disables the chip (3-state availability model). */
   state?: FilterChipState;
+  /**
+   * Overrides the accessible name when the visible text does not say what activating the chip
+   * does. The active-filter badges need it: their text reads `Tags: sunset`, which announces the
+   * same opening words as the `Tags` dropdown trigger beside them, and says nothing about the
+   * chip removing that filter. Leave unset wherever the label already stands on its own.
+   */
+  ariaLabel?: string;
 }
 
 interface FilterChipButtonProps extends FilterChipBaseProps {
@@ -69,6 +76,7 @@ export function FilterChip({
   active = false,
   tone = 'neutral',
   state = 'available',
+  ariaLabel,
   href,
   scroll = false,
   onToggle,
@@ -104,6 +112,7 @@ export function FilterChip({
         href={href}
         scroll={scroll}
         className={classes}
+        aria-label={ariaLabel}
         aria-current={active ? 'page' : undefined}
       >
         {body}
@@ -115,6 +124,7 @@ export function FilterChip({
     <button
       type="button"
       className={classes}
+      aria-label={ariaLabel}
       aria-pressed={active}
       disabled={unavailable}
       onClick={onToggle}

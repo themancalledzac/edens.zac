@@ -20,7 +20,11 @@ import {
 } from '@/app/types/GalleryFilter';
 
 import styles from './FilterToolbar.module.scss';
-import { computeHasActiveFilters, isOptionAvailable } from './filterToolbarUtils';
+import {
+  collectActiveFilterBadges,
+  computeHasActiveFilters,
+  isOptionAvailable,
+} from './filterToolbarUtils';
 
 /** One filterable dimension: which state key it writes, its dropdown label, its options, and optional value->label/count maps. */
 export interface ToolbarDimension {
@@ -148,6 +152,16 @@ export const MAX_FLAT_DATE_CHIPS = 5;
 /**
  * Canonical, config-driven filter toolbar: dropdowns with a 3-state availability model, count
  * badges, highly-rated / film (neutral tri-state) / digital toggles, and an optional density slider.
+ *
+ * A dropdown shows that it is active but not which values are selected, so every selection also
+ * renders as a removable badge after the controls — see {@link collectActiveFilterBadges} for what
+ * is summarised and what is deliberately left out. Clearing everything at once is the trailing ×.
+ *
+ * Three behaviours worth keeping straight. `resetAll` preserves the direction under
+ * {@link dateTwoState}, where views are inherently date-ordered and `off` is not a valid value.
+ * The Order chip stays lit in that mode for the same reason. And the admin Hidden chip reads
+ * inverted from the others: lit means the non-public collections ARE on screen, which is an
+ * admin's default, and switching it off previews the list as the general audience sees it.
  */
 export function FilterToolbar({
   filterState,
@@ -196,8 +210,6 @@ export function FilterToolbar({
   const resetAll = () => {
     onFilterChange({
       ...INITIAL_FILTER_STATE,
-      // Two-state views are inherently date-ordered, so `off` is invalid there:
-      // preserve the current direction and only clear the other filters.
       ...(dateTwoState ? { dateSortDirection: filterState.dateSortDirection } : {}),
     });
     closeAll();
@@ -210,6 +222,13 @@ export function FilterToolbar({
     dateDim.options.length <= MAX_FLAT_DATE_CHIPS
       ? dateDim
       : null;
+
+  const activeBadges = collectActiveFilterBadges(
+    filterState,
+    dimensions,
+    ARRAY_FILTER_KEYS,
+    flatDates ? ['selectedDates'] : []
+  );
 
   return (
     <div ref={barRef} className={styles.toolbar}>
@@ -233,7 +252,6 @@ export function FilterToolbar({
           <FilterChip
             label="Order"
             trailing={ORDER_GLYPHS[filterState.dateSortDirection]}
-            // In two-state mode the date sort is always engaged, so the chip stays active.
             active={dateTwoState || filterState.dateSortDirection !== 'off'}
             onToggle={() =>
               onFilterChange({
@@ -258,8 +276,6 @@ export function FilterToolbar({
           <FilterChip
             label="Hidden"
             count={counts?.hidden}
-            // Lit means the non-public collections ARE on screen, which is an admin's default.
-            // Switching it off previews the list as the general audience sees it.
             active={filterState.showHidden}
             onToggle={() => onFilterChange({ showHidden: !filterState.showHidden })}
           />
@@ -338,6 +354,24 @@ export function FilterToolbar({
             </div>
           );
         })}
+
+        {activeBadges.length > 0 && (
+          <>
+            <span className={styles.separator} aria-hidden="true" />
+            {activeBadges.map(badge => (
+              <FilterChip
+                key={`active-${badge.key}-${badge.value}`}
+                label={badge.label}
+                ariaLabel={badge.removeLabel}
+                trailing="×"
+                active
+                onToggle={() =>
+                  toggleArrayFilter(filterState, onFilterChange, badge.key, badge.value)
+                }
+              />
+            ))}
+          </>
+        )}
       </div>
 
       <div className={styles.trailing}>
@@ -361,7 +395,6 @@ export function FilterToolbar({
               />
             ) : (
               <label className={styles.slider}>
-                {/* aria-hidden: the range input already announces its value natively. */}
                 <span className={styles.sliderLabel} aria-hidden="true">
                   Density {density}
                 </span>

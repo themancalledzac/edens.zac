@@ -85,42 +85,42 @@ reportToService()` seam (it does not exist — `logger.ts` is 14 lines of `conso
 
 Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra work.
 
-| Item | Scope                                                              | Repo    | Status                                                                                    |
-| ---- | ------------------------------------------------------------------ | ------- | ----------------------------------------------------------------------------------------- |
-| SD2  | Enrich `locations` on collection blocks                            | BE      | ☐ COLD — small; makes the shipped `/collections` location filter work                     |
-| SD3  | Filter-bar dimension gaps (focal length, film stock, year, badges) | FE      | ☐ COLD — sliceable; re-sized DOWN after SD1                                               |
-| SD4  | `/explore` as a real drill-down explorer (Option C)                | FE      | ☐ BLOCKED — reconcile with refactor-board H5 design review first                          |
-| SD5  | Verify people/location chip-click-to-filter                        | FE      | ☐ COLD — cheap verification task                                                          |
-| RC1  | Populate `parents` on public reads + `isFilm` backfill             | BE      | ☐ COLD — unblocks RC2's public rendering; two verified data bugs                          |
-| RC2  | Similar-collections v1 (metadata-graph score + Related swap)       | BE+FE   | ☐ BLOCKED — user: spike decisions D1–D4                                                   |
-| RC3  | Collections_List render mode (embedded hub as card-row)            | BE+FE   | ☐ COLD — small; no new entity                                                             |
-| RC4  | Suggested collections (admin suggestion rows)                      | BE+FE   | ☐ BLOCKED — needs CT3 engine + RC1 metadata quality                                       |
-| RC5  | CLIP/pgvector embedding tier                                       | BE+ML   | ☐ BLOCKED — user: spike decision D6 (infra commitment)                                    |
-| CT1  | Collections-as-tags spec refresh against the typeless model        | docs    | ☐ COLD — produces a current D1–D12 matrix for CT2                                         |
-| CT2  | Adjudicate the collections-as-tags decision matrix                 | user    | ☐ BLOCKED — user; after CT1                                                               |
-| CT3  | Saved-filter engine (AND-tag query, `source` column, sync)         | BE+FE   | ☐ BLOCKED — on CT2                                                                        |
-| CT4  | Blog-as-date surface (`/blog` stream, per-day entries)             | BE+FE   | ☐ BLOCKED — on CT2                                                                        |
-| CT5  | Auto-tag: `POST /collections/{id}/auto-tag` + admin button         | BE+FE   | ☐ COLD — independent of CT2                                                               |
-| CT6  | Tag `type`/visibility model                                        | BE      | ☐ COLD — design confirm, then small schema work                                           |
-| AU1  | Self-serve password reset                                          | BE+FE   | ☐ COLD — plan written and verified current                                                |
-| AU2  | Passkey credential list + revoke, enrollment-state UI              | BE+FE   | ☐ BLOCKED — user: endpoint shape (admin, user-facing, or both)                            |
-| AU4  | Local admin dev-session affordance (post backend #243)             | FE+BE   | ☐ COLD — unblocked 08-31: G6 landed as #351, so the corrected rule now states the reality |
-| EM1  | SES production checklist (verify domain, DKIM, sandbox exit)       | OPS     | ☐ COLD — ops; user drives the AWS console half                                            |
-| EM2  | New-recipient-only gallery send flow                               | FE      | ☐ COLD — UI addition, plan written                                                        |
-| EM3  | Contact-owner notification + `user_invite.created_by`              | BE      | ☐ COLD — two small backend items                                                          |
-| EM4  | Gallery-password design pass (precedes any BCrypt work)            | user    | ☐ BLOCKED — user; backend board PARKED BCrypt behind it                                   |
-| MA1  | Manage rail restructure (per-field PATCH, delete edit sheet)       | FE(+BE) | ☐ BLOCKED — backend `PATCH /collections/{id}` still absent (re-checked 08-31); it is MR 1 |
-| MA2  | `staging` system collection                                        | BE+FE   | ☐ BLOCKED — user: `HIDDEN` vs `UNLISTED` seed visibility                                  |
-| MA3  | Mobile-first admin Phase 3 remainder                               | FE      | ☐ BLOCKED — user: does the dark-admin premise survive its partial reversal?               |
-| MA4  | Messages admin: retention TTL, read/delete/search, notify channel  | BE+FE   | ☐ COLD — sliceable                                                                        |
-| MA5  | Admin collections list at 100× (paged/filtered/sorted)             | BE+FE   | ☐ COLD — low priority until collection count grows                                        |
-| MA6  | User change log + non-admin canonical mutation path                | BE+FE   | ☐ BLOCKED — user: §10 decisions in the logged-in-flow review                              |
-| PF2  | Blur placeholders (`blurDataURL`)                                  | FE      | ☐ COLD                                                                                    |
-| PF6  | External error tracking                                            | FE      | ☐ BLOCKED — user: Sentry vs CloudWatch                                                    |
-| PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)           | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                        |
-| PF12 | Gate the auto-deploy on CI                                         | OPS     | ☐ COLD — console work; `main` deploys today regardless of CI                              |
-| PF13 | Home page genuinely static (Cache Components / PPR)                | FE      | ☐ COLD — re-sized 08-31: `cacheComponents` is app-wide, 3 sittings, wants PF12 first      |
-| LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build           | FE      | ☐ BLOCKED — user: two competing designs, neither built                                    |
+| Item | Scope                                                                 | Repo    | Status                                                                                    |
+| ---- | --------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| SD2  | Enrich `locations` on collection blocks                               | BE      | ☐ COLD — small; makes the shipped `/collections` location filter work                     |
+| SD3  | Filter-bar dimension gaps (focal length, film stock, year, row merge) | FE      | ☐ COLD — sliceable; badge summary shipped #373, four slices left                          |
+| SD4  | `/explore` as a real drill-down explorer (Option C)                   | FE      | ☐ BLOCKED — reconcile with refactor-board H5 design review first                          |
+| SD5  | Verify people/location chip-click-to-filter                           | FE      | ☐ COLD — cheap verification task                                                          |
+| RC1  | Populate `parents` on public reads + `isFilm` backfill                | BE      | ☐ COLD — unblocks RC2's public rendering; two verified data bugs                          |
+| RC2  | Similar-collections v1 (metadata-graph score + Related swap)          | BE+FE   | ☐ BLOCKED — user: spike decisions D1–D4                                                   |
+| RC3  | Collections_List render mode (embedded hub as card-row)               | BE+FE   | ☐ COLD — small; no new entity                                                             |
+| RC4  | Suggested collections (admin suggestion rows)                         | BE+FE   | ☐ BLOCKED — needs CT3 engine + RC1 metadata quality                                       |
+| RC5  | CLIP/pgvector embedding tier                                          | BE+ML   | ☐ BLOCKED — user: spike decision D6 (infra commitment)                                    |
+| CT1  | Collections-as-tags spec refresh against the typeless model           | docs    | ☐ COLD — produces a current D1–D12 matrix for CT2                                         |
+| CT2  | Adjudicate the collections-as-tags decision matrix                    | user    | ☐ BLOCKED — user; after CT1                                                               |
+| CT3  | Saved-filter engine (AND-tag query, `source` column, sync)            | BE+FE   | ☐ BLOCKED — on CT2                                                                        |
+| CT4  | Blog-as-date surface (`/blog` stream, per-day entries)                | BE+FE   | ☐ BLOCKED — on CT2                                                                        |
+| CT5  | Auto-tag: `POST /collections/{id}/auto-tag` + admin button            | BE+FE   | ☐ COLD — independent of CT2                                                               |
+| CT6  | Tag `type`/visibility model                                           | BE      | ☐ COLD — design confirm, then small schema work                                           |
+| AU1  | Self-serve password reset                                             | BE+FE   | ☐ COLD — plan written and verified current                                                |
+| AU2  | Passkey credential list + revoke, enrollment-state UI                 | BE+FE   | ☐ BLOCKED — user: endpoint shape (admin, user-facing, or both)                            |
+| AU4  | Local admin dev-session affordance (post backend #243)                | FE+BE   | ☐ COLD — unblocked 08-31: G6 landed as #351, so the corrected rule now states the reality |
+| EM1  | SES production checklist (verify domain, DKIM, sandbox exit)          | OPS     | ☐ COLD — ops; user drives the AWS console half                                            |
+| EM2  | New-recipient-only gallery send flow                                  | FE      | ☐ COLD — UI addition, plan written                                                        |
+| EM3  | Contact-owner notification + `user_invite.created_by`                 | BE      | ☐ COLD — two small backend items                                                          |
+| EM4  | Gallery-password design pass (precedes any BCrypt work)               | user    | ☐ BLOCKED — user; backend board PARKED BCrypt behind it                                   |
+| MA1  | Manage rail restructure (per-field PATCH, delete edit sheet)          | FE(+BE) | ☐ BLOCKED — backend `PATCH /collections/{id}` still absent (re-checked 08-31); it is MR 1 |
+| MA2  | `staging` system collection                                           | BE+FE   | ☐ BLOCKED — user: `HIDDEN` vs `UNLISTED` seed visibility                                  |
+| MA3  | Mobile-first admin Phase 3 remainder                                  | FE      | ☐ BLOCKED — user: does the dark-admin premise survive its partial reversal?               |
+| MA4  | Messages admin: retention TTL, read/delete/search, notify channel     | BE+FE   | ☐ COLD — sliceable                                                                        |
+| MA5  | Admin collections list at 100× (paged/filtered/sorted)                | BE+FE   | ☐ COLD — low priority until collection count grows                                        |
+| MA6  | User change log + non-admin canonical mutation path                   | BE+FE   | ☐ BLOCKED — user: §10 decisions in the logged-in-flow review                              |
+| PF2  | Blur placeholders (`blurDataURL`)                                     | FE      | ☐ COLD                                                                                    |
+| PF6  | External error tracking                                               | FE      | ☐ BLOCKED — user: Sentry vs CloudWatch                                                    |
+| PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)              | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                        |
+| PF12 | Gate the auto-deploy on CI                                            | OPS     | ☐ COLD — console work; `main` deploys today regardless of CI                              |
+| PF13 | Home page genuinely static (Cache Components / PPR)                   | FE      | ☐ COLD — re-sized 08-31: `cacheComponents` is app-wide, 3 sittings, wants PF12 first      |
+| LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build              | FE      | ☐ BLOCKED — user: two competing designs, neither built                                    |
 
 **Not on this board, deliberately:** everything with a row on
 [2026-summer-refactor.md](2026-summer-refactor.md) (H1's `/user` merge, F4's TaxonomyPage
@@ -155,12 +155,12 @@ stack. That reframing is what made it answerable in one pass; the write-up is in
    an ungated production deploy. The measured work list is on the row. This is the second item this
    run whose recorded shape did not survive being checked — see the lesson below.
 
-3. **SD3** — one slice only, and the active-filter summary (removable badges + Clear-all) is the
-   one to take: it is the only slice that improves every dimension already shipped rather than
-   adding a sixth. Verified absent 2026-08-31 — `focalLength`, `filmStock` and `year` all return 0
-   in `app/types/GalleryFilter.ts`.
-   **Guardrail: one dimension per MR.** The row is explicitly sliceable and doing all five is how
-   a one-sitting item becomes three.
+3. **SD3** — **SHIPPED (#373)**, one slice, guardrail held. The active-filter summary was the
+   right pick: it improves every dimension already shipped rather than adding a sixth. Half of it
+   turned out to be built already — Clear-all is the trailing × and has been there all along, so
+   the slice was the badge summary alone. Adding it collided two buttons' accessible names, which
+   was a real ambiguity rather than a test problem; an optional `ariaLabel` on `FilterChip` fixed
+   it and left every existing test untouched.
 
 **Re-derive refs between MRs?** It was called for between 2 and 3 because PF13 would have touched
 `CollectionPageWrapper`, which `CollectionPageClient` and the filter surface sit under. PF13 did
@@ -203,9 +203,13 @@ Cross-repo: file on the backend board when picked up. Est: 1 sitting.
 ### ☐ SD3 · Filter-bar dimension gaps — COLD, one slice per dimension
 
 Verified absent from `app/types/GalleryFilter.ts`: focal-length ranges (Wide/Normal/Tele),
-film-stock secondary filter (conditional on Film + 2+ stocks), year chips, active-filter summary
-with removable badges + Clear-all, proportional row merging. Each is an independent slice on the
-shared `FilterToolbar`.
+film-stock secondary filter (conditional on Film + 2+ stocks), year chips, proportional row
+merging. Each is an independent slice on the shared `FilterToolbar`.
+
+The active-filter summary shipped as **#373**. Note what the row had wrong: it listed
+"removable badges + Clear-all" as one slice, and Clear-all was already built — the `resetAll`
+handler and the trailing × have been there all along. The group file said so; the board row did
+not, and the row is what a session reads first.
 
 ### ☐ SD4 · `/explore` as a real explorer — BLOCKED (user, decision #10)
 
