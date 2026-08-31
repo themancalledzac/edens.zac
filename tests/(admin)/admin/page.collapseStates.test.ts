@@ -418,10 +418,16 @@ describe('admin hub page height against the all-open baseline', () => {
    * rejected composition was the one holding all three nav tiles, the re-pack strands Client
    * Galleries alone in a row where its 1728×2500 portrait cover renders full-bleed and enormous.
    * The predicate was added to fix a real defect (one panel at its 400px floor beside two collapsed
-   * bars at 762px — Zac's third fill rule broken outright), and the trade looks intrinsic rather
+   * bars at 762px — Zac's third fill rule broken outright), and the trade is intrinsic rather
    * than tunable: in that composition equal panel columns force unequal column heights, unequal
-   * heights are a pocket, so shared-width and no-pocket cannot both hold. Which rule should yield
-   * is a design question for Zac, not something to settle by loosening a tolerance here.
+   * heights are a pocket, so shared-width and no-pocket cannot both hold.
+   *
+   * ADJUDICATED 2026-08-31: the shared width wins and the height cost stands. Note what the
+   * predicate actually constrains — a V split hands both children the full width, so a column is
+   * uniform by construction and the predicate can only ever reject a SIDE-BY-SIDE arrangement of
+   * panel columns. Zac's call was on exactly that case: two panel columns beside each other are
+   * still one group and still share a width. Do not reopen this by loosening the tolerance; the
+   * heights below are the agreed price.
    *
    * WHICH STATE strands the cover is not stable, and each pass has moved it. The composer's choice
    * turns on whether a tile column can be made the same height as the panel column at a width that

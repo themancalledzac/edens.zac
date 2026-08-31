@@ -115,7 +115,6 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | PF12 | Gate the auto-deploy on CI                                         | OPS     | ☐ COLD — console work; `main` deploys today regardless of CI                              |
 | PF13 | Home page genuinely static (Cache Components / PPR)                | FE      | ☐ COLD — created by PF4's closure; render-path change, not a config flip                  |
 | LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build           | FE      | ☐ BLOCKED — user: two competing designs, neither built                                    |
-| LY2  | Admin panel width vs page height                                   | FE      | ☐ BLOCKED — user: adjudication; both outcomes already test-pinned                         |
 
 **Not on this board, deliberately:** everything with a row on
 [2026-summer-refactor.md](2026-summer-refactor.md) (H1's `/user` merge, F4's TaxonomyPage
@@ -129,10 +128,11 @@ not rediscovered as new.
 
 One question first, then three items, cheapest-first so a truncated session still banks MRs.
 
-**Ask decision #7 (LY2) at the start.** It is the only blocked item whose question changed this
-run: every number it was being asked against was stale, and the corrected table is now on the LY2
-row. If the user picks which rule yields, LY2 becomes this run's first MR — it is a predicate
-change plus re-pinning the tests, both already scoped.
+**Decision #7 was asked first and is answered — LY2 closed with no code change.** The shared width
+holds. Worth carrying forward: the question was asked in narrower terms than the board had it,
+because `pinnedWidthSpread` turned out to constrain only side-by-side panel columns, never a
+stack. That reframing is what made it answerable in one pass; the write-up is in
+[2026-features/ly-layout-decisions.md](2026-features/ly-layout-decisions.md).
 
 1. **EM5** — the email-disabled callout. **Re-specified 2026-08-31 and the shape is not what the
    row implied.** `email.enabled` is a backend-internal Spring property
@@ -177,7 +177,7 @@ Batch these at the start of a session. Each unblocks the named item; none blocks
 | 4      | Passkey revocation shape: admin endpoint, user-facing list-and-remove, or both?                                                                                                                                                                                                                                                                                             | AU2      |
 | 5      | Does the dark-admin premise survive? (`(admin)/layout.tsx` deliberately removed the admin-only dark wiring)                                                                                                                                                                                                                                                                 | MA3      |
 | 6      | Lone-last-row: gap-box spacer or FILLER atom?                                                                                                                                                                                                                                                                                                                               | LY1      |
-| 7      | Panel width vs page height (values pinned in `tests/(admin)/admin/page.collapseStates.test.ts`)                                                                                                                                                                                                                                                                             | LY2      |
+| ~~7~~  | ~~Panel width vs page height~~ **ANSWERED 2026-08-31: keep the shared width; the height cost stands.** Asked narrowly, since a 'V' split makes a column uniform by construction and the predicate can only reject SIDE-BY-SIDE panel columns: those are still one group and still share a width. No code change — LY2 closed as pure adjudication.                          | —        |
 | 8      | Error tracking: Sentry or CloudWatch?                                                                                                                                                                                                                                                                                                                                       | PF6      |
 | ~~11~~ | ~~`engines.node` vs the dev machine~~ **ANSWERED 2026-08-31: "whatever is best long term practice."** Read as: `engines.node` becomes an unbounded floor, a `.nvmrc` names the blessed version, and CI reads that file instead of a hardcoded literal — one source of truth, no upper bound to age out. Shape recorded in [PF11](2026-features/pf-performance-platform.md). | PF11     |
 | ~~9~~  | ~~Which host serves production?~~ **FULLY ANSWERED 2026-08-31 — AWS Amplify Hosting**, confirmed by the user after `curl` had narrowed it to CloudFront-fronted AWS running a live Next server (Vercel and static-S3 eliminated). Auto-deploys from `main` in ~15 min. Recorded in `CLAUDE.md`; shipped as PF9 (#365).                                                      | —        |
@@ -472,34 +472,6 @@ than a symbol; use the case-sensitive command above so this does not get re-disp
 designs: the gap-box spacer (`005-end-row-gap.md`) vs the redesign spec's §13 FILLER atom.
 Pick one, then TDD it. Note the BLANK-spacer post-pass in `buildRows` already handles row-width
 normalization — read the group file so the chosen design composes with it.
-
-### ☐ LY2 · Panel width vs page height — BLOCKED (user, decision #7)
-
-The shared-width predicate (`pinnedWidthSpread`, `app/utils/rowCombination.ts:475,512`) fixed a
-real fill defect but strands a 1728×2500 portrait cover full-bleed in some collapse states, which
-costs page height. The trade looks intrinsic rather than tunable: in that composition equal panel
-columns force unequal column heights, unequal heights are a pocket, so shared-width and no-pocket
-cannot both hold. Which rule yields is the decision.
-
-**Every number in this row was stale and has been replaced (re-run 2026-08-31).** It said the cost
-landed in `messages+roles` at 1607.0px vs a 1567.7px baseline. Neither value is in the test file
-any more, and `messages+roles` is now the state that is _fine_. A fourth admin panel relocated the
-pathology. Current pinned values, read from
-`tests/(admin)/admin/page.collapseStates.test.ts:457-460,480-482`:
-
-| State                           | Height | vs baseline       |
-| ------------------------------- | ------ | ----------------- |
-| all-open (baseline)             | 2009.5 | —                 |
-| `messages+collections`          | 3099.4 | taller            |
-| `messages+roles+collections`    | 2875.4 | taller            |
-| `roles+collections`             | 2023.1 | barely taller     |
-| `messages+roles`                | 1691.5 | comfortably under |
-| `users` alone, at 1174.4px body | 2641.4 | taller            |
-
-**Do not restate these numbers here again.** The test file's own docblock (`:413-453`) is the
-authority and explains why they move; it also records that chasing a figure by re-tuning the
-collections count would be fitting the fixture to the assertion. Ask the decision against the
-table above, not against the old pair. Pure adjudication.
 
 ## Session log
 

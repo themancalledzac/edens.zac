@@ -502,6 +502,12 @@ function firstCleanExtension(
  * minimum but no pin, and is deliberately NOT held to this — tiles are photographs and size to
  * their own aspect ratios.
  *
+ * Only ever fires across a SIDE-BY-SIDE split: {@link renderedLeafWidths} hands both children of
+ * a 'V' the full width, so blocks stacked in one column are uniform by construction and score 0
+ * here regardless. Every real spread it rejects is two panel columns beside each other. Zac
+ * adjudicated that case on 2026-08-31 — they are still one group, so the rule holds even though
+ * it costs page height; see `tests/(admin)/admin/page.collapseStates.test.ts`.
+ *
  * Reads widths from {@link renderedLeafWidths}, which under a pin is the sizer's own solve
  * rather than the share estimate — close, but not gap-for-gap identical, which is what
  * {@link PINNED_WIDTH_SPREAD_GAPS} exists to absorb. It also does not narrow a column to
