@@ -179,6 +179,7 @@ export default function CollectionPageClient({
     selectedLocations: initialCriteria.locations ?? [],
     selectedDates: initialCriteria.dates ?? [],
     selectedYears: initialCriteria.years ?? [],
+    selectedFocalRanges: initialCriteria.focalRanges ?? [],
   };
 
   const [filterState, setFilterState] = useState<FilterState>(initialFilterState);
@@ -405,14 +406,17 @@ export default function CollectionPageClient({
     if (!hasActiveFilters) return null;
     const dims = extractCollectionFilterOptions(filteredImages, allCollections);
 
-    // `dates`, `years` and `lenses` are single-valued per image, so each is SELF-EXCLUSIVE: deriving its
+    // `dates`, `years`, `lenses` and `focalRanges` are single-valued per image, so each is
+    // SELF-EXCLUSIVE: deriving its
     // availability from `filteredImages` -- which already reflects that dimension's own active
     // selection -- collapses every other option to "unavailable" the instant one is picked, and a
     // disabled chip cannot be switched to. Re-derive each from a pass with its OWN key omitted, so
     // its options never grey each other out while an option ruled out by a DIFFERENT active filter
     // (e.g. camera) still greys out correctly. Both are single-choice in the toolbar
     // (`EXCLUSIVE_FILTER_KEYS`), which is what makes switching the only reachable move.
-    const availabilityWithout = (key: 'dates' | 'years' | 'lenses'): CollectionFilterDimensions => {
+    const availabilityWithout = (
+      key: 'dates' | 'years' | 'lenses' | 'focalRanges'
+    ): CollectionFilterDimensions => {
       const { [key]: _omitted, ...selfExcluded } = criteria;
       const content = applyCollectionFilters(allContent, allImages, selfExcluded);
       const gifs = content.filter(
@@ -428,6 +432,7 @@ export default function CollectionPageClient({
       locations: dims.locations.values,
       dates: availabilityWithout('dates').dates.values,
       years: availabilityWithout('years').years.values,
+      focalRanges: availabilityWithout('focalRanges').focalRanges.values,
     };
   }, [hasActiveFilters, filteredImages, allCollections, criteria, allContent, allImages]);
 

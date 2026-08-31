@@ -1539,6 +1539,7 @@ describe('hasFilterableOptions', () => {
       locations: { values: [], filterable: false },
       dates: { values: [], filterable: false },
       years: { values: [], filterable: false },
+      focalRanges: { values: [], filterable: false },
     };
     expect(hasFilterableOptions(options, false, false)).toBe(false);
   });
@@ -1589,6 +1590,114 @@ describe('year filtering', () => {
   it('counts a selected year as an active filter', () => {
     expect(hasAnyActiveFilter(makeFilterState({ selectedYears: ['2024'] }))).toBe(true);
     expect(hasAnyActiveFilter(makeFilterState())).toBe(false);
+  });
+});
+
+describe('focal-range filtering', () => {
+  const wide = makeImage({ id: 141, focalLength: '24 mm' });
+  const normal = makeImage({ id: 142, focalLength: '50 mm' });
+  const tele = makeImage({ id: 143, focalLength: '200 mm' });
+
+  it('keeps only images whose focal length falls in a selected range', () => {
+    expect(filterContent([wide, normal, tele], { focalRanges: ['wide'] }).map(i => i.id)).toEqual([
+      141,
+    ]);
+    expect(filterContent([wide, normal, tele], { focalRanges: ['tele'] }).map(i => i.id)).toEqual([
+      143,
+    ]);
+  });
+
+  it('matches any of several selected ranges', () => {
+    const result = filterContent([wide, normal, tele], { focalRanges: ['wide', 'tele'] });
+    expect(result.map(i => i.id)).toEqual([141, 143]);
+  });
+
+  it('drops images carrying no focal length, as film scans do', () => {
+    const film = makeImage({ id: 144, focalLength: null });
+    expect(filterContent([wide, film], { focalRanges: ['wide'] }).map(i => i.id)).toEqual([141]);
+  });
+
+  it('drops an image whose focal length cannot be parsed', () => {
+    const junk = makeImage({ id: 145, focalLength: 'wide angle' });
+    expect(filterContent([junk], { focalRanges: ['wide'] })).toHaveLength(0);
+  });
+
+  it('never hides a collection tile, which carries no focal length', () => {
+    const ref = makeCollectionRef({ id: 1004 });
+    expect(collectionRefMatchesCriteria(ref, { focalRanges: ['tele'] })).toBe(true);
+  });
+
+  it('leaves GIFs in place, dated or not', () => {
+    const datedGif = makeGif({ id: 203, captureDate: '2024-07-20T10:00:00' });
+    const undatedGif = makeGif({ id: 204 });
+    const content: AnyContentModel[] = [datedGif, undatedGif, wide, tele];
+
+    const result = applyCollectionFilters(content, [wide, tele], { focalRanges: ['wide'] });
+    expect(result.map(i => i.id)).toEqual([203, 204, 141]);
+  });
+
+  it('builds a focalRanges criterion from filter state and round-trips it through the URL', () => {
+    const criteria = buildCollectionCriteria(makeFilterState({ selectedFocalRanges: ['tele'] }));
+    expect(criteria.focalRanges).toEqual(['tele']);
+
+    const params = serializeFilterToParams(criteria);
+    expect(params.getAll('focal')).toEqual(['tele']);
+    expect(parseFilterFromParams(params).focalRanges).toEqual(['tele']);
+  });
+
+  it('counts a selected focal range as an active filter', () => {
+    expect(hasAnyActiveFilter(makeFilterState({ selectedFocalRanges: ['wide'] }))).toBe(true);
+  });
+});
+
+describe('the focalRanges dimension', () => {
+  it('reports the ranges the images populate, short to long', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 151, focalLength: '200 mm' }),
+      makeImage({ id: 152, focalLength: '24 mm' }),
+    ]);
+    expect(dims.focalRanges.values).toEqual(['wide', 'tele']);
+  });
+
+  it('is filterable once two ranges are populated', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 153, focalLength: '24 mm' }),
+      makeImage({ id: 154, focalLength: '70 mm' }),
+    ]);
+    expect(dims.focalRanges.filterable).toBe(true);
+  });
+
+  it('is not filterable when every image sits in one range', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 155, focalLength: '24 mm' }),
+      makeImage({ id: 156, focalLength: '28 mm' }),
+    ]);
+    expect(dims.focalRanges.filterable).toBe(false);
+  });
+
+  it('is empty and not filterable on a film collection, which carries no focal length', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 157, focalLength: null, isFilm: true }),
+      makeImage({ id: 158, focalLength: null, isFilm: true }),
+    ]);
+    expect(dims.focalRanges.values).toEqual([]);
+    expect(dims.focalRanges.filterable).toBe(false);
+  });
+
+  it('ignores collection tiles entirely', () => {
+    const dims = extractCollectionFilterOptions(
+      [makeImage({ id: 159, focalLength: '24 mm' })],
+      [makeCollectionRef({ id: 1005, collectionDate: '2024-05-01' })]
+    );
+    expect(dims.focalRanges.values).toEqual(['wide']);
+  });
+
+  it('opens the filter bar on its own', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 160, focalLength: '24 mm' }),
+      makeImage({ id: 161, focalLength: '200 mm' }),
+    ]);
+    expect(hasFilterableOptions(dims, false, false)).toBe(true);
   });
 });
 

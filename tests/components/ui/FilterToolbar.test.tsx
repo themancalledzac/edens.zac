@@ -6,7 +6,7 @@ import {
   MAX_FLAT_DATE_CHIPS,
   MAX_FLAT_YEAR_CHIPS,
 } from '@/app/components/ui/FilterToolbar/FilterToolbar';
-import { INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
+import { FOCAL_RANGE_LABELS, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import { dayLabels } from '@/app/utils/collectionDates';
 
 type Props = ComponentProps<typeof FilterToolbar>;
@@ -682,6 +682,77 @@ describe('FilterToolbar active-filter summary', () => {
       filterState: { ...INITIAL_FILTER_STATE, selectedDates: [options[0]!] },
     });
     expect(screen.getByRole('button', { name: 'Remove 2026-07-10 from Date' })).toBeInTheDocument();
+  });
+});
+
+describe('FilterToolbar focal-length dropdown', () => {
+  const focal = {
+    selectedFocalRanges: {
+      label: 'Focal length',
+      options: ['wide', 'normal', 'tele'],
+      optionLabels: FOCAL_RANGE_LABELS,
+    },
+  };
+
+  it('renders a dropdown, not flat chips', () => {
+    renderToolbar({ dimensions: focal });
+    expect(screen.getByRole('button', { name: /^Focal length/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Wide' })).not.toBeInTheDocument();
+  });
+
+  it('shows the three ranges by their labels once opened', () => {
+    renderToolbar({ dimensions: focal });
+    fireEvent.click(screen.getByRole('button', { name: /^Focal length/ }));
+    for (const label of ['Wide', 'Normal', 'Tele']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    }
+  });
+
+  it('selects a range on click', () => {
+    const { onFilterChange } = renderToolbar({ dimensions: focal });
+    fireEvent.click(screen.getByRole('button', { name: /^Focal length/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tele' }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedFocalRanges: ['tele'] });
+  });
+
+  it('switches rather than accumulates, since an image has one focal length', () => {
+    const { onFilterChange } = renderToolbar({
+      dimensions: focal,
+      filterState: { ...INITIAL_FILTER_STATE, selectedFocalRanges: ['wide'] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Focal length/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tele' }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedFocalRanges: ['tele'] });
+  });
+
+  it('summarises the selection as a removable badge under its label', () => {
+    renderToolbar({
+      dimensions: focal,
+      filterState: { ...INITIAL_FILTER_STATE, selectedFocalRanges: ['tele'] },
+    });
+    expect(
+      screen.getByRole('button', { name: 'Remove Tele from Focal length' })
+    ).toBeInTheDocument();
+  });
+
+  it('greys out a range no longer reachable under the other active filters', () => {
+    renderToolbar({
+      dimensions: focal,
+      filteredAvailable: { selectedFocalRanges: ['wide'] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Focal length/ }));
+    expect(screen.getByRole('button', { name: 'Wide' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Tele' })).toBeDisabled();
+  });
+
+  it('keeps the selected range clickable so it can be switched away from', () => {
+    renderToolbar({
+      dimensions: focal,
+      filterState: { ...INITIAL_FILTER_STATE, selectedFocalRanges: ['tele'] },
+      filteredAvailable: { selectedFocalRanges: ['tele'] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Focal length/ }));
+    expect(screen.getByRole('button', { name: 'Tele' })).toBeEnabled();
   });
 });
 

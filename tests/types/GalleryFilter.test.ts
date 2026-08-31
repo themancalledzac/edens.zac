@@ -4,6 +4,8 @@ import {
   cycleDateSortTwoState,
   cycleFilmFilter,
   type FilterState,
+  FOCAL_RANGE_LABELS,
+  FOCAL_RANGE_ORDER,
   INITIAL_FILTER_STATE,
   initialDateSortDirection,
   toggleArrayFilter,
@@ -41,6 +43,16 @@ describe('FilterState helpers', () => {
   it('carries a years dimension', () => {
     expect(ARRAY_FILTER_KEYS).toContain('selectedYears');
     expect(INITIAL_FILTER_STATE.selectedYears).toEqual([]);
+  });
+
+  it('carries a focal-range dimension, empty by default', () => {
+    expect(ARRAY_FILTER_KEYS).toContain('selectedFocalRanges');
+    expect(INITIAL_FILTER_STATE.selectedFocalRanges).toEqual([]);
+  });
+
+  it('orders the focal ranges short to long and labels them for chips', () => {
+    expect(FOCAL_RANGE_ORDER).toEqual(['wide', 'normal', 'tele']);
+    expect(FOCAL_RANGE_ORDER.map(r => FOCAL_RANGE_LABELS[r])).toEqual(['Wide', 'Normal', 'Tele']);
   });
 
   it('leads ARRAY_FILTER_KEYS with the time dimensions, coarse before fine', () => {
@@ -115,6 +127,20 @@ describe('FilterState helpers', () => {
     const updates: Partial<FilterState>[] = [];
     toggleArrayFilter(state, u => updates.push(u), 'selectedDates', '2026-07-20');
     expect(updates).toEqual([{ selectedDates: [] }]);
+  });
+
+  it('toggleArrayFilter switches the focal range instead of accumulating a second one', () => {
+    const onChange = jest.fn();
+    const state = { ...INITIAL_FILTER_STATE, selectedFocalRanges: ['wide'] };
+    toggleArrayFilter(state, onChange, 'selectedFocalRanges', 'tele');
+    expect(onChange).toHaveBeenCalledWith({ selectedFocalRanges: ['tele'] });
+  });
+
+  it('toggleArrayFilter clears the focal range when its sole selection is re-picked', () => {
+    const onChange = jest.fn();
+    const state = { ...INITIAL_FILTER_STATE, selectedFocalRanges: ['wide'] };
+    toggleArrayFilter(state, onChange, 'selectedFocalRanges', 'wide');
+    expect(onChange).toHaveBeenCalledWith({ selectedFocalRanges: [] });
   });
 
   it('toggleArrayFilter switches the lens instead of accumulating a second one', () => {

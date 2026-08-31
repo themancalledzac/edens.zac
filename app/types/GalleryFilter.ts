@@ -10,6 +10,22 @@ export type DateSortDirection = 'asc' | 'desc' | 'off';
 /** 'film' = film only, 'digital' = digital only, 'off' = no film/digital filter. */
 export type FilmFilter = 'film' | 'digital' | 'off';
 
+/**
+ * Focal-length bands, derived from an image's `focalLength` rather than observed in the data:
+ * wide below 35mm, normal through 70mm, tele above it. See `app/utils/focalLength.ts`.
+ */
+export type FocalRange = 'wide' | 'normal' | 'tele';
+
+/** Canonical short-to-long ordering for {@link FocalRange}; the order chips render in. */
+export const FOCAL_RANGE_ORDER: readonly FocalRange[] = ['wide', 'normal', 'tele'];
+
+/** Chip labels for {@link FocalRange}. The stored values are lowercase keys, not display text. */
+export const FOCAL_RANGE_LABELS: Readonly<Record<FocalRange, string>> = Object.freeze({
+  wide: 'Wide',
+  normal: 'Normal',
+  tele: 'Tele',
+});
+
 export interface FilterState {
   /**
    * Chronological sequence: capture date for images/GIFs, collection date for collection tiles.
@@ -34,6 +50,12 @@ export interface FilterState {
   readonly selectedPeople: readonly string[];
   readonly selectedCameras: readonly string[];
   readonly selectedLenses: readonly string[];
+  /**
+   * {@link FocalRange} keys to include. Unlike every other dimension these are a fixed vocabulary
+   * derived from each image's focal length, not values observed in the data — so the options a
+   * page offers are the bands its images actually populate.
+   */
+  readonly selectedFocalRanges: readonly string[];
   readonly selectedLocations: readonly string[];
   /**
    * Calendar years ('YYYY') to include. The coarse counterpart to {@link selectedDates}: a year
@@ -53,6 +75,7 @@ export const INITIAL_FILTER_STATE: FilterState = Object.freeze({
   selectedPeople: Object.freeze([] as readonly string[]),
   selectedCameras: Object.freeze([] as readonly string[]),
   selectedLenses: Object.freeze([] as readonly string[]),
+  selectedFocalRanges: Object.freeze([] as readonly string[]),
   selectedLocations: Object.freeze([] as readonly string[]),
   selectedYears: Object.freeze([] as readonly string[]),
   selectedDates: Object.freeze([] as readonly string[]),
@@ -66,6 +89,7 @@ export type ArrayFilterKey =
   | 'selectedPeople'
   | 'selectedCameras'
   | 'selectedLenses'
+  | 'selectedFocalRanges'
   | 'selectedLocations';
 
 /**
@@ -81,6 +105,7 @@ export const ARRAY_FILTER_KEYS: readonly ArrayFilterKey[] = [
   'selectedPeople',
   'selectedCameras',
   'selectedLenses',
+  'selectedFocalRanges',
   'selectedLocations',
 ];
 
@@ -129,15 +154,17 @@ export function cycleFilmFilter(current: FilmFilter): FilmFilter {
 
 /**
  * Array dimensions whose values are mutually exclusive on a single item, making a multi-select
- * meaningless in both combine modes: an image has exactly one capture day, one capture year and
- * one lens. Two dates or two years OR two disjoint sets (a selection that only ever widens the
- * result); two lenses AND two disjoint sets (a selection that always yields nothing — see
- * `lensMatchMode: 'AND'` in `buildCollectionCriteria`). All three are single-choice.
+ * meaningless in both combine modes: an image has exactly one capture day, one capture year, one
+ * lens and one focal range. Two dates, years or focal ranges OR two disjoint sets (a selection
+ * that only ever widens the result); two lenses AND two disjoint sets (a selection that always
+ * yields nothing — see `lensMatchMode: 'AND'` in `buildCollectionCriteria`). All are
+ * single-choice.
  */
 const EXCLUSIVE_FILTER_KEYS: readonly ArrayFilterKey[] = [
   'selectedYears',
   'selectedDates',
   'selectedLenses',
+  'selectedFocalRanges',
 ];
 
 /**

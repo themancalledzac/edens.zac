@@ -24,6 +24,7 @@ import {
 } from '@/app/utils/collectionDates';
 import { isCollectionCard } from '@/app/utils/contentRatingUtils';
 import { isGifContent } from '@/app/utils/contentTypeGuards';
+import { distinctFocalRanges, getFocalRange } from '@/app/utils/focalLength';
 
 /**
  * Filter criteria for content arrays.
@@ -56,6 +57,11 @@ export interface ContentFilterCriteria {
    * tiles, matched against their own `collectionDate` — see {@link collectionRefMatchesCriteria}.
    */
   years?: readonly string[];
+  /**
+   * {@link FocalRange} keys to include (OR logic). Image-only: a collection tile and a GIF carry
+   * no focal length, so this never hides either — see {@link collectionRefMatchesCriteria}.
+   */
+  focalRanges?: readonly string[];
   /** Filter to film images only */
   isFilm?: boolean;
   /** Filter to black & white images only */
@@ -170,6 +176,7 @@ export function filterContent(
     criteria.dateTo !== undefined ||
     (criteria.dates && criteria.dates.length > 0) ||
     (criteria.years && criteria.years.length > 0) ||
+    (criteria.focalRanges && criteria.focalRanges.length > 0) ||
     criteria.isFilm !== undefined ||
     criteria.blackAndWhite !== undefined ||
     (criteria.collectionIds && criteria.collectionIds.length > 0);
@@ -245,6 +252,11 @@ export function filterContent(
     if (criteria.years && criteria.years.length > 0) {
       const year = captureYearKey(item.captureDate);
       if (!year || !criteria.years.includes(year)) return false;
+    }
+
+    if (criteria.focalRanges && criteria.focalRanges.length > 0) {
+      const range = getFocalRange(item.focalLength);
+      if (!range || !criteria.focalRanges.includes(range)) return false;
     }
 
     if (criteria.isFilm !== undefined && (item.isFilm ?? false) !== criteria.isFilm) {
@@ -653,6 +665,9 @@ export function parseFilterFromParams(
   const years = getAll('year');
   if (years.length > 0) criteria.years = years;
 
+  const focalRanges = getAll('focal');
+  if (focalRanges.length > 0) criteria.focalRanges = focalRanges;
+
   const query = get('q');
   if (query) criteria.query = query;
 
@@ -694,6 +709,7 @@ export const FILTER_PARAM_KEYS = [
   'camera',
   'date',
   'year',
+  'focal',
   'q',
   'from',
   'to',
@@ -722,6 +738,7 @@ export function serializeFilterToParams(criteria: ContentFilterCriteria): URLSea
   for (const c of criteria.cameras ?? []) params.append('camera', c);
   for (const d of criteria.dates ?? []) params.append('date', d);
   for (const y of criteria.years ?? []) params.append('year', y);
+  for (const f of criteria.focalRanges ?? []) params.append('focal', f);
 
   if (criteria.query) params.set('q', criteria.query);
   if (criteria.dateFrom) params.set('from', criteria.dateFrom);
@@ -768,6 +785,7 @@ export interface CollectionFilterDimensions {
   locations: FilterDimension;
   dates: FilterDimension;
   years: FilterDimension;
+  focalRanges: FilterDimension;
 }
 
 /**
@@ -786,6 +804,11 @@ export interface CollectionFilterDimensions {
  *   and this parameter does not change that. See {@link isDateable}, which
  *   already treats dated GIFs as chronologically participating. Without this, a day whose
  *   content is entirely GIFs would have no chip and become unreachable.
+ *
+ * `focalRanges` is the one dimension whose options are a fixed vocabulary rather than values read
+ * out of the data: the three bands are always the same, so this reports which of them the images
+ * actually populate. It draws on images alone — a collection tile and a GIF carry no focal length
+ * — and a film collection populates none, which is what keeps the dropdown off those pages.
  *
  * `years` differs from `dates` twice over: it also draws on collection refs' own `collectionDate`,
  * and it carries no image-count floor. A collection spans days but sits in one year, so Year is
@@ -811,6 +834,8 @@ export function extractCollectionFilterOptions(
     ...images.map(img => img.captureDate),
     ...datedGifs.map(gif => gif.captureDate),
   ]);
+
+  const focalRanges = distinctFocalRanges(images.map(img => img.focalLength));
 
   const years = distinctYears([
     ...images.map(img => img.captureDate),
@@ -860,6 +885,10 @@ export function extractCollectionFilterOptions(
       values: years,
       filterable: years.length >= 2,
     },
+    focalRanges: {
+      values: focalRanges,
+      filterable: focalRanges.length >= 2,
+    },
   };
 }
 
@@ -889,6 +918,9 @@ export function buildCollectionCriteria(filterState: FilterState): ContentFilter
       : {}),
     ...(filterState.selectedDates.length > 0 ? { dates: filterState.selectedDates } : {}),
     ...(filterState.selectedYears.length > 0 ? { years: filterState.selectedYears } : {}),
+    ...(filterState.selectedFocalRanges.length > 0
+      ? { focalRanges: filterState.selectedFocalRanges }
+      : {}),
   };
 }
 
@@ -904,7 +936,8 @@ export function hasAnyActiveFilter(filterState: FilterState): boolean {
     filterState.selectedLenses.length > 0 ||
     filterState.selectedLocations.length > 0 ||
     filterState.selectedDates.length > 0 ||
-    filterState.selectedYears.length > 0
+    filterState.selectedYears.length > 0 ||
+    filterState.selectedFocalRanges.length > 0
   );
 }
 
@@ -1126,7 +1159,8 @@ export function hasFilterableOptions(
     baseOptions.lenses.values.length > 0 ||
     baseOptions.locations.filterable ||
     baseOptions.dates.filterable ||
-    baseOptions.years.filterable
+    baseOptions.years.filterable ||
+    baseOptions.focalRanges.filterable
   );
 }
 

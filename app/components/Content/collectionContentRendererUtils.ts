@@ -14,7 +14,7 @@ import { type KeyboardEvent } from 'react';
 import { type CollectionInfoOptions } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { type ToolbarDimension } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { type ContentType, type ViewableContent } from '@/app/types/Content';
-import { type ArrayFilterKey } from '@/app/types/GalleryFilter';
+import { type ArrayFilterKey, FOCAL_RANGE_LABELS } from '@/app/types/GalleryFilter';
 import { dayLabels } from '@/app/utils/collectionDates';
 
 export interface ActivatableProps {
@@ -94,6 +94,13 @@ export function toCollectionDimensions(
   }
   if (options.lenses.filterable && options.lenses.values.length > 0) {
     dims.selectedLenses = { label: 'Lens', options: options.lenses.values };
+  }
+  if (options.focalRanges.filterable && options.focalRanges.values.length > 0) {
+    dims.selectedFocalRanges = {
+      label: 'Focal length',
+      options: options.focalRanges.values,
+      optionLabels: FOCAL_RANGE_LABELS,
+    };
   }
   return dims;
 }

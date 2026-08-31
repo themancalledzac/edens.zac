@@ -470,6 +470,7 @@ export default function CollectionContentRenderer({
                         selectedLocations: collectionFilter.filteredAvailable.locations,
                         selectedDates: collectionFilter.filteredAvailable.dates,
                         selectedYears: collectionFilter.filteredAvailable.years,
+                        selectedFocalRanges: collectionFilter.filteredAvailable.focalRanges,
                       }
                     : null
                 }

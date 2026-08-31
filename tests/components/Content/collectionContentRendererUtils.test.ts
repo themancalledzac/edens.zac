@@ -17,6 +17,7 @@ const options = (overrides: Partial<CollectionInfoOptions> = {}): CollectionInfo
   people: dim([], false),
   cameras: dim([], false),
   lenses: dim([], false),
+  focalRanges: dim([], false),
   locations: dim([], false),
   dates: dim([], false),
   years: dim([], false),
@@ -67,6 +68,20 @@ describe('toCollectionDimensions', () => {
     expect(result.selectedYears).toBeUndefined();
   });
 
+  it('surfaces focal ranges with their chip labels when filterable', () => {
+    const result = toCollectionDimensions(options({ focalRanges: dim(['wide', 'tele'], true) }));
+    expect(result.selectedFocalRanges).toEqual({
+      label: 'Focal length',
+      options: ['wide', 'tele'],
+      optionLabels: { wide: 'Wide', normal: 'Normal', tele: 'Tele' },
+    });
+  });
+
+  it('omits focal ranges when not filterable', () => {
+    const result = toCollectionDimensions(options({ focalRanges: dim(['wide'], false) }));
+    expect(result.selectedFocalRanges).toBeUndefined();
+  });
+
   it('surfaces dates with human labels when filterable', () => {
     const dims = toCollectionDimensions({
       people: { values: [], filterable: true },
@@ -75,6 +90,7 @@ describe('toCollectionDimensions', () => {
       locations: { values: [], filterable: true },
       dates: { values: ['2026-07-20', '2026-07-21'], filterable: true },
       years: { values: [], filterable: false },
+      focalRanges: { values: [], filterable: false },
       showHighlyRated: false,
       showDateSort: false,
       showHiddenToggle: false,
@@ -95,6 +111,7 @@ describe('toCollectionDimensions', () => {
       locations: { values: [], filterable: true },
       dates: { values: ['2026-07-20'], filterable: false },
       years: { values: [], filterable: false },
+      focalRanges: { values: [], filterable: false },
       showHighlyRated: false,
       showDateSort: false,
       showHiddenToggle: false,

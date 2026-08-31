@@ -22,6 +22,7 @@ const EVERY_CRITERION: ContentFilterCriteria = {
   cameras: ['leica-m6'],
   dates: ['2026-07-20'],
   years: ['2026'],
+  focalRanges: ['wide'],
   query: 'sunset',
   dateFrom: '2026-01-01',
   dateTo: '2026-12-31',
