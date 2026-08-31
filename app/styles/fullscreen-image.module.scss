@@ -122,8 +122,13 @@
   max-width: 100%;
   max-height: 100%;
   transform-origin: center center;
-  will-change: transform;
   touch-action: none;
+}
+
+// Promoted only while pinched past 1x, not for the whole time the modal is open. Costs the first
+// frame of a pinch; saves an idle layer for the rest of the modal's life.
+.zoomLayerActive {
+  will-change: transform;
 }
 
 .fullScreenImage {

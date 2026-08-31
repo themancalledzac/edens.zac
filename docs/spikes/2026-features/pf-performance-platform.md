@@ -10,17 +10,6 @@ Zero `blurDataURL` / `placeholder="blur"` hits in `app/`. Needs server-side gene
 the open scoping question is WHERE: at backend upload time (persisted per image) vs at request
 time in the FE. Scope that first; upload-time is the likely answer and makes this cross-repo.
 
-## PF3 · Priority narrowing, `will-change` scoping, preconnect
-
-- `priority`/preload is row-scoped: `Component.tsx`'s `computePriorityRowIndex` deliberately
-  extends eager loading through the first content row. Narrow toward the single LCP candidate.
-- `will-change: transform` is unconditional in three modules:
-  `app/styles/fullscreen-image.module.scss:125`, `CoverCard.module.scss:53`,
-  `ParallaxImageRenderer.module.scss:17`. Scope to near-viewport.
-- No CloudFront `<link rel="preconnect">` in `app/layout.tsx` (006 straggler routed to 002).
-
-Three small independent slices; can land as one MR or three.
-
 ## PF13 · Make the home page genuinely static (Cache Components / PPR) — COLD, real work
 
 Created by PF4's closure. PF4 asked for a segment-config flip and there is no flip to make; the
@@ -163,6 +152,67 @@ unlinked labels, `window.confirm`) is untriaged AND its file paths are stale
 against current paths first — the findings may be live, the line numbers are not.
 
 ## Closed
+
+### ✅ PF3 · Priority narrowing, will-change scoping, preconnect — PR #362, 2026-08-30
+
+Three separate changes, each verified against a build rather than reasoned about.
+
+**Priority narrowing.** `priority` was per-row: `BoxRenderer` passed one boolean down the whole
+BoxTree, so every block in the priority rows got `fetchPriority="high"` and its own preload. A
+four-across first row therefore issued four competing high-priority requests when only one can be
+the LCP — the other three take bandwidth from it.
+
+`computePriorityContentId` (in `componentUtils.ts`) now scans the priority rows in render order
+and returns the id of the **first block that actually renders an image**. `BoxRenderer` takes
+`priorityContentId` in place of `priority` and each leaf compares its own id.
+
+Skipping non-image leaves is the part that matters. Marking "the first leaf" would hand the flag
+to a BLANK spacer whenever `buildRows`' width-normalization pass put one first, leaving the real
+LCP image lazy — strictly worse than the fan-out being replaced. Blanks, admin panels and text
+blocks are skipped; IMAGE, GIF and COLLECTION all count, since all three render an `<Image>`.
+
+**`will-change` scoping.** Deliberately _not_ unified into a mixin — a mixin would still apply
+unconditionally, which is the actual defect. Each of the three was scoped where it lives:
+
+| Declaration                                          | Was                          | Now                                                                |
+| ---------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------ |
+| `CoverCard.module.scss` `.cardImage`                 | Unconditional                | Set by `useParallax` while the card is visible, cleared on cleanup |
+| `ParallaxImageRenderer.module.scss` `.parallaxImage` | Unconditional                | Same — both are `.parallax-bg`, driven by the same hook            |
+| `fullscreen-image.module.scss` `.zoomLayer`          | Whole time the modal is open | `.zoomLayerActive`, applied only while `isZoomed`                  |
+
+The two parallax rules moved into the hook because the hook is the only thing that knows when the
+element is animating; it already gates its scroll listener on `isVisible` from an
+IntersectionObserver, so the promotion reuses a signal that was there. This is the one with real
+weight: `/collections` requests up to 500 cards, and as a stylesheet rule every one of them held a
+GPU compositor layer for the whole session, nearly all offscreen and none animating. The
+reduced-motion branch clears it too.
+
+The fullscreen layer trades one frame for the rest of the gesture: the first frame of a pinch is
+unpromoted now, everything after it is not. Worth it against holding a promoted layer for the
+whole time someone is simply looking at a photo.
+
+Built CSS confirms it: **3** `will-change` rules before, **1** after — `.zoomLayerActive`.
+
+**Preconnect.** `app/layout.tsx` had no `<head>` at all. It now carries a CloudFront `preconnect`
+plus a `dns-prefetch` fallback. `crossOrigin="anonymous"` is required: image requests are
+anonymous-CORS, and a preconnect whose CORS mode does not match opens a connection the image
+request cannot reuse. The host is `CDN_ORIGIN` in `app/constants`, duplicated from
+`next.config.js`'s `CLOUDFRONT_HOST` because that file cannot be imported from `app/` without
+dragging the bundle analyzer into the client bundle — `tests/config/cdnHost.test.ts` asserts the
+two agree, along with the CSP and the optimizer's `remotePatterns`.
+
+**Measured**, both arms built and served against the same mock backend and the same home payload:
+
+|                                  | Before | After |
+| -------------------------------- | ------ | ----- |
+| `loading="eager"` images         | 2      | **1** |
+| `rel="preload" as="image"`       | 2      | **1** |
+| `rel="preconnect"`               | 0      | **1** |
+| `will-change` rules in built CSS | 3      | **1** |
+
+Production before the change, for reference: home 2 eager / 2 preloads, `/collections` **4 eager /
+4 preloads**, 0 preconnect on both. `/collections` is where the narrowing pays most, and the unit
+tests pin that a four-item row now yields exactly one id.
 
 ### ✅ PF10 · Image quality 65 — PR #361, 2026-08-30
 

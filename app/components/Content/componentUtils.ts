@@ -13,7 +13,12 @@ import {
   processContentForDisplay,
   type RowWithPatternAndSizes,
 } from '@/app/utils/contentLayout';
-import { isBlankContent } from '@/app/utils/contentTypeGuards';
+import {
+  isBlankContent,
+  isContentCollection,
+  isContentImage,
+  isGifContent,
+} from '@/app/utils/contentTypeGuards';
 import { logger } from '@/app/utils/logger';
 import { type BoxTree } from '@/app/utils/rowCombination';
 
@@ -172,14 +177,16 @@ export function computeFirstNonVisibleRowIndex(
 }
 
 /**
- * Highest row index (inclusive) whose images should load eagerly for the LCP.
+ * Highest row index (inclusive) to search for the LCP candidate.
  *
  * The header cover renders above the fold, but on a collection page the true LCP is usually the
  * first image of the first *content* row — a full-size grid image sitting below a height-constrained
- * cover. Next flags it because it lazy-loads. Prioritizing every row from the top through the first
- * content row makes both the cover and that first content row eager. Pages with no header
+ * cover. Next flags it because it lazy-loads. Searching from the top through the first content row
+ * therefore reaches both the cover and that first content row. Pages with no header
  * (taxonomy/location/user grids) have their first content row at index 0, so this collapses to
- * "prioritize row 0" — unchanged from before.
+ * "row 0" — unchanged from before.
+ *
+ * Narrows the search only; {@link computePriorityContentId} picks the block.
  *
  * @param rows - Laid-out rows, header rows first (if any), then content rows.
  * @param fallbackIndex - Row to prioritize when there is no content row at all (header-only layout).
@@ -191,6 +198,36 @@ export function computePriorityRowIndex(
 ): number {
   const firstContentIndex = rows.findIndex(r => r.rowType !== 'header');
   return firstContentIndex === -1 ? fallbackIndex : firstContentIndex;
+}
+
+/** Leaf contents left-to-right — the order `BoxRenderer` renders them in. */
+function boxTreeLeaves(tree: BoxTree): AnyContentModel[] {
+  if (tree.type === 'leaf') return [tree.content];
+  return [...boxTreeLeaves(tree.children[0]), ...boxTreeLeaves(tree.children[1])];
+}
+
+/**
+ * Id of the single block to load eagerly — the LCP candidate. Marking a whole row instead costs one
+ * preload each, and only one can be the LCP.
+ *
+ * Skips blanks, panels and text: handing the flag to a spacer would leave the real image lazy.
+ *
+ * @param rows - Laid-out rows, header rows first (if any), then content rows.
+ * @param priorityRowIndex - Highest row index to consider, from {@link computePriorityRowIndex}.
+ * @returns The block id to mark, or `undefined` when those rows render no image.
+ */
+export function computePriorityContentId(
+  rows: RowWithPatternAndSizes[],
+  priorityRowIndex: number
+): number | undefined {
+  for (const row of rows.slice(0, priorityRowIndex + 1)) {
+    for (const content of boxTreeLeaves(row.boxTree)) {
+      if (isContentImage(content) || isGifContent(content) || isContentCollection(content)) {
+        return content.id;
+      }
+    }
+  }
+  return undefined;
 }
 
 /**

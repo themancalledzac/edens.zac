@@ -5,6 +5,7 @@
 import {
   buildContentRows,
   computeFirstNonVisibleRowIndex,
+  computePriorityContentId,
   computePriorityRowIndex,
   computeTargetAspectRatio,
   createSimpleBoxTree,
@@ -19,7 +20,12 @@ import {
   processContentForDisplay,
   type RowWithPatternAndSizes,
 } from '@/app/utils/contentLayout';
-import { createImageContent, createTextContent } from '@/tests/fixtures/contentFixtures';
+import {
+  createCollectionContent,
+  createGifContent,
+  createImageContent,
+  createTextContent,
+} from '@/tests/fixtures/contentFixtures';
 
 const TOL = 64;
 
@@ -245,6 +251,75 @@ describe('computePriorityRowIndex', () => {
 
   it('falls back to the provided index for an empty layout', () => {
     expect(computePriorityRowIndex([], 0)).toBe(0);
+  });
+});
+
+describe('computePriorityContentId', () => {
+  const of = (content: CalculatedContentSize['content']): CalculatedContentSize => ({
+    content,
+    width: 100,
+    height: 100,
+  });
+
+  const blank = (id: number): CalculatedContentSize =>
+    of({ id, contentType: 'BLANK', orderIndex: 0, width: 1.5, height: 1 });
+
+  it('marks one block, not the whole row', () => {
+    const rows = [row([sizeItem(1), sizeItem(2), sizeItem(3), sizeItem(4)])];
+
+    expect(computePriorityContentId(rows, 0)).toBe(1);
+  });
+
+  it('takes the leftmost leaf, which is the one rendered first', () => {
+    const rows = [row([sizeItem(7), sizeItem(8)])];
+
+    expect(computePriorityContentId(rows, 0)).toBe(7);
+  });
+
+  it('reaches into the header row when that is where the first image sits', () => {
+    const rows = [headerRow([sizeItem(1)]), row([sizeItem(2)])];
+
+    expect(computePriorityContentId(rows, 1)).toBe(1);
+  });
+
+  it('never looks past the priority row', () => {
+    const rows = [headerRow([sizeItem(1)]), row([sizeItem(2)]), row([sizeItem(3)])];
+
+    expect(computePriorityContentId(rows, 0)).toBe(1);
+  });
+
+  it('skips a text block rather than spending the flag on it', () => {
+    const rows = [row([of(createTextContent(1)), sizeItem(2)])];
+
+    expect(computePriorityContentId(rows, 0)).toBe(2);
+  });
+
+  it('skips a blank spacer, which would leave the real image lazy', () => {
+    const rows = [row([blank(1), sizeItem(2)])];
+
+    expect(computePriorityContentId(rows, 0)).toBe(2);
+  });
+
+  it('accepts a GIF, which still occupies the LCP slot', () => {
+    const rows = [row([of(createGifContent(4))])];
+
+    expect(computePriorityContentId(rows, 0)).toBe(4);
+  });
+
+  it('accepts a collection card, which renders its cover image', () => {
+    const rows = [row([of(createCollectionContent(9))])];
+
+    expect(computePriorityContentId(rows, 0)).toBe(9);
+  });
+
+  it('returns undefined when the priority rows render no image at all', () => {
+    const rows = [row([of(createTextContent(1))])];
+
+    expect(computePriorityContentId(rows, 0)).toBeUndefined();
+  });
+
+  it('returns undefined for an empty layout', () => {
+    expect(computePriorityContentId([], 0)).toBeUndefined();
   });
 });
 

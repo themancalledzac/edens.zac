@@ -19,10 +19,10 @@ interface BoxRendererProps {
   sizes: Map<number, { width: number; height: number }>;
   isMobile: boolean;
   /**
-   * Eager-load flag for this row (`rowIndex <= priorityRowIndex`). Stays a prop because it is the
-   * one value in this chain that is per-row rather than render-constant.
+   * Id of the block to load eagerly, from `computePriorityContentId`; `undefined` outside the
+   * priority rows. Stays a prop because it is the one per-row value in this chain.
    */
-  priority?: boolean;
+  priorityContentId?: number;
 }
 
 /**
@@ -43,7 +43,7 @@ interface BoxRendererProps {
  * defaults applied below are the ones `Component` used to apply on the way in, kept here so the
  * leaf sees the same values it always has.
  */
-export function BoxRenderer({ tree, sizes, isMobile, priority }: BoxRendererProps) {
+export function BoxRenderer({ tree, sizes, isMobile, priorityContentId }: BoxRendererProps) {
   const {
     onImageClick,
     enableFullScreenView = false,
@@ -143,7 +143,7 @@ export function BoxRenderer({ tree, sizes, isMobile, priority }: BoxRendererProp
       onPickUp,
       onPlace,
       onCancelImageMove,
-      priority,
+      priority: contentId === priorityContentId,
       onImageLoadError,
       canDownload,
       collectionSlug,
@@ -156,8 +156,18 @@ export function BoxRenderer({ tree, sizes, isMobile, priority }: BoxRendererProp
 
   return (
     <div className={containerClass}>
-      <BoxRenderer tree={tree.children[0]} sizes={sizes} isMobile={isMobile} priority={priority} />
-      <BoxRenderer tree={tree.children[1]} sizes={sizes} isMobile={isMobile} priority={priority} />
+      <BoxRenderer
+        tree={tree.children[0]}
+        sizes={sizes}
+        isMobile={isMobile}
+        priorityContentId={priorityContentId}
+      />
+      <BoxRenderer
+        tree={tree.children[1]}
+        sizes={sizes}
+        isMobile={isMobile}
+        priorityContentId={priorityContentId}
+      />
     </div>
   );
 }

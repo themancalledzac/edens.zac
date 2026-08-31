@@ -65,7 +65,10 @@ export function useParallax(options: ParallaxOptions = {}) {
     // scroll/resize work entirely so the image stays put for these users.
     if (prefersReducedMotion) {
       const parallaxBg = elementRef.current.querySelector(selector) as HTMLElement | null;
-      if (parallaxBg) parallaxBg.style.transform = 'translate3d(0, 0, 0)';
+      if (parallaxBg) {
+        parallaxBg.style.transform = 'translate3d(0, 0, 0)';
+        parallaxBg.style.willChange = '';
+      }
       return;
     }
 
@@ -81,6 +84,10 @@ export function useParallax(options: ParallaxOptions = {}) {
     if (!parallaxBg) {
       return;
     }
+
+    // Promoted only while visible and animating. As a stylesheet rule it was unconditional, so
+    // every offscreen card held a GPU layer too — hundreds on /collections.
+    parallaxBg.style.willChange = 'transform';
 
     const rafRef = { current: null as number | null };
     const lastOffsetRef = { current: undefined as number | undefined };
@@ -154,6 +161,7 @@ export function useParallax(options: ParallaxOptions = {}) {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
       }
+      parallaxBg.style.willChange = '';
     };
   }, [isVisible, selector, enableParallax, prefersReducedMotion]);
 

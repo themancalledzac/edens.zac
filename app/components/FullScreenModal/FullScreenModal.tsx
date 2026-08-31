@@ -189,7 +189,10 @@ export function FullScreenModal({
         <div
           className={`${styles.imageWrapper} ${currentImageLoaded ? styles.imageWrapperLoaded : ''}`}
         >
-          <div ref={zoomTargetRef} className={styles.zoomLayer}>
+          <div
+            ref={zoomTargetRef}
+            className={`${styles.zoomLayer} ${isZoomed ? styles.zoomLayerActive : ''}`}
+          >
             {isGif ? (
               <video
                 key={currentImage.id}
