@@ -51,11 +51,14 @@ The documented incremental path is opt-OUT, not opt-in: enable the flag, delete 
 codemod, `npx @next/codemod@canary cache-components-instant-false ./app`), then convert routes one
 at a time. `instant` is real in 16.3.1 — `next/dist/build/segment-config/app/app-segment-config.js:144`.
 
-**One hard blocker that `instant = false` explicitly cannot defer.** Synchronous IO during
-prerender is a build error regardless of opt-out, and `app/components/Footer/Footer.tsx:29` calls
-`new Date().getFullYear()`. Footer is a server component rendered from the **root layout**, so that
-one line fails the prerender of every route in the app until it is moved behind a boundary with
-`connection()` or into a Client Component. Nothing can be converted before it is fixed.
+**One hard blocker that `instant = false` explicitly cannot defer — CLEARED by #375.**
+Synchronous IO during prerender is a build error regardless of opt-out, and
+`app/components/Footer/Footer.tsx` called `new Date().getFullYear()` from a server component in the
+**root layout**, so that one line failed the prerender of every route in the app. #375 moved the
+year into a Client Component; `grep -c 'new Date' app/components/Footer/Footer.tsx` returns **0**
+as of 2026-08-31 (5). Kept here because it is the reason step 1 existed, and because the same trap
+applies to any `Date`, `Math.random()` or `crypto.randomUUID()` added to a prerendered server
+component later.
 
 **What `/[slug]` inherits — the question the guardrail asked.** `CollectionPageWrapper` is rendered
 by `app/page.tsx`, `app/[slug]/page.tsx` and `app/all-client-galleries/page.tsx`. Restructuring its

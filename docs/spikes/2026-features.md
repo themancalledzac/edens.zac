@@ -97,6 +97,12 @@ reportToService()` seam (it does not exist — `logger.ts` is 14 lines of `conso
   `contentFilter.filterParamKeys.test.ts` — whose entire job is catching exactly that omission —
   passed green, because `EVERY_CRITERION` did not set `years`. A guard keyed on "every field"
   needs the fixture updated in the same change that adds a field, or it silently stops guarding.
+- **Run the close-out's ref sweep AFTER that session's own PRs merge, not before.** Both refs that
+  moved on 2026-08-31 (5) were moved by that same session: #376's `year` key pushed
+  `FILTER_PARAM_KEYS` from `:670` to `:689`, and #375 deleted the `Footer.tsx:29` `new Date()` that
+  the PF13 section went on describing in the present tense as a live blocker. The third principle
+  says drift lives in the neighbourhood of what shipped — the sharpest case of that is what YOU
+  just shipped, and it is the case a sweep run before merging cannot see.
 - **An item that only wires existing tested primitives into a new route is one sitting**, however
   many files it touches. SD1 was estimated at 2–3 and took 1. An item that deletes and rewrites
   (MA1) does not get this discount.
@@ -151,35 +157,64 @@ not rediscovered as new.
 
 ## NEXT RUN — set 2026-08-31 (5)
 
-Three items. The run is unblocked in a way it has not been: `main` is now gated on CI, so the
-app-wide change that was being held back can go.
+Three items, cheapest first so a truncated session still banks an MR. No question needs asking
+first: every open decision unblocks a BLOCKED item, and none of the three below is blocked.
 
-1. **PF13 step 2 — the mechanical flag flip.** `cacheComponents: true`, delete the 19
+1. **SD3 · one more slice, focal-length ranges.** The cheap banker, and disjoint from items 2–3
+   (they rewrite route-segment config; this touches the filter utilities). Warm from #373 and
+   #376 — a dimension on the shared `FilterToolbar`, the same shape both times.
+   **Guardrail: one dimension per MR, and do not reach for the collection-tile trick year used.**
+   No collection tile carries a focal length, so this reaches images only; it adds a facet to
+   pages that already have several rather than unlocking a surface. Size it as the smaller thing
+   it is, and report if the Wide/Normal/Tele bucketing turns out to need a lens-metadata field
+   that is not there.
+
+2. **PF13 step 2 — the mechanical flag flip.** `cacheComponents: true`, delete the 19
    `force-dynamic` exports, codemod `instant = false` onto the rest
-   (`npx @next/codemod@canary cache-components-instant-false ./app`). Step 1 shipped as #375, so
-   the root-layout prerender blocker is gone and this is now the first thing that can run.
+   (`npx @next/codemod@canary cache-components-instant-false ./app`). Both counts re-run and
+   holding as of 2026-08-31 (5). The root-layout blocker cleared with #375, and PF12 means a red
+   commit can no longer reach production, so both reasons this was held are gone.
    **Guardrail: no behaviour change intended, and this is where fetch-caching semantics shift
-   app-wide.** Verify with `next build` and the full suite, not by reasoning. It is the largest
-   item here — put it first while the session is fresh, and stop rather than half-land it.
+   app-wide.** Verify with `next build` and the full suite, not by reasoning. Largest item here —
+   stop rather than half-land it.
 
-2. **PF13 step 3 — convert the home page.** Suspense around `resolveSsrViewport()` and
-   `meServer()` in `CollectionPageWrapper`. **Guardrail: budget the test cost.** PF8's lesson says
-   the test-side cost of a Suspense split is roughly the whole cost of the split, and this wrapper
-   is rendered by `app/page.tsx`, `app/[slug]/page.tsx` and `app/all-client-galleries/page.tsx`, so
-   three routes' suites are in scope. Only start it if step 1 landed clean.
+3. **PF13 step 3 — convert the home page.** Suspense around `resolveSsrViewport()` and
+   `meServer()` in `CollectionPageWrapper`. Only start it if 2 landed clean.
+   **Guardrail: budget the test side.** PF8's lesson is that a Suspense split costs roughly its
+   own size again in tests, and this wrapper is rendered by `app/page.tsx`, `app/[slug]/page.tsx`
+   and `app/all-client-galleries/page.tsx`, so three routes' suites are in scope.
 
-3. **SD3 · one more slice, focal-length ranges.** The cheap banker if the two above run long.
-   Warm from #373 and #376: a dimension on the shared `FilterToolbar`, same shape both times.
-   **Guardrail: one dimension per MR.** Unlike year, this one reaches images only — no collection
-   tile carries a focal length — so it adds a facet to pages that already have several rather than
-   unlocking a surface. Size it as the smaller thing it is.
+**Re-derive refs between MRs?** Between 2 and 3, yes — step 2 rewrites segment config across the
+app and step 3 restructures a component those segments render. 1 is disjoint from both, which is
+why it can go first without stacking.
 
-**Re-derive refs between MRs?** Between 1 and 2, yes — step 1 rewrites segment config across the
-app and step 2 restructures a component those segments render. 3 is disjoint from both.
+**Not scheduled, and why.** EM2 is BLOCKED on a backend field that is both the stored recipient
+list and the send list; its MR 1 is backend. MA1 is still blocked on an absent
+`PATCH /collections/{id}` — re-verified 2026-08-31 (5), the five `@PatchMapping`s on the backend's
+`origin/main` are `/content/images`, `/content/gifs/{id}`, `/{id}` (users),
+`/collections/{collectionId}/rating` and `/collections/{collectionId}/images`, all sub-resource or
+unrelated.
 
-**Not scheduled, and why.** EM2 went BLOCKED this run on a backend field that is both the stored
-recipient list and the send list; its MR 1 is backend and belongs to a backend session. MA1 is
-still blocked on an absent `PATCH /collections/{id}`.
+## Verified and holding — do not re-investigate
+
+Re-run 2026-08-31 (5), with the command beside each. Skip these on the next reconciliation unless
+something in their neighbourhood merges.
+
+| Claim                                    | Command                                                                                                                       | Result                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| PF13: 19 of 21 segments export `dynamic` | `grep -rn 'export const dynamic' app --include='*.tsx' \| wc -l` / `find app -name 'page.tsx' -o -name 'layout.tsx' \| wc -l` | 19 / 21                                   |
+| LY1: no FILLER/gap-box symbol exists     | `grep -rn 'FILLER\|gapBox\|endRowGap' app/utils \| wc -l` (case-sensitive)                                                    | 0 (case-insensitive: 2, both prose)       |
+| PF6: no error tracking, no seam to fill  | `grep -rn 'Sentry' app`, `grep -rn 'reportToService' app`, `wc -l app/utils/logger.ts`                                        | 0, 0, 14                                  |
+| PF2: no blur placeholders                | `grep -rn 'blurDataURL\|placeholder="blur"' app \| wc -l`                                                                     | 0                                         |
+| MA1: `PATCH /collections/{id}` absent    | `git grep -n '@PatchMapping' origin/main -- src/main/java/` in the backend                                                    | 5 hits, all sub-resource or unrelated     |
+| CT5: no auto-tag endpoint                | `git grep -c 'auto-tag' origin/main -- src/main/java/`                                                                        | 0                                         |
+| AU2: no passkey list/revoke              | `git show origin/main:...auth/WebAuthnController.java \| grep -n 'Mapping('`                                                  | 4 mappings, register/login × start/finish |
+| SD2: `locations` not enriched            | `git show origin/main:...SyntheticCollectionResolver.java \| grep -n 'withTags\|withLocations'`                               | `withTags` at `:109`, no `withLocations`  |
+
+**Not re-checked this pass, and therefore unverified:** RC1's live data counts (`parents: null`
+everywhere; `isFilm` 0/5, 0/5, 0/7 against `dolomites-film`'s 33/33). Those were measured against
+live data on 2026-08-30 and need a live backend to re-run, so treat them as a week-old measurement
+rather than a current fact.
 
 ## Decisions for Zac
 
@@ -474,8 +509,11 @@ H2b per its sequencing note. Big; treat as a design adjudication first.
 ## Group PF — Performance & platform
 
 Context file: [2026-features/pf-performance-platform.md](2026-features/pf-performance-platform.md) —
-5 shipped (PF1 #358, PF5 #356, PF9 #365, PF11 #366, PF8 #367); their write-ups are in that
-file's Closed section.
+**9 closed** (PF5 #356, PF1 #358, PF4 #360 VOID, PF10 #361, PF3 #362, PF9 #365, PF11 #366,
+PF8 #367, PF12 settings-only); their write-ups are in that file's Closed section. Count re-derived
+2026-08-31 (5) with `grep -c '^### ✅' 2026-features/pf-performance-platform.md` — the previous
+"5 shipped" had been stale since PF3 and PF10 closed, so re-run that command rather than
+incrementing this number by hand.
 
 ### ☐ PF2 · Blur placeholders — COLD
 
@@ -495,9 +533,11 @@ opt-in is gone. Enabling it errors every segment exporting `dynamic`/`revalidate
 **19 of this repo's 21 route segments.** The documented path is opt-OUT: flag on, delete all 19
 `force-dynamic` exports, codemod `instant = false` onto the rest, convert one route at a time.
 
-A hard blocker sits ahead of all of it: `Footer.tsx:29` calls `new Date().getFullYear()` in a
-server component in the **root layout**. Synchronous IO during prerender is a build error that
-`instant = false` cannot defer, so no route builds until it moves.
+The hard blocker that sat ahead of all of it is **gone**: `Footer` called
+`new Date().getFullYear()` in a server component in the root layout, and synchronous IO during
+prerender is a build error `instant = false` cannot defer. #375 moved the year into a Client
+Component, so `grep -c 'new Date' app/components/Footer/Footer.tsx` is now **0** and the flag flip
+is unobstructed.
 
 And `/[slug]` does not escape. `CollectionPageWrapper` is rendered by `app/page.tsx`,
 `app/[slug]/page.tsx` and `app/all-client-galleries/page.tsx`; restructuring its awaits changes the
@@ -551,6 +591,39 @@ _Newest first, local dates. One line per `/next` run: what shipped (PR numbers),
 what's next. Older entries move to
 [2026-features/session-log.md](2026-features/session-log.md)._
 
+- 2026-08-31 (5) — shipped **PF13 step 1 (#375)**, **SD3 year chips (#376)**, and closed **PF12**
+  by applying branch protection. **Decision #12 answered: adopt Cache Components, full speed**, so
+  #375 joined the run and steps 2–3 are now the next run. **EM2 went BLOCKED, and the blocker was
+  nowhere near where two passes had been looking** — both prior passes argued about whether
+  `InfoTab` had a recipient field; it does, and it never mattered. `recipient_emails` has one
+  writer, which overwrites the whole array while mailing every address in it, so the frontend can
+  preserve the stored list or narrow the send, never both. **PF12's own premise was half wrong**:
+  branch protection was settable as expected, but Amplify has no wait-for-checks setting to pair
+  with it — the branch API exposes `enableAutoBuild` and nothing else, so the "console half" the
+  row promised does not exist, and protection alone closes the hole. **SD3's browser pass earned
+  its keep twice**: `year` was missing from `FILTER_PARAM_KEYS` while its own drift-guard test
+  passed (the fixture omitted `years`), and `/all-collections` printed "No images match your
+  filters" above three matching tiles. Filed one follow-up: a pre-existing setState-in-render
+  warning on every collection page, confirmed on `main` before filing. Next: PF13 steps 2 and 3,
+  then an SD3 slice. Close-out landed as **#377**.
+  **Reconciliation this pass re-ran eight recorded counts and all eight held** (PF13's 19/21,
+  LY1's 0 case-sensitive / 2 case-insensitive, PF6's zero Sentry + zero `reportToService` + 14-line
+  `logger.ts`, PF2's zero `blurDataURL`), plus four backend facts (MA1's absent
+  `PATCH /collections/{id}`, CT5's zero auto-tag hits, AU2's exactly four WebAuthn mappings, SD2's
+  `withTags` still at `:109`). **Two refs did move, both inside the neighbourhood of what merged**:
+  `Footer.tsx:29` is GONE — #375 removed the `new Date()` the PF13 section still described in the
+  present tense as a live blocker — and `contentFilter.ts:670` drifted to `:689` because #376's own
+  `year` key pushed `FILTER_PARAM_KEYS` down. **This close-out also mis-filed its own log entry**,
+  labelling it `(4)` beside the existing `(4)` and placing it below rather than above; both fixed
+  here. **A third stale thing, and this one was outside any recent neighbourhood**: the PF group's
+  "5 shipped" had been wrong since PF3 (#362) and PF10 (#361) closed, and PF4's VOID closure was
+  never counted either — the real figure is 9. It is now written with the command that derives it.
+  **The estimate lesson did not take.** Entry (4) named "shared primitives plus their test
+  fixtures" as the failure mode after three misses; SD3's year chips were sized as "one slice" and
+  landed 17 files across 8 app and 6 test files, which is the same miss a fourth time with the rule
+  already written down. The rule is not the gap — applying it at scheduling time is, so the run
+  entries now carry the size call, not just the guardrail.
+
 - 2026-08-31 (4) — shipped **LY2 (#369)**, **EM5 (#370)**, **SD3's badge slice (#373)**; **PF13
   (#372) re-specified rather than built**. **Decision #7 answered** — the shared-width rule holds;
   asking it narrowly is what closed it, since `pinnedWidthSpread` turned out to constrain only
@@ -568,36 +641,3 @@ what's next. Older entries move to
   docblock), MA1's `TODO(A3)` sub-task gone AND its feature already shipped (`b66c39a`), and EM2's
   "no recipient field" premise false (`InfoTab.tsx:303`). **PF12's premise verified live** — no
   branch protection, no rulesets. Next: ask decision #12, then EM2, SD3 year chips, PF12.
-
-- 2026-08-31 (4) — shipped **PF13 step 1 (#375)**, **SD3 year chips (#376)**, and closed **PF12**
-  by applying branch protection. **Decision #12 answered: adopt Cache Components, full speed**, so
-  #375 joined the run and steps 2–3 are now the next run. **EM2 went BLOCKED, and the blocker was
-  nowhere near where two passes had been looking** — both prior passes argued about whether
-  `InfoTab` had a recipient field; it does, and it never mattered. `recipient_emails` has one
-  writer, which overwrites the whole array while mailing every address in it, so the frontend can
-  preserve the stored list or narrow the send, never both. **PF12's own premise was half wrong**:
-  branch protection was settable as expected, but Amplify has no wait-for-checks setting to pair
-  with it — the branch API exposes `enableAutoBuild` and nothing else, so the "console half" the
-  row promised does not exist, and protection alone closes the hole. **SD3's browser pass earned
-  its keep twice**: `year` was missing from `FILTER_PARAM_KEYS` while its own drift-guard test
-  passed (the fixture omitted `years`), and `/all-collections` printed "No images match your
-  filters" above three matching tiles. Filed one follow-up: a pre-existing setState-in-render
-  warning on every collection page, confirmed on `main` before filing. Next: PF13 steps 2 and 3,
-  then an SD3 slice.
-
-- 2026-08-31 (3) — shipped **PF9 (#365)**, **PF11 (#366)**, **PF8 (#367)**; PF group is now 5
-  shipped. **Decision #9 fully closed**: the user confirmed AWS Amplify Hosting, recorded in
-  `CLAUDE.md`. **PF9's own premise was half wrong** — two docs named two hosts, not three; the
-  Vercel naming is six test `describe` strings, filed on the refactor board as **G7**. **PF11
-  diverged from its recorded shape with cause**: `">=20"` would have named a runtime that reached
-  EOL on 2026-04-30, and Next 16.3.1 already floors at `>=20.9.0`, so the floor is `">=22"` with
-  `.nvmrc` at `24`. **PF8 was the estimate lesson** — three "smalls" landed +455/−108 across 14
-  files, and splitting two pages around Suspense boundaries broke two test suites for purely
-  structural reasons. Two follow-ups filed on the refactor board: **C12** (`.metadataToggle` has
-  SaveHeart's old 36/40 tap-target gap) and **C13** (a "Zac Eden" byline where three other routes
-  say "Zac Edens"). **Two items were found rotted by re-running their numbers, both far from
-  anything that merged**: LY2's collapse-state heights had moved to different states entirely (the
-  row named the one state that is now fine), and PF6's `// Future: reportToService()` seam does not
-  exist. Both corrected; the lesson is hoisted into "How to use this doc". **EM5 re-specified** —
-  the backend exposes no email-enabled flag, so it is a post-send callout on
-  `reason === 'email-disabled'`. Next: ask decision #7, then EM5, PF13, SD3.

@@ -52,7 +52,7 @@ independent MR slice.
 helpers rather than needing new machinery; each slice is well under a sitting.
 
 **The lens gap is now confirmed and specified**, not just suspected. `FILTER_PARAM_KEYS`
-(`app/utils/contentFilter.ts:670`) has no lens key, so `serializeFilterToParams` never writes one
+(`app/utils/contentFilter.ts:689`, drifted from `:670` when #376 added the `year` key) has no lens key, so `serializeFilterToParams` never writes one
 and `parseFilterFromParams` never reads one — a lens choice is live for the session and cannot
 survive a reload **on any surface in the repo**. `/search` documents and test-pins the gap
 (`seedFilterState` leaves `selectedLenses` empty). Fixing it is a one-key change to the shared

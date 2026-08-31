@@ -35,3 +35,20 @@ same close-out that adds them._
   **PF11** from decision #11 and **PF13** from PF4's closure. **#363 was closed on the user's
   call**: a docblock-length rule scoped to one repo belongs in `~/.claude/CLAUDE.md`, where the
   inline-comment ban it completes already lives — moved there instead. Next: PF9, PF11, PF8.
+
+- 2026-08-31 (3) — shipped **PF9 (#365)**, **PF11 (#366)**, **PF8 (#367)**; PF group is now 5
+  shipped. **Decision #9 fully closed**: the user confirmed AWS Amplify Hosting, recorded in
+  `CLAUDE.md`. **PF9's own premise was half wrong** — two docs named two hosts, not three; the
+  Vercel naming is six test `describe` strings, filed on the refactor board as **G7**. **PF11
+  diverged from its recorded shape with cause**: `">=20"` would have named a runtime that reached
+  EOL on 2026-04-30, and Next 16.3.1 already floors at `>=20.9.0`, so the floor is `">=22"` with
+  `.nvmrc` at `24`. **PF8 was the estimate lesson** — three "smalls" landed +455/−108 across 14
+  files, and splitting two pages around Suspense boundaries broke two test suites for purely
+  structural reasons. Two follow-ups filed on the refactor board: **C12** (`.metadataToggle` has
+  SaveHeart's old 36/40 tap-target gap) and **C13** (a "Zac Eden" byline where three other routes
+  say "Zac Edens"). **Two items were found rotted by re-running their numbers, both far from
+  anything that merged**: LY2's collapse-state heights had moved to different states entirely (the
+  row named the one state that is now fine), and PF6's `// Future: reportToService()` seam does not
+  exist. Both corrected; the lesson is hoisted into "How to use this doc". **EM5 re-specified** —
+  the backend exposes no email-enabled flag, so it is a post-send callout on
+  `reason === 'email-disabled'`. Next: ask decision #7, then EM5, PF13, SD3.
