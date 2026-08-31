@@ -34,9 +34,15 @@ prize here is the render and the `/auth/me` round trip, not the Spring call.
 
 ## PF6 · External error tracking
 
-Blocked on decision #8 (Sentry vs CloudWatch). Zero `Sentry`/`reportToService` hits in `app/`; the
-logger migration (#171) left the `// Future: reportToService()` seam. Error-boundary work rides
-the same MR.
+Blocked on decision #8 (Sentry vs CloudWatch). Zero `Sentry` and zero `reportToService` hits in
+`app/`, both re-run 2026-08-31. Error-boundary work rides the same MR.
+
+**Premise correction, 2026-08-31.** This section said the #171 logger migration left a
+`// Future: reportToService()` seam. It did not. `app/utils/logger.ts` is 14 lines of plain
+`console.*` wrappers with no `TODO`, `Future` or `FIXME` marker in the file. Whoever picks this up
+is adding a reporting path, not filling one in — there is no seam to slot into, and the estimate
+should carry the cost of choosing where the call sites go. Found by running the grep rather than
+re-reading the item; the claim had survived at least two passes.
 
 ## PF7 · CloudFlare Phase 2
 
@@ -53,83 +59,6 @@ time, no code prerequisite left (Caddy already deleted in anticipation). The seq
 Related backend item that should precede any second public endpoint: generalize the rate-limit
 config (`application.properties:79-80` is contact-specific) into a per-path map — see AU1, which
 needs it for the forgot-password trigger.
-
-## PF8 · Small orphans batch
-
-Three verified-absent smalls tracked nowhere else (previous-work.md tail + 000 next-steps):
-
-- JSON-LD structured data — zero `application/ld+json` in `app/`
-- Component-level `<Suspense>` wrappers in pages — zero `<Suspense` in `app/`
-- SaveHeart 44px tap target — measured 2026-08-31 at **36px mobile, 40px at ≥768px**
-  (`SaveHeart.module.scss:12-13` and `:37-38`), so the gap is 8px and 4px respectively
-
-One MR, or ride-alongs on adjacent work.
-
-## PF9 · Record the deploy target — COLD, and mostly answered
-
-**Answered by measurement 2026-08-31.** The row said three docs name three hosts (Amplify,
-S3+CloudFront, Vercel) and no in-repo config settles it. One `curl -sI https://zacedens.com/` does:
-
-```
-via: 1.1 <id>.cloudfront.net (CloudFront)
-x-amz-cf-pop: DEN53-P3
-x-frame-options: DENY
-content-security-policy-report-only: default-src 'self'; …
-cache-control: private, no-cache, no-store, max-age=0, must-revalidate
-```
-
-Apex resolves to `3.169.202.x` (CloudFront range), no CNAME.
-
-- **Vercel is eliminated** — no `x-vercel-*` header, and the response is served from
-  `cloudfront.net`.
-- **A static S3 export is eliminated** — the security headers are `next.config.js`'s own
-  `headers()` output, and the home page is `force-dynamic`. Both require a live Next server.
-- That leaves **AWS Amplify**, whose hosting is CloudFront-fronted and auto-builds from `main`.
-  Consistent with `next.config.js`'s own note, "Amplify injects none of these — verified against
-  production on 2026-08-23".
-
-**Deploys are already automatic, and fast.** PF1 merged at 05:33 UTC; by 05:47 production was
-rejecting `w=3840`, which only post-PF1 code does. So `main` → production is live inside ~15
-minutes with no `.github/` deploy workflow — Amplify's own build hook.
-
-**What is actually left** is only the recording: state the host in `CLAUDE.md` and correct the three
-docs that disagree. Small, COLD, no decision needed. The one residual the user may want to confirm
-is Amplify specifically versus a hand-rolled Next server behind CloudFront; nothing on this board
-depends on which.
-
-## PF11 · Reconcile the Node version — COLD, decision answered, ready to build
-
-`package.json` `engines.node` is `>=20 <23`. The dev machine runs **25.3.0**. PF5's CI now pins
-**22** — the top of the declared range — so CI tests a runtime nobody develops on, and development
-happens on one the repo says it does not support.
-
-Nothing is broken by this today (npm only warns without `engine-strict`), which is exactly why it
-will sit. Either `engines` is stale and should widen to include 25, or the dev environment should
-drop to 22. `tests/ci/ciWorkflow.test.ts` already asserts the CI pin satisfies `engines`, so the two
-cannot silently diverge further — whichever way it is resolved, that test keeps them honest.
-
-**Answered 2026-08-31.** The user asked for "whatever is best long term practice" rather than
-picking one of the two offered options, so neither half is taken on its own:
-
-1. `engines.node` becomes `">=20"` — a floor, with no upper bound. The `<23` is what created this
-   problem: an upper bound in `engines` is a promise about versions that did not exist when it was
-   written, and it ages into a false failure every time Node ships a major. This app is not a
-   published library, so nothing downstream needs the ceiling.
-2. Add a `.nvmrc` naming the blessed version. That is the file that should carry "what we actually
-   run", because it is the one `nvm use` reads.
-3. Point CI at that file — `node-version-file: .nvmrc` in place of `node-version: '22'`. Otherwise
-   the pin and the blessed version are two literals that drift, which is the same defect one level
-   up.
-
-The blessed version is a live question the build should settle rather than this doc: Node 22 went
-to Maintenance when 24 became Active LTS, so **24 is the better pin than 22** — but check the
-release schedule when picking this up rather than trusting that sentence. Either way the dev
-machine's 25.3.0 stays legal under the widened floor, so nothing forces the user to switch
-runtimes as part of this.
-
-`tests/ci/ciWorkflow.test.ts` already asserts the CI pin satisfies `engines`; it will need
-updating to read the pin out of `.nvmrc` instead of the workflow literal, and that assertion is
-what keeps the three in agreement afterwards.
 
 ## PF12 · Gate the auto-deploy on CI — COLD, mostly console work
 
@@ -153,6 +82,129 @@ unlinked labels, `window.confirm`) is untriaged AND its file paths are stale
 against current paths first — the findings may be live, the line numbers are not.
 
 ## Closed
+
+### ✅ PF9 · Record the deploy target — PR #365, 2026-08-31
+
+**Production is AWS Amplify Hosting.** The 08-31 `curl -sI https://zacedens.com/` had already
+established CloudFront-fronted AWS running a live Next server and eliminated Vercel (no
+`x-vercel-*`) and static S3 (the response carries `next.config.js`'s own security headers, and the
+home page is `force-dynamic`). The user confirmed the remaining half — Amplify specifically, not a
+hand-rolled Next server behind a self-managed CloudFront. Decision #9 is fully closed.
+
+Recorded in `CLAUDE.md` as a Critical Rule, covering the three facts that change how work is done
+here: `main` auto-deploys in ~15 minutes on Amplify's build hook, CI does not gate it, and build
+and routing config lives in the Amplify console rather than the repo — so console-dependent
+behavior cannot be reproduced by a local `next build`.
+
+**The row's own premise was half wrong, and finding out was the useful part.** It said three docs
+named three hosts. Two did: `README.md:24` said Hosting was `AWS (S3 + CloudFront)` — corrected —
+and `docs/previous-work.md:148` already said Amplify. There is no third _doc_. The Vercel naming
+lives in code: six `describe('Vercel BFF proxy …')` blocks in `tests/api/proxy/route.test.ts`,
+while the route's own comments (`route.ts:72-80`) are already correct about the host. Filed on the
+refactor board as **G7**, because a test-file rename is cleanup rather than a docs correction.
+
+**Two CloudFront distributions, and conflating them is what made the wrong answer plausible.**
+Amplify fronts the site with its own; `d2qp8h5pbkohe6.cloudfront.net` is the S3 image CDN pinned in
+`next.config.js`. README's "Storage: S3 + CloudFront" row was true and its "Hosting" row was that
+same fact miscopied. The new `CLAUDE.md` rule states the separation explicitly.
+
+Rode along: `docs/002-performance.md` item 8 ("verify Amplify serves AVIF/WebP") closed by the same
+production check — the optimizer returns `content-type: image/webp`.
+
+Est 1 sitting, actual well under. Docs only, +5/−2 across 3 files. **Gating the deploy on CI was
+kept out deliberately** — that is PF12, console work, and folding it in would have made this
+unrevertable.
+
+### ✅ PF11 · Reconcile the Node version — PR #366, 2026-08-31
+
+`.nvmrc` (`24`) is now the one place the version is written down. `engines.node` went `">=20 <23"`
+→ `">=22"`, CI switched to `node-version-file: .nvmrc`, and `tests/ci/ciWorkflow.test.ts` reads
+`.nvmrc` instead of the workflow's inline pin.
+
+**The floor is `>=22`, not the `">=20"` decision #11's recorded shape sketched.** The item said to
+check the release schedule, and checking changed the answer:
+
+- **Node 20 reached end-of-life 2026-04-30.** A `>=20` floor would declare support for a runtime
+  that no longer gets security patches.
+- **Next 16.3.1 declares `engines.node: ">=20.9.0"` itself**, so `>=20` sat below the repo's own
+  framework floor.
+- Node 22 is the oldest line still supported (maintenance through 2027-04-30); 24 is Active LTS
+  until 2026-10-20 and EOL 2028-04-30, the longest runway available.
+
+Verified against `nodejs/Release`'s `schedule.json`, not recalled. The board's own note ("24 is
+Active LTS and 22 is in Maintenance") was correct as far as it went and simply had not noticed 20
+aging out four months earlier — **a version-schedule claim goes stale on the calendar's schedule,
+not the repo's, so re-check it every time rather than trusting a recent-looking sentence.**
+
+`setup-node` resolves a bare major from `.nvmrc` through
+`^(?:node(js)?\s+)?v?(?<version>[^\s]+)$` — confirmed in the action's source, because its README
+does not document the accepted formats.
+
+The test gained two guards beyond the swap: the workflow must carry no inline `node-version:`
+literal, and `engines.node` must have no upper bound. Both exist so the two-literal shape cannot
+come back quietly. Net +3 tests. `.nvmrc` needs no ignore entry — it is outside both `eslint .`
+and the `format` script's glob.
+
+Est 1 sitting, actual well under: +30/−14 across 4 files. The dev machine's Node and every other
+CI step were left alone.
+
+### ✅ PF8 · Small orphans batch — PR #367, 2026-08-31
+
+Three unrelated smalls, +455/−108 across 14 files — **by far the largest of the three "small"
+items, and the estimate to carry forward is that a batch item costs the sum of its parts plus the
+tests, not the size of its largest part.**
+
+**JSON-LD.** `ImageGallery` on `/[slug]`, one type on one route per the guardrail.
+`buildCollectionJsonLd` is a pure function (`app/utils/structuredData.ts`) so it is testable;
+`CollectionJsonLd` is an async server component that emits the tag. It refetches the collection
+rather than threading it down, which is free — `getCollectionBySlug` carries its own
+`next: { revalidate, tags }` and the route already called it twice against one fetch.
+
+Four deliberate suppressions: password-protected collections (structured data is crawlable without
+the password, and the backend still returns `title` and `coverImage` on a locked response — the
+same reasoning `generateMetadata` already applies to the OG image), `?manage=1`, read failures, and
+a guessed `url` when `NEXT_PUBLIC_APP_URL` is unset. `serializeJsonLd` escapes `<` so a title
+containing `</script>` cannot close the tag it sits in.
+
+**Full coverage is not a frontend follow-up, which is the finding the guardrail asked for.** Three
+blockers, none of them in this repo: per-image `ImageObject` needs real `width`/`height`, and
+backend Bug #21 leaves dimensions at `0`; `BreadcrumbList` needs `parents`, which public reads
+return as `null` (that is RC1); a `WebSite` `SearchAction` needs a query param `/search` does not
+have, because it fetches the whole corpus once and filters client-side. A second type on the same
+page also forces a `@graph` with `@id` cross-references — a design decision, not another script
+tag. Only `CollectionPage` on `/tag/[slug]` and `/location/[slug]` is genuinely additive, roughly
+one builder plus tests per route.
+
+**Suspense.** `/explore` and `/search` each awaited a backend read in front of the whole response,
+so one slow fetch held the site header too. Both now return a synchronous shell with the data
+behind a boundary: `/explore` → `ExploreDirectory`, `/search` → `SearchResults` with the fallback
+factored out of the existing `loading.tsx` into a shared `SearchLoadingBody` so the streaming and
+navigation placeholders cannot drift.
+
+`CollectionPageWrapper` was left alone on purpose — its two personalized reads behind boundaries is
+**PF13's** whole subject, and doing it here would have collided. Worth knowing for PF13: every
+route in the app is already `force-dynamic`, so none of this is the `useSearchParams` prerender
+deopt; it is straightforwardly moving a blocking await inside a boundary.
+
+**SaveHeart.** 36px, rising to 40px at `≥768px`, against a 44px minimum. Now 44px at every width
+with the media query removed — the width under the minimum was the touch-only one. Its docblock had
+claimed it mirrored `.metadataToggle`'s sizing, which is no longer true and now says so;
+`.metadataToggle` still steps 36 → 40 and has the same gap, filed on the refactor board as **C12**.
+
+**Trap for the next session that splits a page around a Suspense boundary.** Two suites broke, both
+for the same structural reason and neither obviously: `tests/explore/page.test.tsx` rendered the
+route and awaited it, which no longer reaches the data; `tests/app/slug-page.manage.test.tsx`
+rendered the route and asserted on the mocked wrapper, which an unmocked async sibling now
+suspends in front of. The fix in both cases is to test the extracted async component as the unit
+and stub the sibling. Budget for it — the test-side cost of a Suspense split is roughly the whole
+cost of the split.
+
+**Verification note, stated because it is a real limit.** The populated JSON-LD node was never seen
+end-to-end: the local backend was down, so the browser pass exercised only the degradation path
+(`/film` returns 200 and emits zero `application/ld+json`). That path is genuinely verified and the
+builder is unit-tested; the happy path is covered by tests only. `/explore` painting its heading
+with the directory pending, `/search` painting its fallback heading, and the served CSS carrying
+`width: 44px; height: 44px` with no `≥768px` override were all confirmed in the browser.
 
 ### ✅ PF3 · Priority narrowing, will-change scoping, preconnect — PR #362, 2026-08-31
 
