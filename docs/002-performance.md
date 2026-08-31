@@ -25,7 +25,7 @@ One ordered Performance epic, roughly highest-leverage first:
 5. **Blur placeholder** — `placeholder="blur"` / `blurDataURL` generated server-side via sharp. _The blank-load **gap** is already closed by the SSR skeleton (#161); this remains as a quality polish for streaming-in images._
 6. ~~**GIF poster**~~ — ✅ **shipped.** `ContentGifModel.thumbnailUrl` is read: `contentRendererUtils.ts:375` carries it onto the render props, and it lands as `poster=` on all three video sites — `CollectionContentRenderer.tsx:511` (in-row), `FullScreenModal.tsx:207` (fullscreen), and `MediaPreview.tsx:35` (the metadata editor's preview).
 7. **Scope `will-change: transform`** — currently applied globally to parallax images; restrict to near-viewport only to avoid memory pressure.
-8. **Verify Amplify serves AVIF/WebP** — `formats` config is active but untested after deploy.
+8. ~~**Verify Amplify serves AVIF/WebP**~~ — ✅ **verified 2026-08-31 against production.** The optimizer returns `content-type: image/webp`, so the `formats` config is live on Amplify.
 9. **Render micro-opts** — memoize `handleFullScreenImageClick` (`useCallback`), share an IntersectionObserver, drop the redundant `document.querySelector` DOM probe in `useFullScreenImage`, and the admin-only inline-arrow callbacks in `ReorderOverlay`.
 
 > ⛔ **Backend-blocked:** removing `force-dynamic` from `app/page.tsx` (to restore ISR `revalidate = 3600`) waits on the backend `blocks_per_page` schema fix. Until then the most-visited page blocks on a live, possibly-slow Spring fetch on every visit — an LCP floor no image work can lower.

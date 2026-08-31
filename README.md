@@ -21,7 +21,7 @@ A full-stack photography portfolio and content management platform. Built for pe
 | **Backend**  | Spring Boot, Hibernate/JPA, RESTful API           |
 | **Database** | PostgreSQL on EC2                                 |
 | **Storage**  | AWS S3 + CloudFront CDN                           |
-| **Hosting**  | AWS (S3 + CloudFront)                             |
+| **Hosting**  | AWS Amplify (Next.js server, CloudFront-fronted)  |
 | **Testing**  | Jest, React Testing Library                       |
 | **Linting**  | ESLint 9 (flat config), Stylelint, Prettier       |
 
@@ -75,6 +75,8 @@ A full-stack photography portfolio and content management platform. Built for pe
 **Backend** -- Spring Boot REST API handles data persistence, image uploads, and metadata management. The Next.js frontend communicates through a typed API client layer with proper error handling and caching.
 
 **Storage** -- Images are uploaded to S3 and served globally through CloudFront. Next.js Image handles format conversion and responsive sizing at the edge.
+
+**Hosting** -- The frontend runs as a live Next.js server on AWS Amplify, which puts its own CloudFront distribution in front. Merging to `main` builds and deploys automatically in about fifteen minutes; the build configuration lives in the Amplify console rather than in this repo. The S3 image CDN is a separate CloudFront distribution.
 
 **Database** -- PostgreSQL stores collections, content metadata, and relationships. Hibernate/JPA manages the schema and queries.
 
