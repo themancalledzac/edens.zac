@@ -42,20 +42,9 @@ interface SearchPageClientProps {
 /**
  * The public search surface: the shared {@link FilterToolbar} over the whole image corpus.
  *
- * Every other gallery view arrives already narrowed — to a collection, a tag, a location — and
- * wires the subset of dimensions that narrowing leaves meaningful. Search arrives at everything,
- * so it surfaces all five image-derived dropdowns plus the order, rating and film controls, gated
- * only by {@link computeFilterVisibility}: a dimension that every image shares, or that none
- * carries, cannot narrow anything and is hidden rather than rendered as a dead control.
- *
- * Filtering is client-side over a corpus the route fetched once. The backend's search endpoint
- * takes ids while the URL carries names, so pushing the filters down would mean resolving names
- * to ids on every keystroke — a second round trip per interaction to reproduce work the tested
- * in-memory helpers already do. The location and tag pages made the same trade.
- *
- * Two states are deliberately distinct. No filters and no corpus means the backend returned
- * nothing; filters with no survivors means the query is too narrow. They read differently because
- * the fix differs, and a single "no results" would hide which one happened.
+ * Surfaces every image-derived dimension, gated by {@link computeFilterVisibility} so a dimension
+ * that cannot narrow anything is hidden. Filters client-side over the corpus the route fetched.
+ * The empty corpus and empty result states are separate on purpose — they need different fixes.
  */
 export default function SearchPageClient({ images }: SearchPageClientProps) {
   const { initialCriteria, syncToUrl } = useFilterUrlState();

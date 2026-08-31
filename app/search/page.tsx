@@ -15,18 +15,12 @@ export const metadata: Metadata = {
   },
 };
 
-// Render on every request rather than at build time. See app/tag/[slug]/page.tsx for the
-// rationale — the same trade-off applies, and this route additionally reads its filter state
-// from search params, which a prerendered page has no access to.
+// See app/tag/[slug]/page.tsx for the rationale; this route also reads filter state from
+// search params, which a prerendered page has no access to.
 export const dynamic = 'force-dynamic';
 
 /**
- * The public search route.
- *
- * One fetch, deliberately: the corpus is pulled once here and every filter dimension is then
- * derived from it client-side. Read failures are not caught — they belong to `error.tsx`, which
- * can offer a retry, whereas a caught error here could only render an empty page that would be
- * indistinguishable from a genuinely empty result.
+ * The public search route. Fetches the corpus once; read failures fall through to `error.tsx`.
  */
 export default async function SearchRoute() {
   const images = await searchImages({ size: SEARCH_RESULT_LIMIT });

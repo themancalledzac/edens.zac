@@ -1,11 +1,6 @@
 /**
- * Tests for the `/search` filter derivations.
- *
- * The load-bearing case is the last one: a deep link only works if a criteria object survives
- * `buildSearchCriteria` -> `serializeFilterToParams` -> `parseFilterFromParams` -> `seedFilterState`
- * unchanged. Each of those four functions is tested elsewhere in isolation; nothing before this
- * file checked that the composition round-trips, which is the only property the search URL
- * actually depends on.
+ * Covers the `/search` filter derivations and the state -> criteria -> params -> state round
+ * trip that deep links depend on.
  */
 
 import {
@@ -22,12 +17,7 @@ const state = (overrides: Partial<FilterState> = {}): FilterState => ({
 });
 
 describe('SEARCH_RESULT_LIMIT', () => {
-  /**
-   * The backend rejects `size > 200` outright ("searchImages.size: must be less than or equal to
-   * 200"), which fails the whole route into its error boundary rather than truncating. That is a
-   * live-only failure — every unit test here passes with an over-large limit — so the bound is
-   * pinned rather than left to be rediscovered in a browser.
-   */
+  /** The backend 400s above this, failing the whole route — no unit test catches it. */
   const BACKEND_MAX_SEARCH_SIZE = 200;
 
   it('stays within the size the backend will accept', () => {

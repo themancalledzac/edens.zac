@@ -1,13 +1,6 @@
 /**
- * Tests for the public search surface.
- *
- * The two empty states are the point of most of this file. "Nothing to search" and "nothing
- * matches" are the same blank screen to a viewer who is told the same sentence, and they call for
- * opposite reactions — wait for the backend, or widen the filters. Anything that collapses them
- * back into one message should fail here.
- *
- * `FilterToolbar` is deliberately NOT mocked. The wiring this component owns is which dimensions
- * it hands the toolbar, and a mocked toolbar would assert that wiring against itself.
+ * Covers the search surface: dimension gating, filtered counts, and the two distinct empty
+ * states. `FilterToolbar` is not mocked — the wiring under test is what it receives.
  */
 
 import { render, screen } from '@testing-library/react';
@@ -27,8 +20,7 @@ jest.mock('@/app/hooks/useFilterUrlState', () => ({
   }),
 }));
 
-// The content pipeline renders next/image through a layout engine that jsdom cannot measure.
-// Stub it down to a count so the assertions here stay about which branch rendered.
+// jsdom cannot measure the layout engine; stub to a count.
 jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
   __esModule: true,
   default: ({ content }: { content: unknown[] }) => (
