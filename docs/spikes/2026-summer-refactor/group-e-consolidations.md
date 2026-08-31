@@ -830,16 +830,28 @@ Sizing: +30 src, +60 test, assuming the helper needs no changes. **Actual +36 sr
 
 **Two adjacent paths deliberately NOT wired, both verified rather than assumed:**
 
-1. **The GIF save path (`submitGifEdit`) needs nothing.** `ContentGifModel` does carry `locations`,
-   so this looked like a symmetric gap. It is not: `findOrphanImagesByLocationName` and its count
-   twin build on `SELECT_CONTENT_IMAGE` and `JOIN content_image ci ON c.id = ci.id`
-   (`ContentRepository.java:390-450`), which structurally drops every non-image row — there is no
-   `content_type` predicate doing it. GIFs live in `content_gif`. So a location-tagged GIF can
-   never appear on `/location/{slug}`, and revalidating on GIF save would be a no-op.
-   **Backend footnote worth its own eyes later:** `content_image_locations` is content-level keyed
-   (`cil.content_id`, generalized by V27), so GIFs _can_ be location-tagged and simply never
-   surface. That reads like an unintentional gap on the backend, not a deliberate exclusion. Not
-   filed here because it is a backend item, not a frontend one.
+1. **The GIF save path (`submitGifEdit`) needs nothing — but the ORIGINAL reason is now FALSE.
+   Corrected 2026-08-31 (3); do not re-derive from the old one.** This bullet used to say a
+   location-tagged GIF could never appear on `/location/{slug}`, because
+   `findOrphanImagesByLocationName` and its count twin built on `SELECT_CONTENT_IMAGE` and joined
+   `content_image ci ON c.id = ci.id`, structurally dropping every non-image row. The footnote
+   beside it predicted the backend would treat that as an unintentional gap, since
+   `content_image_locations` has been content-level keyed (`cil.content_id`) since V27. **The
+   backend agreed and closed it.** [#258](https://github.com/themancalledzac/edens.zac.backend/pull/258)
+   renamed the pair `findOrphanContentByLocationName`/`countOrphanContentByLocationName` and
+   predicated them on `content_type IN ('IMAGE', 'GIF')` instead of the join;
+   `LocationPageResponse.images` widened to `List<ContentModel>`. A location-tagged GIF now
+   serializes on that endpoint.
+
+   **The conclusion survives, on a different and much weaker footing.** `/location/{slug}` does not
+   read that array: `getCollectionsByLocation` runs the body through
+   `parseCollectionArrayResponse`, which takes `.collections` and discards `.images`, and the grid
+   is fed by a separate `searchImages({ locationId })` call that is images-only. So revalidating on
+   GIF save is still a no-op — because this repo ignores the field, not because the backend cannot
+   fill it. **That footing disappears the moment C15 is answered "yes".** If `/location/{slug}` ever
+   switches to the location endpoint's own `images`, `submitGifEdit` needs `revalidateLocationCaches`
+   wiring and this becomes a real E18 gap. Do not treat "GIF save needs nothing" as settled without
+   reading C15 on the live board first.
 
 2. **`handleRemoveFromCollection` is a real gap and is NOT covered.** It sits in the same hook and
    also calls `updateImages`, but it changes collection membership, not locations. That still moves

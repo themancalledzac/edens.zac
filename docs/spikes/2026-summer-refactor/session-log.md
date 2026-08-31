@@ -1123,3 +1123,88 @@ pageType="collectionsCollection">` is one line before and one line after — so 
   branch DELETION, not on merge. Setting is now on. **Do not promise another system's automatic
   behavior without checking the setting that governs it.**
   Next: A9's `.claude/agents/` bullet, then F3's `CollectionPageWrapper` and `AdminPanel/` moves.
+
+- 2026-08-30 — **shipped the full picked run plus the HIGH bug ahead of it: #346 (C10), #347 (A9),
+  #348 (F3 `CollectionPageWrapper`), #349 (F3 `AdminPanel/` fold). Four MRs, all merged.** Plus one
+  cross-repo filing, [backend #244](https://github.com/themancalledzac/edens.zac.backend/pull/244).
+  Suite baseline re-measured: **245 suites / 4,464 tests**, `tsc --noEmit` exit 0.
+  **Two blocked questions asked at the START, and both answers changed the board more than any
+  code would have.** C9's answer ("we should NEVER HAVE AN IMAGE WITHOUT height/width") re-routed
+  the item out of this repo entirely — chasing the premise found
+  `ImageProcessingService:465-468` defaulting dimensions to **`0`, not null**, which `!width`
+  catches and `?? SQUARE_FALLBACK_SIDE` does not. C9 now blocks on backend Bug #21 and will close
+  with zero frontend code. E6 bullet 1 was answered "leave it for the big hook rewrite", so E6
+  closed and its last bullet is now an F1 sub-task.
+  **A third blocked row closed for free, by reading the other repo.** G5 (wrap-vs-bless bare
+  arrays) had sat BLOCKED-on-user; the backend blessed them in its own `.claude/CLAUDE.md` on
+  2026-08-30 (#243). Nobody had looked. **Blocked-on-user is down 9-of-19 to 6-of-15, and two of
+  the three cost the user nothing.** Rule hoisted.
+  **One new HIGH filed, found the same way: G6.** Backend #243 also made `/api/admin/**`
+  unconditionally gated, which falsifies `CLAUDE.md:14`'s "Localhost Admin Needs No Login" Critical
+  Rule — a rule that tells agents _not to investigate_ the breakage it now causes. Verified at
+  `SecurityConfig.java:75-76`, not from the commit message. Recommended next MR.
+  **Est vs actual — the two MOVE items were EXACT, both halves.** F3 predicted 3 src / 6 test and
+  5 src / 3 test; both landed precisely, at +11 −11 each. **Group F move counts, re-verified the
+  same week, are trustworthy in a way Group E consolidation estimates are not** — the standing bias
+  note is about extractions, and should not be read as distrust of a move count. A9 was the miss:
+  scoped as one file, actual three, because the board recorded where the false sentence was FILED
+  rather than where it APPEARED.
+  **C10's item under-counted its own symptoms, and writing the test first is what caught it.** The
+  section named one symptom (exit renders empty); the failing test surfaced a second in the opposite
+  direction (re-entry paints no fallback grid at all). Both tests were watched failing before the
+  fix. The three pre-existing handoff tests all passed against the bug because none ever flipped
+  `editMode` back.
+  **Verification sweep: 6 wrong numbers, 5 drifted refs, 1 pre-existing bad boundary.** Wrong:
+  `app/components/` 37→**36** (this session's own #349), G4 blocks 1413→**1415**, the CSS-guard pair
+  104/401→**105/402** (already wrong when written, unmoved by this session), the Group B suite
+  baseline 51,446/37,211→**57,306/36,685** (stale by ~5,900 lines), G2's `rowCombination.ts` 15→**31**
+  and `contentFilter.ts` 13→**16**. Drifted: E7's three guardrail refs +18, G4's two D7 refs +18,
+  `contentLayout.ts:93`→`:96`, G2a's stub `:78-84`→`:78-85`. **F1's content-ops range end `:1220` is
+  WRONG and was already wrong on 08-29** — it sits mid-`handleLocationsChange`, a relations concern;
+  the un-anchored boundary failed exactly as F1's own anchoring rule predicted.
+  **G2's whole `//` inventory is now UNCHECKED and must not be quoted.** Three filter variants
+  bracket neither recorded figure and the `.ts` gap runs in opposite directions depending on the
+  filter, which proves the original method was neither. Re-take in one pass with the command
+  written down before scheduling G2b.
+  **Process:** MemPalace was unreachable all session (ConnectionRefused, localhost:8787), so the
+  protocol's searches did not run and the two verification sweeps were plain filesystem passes.
+  Next: G6, then C11, D10, E18.
+
+- 2026-08-29 — **applied the 2026-08-28 nine-agent split review (both repos' boards) to this
+  board: corrections, five new items, and the slim-down restructure. No code MR — this is the
+  board pass the review produced.**
+  **Corrections applied, ~45 across the five review reports.** Statuses (H1 → BLOCKED-user
+  everywhere; B8's arithmetic to 5-of-6 — no enumeration ever reached "8 of 9"; F3 to six open
+  bullets, its rejected invite bullet struck rather than left as an open box). Counts (blocked
+  footnote re-derived; "92 style files" → 87; the pinned 245/4454 suite figure retired in favour
+  of re-measure). Stale refs (H1 fully re-derived — the 08-28 sweep had fixed only its three
+  premise refs; E7's close-out refs stamped pre-#337 with current equivalents; E6's micro-drifts;
+  F1's first-bullet boundary set replaced with the verified current set and its two unanchored
+  boundaries anchored). Stale prose (`.next-verify` is gone and `tsc --noEmit` exits 0 — sessions
+  should expect a CLEAN type check; C9's "pin it" bullet was already pinned by B4's own tests in
+  `tests/utils/contentLayout.test.ts`; G2's dead layoutpreview parenthetical and superseded
+  inventory blockquote removed; E6's dangling self-referencing line-number paragraph deleted and
+  the no-line-number rule added to "How to use this doc"). One review claim did not reproduce and
+  was left alone: no malformed link exists in group-h-features.md (all `(admin)` links use the
+  valid angle-bracket form and every target resolves).
+  **Five new items filed, each with a row and a section in the same edit:** **C10** (HIGH — exiting
+  manage mode leaves a blank public page; #337's memo guard keys on never-reset `editLayerMounted`
+  while exit is a soft navigation; recommended next MR, ahead of the picked run), **C11** (429
+  branch missing in ShareCard's `mapError` for backend #233's rate limiter), **E18** (four mutation
+  paths never fire `collections-location-${slug}`, plus the wired paths read the page-load prop —
+  with the backend-only-write accepted-risk note), **D10** (`getApiBaseUrl` concatenates
+  `NEXT_PUBLIC_APP_URL` raw — Group D reopens with one row), **G5** (⛔ bare-array coordination
+  with backend MR 20 — the FE counterpart row that review found missing, phased plan recorded).
+  The blocked-questions table gains G5 and the repo-wide `styles.<key>` guard call: **9 of 19 open
+  rows now wait on the user.**
+  **Restructure, per the review's move-map: 1,981 → ~980 lines.** "How to use this doc" distilled
+  to ≤3-line rules with the incident narratives moved to the new
+  `2026-summer-refactor/lessons.md`; the 55 closed MR rows became one-line ledgers under "Closed
+  rows" in each group archive; shipped-bullet history for A9/B8/E6/E7/E9/F3/H1 and F1's
+  drift sagas moved to their group files; the archive's own defects fixed (group-b's
+  header/status contradictions, three doubled-path links in the archive session log, group-h's
+  stale "two senders" line, group-c's "the thing the backend is waiting on" overstatement).
+  **Deliberately skipped: the per-item re-estimate slice**, per this board's own
+  estimate-bias note — both structural causes are known; stop recalibrating item by item.
+  Next: C10 first, then the picked three (A9's CLAUDE.md fix, F3's `CollectionPageWrapper` move,
+  F3's `AdminPanel/` fold), with the blocked questions batched in the opening message.
