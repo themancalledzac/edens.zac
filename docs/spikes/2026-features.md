@@ -103,6 +103,18 @@ reportToService()` seam (it does not exist — `logger.ts` is 14 lines of `conso
   the PF13 section went on describing in the present tense as a live blocker. The third principle
   says drift lives in the neighbourhood of what shipped — the sharpest case of that is what YOU
   just shipped, and it is the case a sweep run before merging cannot see.
+- **A fix is not verified by the absence of the string it moved.** PF13 step 1 shipped as #375 and
+  the board recorded its blocker CLEARED, on the evidence that
+  `grep -c 'new Date' app/components/Footer/Footer.tsx` returns 0. It does — the call moved to
+  `CopyrightYear.tsx`, and a Client Component is still server-rendered during prerender, so the
+  build error it was meant to remove is still there. The grep proved relocation and was read as
+  removal. When an item's deliverable is "X no longer happens", the check has to be X not
+  happening — here, a build — not the symbol being gone from the file it used to be in.
+- **`instant = false` is a validation opt-out, not a rendering one.** The whole PF13 step-2 plan
+  rested on the codemod making unconverted routes safe. It does not: the build still renders those
+  trees, so it still calls the backend and still evaluates synchronous IO. `/search` failed the
+  prerender while carrying both a Suspense boundary and `instant = false`. Anything sized on "the
+  codemod handles the rest" is sized wrong.
 - **An item that only wires existing tested primitives into a new route is one sitting**, however
   many files it touches. SD1 was estimated at 2–3 and took 1. An item that deletes and rewrites
   (MA1) does not get this discount.
@@ -114,7 +126,7 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | Item | Scope                                                             | Repo    | Status                                                                                    |
 | ---- | ----------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
 | SD2  | Enrich `locations` on collection blocks                           | BE      | ☐ COLD — small; makes the shipped `/collections` location filter work                     |
-| SD3  | Filter-bar dimension gaps (focal length, film stock, row merge)   | FE      | ☐ COLD — sliceable; badges #373 and year chips #376 shipped, three slices left            |
+| SD3  | Filter-bar dimension gaps (film stock, row merge)                 | FE      | ☐ COLD — sliceable; badges #373, year #376, focal length #379 shipped, two slices left    |
 | SD4  | `/explore` as a real drill-down explorer (Option C)               | FE      | ☐ BLOCKED — reconcile with refactor-board H5 design review first                          |
 | SD5  | Verify people/location chip-click-to-filter                       | FE      | ☐ COLD — cheap verification task                                                          |
 | RC1  | Populate `parents` on public reads + `isFilm` backfill            | BE      | ☐ COLD — unblocks RC2's public rendering; two verified data bugs                          |
@@ -144,7 +156,7 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | PF2  | Blur placeholders (`blurDataURL`)                                 | FE      | ☐ COLD                                                                                    |
 | PF6  | External error tracking                                           | FE      | ☐ BLOCKED — user: Sentry vs CloudWatch                                                    |
 | PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)          | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                        |
-| PF13 | Home page genuinely static (Cache Components / PPR)               | FE      | ☐ ADOPTED (decision #12) — step 1 shipped #375; steps 2–3 remain, and PF12 now clears     |
+| PF13 | Home page genuinely static (Cache Components / PPR)               | FE      | ☐ BLOCKED — step 2 attempted 08-31 (6) and stopped; `cookies()` in `fetchBase` gates it   |
 | LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build          | FE      | ☐ BLOCKED — user: two competing designs, neither built                                    |
 
 **Not on this board, deliberately:** everything with a row on
@@ -155,61 +167,49 @@ tests and function decomposition (debt, chapter 006); and three self-labeled una
 (liked images, mobile text overlay, React 19 follow-ups), listed in the group files so they are
 not rediscovered as new.
 
-## NEXT RUN — set 2026-08-31 (5)
+## NEXT RUN — set 2026-08-31 (6)
 
-Three items, cheapest first so a truncated session still banks an MR. No question needs asking
-first: every open decision unblocks a BLOCKED item, and none of the three below is blocked.
+The last run shipped one of three and stopped on the second, which is the outcome the guardrail
+was written to produce: PF13 step 2 is not the mechanical item this board described.
 
-1. **SD3 · one more slice, focal-length ranges.** The cheap banker, and disjoint from items 2–3
-   (they rewrite route-segment config; this touches the filter utilities). Warm from #373 and
-   #376 — a dimension on the shared `FilterToolbar`, the same shape both times.
-   **Guardrail: one dimension per MR, and do not reach for the collection-tile trick year used.**
-   No collection tile carries a focal length, so this reaches images only; it adds a facet to
-   pages that already have several rather than unlocking a surface. Size it as the smaller thing
-   it is, and report if the Wide/Normal/Tele bucketing turns out to need a lens-metadata field
-   that is not there.
+1. **PF13 MR 1 — hoist cookie forwarding out of `fetchBase`.** The newly-identified prerequisite,
+   and worth doing whether or not Cache Components is ever adopted: `getServerCookieHeader()` is
+   awaited inside `fetchBase` (`app/lib/api/core.ts:269`), so every server-side read is
+   request-bound, including the six that only ever want cached public data. Pass the header in, or
+   split the cacheable reads onto a cookie-free path. **Guardrail: this is the data layer for the
+   whole site — its own review, and the full suite.**
 
-2. **PF13 step 2 — the mechanical flag flip.** `cacheComponents: true`, delete the 19
-   `force-dynamic` exports, codemod `instant = false` onto the rest
-   (`npx @next/codemod@canary cache-components-instant-false ./app`). Both counts re-run and
-   holding as of 2026-08-31 (5). The root-layout blocker cleared with #375, and PF12 means a red
-   commit can no longer reach production, so both reasons this was held are gone.
-   **Guardrail: no behaviour change intended, and this is where fetch-caching semantics shift
-   app-wide.** Verify with `next build` and the full suite, not by reasoning. Largest item here —
-   stop rather than half-land it.
+2. **Re-do PF13 step 1.** The footer year still evaluates during prerender. Either Suspense plus
+   `connection()`, or stop deriving the year at runtime at all. Small; it unblocks nothing on its
+   own, so it can ride along with something else.
 
-3. **PF13 step 3 — convert the home page.** Suspense around `resolveSsrViewport()` and
-   `meServer()` in `CollectionPageWrapper`. Only start it if 2 landed clean.
-   **Guardrail: budget the test side.** PF8's lesson is that a Suspense split costs roughly its
-   own size again in tests, and this wrapper is rendered by `app/page.tsx`, `app/[slug]/page.tsx`
-   and `app/all-client-galleries/page.tsx`, so three routes' suites are in scope.
+3. **SD3 · film-stock secondary filter.** The remaining cheap slice, conditional on Film + 2+
+   stocks. Warm from #373, #376 and #379 — the same shape a fourth time. **Guardrail: one
+   dimension per MR**, and check stock coverage against live data before sizing it, the way #379
+   did. The data question inverts here: film collections are exactly the ones #379 found carry no
+   EXIF, so film stock is the one dimension whose data lives where focal length's did not.
 
-**Re-derive refs between MRs?** Between 2 and 3, yes — step 2 rewrites segment config across the
-app and step 3 restructures a component those segments render. 1 is disjoint from both, which is
-why it can go first without stacking.
+**Re-derive refs between MRs?** 1 and 2 are disjoint from each other and from 3.
 
-**Not scheduled, and why.** EM2 is BLOCKED on a backend field that is both the stored recipient
-list and the send list; its MR 1 is backend. MA1 is still blocked on an absent
-`PATCH /collections/{id}` — re-verified 2026-08-31 (5), the five `@PatchMapping`s on the backend's
-`origin/main` are `/content/images`, `/content/gifs/{id}`, `/{id}` (users),
-`/collections/{collectionId}/rating` and `/collections/{collectionId}/images`, all sub-resource or
-unrelated.
+**Not scheduled, and why.** PF13 steps 2 and 3 as previously written are off the board until MR 1
+lands — the flag flip cannot be verified against its own guardrail while every read is
+request-bound. EM2 and MA1 are still waiting on backend MRs.
 
 ## Verified and holding — do not re-investigate
 
 Re-run 2026-08-31 (5), with the command beside each. Skip these on the next reconciliation unless
 something in their neighbourhood merges.
 
-| Claim                                    | Command                                                                                                                       | Result                                    |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| PF13: 19 of 21 segments export `dynamic` | `grep -rn 'export const dynamic' app --include='*.tsx' \| wc -l` / `find app -name 'page.tsx' -o -name 'layout.tsx' \| wc -l` | 19 / 21                                   |
-| LY1: no FILLER/gap-box symbol exists     | `grep -rn 'FILLER\|gapBox\|endRowGap' app/utils \| wc -l` (case-sensitive)                                                    | 0 (case-insensitive: 2, both prose)       |
-| PF6: no error tracking, no seam to fill  | `grep -rn 'Sentry' app`, `grep -rn 'reportToService' app`, `wc -l app/utils/logger.ts`                                        | 0, 0, 14                                  |
-| PF2: no blur placeholders                | `grep -rn 'blurDataURL\|placeholder="blur"' app \| wc -l`                                                                     | 0                                         |
-| MA1: `PATCH /collections/{id}` absent    | `git grep -n '@PatchMapping' origin/main -- src/main/java/` in the backend                                                    | 5 hits, all sub-resource or unrelated     |
-| CT5: no auto-tag endpoint                | `git grep -c 'auto-tag' origin/main -- src/main/java/`                                                                        | 0                                         |
-| AU2: no passkey list/revoke              | `git show origin/main:...auth/WebAuthnController.java \| grep -n 'Mapping('`                                                  | 4 mappings, register/login × start/finish |
-| SD2: `locations` not enriched            | `git show origin/main:...SyntheticCollectionResolver.java \| grep -n 'withTags\|withLocations'`                               | `withTags` at `:109`, no `withLocations`  |
+| Claim                                                           | Command                                                                                                       | Result                                    |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| PF13: 19 segments export `dynamic`, and the flag rejects all 19 | `grep -rn 'export const dynamic' app --include='*.tsx' \| wc -l`, then `cacheComponents: true` + `next build` | 19; build names exactly those 19 files    |
+| LY1: no FILLER/gap-box symbol exists                            | `grep -rn 'FILLER\|gapBox\|endRowGap' app/utils \| wc -l` (case-sensitive)                                    | 0 (case-insensitive: 2, both prose)       |
+| PF6: no error tracking, no seam to fill                         | `grep -rn 'Sentry' app`, `grep -rn 'reportToService' app`, `wc -l app/utils/logger.ts`                        | 0, 0, 14                                  |
+| PF2: no blur placeholders                                       | `grep -rn 'blurDataURL\|placeholder="blur"' app \| wc -l`                                                     | 0                                         |
+| MA1: `PATCH /collections/{id}` absent                           | `git grep -n '@PatchMapping' origin/main -- src/main/java/` in the backend                                    | 5 hits, all sub-resource or unrelated     |
+| CT5: no auto-tag endpoint                                       | `git grep -c 'auto-tag' origin/main -- src/main/java/`                                                        | 0                                         |
+| AU2: no passkey list/revoke                                     | `git show origin/main:...auth/WebAuthnController.java \| grep -n 'Mapping('`                                  | 4 mappings, register/login × start/finish |
+| SD2: `locations` not enriched                                   | `git show origin/main:...SyntheticCollectionResolver.java \| grep -n 'withTags\|withLocations'`               | `withTags` at `:109`, no `withLocations`  |
 
 **Not re-checked this pass, and therefore unverified:** RC1's live data counts (`parents: null`
 everywhere; `isFilm` 0/5, 0/5, 0/7 against `dolomites-film`'s 33/33). Those were measured against
@@ -590,6 +590,23 @@ normalization — read the group file so the chosen design composes with it.
 _Newest first, local dates. One line per `/next` run: what shipped (PR numbers), what was filed,
 what's next. Older entries move to
 [2026-features/session-log.md](2026-features/session-log.md)._
+
+- 2026-08-31 (6) — shipped **SD3 focal-length ranges (#379)**; **PF13 step 2 attempted and stopped
+  as blocked**, which is what its guardrail was for. **SD3's open data question is answered, yes**:
+  207 of 281 sampled images carry `focalLength` (74%), near-uniformly `'24 mm'`, and the gap is
+  film rather than focal length — `dolomites-film` 0/30, `lisbon-film` 0/23 — so the dimension
+  self-hides on film pages through the existing gate. The parser was restored from `266c56c`
+  rather than rewritten; it had been deleted as an orphan because lens NAMES beat lens types, not
+  because the bucketing was wrong. **PF13's stop produced two corrections, both found by building
+  rather than reading.** #375 did not clear the root-layout prerender blocker: the `new Date()`
+  moved into a Client Component, which still server-renders during prerender — proven by
+  hardcoding the year and watching `/_not-found` start building, one variable changed. And
+  `instant = false` does not make unconverted routes safe: `/search` failed the prerender carrying
+  both it and a Suspense boundary, while `/collections` 500'd calling the backend mid-build and `/`
+  timed out at 60s × 3. **The real blocker was nowhere in the row** — `cookies()` sits inside
+  `fetchBase`, so no read can enter a `use cache` scope, and the six tagged fetches would silently
+  stop caching. Both lessons hoisted into "How to use this doc". Next: PF13 MR 1 (hoist the cookie
+  forwarding), then SD3's film-stock slice.
 
 - 2026-08-31 (5) — shipped **PF13 step 1 (#375)**, **SD3 year chips (#376)**, and closed **PF12**
   by applying branch protection. **Decision #12 answered: adopt Cache Components, full speed**, so
