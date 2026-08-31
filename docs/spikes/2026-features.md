@@ -70,6 +70,13 @@ reportToService()` seam (it does not exist — `logger.ts` is 14 lines of `conso
 - **A batch item costs the sum of its parts plus their tests.** PF8 was three "smalls" and landed
   +455/−108 across 14 files, several times any one part. Size a batch by adding up, not by its
   largest member.
+- **A framework capability is a version claim — check it against the installed version's own docs
+  before sizing an item on it.** PF13 was sized and guardrailed as "PPR the home page only", which
+  was true of Next 15's per-route `experimental_ppr` and is false in the 16.3.1 this repo runs:
+  `cacheComponents` is app-wide and errors 19 of 21 route segments the moment it is on. The docs
+  ship in the repo — `node_modules/next/dist/docs/` — so this costs one grep, and reading them also
+  turned up a root-layout `new Date()` that blocks every prerender regardless. Anything an item
+  assumes about "we can scope this to one route" is the sentence to check first.
 - **An item that only wires existing tested primitives into a new route is one sitting**, however
   many files it touches. SD1 was estimated at 2–3 and took 1. An item that deletes and rewrites
   (MA1) does not get this discount.
@@ -112,7 +119,7 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | PF6  | External error tracking                                            | FE      | ☐ BLOCKED — user: Sentry vs CloudWatch                                                    |
 | PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)           | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                        |
 | PF12 | Gate the auto-deploy on CI                                         | OPS     | ☐ COLD — console work; `main` deploys today regardless of CI                              |
-| PF13 | Home page genuinely static (Cache Components / PPR)                | FE      | ☐ COLD — created by PF4's closure; render-path change, not a config flip                  |
+| PF13 | Home page genuinely static (Cache Components / PPR)                | FE      | ☐ COLD — re-sized 08-31: `cacheComponents` is app-wide, 3 sittings, wants PF12 first      |
 | LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build           | FE      | ☐ BLOCKED — user: two competing designs, neither built                                    |
 
 **Not on this board, deliberately:** everything with a row on
@@ -141,15 +148,12 @@ stack. That reframing is what made it answerable in one pass; the write-up is in
    `sent === false` rather than the reason, so it blamed the email switch for every failure. Fixed
    in the same MR. Grepping for a string missed a bug that reading the behavior would have caught.
 
-2. **PF13** — make the home page genuinely static. Context is warm: PF8 just added Suspense
-   boundaries to `/explore` and `/search` and deliberately left `CollectionPageWrapper` alone
-   because this item owns it. Two personalized reads to move behind boundaries —
-   `resolveSsrViewport()` on `headers()` and `meServer()` on `cookies()`. The
-   `next-cache-components` skill is the relevant territory.
-   **Guardrail: PPR the home page only.** The wrapper is shared, so `/[slug]` inherits whatever
-   happens to it — report what it inherits rather than changing its segment config in the same MR.
-   Budget for the test-side cost: PF8 broke two suites purely by splitting a page around a
-   boundary.
+2. **PF13** — **NOT BUILT; re-sized instead (#372).** The guardrail "PPR the home page only" is
+   not satisfiable: `cacheComponents` is an app-wide flag in Next 16.3.1 and enabling it errors 19
+   of 21 route segments at once, on top of a root-layout `new Date()` that blocks every prerender.
+   Stopped and reported rather than turning a one-sitting item into an app-wide migration through
+   an ungated production deploy. The measured work list is on the row. This is the second item this
+   run whose recorded shape did not survive being checked — see the lesson below.
 
 3. **SD3** — one slice only, and the active-filter summary (removable badges + Clear-all) is the
    one to take: it is the only slice that improves every dimension already shipped rather than
@@ -158,8 +162,9 @@ stack. That reframing is what made it answerable in one pass; the write-up is in
    **Guardrail: one dimension per MR.** The row is explicitly sliceable and doing all five is how
    a one-sitting item becomes three.
 
-**Re-derive refs between MRs?** Between 2 and 3, yes — PF13 touches `CollectionPageWrapper`, which
-`CollectionPageClient` and the filter surface sit under. EM5 is disjoint from both.
+**Re-derive refs between MRs?** It was called for between 2 and 3 because PF13 would have touched
+`CollectionPageWrapper`, which `CollectionPageClient` and the filter surface sit under. PF13 did
+not land, so SD3's refs were re-derived against `main` alone.
 
 ## Decisions for Zac
 
@@ -418,14 +423,29 @@ file's Closed section.
 Zero `blurDataURL` / `placeholder="blur"` hits in `app/`. Needs server-side generation (sharp) at
 upload or build time — scope the generation point first.
 
-### ☐ PF13 · Make the home page genuinely static — COLD, real work
+### ☐ PF13 · Make the home page genuinely static — COLD, re-sized 2026-08-31
 
 Created by PF4's closure (#360). The home page renders per request because `CollectionPageWrapper`
 awaits `headers()` (`resolveSsrViewport`) and `cookies()` (`meServer`) — so no segment-config value
-can prerender it. Making it static means moving both personalized reads behind Suspense boundaries
-(Cache Components / PPR), which touches the shared wrapper and therefore `/[slug]` too. The
-collection fetch is already cached, so the prize is the render and the per-request `/auth/me` round
-trip, not the Spring call. Its own sitting or two, not a config change.
+can prerender it. The collection fetch is already cached, so the prize is the render and the
+per-request `/auth/me` round trip, not the Spring call.
+
+**"Its own sitting or two" was wrong, and so was the guardrail "PPR the home page only."** Next
+16.3.1 reaches PPR through the app-wide `cacheComponents` flag; the per-route `experimental_ppr`
+opt-in is gone. Enabling it errors every segment exporting `dynamic`/`revalidate`/`fetchCache` —
+**19 of this repo's 21 route segments.** The documented path is opt-OUT: flag on, delete all 19
+`force-dynamic` exports, codemod `instant = false` onto the rest, convert one route at a time.
+
+A hard blocker sits ahead of all of it: `Footer.tsx:29` calls `new Date().getFullYear()` in a
+server component in the **root layout**. Synchronous IO during prerender is a build error that
+`instant = false` cannot defer, so no route builds until it moves.
+
+And `/[slug]` does not escape. `CollectionPageWrapper` is rendered by `app/page.tsx`,
+`app/[slug]/page.tsx` and `app/all-client-galleries/page.tsx`; restructuring its awaits changes the
+tree for all three. Three sittings, and **PF12 is worth doing first** — the mechanical step shifts
+caching semantics app-wide, which is the wrong thing to land through a deploy CI does not gate.
+Full write-up and commands in
+[2026-features/pf-performance-platform.md](2026-features/pf-performance-platform.md).
 
 ### ☐ PF12 · Gate the auto-deploy on CI — COLD, console work
 

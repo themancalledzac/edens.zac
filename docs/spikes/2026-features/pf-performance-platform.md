@@ -25,12 +25,61 @@ The home page renders per request because two things in `CollectionPageWrapper` 
   measured at one `/api/auth/me` hit per render.
 
 Making the page static means moving both behind Suspense boundaries so the shell prerenders and
-only the personalized slots stream. That is the `next-cache-components` skill's territory
-(`use cache`, `cacheLife`, `cacheTag`) and it touches the shared wrapper, so it lands on
-`/[slug]` too. Size it as its own sitting or two, not a config change.
+only the personalized slots stream.
 
 Worth knowing before anyone starts: the collection fetch is already cached (see PF4 below), so the
 prize here is the render and the `/auth/me` round trip, not the Spring call.
+
+### RE-SIZED 2026-08-31 — this cannot be scoped to the home page
+
+The row said "its own sitting or two" and was picked up under the guardrail "PPR the home page
+only". Neither survives contact with Next 16.3.1. PPR is reached through the **`cacheComponents`
+flag, which is app-wide**; `experimental.ppr` and its per-route `experimental_ppr` opt-IN are gone
+(`node_modules/next/dist/docs/01-app/02-guides/migrating-to-cache-components.md`). There is no way
+to enable it for one route.
+
+Turning it on errors every segment that exports `dynamic`, `revalidate` or `fetchCache`. This repo
+has **19 of its 21 route segments exporting `dynamic = 'force-dynamic'`**:
+
+```bash
+grep -rn "export const dynamic" app --include="*.tsx"     # 19
+find app -name "page.tsx" -o -name "layout.tsx" | wc -l   # 21
+```
+
+The documented incremental path is opt-OUT, not opt-in: enable the flag, delete all 19
+`force-dynamic` exports, add `instant = false` to every segment not being converted (there is a
+codemod, `npx @next/codemod@canary cache-components-instant-false ./app`), then convert routes one
+at a time. `instant` is real in 16.3.1 — `next/dist/build/segment-config/app/app-segment-config.js:144`.
+
+**One hard blocker that `instant = false` explicitly cannot defer.** Synchronous IO during
+prerender is a build error regardless of opt-out, and `app/components/Footer/Footer.tsx:29` calls
+`new Date().getFullYear()`. Footer is a server component rendered from the **root layout**, so that
+one line fails the prerender of every route in the app until it is moved behind a boundary with
+`connection()` or into a Client Component. Nothing can be converted before it is fixed.
+
+**What `/[slug]` inherits — the question the guardrail asked.** `CollectionPageWrapper` is rendered
+by `app/page.tsx`, `app/[slug]/page.tsx` and `app/all-client-galleries/page.tsx`. Restructuring its
+two awaits into Suspense boundaries changes the render tree for all three identically; there is no
+home-only version of it short of forking the wrapper or threading a flag through it. `/[slug]` can
+keep `instant = false` so it is not _validated_, but it still gets the restructured tree. So the
+guardrail's premise — that the wrapper change can be confined — does not hold either.
+
+**Revised work list**, in order, each a sitting:
+
+1. Fix `Footer`'s `new Date()`. Independent of everything else and worth doing on its own.
+2. The mechanical PR: `cacheComponents: true`, delete 19 `force-dynamic` exports, codemod
+   `instant = false` onto the segments. Verify `next build` and the full suite. No behavior change
+   intended, but this is where fetch-caching semantics shift app-wide, so it wants its own review.
+3. Convert home: Suspense around `resolveSsrViewport()` and `meServer()` in the wrapper, and decide
+   what `/[slug]` and `/all-client-galleries` do with the same tree.
+
+**Sequencing risk worth naming.** Merging to `main` auto-deploys to production in ~15 minutes and
+CI does not gate it (see `CLAUDE.md`, and PF12). Step 2 changes caching semantics for every route
+at once, which is the wrong shape to land through an ungated deploy — **PF12 is worth doing
+first**.
+
+Budget the test side. PF8 broke two suites purely by splitting two pages around Suspense
+boundaries; this splits the wrapper three routes render through.
 
 ## PF6 · External error tracking
 
