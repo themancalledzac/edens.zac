@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
+import { CollectionJsonLd } from '@/app/components/StructuredData/CollectionJsonLd';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
 import { requireAdmin } from '@/app/utils/admin';
 import { logger } from '@/app/utils/logger';
@@ -82,6 +83,9 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
  * `?manage=1` enters the in-place edit surface. Authorization is enforced by
  * {@link requireAdmin} below (redirects anonymous/non-admin viewers to /login) — a
  * real `isAdmin` principal, not an environment check, is what gates this in prod.
+ *
+ * {@link CollectionJsonLd} is skipped in edit mode: the admin surface is not a public gallery,
+ * and it suppresses itself for password-protected collections the way `generateMetadata` does.
  */
 export default async function CollectionPage({ params, searchParams }: CollectionPageProps) {
   const { slug } = await params;
@@ -101,5 +105,10 @@ export default async function CollectionPage({ params, searchParams }: Collectio
     await requireAdmin();
   }
 
-  return <CollectionPageWrapper slug={slug} editMode={editMode} />;
+  return (
+    <>
+      {!editMode && <CollectionJsonLd slug={slug} />}
+      <CollectionPageWrapper slug={slug} editMode={editMode} />
+    </>
+  );
 }

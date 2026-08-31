@@ -1,14 +1,16 @@
 import { type Metadata } from 'next';
+import { Suspense } from 'react';
 
-import { NavLink } from '@/app/components/ui/NavLink/NavLink';
+import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
-import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
-import { getMetadata } from '@/app/lib/api/collections';
 
 import styles from './Explore.module.scss';
+import { ExploreDirectory } from './ExploreDirectory';
 
-// Render on every request — getMetadata() calls fetchAdminGetApi, which can fail
-// mid-build before the proxy is live. Same rationale as the taxonomy routes.
+/**
+ * Render on every request. `getMetadata()` calls `fetchAdminGetApi`, which can fail mid-build
+ * before the proxy is live — same rationale as the taxonomy routes.
+ */
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
@@ -16,33 +18,14 @@ export const metadata: Metadata = {
   description: 'Browse the photography archive by tag or location.',
 };
 
-export default async function ExplorePage() {
-  let data;
-  try {
-    data = await getMetadata();
-  } catch {
-    data = null;
-  }
-
-  if (!data) {
-    return (
-      <PageShell>
-        <header className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>Explore</h1>
-        </header>
-        <p className={styles.empty}>
-          Unable to load the directory right now. Please try again later.
-        </p>
-      </PageShell>
-    );
-  }
-
-  const { tags } = data;
-  // LocationModel.slug is optional; a slugless location can't form a valid
-  // /location/[slug] link, so drop those rather than emit /location/undefined.
-  const locations = data.locations.filter(loc => Boolean(loc.slug));
-  const isEmpty = tags.length === 0 && locations.length === 0;
-
+/**
+ * The tag/location directory route.
+ *
+ * The page itself awaits nothing, so the shell and heading reach the browser in the first flush
+ * while {@link ExploreDirectory} streams in behind a Suspense boundary. Before the split, one
+ * backend read held the entire response — including the site header — for its whole duration.
+ */
+export default function ExplorePage() {
   return (
     <PageShell>
       <header className={styles.pageHeader}>
@@ -50,49 +33,15 @@ export default async function ExplorePage() {
         <p className={styles.intro}>Browse the archive by tag or location.</p>
       </header>
 
-      {isEmpty ? (
-        <EmptyState align="page">Nothing to explore yet — check back soon.</EmptyState>
-      ) : (
-        <div className={styles.sections}>
-          <section className={styles.section} aria-labelledby="explore-locations">
-            <h2 id="explore-locations" className={styles.sectionHeading}>
-              Locations
-            </h2>
-            {locations.length === 0 ? (
-              <EmptyState>No locations yet.</EmptyState>
-            ) : (
-              <ul className={styles.linkList}>
-                {locations.map(loc => (
-                  <li key={loc.id}>
-                    <NavLink href={`/location/${loc.slug}`} className={styles.directoryLink}>
-                      {loc.name}
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className={styles.section} aria-labelledby="explore-tags">
-            <h2 id="explore-tags" className={styles.sectionHeading}>
-              Tags
-            </h2>
-            {tags.length === 0 ? (
-              <EmptyState>No tags yet.</EmptyState>
-            ) : (
-              <ul className={styles.linkList}>
-                {tags.map(tag => (
-                  <li key={tag.id}>
-                    <NavLink href={`/tag/${tag.slug}`} className={styles.directoryLink}>
-                      {tag.name}
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </div>
-      )}
+      <Suspense
+        fallback={
+          <div className={styles.directoryPending}>
+            <LoadingSpinner size="large" color="dark" />
+          </div>
+        }
+      >
+        <ExploreDirectory />
+      </Suspense>
     </PageShell>
   );
 }

@@ -79,3 +79,12 @@
   color: var(--color-on-surface-muted);
   text-align: center;
 }
+
+/* Reserves the directory's vertical space while it streams, so the footer does not ride up under
+   the header and then jump when the sections land. */
+.directoryPending {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50dvh;
+}

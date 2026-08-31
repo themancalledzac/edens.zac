@@ -1,6 +1,9 @@
 /* Save (bookmark) heart — an edge-flush square box in the TOP-RIGHT corner of the image, for any
-   logged-in viewer. Mirrors the fullscreen `.metadataToggle` corner-box treatment (square, flush to
-   the edge, semi-opaque black, 36px → 40px on desktop) but pinned top-right instead of bottom-right.
+   logged-in viewer. Takes the fullscreen `.metadataToggle` corner-box treatment (square, flush to
+   the edge, semi-opaque black) but pinned top-right instead of bottom-right, and sized 44px at
+   every width rather than 36px → 40px: it is a primary touch control on an image, and 40px was
+   under the 44px minimum on the devices that only have touch. `.metadataToggle` still steps
+   36 → 40 and has the same gap.
 
    The surrounding wrapper carries either `data-parallax-container` (parallax path) or
    `data-image-wrapper` (non-parallax path), so every reveal rule below has to target both. */
@@ -9,8 +12,8 @@
   top: 0;
   right: 0;
   display: flex;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   align-items: center;
   justify-content: center;
   padding: 0;
@@ -32,11 +35,6 @@
 
   &:hover {
     background: rgb(0 0 0 / 75%);
-  }
-
-  @media (width >= 768px) {
-    width: 40px;
-    height: 40px;
   }
 }
 
