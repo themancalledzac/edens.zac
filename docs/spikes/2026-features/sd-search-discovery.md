@@ -42,7 +42,9 @@ serializer plus a seed line in each surface. Verified 2026-08-31: `selectedLense
 
 ## SD4 · `/explore` as a real explorer — blocked on a design reconcile
 
-`app/explore/page.tsx` is the flat Option-A directory page. Never built: Option C (`/explore` as a
+`app/explore/ExploreDirectory.tsx` is the flat Option-A directory — it moved out of
+`app/explore/page.tsx` in #367, which left the route a shell around a Suspense boundary, so the
+rebuild target is the new file. Never built: Option C (`/explore` as a
 cross-faceting drill-down explorer) and the in-dropdown three-level accordion (menu spec §6.2 —
 the dropdown is a flat `NavLink` list; `MenuDropdown.tsx:294` has the ungated Explore entry). All
 five §8 open questions from the menu spec remain (accordion vs panel slide, back affordance,

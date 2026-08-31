@@ -252,6 +252,9 @@ is in [lessons.md](2026-summer-refactor/lessons.md).)
 | **F3**    | COLD                  | —— `ReorderMove`, `getUserPage` and the logger labels shipped; the invite bullet is COSTED and REJECTED (do not re-open the 3-function version). **Six bullets open.** `CollectionPageWrapper` (3 src / 6 test) and the `AdminPanel/` fold (5 src / 3 test) re-verified 2026-08-29 and are the two freshest                                                 |
 | **G4**    | COLD                  | —— count reproduces (**1415** blocks / 49 hits, re-run 2026-08-30; was 1413 at `cb6b87d` — the 49 hits and their per-term split are unchanged and exact) but ~23 are false positives; ~26 real + ~17 board-label blocks must be read block-by-block, not regexed                                                                                            |
 | **C11**   | COLD                  | —— one `mapError` branch + one test                                                                                                                                                                                                                                                                                                                         |
+| **C12**   | COLD                  | —— `.metadataToggle` still steps 36 → 40px against a 44px tap target; SaveHeart's identical gap closed in #367                                                                                                                                                                                                                                              |
+| **C13**   | COLD                  | —— `app/[slug]/page.tsx` metadata says "Zac Eden"; `/search`, `/tag` and `/location` all say "Zac Edens". One word                                                                                                                                                                                                                                          |
+| **G7**    | COLD                  | —— six `describe('Vercel BFF proxy …')` names in `tests/api/proxy/route.test.ts`; production is Amplify (feature-board PF9, #365)                                                                                                                                                                                                                           |
 | **D10**   | COLD                  | —— reuse `configuredAppOrigin()` in `core.ts`; docblock fix rides along                                                                                                                                                                                                                                                                                     |
 | **F1**    | COLD                  | —— largest open item; no unanswered question, just size                                                                                                                                                                                                                                                                                                     |
 | **H1**    | BLOCKED — **user**    | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? Also: accept a 500-row catalog fetch on every `/user` load, or ask the backend to return followed collections on the user-page read?                                                                                         |
@@ -351,6 +354,35 @@ rate-limited sender sees the generic failure copy.
 
 - [ ] Add a 429 branch with rate-limit copy, plus one test beside the 403/409 coverage
       `ShareCard.test.tsx` already carries from #331. Est +5 src, +15 test.
+
+### ☐ C12 · `.metadataToggle` is under the 44px tap target
+
+Filed 2026-08-31 from feature-board PF8 (#367), which raised `SaveHeart` from 36px / 40px to 44px
+at every width. `.metadataToggle` (`app/styles/fullscreen-image.module.scss:208`) is the control
+SaveHeart was originally built to mirror and still carries the identical gap: 36px, rising to 40px
+at `≥768px`. It is the fullscreen viewer's metadata toggle, so it is a touch control on a
+touch-first surface.
+
+PF8 named only SaveHeart, so this was deliberately left out of #367 rather than missed. SaveHeart's
+docblock was updated in that PR to stop claiming the two are sized alike and to record this gap.
+
+- [ ] `.metadataToggle` to 44px, dropping the `≥768px` step the way #367 did. Check the doubled
+      selector (`.metadataToggle.metadataToggle`) and the second doubled block at `:544` that cites
+      it by name. Est +3 src, no new tests — no suite pins either size.
+
+### ☐ C13 · The `/[slug]` byline says "Zac Eden", every other route says "Zac Edens"
+
+Filed 2026-08-31, spotted while adding JSON-LD in #367. `app/[slug]/page.tsx`'s `generateMetadata`
+builds its fallback description as `` `${title} — photography by Zac Eden` ``. `/search`,
+`/tag/[slug]` and `/location/[slug]` all use "Zac Edens", and the domain is `zacedens.com`, so the
+outlier is the singular. It reaches users: the string is the meta description and the OG/Twitter
+description for every collection with no description of its own.
+
+`app/utils/structuredData.ts` already hardcodes `AUTHOR_NAME = 'Zac Edens'` for the JSON-LD author,
+which is a second place the byline now lives.
+
+- [ ] Fix the one string, and decide whether the byline should come from a shared constant rather
+      than four literals. Est +1 src if literal, +6 src if consolidated.
 
 ### ☐ C9 · A dimensionless cover renders no header — ANSWERED 2026-08-30, now BLOCKED on backend Bug #21
 
@@ -800,6 +832,26 @@ has established what the standard looks like in this codebase.
 
 ---
 
+### ☐ G7 · Test names still call the BFF proxy "Vercel"; production is Amplify
+
+Filed 2026-08-31 from feature-board PF9 (#365), which recorded AWS Amplify as the production host.
+`tests/api/proxy/route.test.ts` carries **six** `describe('Vercel BFF proxy …')` blocks, plus
+`route.logHygiene.test.ts`'s `describe('Vercel BFF proxy — 502 log hygiene')`.
+
+**The route itself is already correct** — `app/api/proxy/[...path]/route.ts:72-80` says the
+`x-vercel-forwarded-for` hop is "harmless, absent on Amplify" and that `x-real-ip` is "spoofable on
+Amplify". The header handling is deliberate and must not change: it reads the Vercel header first
+and falls back to the last `x-forwarded-for` hop, which is the correct order on both hosts. This is
+a naming fix only.
+
+Worth doing because the names were actively misleading: PF9's row asserted "three docs name three
+hosts" and these strings were the third, which sent a session looking for a doc that does not
+exist.
+
+- [ ] Rename the seven `describe` strings to "BFF proxy". Do **not** touch
+      `x-vercel-forwarded-for` handling or the `x-vercel-ip-*` strip list — those are host-agnostic
+      by design. Est ~7 test lines, 0 src.
+
 ## Group H — Feature requests
 
 Filed 2026-08-23 from a user design review of `/user` plus an annotated screenshot. Six requests
@@ -916,6 +968,15 @@ which is why a "08-23" entry can sit between two "08-24" ones. The ordering was 
 against real merge timestamps on 2026-08-24; only the labels were inconsistent. Use local dates.
 Same-day runs are numbered "(1)", "(2)", … in run order; 2026-08-28's first two runs predate the
 numbering, so that day's numbered entries start at "(2)"._
+
+- 2026-08-31 (2) — no MRs here; **three items filed from the feature board's PF9/PF11/PF8 run**
+  (#365/#366/#367), per this repo's rule that cleanup and bug fixes live on this board rather than
+  that one. **C12**: `.metadataToggle` still carries the 36 → 40px tap-target gap that #367 closed
+  on `SaveHeart`. **C13**: `app/[slug]/page.tsx` says "Zac Eden" where three other routes say "Zac
+  Edens" — user-visible, it is the fallback meta and OG description. **G7**: seven
+  `describe('Vercel BFF proxy …')` names across two test files, left over from before PF9
+  established the host; the route's own header handling is already correct and must not change.
+  Next: unchanged — C11, D10, E18.
 
 - 2026-08-31 — shipped **G6 (#351)**, the block's own "first MR". Premise re-verified against the
   backend's `origin/main` by running the check rather than re-reading it: `SecurityConfig.java:75-77`
