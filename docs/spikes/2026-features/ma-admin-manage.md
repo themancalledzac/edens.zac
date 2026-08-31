@@ -9,8 +9,28 @@ verified UNBUILT 2026-08-30 — its Task 9 deletes `CollectionEditSheet.tsx`, `I
 `StructureTab.tsx`, and all three still exist.
 
 Approach B: replace the edit sheet's batch-save model with per-field optimistic PATCH commits into
-an admin rail. Task 1 (backend `PATCH /collections/{id}`) was assigned to a sibling agent —
-**verify it exists before starting; if absent it is the first MR and gets a backend-board row.**
+an admin rail. Task 1 (backend `PATCH /collections/{id}`) was assigned to a sibling agent.
+
+> **BLOCKED as of 2026-08-31 — the prerequisite does not exist.** The row told the next session to
+> verify before starting. It was verified, by running the command rather than re-reading the claim:
+>
+> ```bash
+> git grep -n "PatchMapping(" origin/main -- 'src/main/java/**/controller/**'
+> ```
+>
+> Five `@PatchMapping`s exist on the backend's `origin/main`, and **none of them is
+> `PATCH /collections/{id}`**: `/content/images` and `/content/gifs/{id}` (`AdminController`
+> `:233`, `:341`), `/{id}` on `AdminUserController:313`, and `/collections/{collectionId}/rating`
+> and `/collections/{collectionId}/images` (`EditController:52`, `:94`). The last two are
+> sub-resource patches, not the whole-collection field patch this item's `buildFieldPatch` needs.
+>
+> Checked against `origin/main` deliberately — the backend checkout was sitting on a working
+> branch, and its `.claude/worktrees/` copies produce convincing false positives for exactly this
+> grep.
+>
+> So the backend endpoint is **MR 1 of this item**, on the backend board, and every frontend task
+> below waits on it. This is the whole reason MA1 is no longer COLD.
+
 The eleven frontend tasks:
 
 1. `patchCollection` API util + `buildFieldPatch` (derive from the existing `buildUpdatePayload`)

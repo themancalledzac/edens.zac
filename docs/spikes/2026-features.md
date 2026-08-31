@@ -49,6 +49,18 @@ whole record.
   of a session, batched, so an answer can become one of the run's MRs.
 - The refactor board's estimate biases apply here too: extractions cost docblocks plus a required
   new test suite; test-side effort on items that add a caller or prop runs ~2.3× estimate.
+- **A numeric API parameter no test exercises against the real backend needs a live check or a
+  pinned bound.** SD1 shipped with `size: 500`; the backend caps `size` at 200 and *rejects* rather
+  than truncating, so the whole route 500'd — and **all 4497 tests passed** with the broken value,
+  because nothing mocks the real validation. The browser check found it. Applies next to RC2's
+  `?limit=5` and MA5's paging.
+- **Grep the other repo's `origin/main`, never its checkout.** `edens.zac.backend` keeps
+  `.claude/worktrees/` copies of the whole source tree, so an unscoped `grep -rn` returns three
+  hits for every real one and will happily confirm a symbol that does not exist on `main`. Use
+  `git grep <pattern> origin/main -- src/`. This is how MA1's missing endpoint was nearly missed.
+- **An item that only wires existing tested primitives into a new route is one sitting**, however
+  many files it touches. SD1 was estimated at 2–3 and took 1. An item that deletes and rewrites
+  (MA1) does not get this discount.
 
 ## Work board
 
@@ -56,9 +68,8 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 
 | Item | Scope | Repo | Status |
 | ---- | ----------------------------------------------------------------- | ------ | ------ |
-| SD1  | Build the public `/search` route                                  | FE     | ☐ COLD — **unblocked; the "backend-blocked" status in 004/009/000 is wrong** |
 | SD2  | Enrich `locations` on collection blocks                           | BE     | ☐ COLD — small; makes the shipped `/collections` location filter work |
-| SD3  | Filter-bar dimension gaps (focal length, film stock, year, badges)| FE     | ☐ COLD — sliceable per dimension |
+| SD3  | Filter-bar dimension gaps (focal length, film stock, year, badges)| FE     | ☐ COLD — sliceable; re-sized DOWN after SD1 |
 | SD4  | `/explore` as a real drill-down explorer (Option C)               | FE     | ☐ BLOCKED — reconcile with refactor-board H5 design review first |
 | SD5  | Verify people/location chip-click-to-filter                       | FE     | ☐ COLD — cheap verification task |
 | RC1  | Populate `parents` on public reads + `isFilm` backfill            | BE     | ☐ COLD — unblocks RC2's public rendering; two verified data bugs |
@@ -81,21 +92,22 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | EM3  | Contact-owner notification + `user_invite.created_by`             | BE     | ☐ COLD — two small backend items |
 | EM4  | Gallery-password design pass (precedes any BCrypt work)           | user   | ☐ BLOCKED — user; backend board PARKED BCrypt behind it |
 | EM5  | Email-disabled warning callout in gallery admin                   | FE     | ☐ COLD — small |
-| MA1  | Manage rail restructure (per-field PATCH, delete edit sheet)      | FE(+BE)| ☐ COLD — largest open item; wants its own sessions |
+| MA1  | Manage rail restructure (per-field PATCH, delete edit sheet)      | FE(+BE)| ☐ BLOCKED — backend `PATCH /collections/{id}` does NOT exist (verified 08-31); it is MR 1 |
 | MA2  | `staging` system collection                                       | BE+FE  | ☐ BLOCKED — user: `HIDDEN` vs `UNLISTED` seed visibility |
 | MA3  | Mobile-first admin Phase 3 remainder                              | FE     | ☐ BLOCKED — user: does the dark-admin premise survive its partial reversal? |
 | MA4  | Messages admin: retention TTL, read/delete/search, notify channel | BE+FE  | ☐ COLD — sliceable |
 | MA5  | Admin collections list at 100× (paged/filtered/sorted)            | BE+FE  | ☐ COLD — low priority until collection count grows |
 | MA6  | User change log + non-admin canonical mutation path               | BE+FE  | ☐ BLOCKED — user: §10 decisions in the logged-in-flow review |
-| PF1  | Image bytes: `quality` / `deviceSizes` / `imageSizes`             | FE     | ☐ COLD — cheapest perf lever, config-only |
 | PF2  | Blur placeholders (`blurDataURL`)                                 | FE     | ☐ COLD |
 | PF3  | Narrow `priority`, scope `will-change`, add preconnect            | FE     | ☐ COLD — small batch |
-| PF4  | Restore ISR on the home page                                      | FE     | ☐ BLOCKED — backend `blocks_per_page` fix |
-| PF5  | Frontend CI (GitHub Actions: tsc, jest, eslint)                   | FE     | ☐ COLD — no `.github/workflows` exists at all |
+| PF4  | Restore ISR on the home page                                      | FE     | ☐ COLD — `blocks_per_page` gone from backend `origin/main`; one live check first |
 | PF6  | External error tracking                                           | FE     | ☐ BLOCKED — user: Sentry vs CloudWatch |
 | PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)          | OPS    | ☐ COLD — infra, plan written, ~1–2 weeks lead time |
-| PF8  | Small orphans: JSON-LD, `<Suspense>` wrappers, SaveHeart 44px     | FE     | ☐ COLD — batch of three verified-absent smalls |
-| PF9  | Pin the actual production deploy target                           | user   | ☐ BLOCKED — user: three docs name three hosts; blocks PF-batch verification |
+| PF8  | Small orphans: JSON-LD, `<Suspense>` wrappers, SaveHeart 44px     | FE     | ☐ COLD — all three re-verified absent 08-31 |
+| PF9  | Record the deploy target (answered: CloudFront/AWS, auto-deploy)  | FE     | ☐ COLD — measured 08-31; only the recording is left |
+| PF10 | Image quality 65 — config + `quality` props at 8 call sites       | FE     | ☐ COLD — split from PF1; NOT config-only in Next 16; 13.3% measured |
+| PF11 | Reconcile `engines.node` (`>=20 <23`) with the dev machine (25.3) | user   | ☐ COLD — one decision, then one line |
+| PF12 | Gate the auto-deploy on CI                                        | OPS    | ☐ COLD — console work; `main` deploys today regardless of CI |
 | LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build          | FE     | ☐ BLOCKED — user: two competing designs, neither built |
 | LY2  | Admin panel width vs page height                                  | FE     | ☐ BLOCKED — user: adjudication; both outcomes already test-pinned |
 
@@ -121,7 +133,8 @@ Batch these at the start of a session. Each unblocks the named item; none blocks
 | 6 | Lone-last-row: gap-box spacer or FILLER atom? | LY1 |
 | 7 | Panel width vs page height (values pinned in `tests/(admin)/admin/page.collapseStates.test.ts`) | LY2 |
 | 8 | Error tracking: Sentry or CloudWatch? | PF6 |
-| 9 | Which host actually serves the production frontend? (Amplify vs S3+CloudFront vs Vercel — three docs disagree, no deploy config in-repo) | PF9, parts of PF1–PF3 verification |
+| 11 | `engines.node` says `>=20 <23`; the dev machine runs 25.3.0 and CI now pins 22. Widen `engines`, or move dev to 22? | PF11 |
+| ~~9~~ | ~~Which host serves production?~~ **ANSWERED 2026-08-31 by `curl -sI https://zacedens.com/`** — CloudFront-fronted AWS running a live Next server, auto-deploying from `main` in ~15 min. Vercel and static-S3 both eliminated; see [PF9](2026-features/pf-performance-platform.md). | — |
 | 10 | `/explore` direction: reconcile Option C with the H5 MenuDropdown review | SD4 |
 
 Collections-as-tags D1–D12 (item CT2) joins this list after CT1 rewrites the matrix in current
@@ -130,19 +143,8 @@ G2b, the CSS guard) — put all of these to the user as one sitting, not two lis
 
 ## Group SD — Search & discovery
 
-Context file: [2026-features/sd-search-discovery.md](2026-features/sd-search-discovery.md)
-
-### ☐ SD1 · Build the public `/search` route — COLD, and the headline correction of this sweep
-
-Four docs (`004:29`, `009`, `000`'s blocker block, the refactor board's roadmap #1) call this
-backend-blocked. **It is not.** Verified 2026-08-30: `ContentControllerProd.java` carries
-`@GetMapping` for `/images/search` (`:45`), `/tags`, `/people`, `/cameras`, `/lenses` (`:117`),
-`/locations` (`:129`), `/film-metadata`; the FE function `searchImages()` exists at
-`app/lib/api/content.ts:128` and is already used by `/location/[slug]` and `/tag/[slug]` pages,
-with tests. What is missing is only `app/search/` — route, `SearchPage`, `FilterToolbar` wiring,
-URL-state filters, `error.tsx`/`loading.tsx`, empty state. The old plan
-(`docs/superpowers/plans/004-public-search-page.md`) still says blocked — read the group file
-instead. Est: 2–3 sittings.
+Context file: [2026-features/sd-search-discovery.md](2026-features/sd-search-discovery.md) —
+1 shipped (SD1, #357); its write-up is in that file's Closed section.
 
 ### ☐ SD2 · Backend: enrich `locations` on collection blocks — COLD
 
@@ -318,7 +320,7 @@ hint that sends are off. One callout in the access section.
 
 Context file: [2026-features/ma-admin-manage.md](2026-features/ma-admin-manage.md)
 
-### ☐ MA1 · Manage rail restructure — COLD, the largest open item
+### ☐ MA1 · Manage rail restructure — BLOCKED (backend endpoint absent)
 
 The 2026-08-12 plan (Approach B): per-field optimistic PATCH commits replace the batch-save edit
 sheet. Eleven FE tasks — `patchCollection` + `buildFieldPatch`, `commitField` in
@@ -328,8 +330,9 @@ sheet. Eleven FE tasks — `patchCollection` + `buildFieldPatch`, `commitField` 
 `StructureTab.tsx` + 3 stylesheets, density-tier persistence, reset-to-chronological, dead-code
 sweep (drop `FIXED`, prune orphaned `CollectionUpdateRequest` fields, resolve `TODO(A3)`), test
 rewrite (`useCollectionEdit.buffer.test.tsx` pins the buffer policy this deletes). Prereqs merged
-(`railExtras` threads through; 0244–0247 landed). Backend `PATCH /collections/{id}` was Task 1,
-assigned out — verify it exists before starting. **Collides with:** anything touching
+(`railExtras` threads through; 0244–0247 landed). **Backend `PATCH /collections/{id}` does NOT
+exist** — verified 2026-08-31 against the backend's `origin/main`; the five `@PatchMapping`s there
+are all sub-resource or unrelated. It is MR 1 of this item and belongs on the backend board. **Collides with:** anything touching
 `InfoTab`/`StructureTab` (EM2, the roles section) and the refactor board's F1 — sequence
 deliberately. Wants its own sessions.
 
@@ -368,12 +371,8 @@ H2b per its sequencing note. Big; treat as a design adjudication first.
 
 ## Group PF — Performance & platform
 
-Context file: [2026-features/pf-performance-platform.md](2026-features/pf-performance-platform.md)
-
-### ☐ PF1 · Image bytes — COLD, config-only
-
-`next.config.js` has no `quality`, `deviceSizes`, or `imageSizes` keys (verified — only
-`remotePatterns`). Set quality ~65 and tighten the size arrays. Cheapest remaining LCP lever.
+Context file: [2026-features/pf-performance-platform.md](2026-features/pf-performance-platform.md) —
+2 shipped (PF1 #358, PF5 #356); their write-ups are in that file's Closed section.
 
 ### ☐ PF2 · Blur placeholders — COLD
 
@@ -387,16 +386,31 @@ the single LCP candidate); `will-change: transform` is unconditional in three mo
 (`fullscreen-image.module.scss:125`, `CoverCard.module.scss:53`,
 `ParallaxImageRenderer.module.scss:17`); no CloudFront `preconnect` in `app/layout.tsx`.
 
-### ☐ PF4 · Restore ISR on home — BLOCKED (backend `blocks_per_page`)
+### ☐ PF4 · Restore ISR on home — COLD (blocker appears cleared)
 
-`app/page.tsx:22` is `force-dynamic` with the restore recipe in the `@todo` at `:19-20`. Every
-visitor pays a live Spring fetch on the hottest page. The backend schema fix is the unlock —
-confirm its status on the backend board when picking this up.
+`app/page.tsx:22` is `force-dynamic` with the restore recipe in the `@todo` at `:19-20` (both
+re-verified 2026-08-31). Every visitor pays a live Spring fetch on the hottest page.
+`git grep -c "blocks_per_page\|blocksPerPage" origin/main -- src/` on the backend returns **zero**,
+so the stated blocker is gone from source. Remaining: confirm the *deployed* backend carries it,
+then flip. Two lines plus a live check.
 
-### ☐ PF5 · Frontend CI — COLD, high leverage
+### ☐ PF10 · Image quality 65 — COLD, and NOT config-only
 
-No `.github/workflows` directory exists. Every `tsc`/`jest`/`eslint` claim in this repo is
-local-only. One workflow running the standard verification on PRs. Est: 1 sitting.
+Split out of PF1. Next 16 defaults `images.qualities` to `[75]`, `next/image` sends 75 when no
+`quality` prop is given, and the optimizer **rejects** rather than clamps anything else — so
+`qualities: [65]` alone 400s every image. Needs `quality={65}` at the 8 `sizes=` call sites too.
+Measured prize: **13.3%** (258,556 vs 298,282 bytes at `w=1920`).
+
+### ☐ PF11 · Reconcile `engines.node` — COLD, one decision then one line
+
+`engines.node` is `>=20 <23`; the dev machine runs 25.3.0; PF5's CI pins 22. Widen `engines` or
+move dev to 22. `tests/ci/ciWorkflow.test.ts` keeps CI and `engines` from diverging further.
+
+### ☐ PF12 · Gate the auto-deploy on CI — COLD, console work
+
+`main` deploys to production in ~15 minutes whether or not CI passed (PF9), and CI's `push: [main]`
+run races the deploy rather than gating it. Fix is branch protection + the host's wait-for-checks
+setting, not repo code. Worth doing *because* the deploy is fast.
 
 ### ☐ PF6 · External error tracking — BLOCKED (user, decision #8)
 
@@ -416,11 +430,20 @@ Three verified-absent smalls tracked nowhere else: JSON-LD structured data (zero
 `application/ld+json` in `app/`), component-level `<Suspense>` wrappers (zero `<Suspense` in
 `app/`), SaveHeart 44px tap target.
 
-### ☐ PF9 · Pin the deploy target — BLOCKED (user, decision #9)
+### ☐ PF9 · Record the deploy target — COLD (answered by measurement)
 
-Three docs name three hosts (Amplify, S3+CloudFront, Vercel); no `amplify.yml`, no `.github/`, no
-deploy script in-repo. One answer from the user; then record it in `CLAUDE.md` and unblock the
-AVIF/WebP verification half of PF1.
+**Answered 2026-08-31 by `curl -sI https://zacedens.com/`.** Production is CloudFront-fronted AWS
+(`via: … cloudfront.net`, `x-amz-cf-pop`, apex → `3.169.202.x`) running a **live Next server** —
+the response carries `next.config.js`'s own security headers and the home page is `force-dynamic`,
+neither of which a static S3 export can do. No `x-vercel-*`: Vercel is out. Amplify is the
+remaining candidate and matches `next.config.js`'s own 2026-08-23 production note.
+
+**`main` already auto-deploys** — PF1 merged 05:33 UTC and production was rejecting `w=3840` by
+05:47. The row's "no `.github/`" premise was also invalidated by PF5 landing one in the same run.
+**PF1's WebP verification is closed too**: production returns `content-type: image/webp`.
+
+Left to do: record the host in `CLAUDE.md` and correct the three docs that disagree. No decision
+needed. See the group file for the full evidence.
 
 ## Group LY — Layout decisions
 
@@ -445,6 +468,16 @@ trade looks intrinsic. Pure adjudication.
 _Newest first, local dates. One line per `/next` run: what shipped (PR numbers), what was filed,
 what's next. Older entries move to
 [2026-features/session-log.md](2026-features/session-log.md)._
+
+- 2026-08-31 — shipped **SD1 (#357)**, **PF5 (#356)**, **PF1 (#358)**; all merged and live in
+  production. Filed **PF10** (image quality — split out of PF1, which could not do it), **PF11**
+  (Node version drift) and **PF12** (gate the auto-deploy on CI). **Decision #9 answered by one
+  `curl`**: production is CloudFront-fronted AWS running a live Next server, auto-deploying from
+  `main` in ~15 minutes — Vercel and static-S3 eliminated. That also closed the 002 chapter's
+  month-old "verify the host serves WebP" item (it does). **MA1 re-classified COLD → BLOCKED**: its
+  stated prerequisite, backend `PATCH /collections/{id}`, does not exist on the backend's
+  `origin/main`. **PF4 re-classified BLOCKED → COLD**: `blocks_per_page` is gone from backend
+  `origin/main`. PF5 invalidated PF9's "no `.github/`" premise in the same run. Next: PF9, PF4, SD3.
 
 - 2026-08-30 — board created from the three-agent sweep (specs ×22, plans ×38, numbered docs +
   handoffs + backend board), reconciled against code and git. Headline corrections: `/search` is
