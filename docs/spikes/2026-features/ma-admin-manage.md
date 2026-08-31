@@ -84,8 +84,28 @@ Shipped: the foundational pass, the dark/white-framed token layer (`globals.css`
 `[data-surface='dark']` block), tabbed edit sheet, tabbed `MetadataModal`. Open surfaces from the
 2026-06-08 design:
 
-- §5.1 image-editor mobile layout (photo pinned, not crammed into the top 30% — the tab mechanism
-  shipped, the layout did not)
+- ~~§5.1 image-editor mobile layout~~ — **MR open, [#386](https://github.com/themancalledzac/edens.zac/pull/386)**.
+  The row's premise was wrong in an instructive way. "Crammed into the top 30%" is not what happens
+  on a phone held upright: at 375x812 the strip is 160px, 19.7%, and the form gets 501px. The
+  failure is a phone in LANDSCAPE. It is under 768px wide, so it takes the stacked branch, where
+  the flat `160px` is **44.4% of a 360px viewport and leaves the form 49.5px** — about one and a
+  half rows, under a 98px tab-and-action bar. Fixed by keying the layout switch on height as well
+  as width, and making the stacked strip a fraction of the sheet rather than a fixed height.
+  Measured, not reasoned: 740x360 form 49.5px -> 209.5px; 375x667 356.5 -> 383.1; 375x812
+  501.5 -> 499.1; 1280x900 unchanged.
+
+  **How it was measured, since the editor cannot be opened locally.** `/api/admin/**` 401s without
+  a real session and the local backend can point at production, so signing in to look at a layout
+  is the wrong trade. The real `MetadataModal` was mounted in a throwaway route under `app/` with
+  fixture props, measured with `getBoundingClientRect()` at four viewports, and the route deleted
+  before the commit. Reuse this for §5.2 and §5.5.
+
+  **Reported, not fixed, in that MR:** the close `×` (`.closeButtonSlot`, `position: fixed`) sits
+  inside the photo strip on the stacked layout. A square or 3:2 photo is centred and clears it; a
+  panorama fills the strip's width and runs under a bare glyph with no scrim. `IconButton` has an
+  `overlay` variant for this, but applying it changes the desktop look too, so it wants its own
+  call.
+
 - §5.2 manage page full-screen grid + morphing bottom bar
 - §5.5 text-block editor: `TextBlockCreateModal/` was never migrated onto the primitives (raw
   `<select>/<textarea>/<button>` + hardcoded blue)
@@ -97,10 +117,27 @@ whether remaining Phase 3 work targets dark-admin, light-admin, or waits for sit
 
 ## MA4 · Messages admin features
 
-From `docs/007-security-hardening.md`'s "Housekeeping" — three independent slices, feature-shaped
-despite the label: a PII retention TTL on stored messages (backend scheduled delete); mark-as-read
-/ delete / search on the admin Comments page; an optional Discord/Slack webhook notify channel on
-new messages (the richer alternative to EM3's email notification — pick one).
+From `docs/007-security-hardening.md`'s "Housekeeping". Slice by slice as of 2026-08-31 (8):
+
+- **Retention TTL — MR open**, backend [#281](https://github.com/themancalledzac/edens.zac.backend/pull/281).
+  Ships OFF, and the first opt-in only reports. `app.messages.retention.days` defaults to `0` (the
+  nightly job returns before touching the database) and `app.messages.retention.dry-run` defaults to
+  `true` (logs the count it would delete, deletes nothing). Set `days`, read the count out of the
+  logs, then set `dry-run=false`. Two properties rather than one because the deletion is
+  irreversible — the contact form is the only writer, nothing archives what a purge removes — and a
+  local backend can point at production, so the reporting mode is how you find out safely from the
+  environment that actually holds the rows. Both guards mutation-proved.
+
+  **This slice has no frontend half.** MA4's row reads BE+FE, but a retention TTL is configuration,
+  not a control; there is nothing to render.
+
+- **Delete** — already shipped, both halves (`@DeleteMapping("/{id}")`, `useMessageDelete`).
+- **Search** — shipped as [#384](https://github.com/themancalledzac/edens.zac/pull/384).
+- **Mark-as-read — blocked.** There is no read column on `messages`; `V17__create_messages_table.sql`
+  is still the whole schema (`id`, `email`, `message`, `created_at`). Needs a backend migration
+  first.
+- **Discord/Slack notify channel** — still unbuilt, and still the either/or with EM3's email
+  notification. Pick one before building either.
 
 ## MA5 · Admin collections list at 100×
 

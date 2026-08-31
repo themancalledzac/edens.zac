@@ -103,3 +103,25 @@ same close-out that adds them._
   landed 17 files across 8 app and 6 test files, which is the same miss a fourth time with the rule
   already written down. The rule is not the gap — applying it at scheduling time is, so the run
   entries now carry the size call, not just the guardrail.
+
+- 2026-08-31 (6) — **nothing shipped.** SD3's focal-length slice was built and verified as **#379**
+  and then **dropped by the user before merge** — not wanted, and the stated direction is fewer
+  lens-related filters rather than more. **PF13 step 2 attempted and stopped as blocked**, which is
+  what its guardrail was for. Two items, two different kinds of stop; the board's job now is to not
+  re-propose either. **SD3's open data question was answered along the way, and it is yes**:
+  207 of 281 sampled images carry `focalLength` (74%), near-uniformly `'24 mm'`, and the gap is
+  film rather than focal length — `dolomites-film` 0/30, `lisbon-film` 0/23 — so the dimension
+  self-hides on film pages through the existing gate. The parser was restored from `266c56c`
+  rather than rewritten; it had been deleted as an orphan because lens NAMES beat lens types, not
+  because the bucketing was wrong. **PF13's stop produced two corrections, both found by building
+  rather than reading.** #375 did not clear the root-layout prerender blocker: the `new Date()`
+  moved into a Client Component, which still server-renders during prerender — proven by
+  hardcoding the year and watching `/_not-found` start building, one variable changed. And
+  `instant = false` does not make unconverted routes safe: `/search` failed the prerender carrying
+  both it and a Suspense boundary, while `/collections` 500'd calling the backend mid-build and `/`
+  timed out at 60s × 3. **The real blocker was nowhere in the row** — `cookies()` sits inside
+  `fetchBase`, so no read can enter a `use cache` scope, and the six tagged fetches would silently
+  stop caching. Three lessons hoisted into "How to use this doc" — including the one #379 taught,
+  which none of the existing guardrails would have caught: a facet can be built correctly and still
+  be unwanted. Next: PF13 MR 1 (hoist the cookie forwarding), re-do step 1, and **ask** whether the
+  film-stock dimension is wanted before building it.
