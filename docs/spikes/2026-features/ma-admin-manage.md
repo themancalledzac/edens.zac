@@ -47,7 +47,11 @@ The eleven frontend tasks:
 9. Persist L/M/S density tier; reset-to-chronological cell in the reorder bar
 10. Dead-code sweep: drop `FIXED` from `DisplayMode` (**coordinate with CT1, which needs to verify
     `FIXED`'s status first**), prune orphaned `CollectionUpdateRequest` fields (slug, rating,
-    password, contentPerPage, people), resolve `TODO(A3)` at `useCollectionEdit.tsx:1571`
+    password, contentPerPage, people). ~~resolve `TODO(A3)` at `useCollectionEdit.tsx:1571`~~ —
+    **struck 2026-08-31 (4):** zero `TODO(A3)` hits in `app/`. `c1dd1d4` deleted the comment in
+    its inline-comment sweep and `b66c39a` had already built what it asked for
+    (`saveTagAsCollection` at `useCollectionEdit.tsx:1441` → `StructureTab.tsx:167` →
+    `SaveAsCollectionModal`). Nothing left to resolve.
 11. Test rewrite: `useCollectionEdit.buffer.test.tsx` pins the buffer-reseed policy this deletes
 
 Prereqs merged: `railExtras` threads through `CollectionContentRenderer`; 0244/0245/0246/0247

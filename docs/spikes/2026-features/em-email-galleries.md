@@ -28,10 +28,25 @@ reset is in scope.
 Saving the gallery access form re-emails the password to every address in the box. Plan
 (`docs/superpowers/plans/003-gallery-recipient-send.md`, gitignored): a read-only
 existing-recipients list plus a separate add-one-recipient input and button, so only the new
-address is mailed. Verified 2026-08-30: `InfoTab.tsx` has no recipient field at all —
-`recipientEmails` exists only in `app/types/Collection.ts` and `useCollectionEdit.tsx` — so this
-is a UI addition, not a modification. **Collision warning:** MA1 deletes `InfoTab.tsx`; if both
-are scheduled, sequence deliberately or build EM2 against MA1's rail.
+address is mailed.
+
+**The 2026-08-30 verification was wrong, corrected 2026-08-31 (4).** It read "`InfoTab.tsx` has no
+recipient field at all — `recipientEmails` exists only in `app/types/Collection.ts` and
+`useCollectionEdit.tsx` — so this is a UI addition, not a modification." Both halves mislead.
+`InfoTab.tsx:303` renders a `Recipient email` input (`multiple`, comma-separated) and
+`useCollectionEdit.tsx:559` seeds it from `collection.recipientEmails` on load, so the stored list
+already reaches the form. The mistake looks like a grep for the symbol `recipientEmails`, which
+InfoTab never names because it reads the hook's `galleryEmail` instead — the field was there, under
+another name.
+
+So EM2 reshapes an existing control rather than adding one: split the single round-tripping input
+into a read-only existing-recipients list plus an add-one field, and narrow the send to the new
+address. Same deliverable, different starting point, and the "addition, not modification" sizing
+should not be trusted.
+
+**Collision warning:** MA1 deletes `InfoTab.tsx`; if both are scheduled, sequence deliberately or
+build EM2 against MA1's rail. MA1 is blocked on a backend endpoint that is still absent, so EM2
+going first is currently the safe order.
 
 ## EM3 · Contact-owner notification + `user_invite.created_by`
 

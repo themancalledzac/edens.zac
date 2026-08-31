@@ -67,6 +67,16 @@ reportToService()` seam (it does not exist — `logger.ts` is 14 lines of `conso
   rather than re-deriving it and disagreeing. Claims about **versions and support schedules**
   (`engines.node`, LTS status) go stale on the calendar's schedule rather than the repo's — re-check
   those every run regardless of how recent the sentence looks.
+- **A "small" that touches a SHARED component costs its own change plus every consumer's tests.**
+  Three of this run's four items were sized by counting the source edit alone and all three came in
+  several times over. EM5 was "one callout in the access section" and landed +222/−36 across **12
+  files**: one prop on `useCollectionEdit` pulled in the shared test fixture and three suites. SD3
+  was "one slice" and landed +314/−56 across **8 files**, because fixing the badge's accessible
+  name meant a new prop on `FilterChip`, which every other chip consumer's tests then had to keep
+  passing. This is the same arithmetic as the PF8 rule below, but the trigger is different and
+  easier to miss: PF8 was a batch of three, these were single items whose blast radius ran through
+  a shared primitive and its fixtures. Before sizing anything as "small", ask which shared file it
+  touches and count that file's test consumers.
 - **A batch item costs the sum of its parts plus their tests.** PF8 was three "smalls" and landed
   +455/−108 across 14 files, several times any one part. Size a batch by adding up, not by its
   largest member.
@@ -130,41 +140,38 @@ tests and function decomposition (debt, chapter 006); and three self-labeled una
 (liked images, mobile text overlay, React 19 follow-ups), listed in the group files so they are
 not rediscovered as new.
 
-## NEXT RUN — set 2026-08-31 (3)
+## NEXT RUN — set 2026-08-31 (4)
 
-One question first, then three items, cheapest-first so a truncated session still banks MRs.
+One question first, then three items. All four of the last run's PRs merged (#369, #370, #372,
+#373), so nothing is stacked and every item below branches off `main`.
 
-**Decision #7 was asked first and is answered — LY2 closed with no code change.** The shared width
-holds. Worth carrying forward: the question was asked in narrower terms than the board had it,
-because `pinnedWidthSpread` turned out to constrain only side-by-side panel columns, never a
-stack. That reframing is what made it answerable in one pass; the write-up is in
-[2026-features/ly-layout-decisions.md](2026-features/ly-layout-decisions.md).
+**Ask decision #12 first.** PF13 came back from its attempt re-sized: `cacheComponents` is app-wide
+in Next 16.3.1, so there is no home-page-only version, and the migration is three sittings behind
+PF12. Whether to spend that is a call, not a task. If the answer is "adopt", PF13's step 1 — moving
+`Footer.tsx:29`'s `new Date().getFullYear()` out of the prerender — is a small MR that can join
+this run; it is the hard blocker for every other route and is worth doing on its own either way.
 
-1. ~~**EM5** — the email-disabled callout.~~ **SHIPPED (#370)** as the post-send callout keyed on
-   `reason === 'email-disabled'`, no config read. The re-spec held: `email.enabled` has no DTO or
-   controller behind it, so a pre-emptive banner stays a backend item and its cost is written up in
-   the group file. One correction for the record — "the frontend reads neither today" was true of
-   the literal strings and wrong about the behavior. `ShareCard` already had the copy, keyed on
-   `sent === false` rather than the reason, so it blamed the email switch for every failure. Fixed
-   in the same MR. Grepping for a string missed a bug that reading the behavior would have caught.
+1. **EM2** — new-recipient-only gallery send. Context is hot: #370 worked in exactly this code
+   (`InfoTab`'s access section and `handleSaveAccess`), and the item's premise was corrected this
+   pass — the recipient field **exists**, so this reshapes a control rather than adding one.
+   **Guardrail: do not touch `MA1`'s territory.** MA1 deletes `InfoTab.tsx` wholesale and is
+   blocked on an absent backend endpoint, so build inside the current `InfoTab` and leave the rail
+   restructure alone — report anything that argues for doing MA1 first rather than starting it.
 
-2. **PF13** — **NOT BUILT; re-sized instead (#372).** The guardrail "PPR the home page only" is
-   not satisfiable: `cacheComponents` is an app-wide flag in Next 16.3.1 and enabling it errors 19
-   of 21 route segments at once, on top of a root-layout `new Date()` that blocks every prerender.
-   Stopped and reported rather than turning a one-sitting item into an app-wide migration through
-   an ungated production deploy. The measured work list is on the row. This is the second item this
-   run whose recorded shape did not survive being checked — see the lesson below.
+2. **SD3 · one more slice, year chips.** Warm from #373. Same shape as the badge slice: a
+   dimension on the shared `FilterToolbar`.
+   **Guardrail: one dimension per MR, and re-derive refs after 1 lands** — `FilterChip` gained a
+   prop in #373 and `InfoTab` moves under item 1. Size it with the new shared-component rule
+   above, not as a "small".
 
-3. **SD3** — **SHIPPED (#373)**, one slice, guardrail held. The active-filter summary was the
-   right pick: it improves every dimension already shipped rather than adding a sixth. Half of it
-   turned out to be built already — Clear-all is the trailing × and has been there all along, so
-   the slice was the badge summary alone. Adding it collided two buttons' accessible names, which
-   was a real ambiguity rather than a test problem; an optional `ariaLabel` on `FilterChip` fixed
-   it and left every existing test untouched.
+3. **PF12** — gate the auto-deploy on CI. Fully specified this pass: nothing is configured, so it
+   is create-from-scratch (`branches/main/protection` → 404, `rulesets` → `[]`).
+   **Guardrail: land the scriptable half and report the console half.** Branch protection with a
+   required `Type check, lint, test` check is settable via `gh api`; Amplify's wait-for-checks is
+   console-only. Do not invent an `amplify.yml` to make it look like repo work.
 
-**Re-derive refs between MRs?** It was called for between 2 and 3 because PF13 would have touched
-`CollectionPageWrapper`, which `CollectionPageClient` and the filter surface sit under. PF13 did
-not land, so SD3's refs were re-derived against `main` alone.
+**Re-derive refs between MRs?** Between 1 and 2, yes — EM2 rewrites part of `InfoTab`, and the
+filter surface sits under `CollectionPageClient` which shares the same edit tree. 3 is disjoint.
 
 ## Decisions for Zac
 
@@ -182,6 +189,7 @@ Batch these at the start of a session. Each unblocks the named item; none blocks
 | 8      | Error tracking: Sentry or CloudWatch?                                                                                                                                                                                                                                                                                                                                       | PF6      |
 | ~~11~~ | ~~`engines.node` vs the dev machine~~ **ANSWERED 2026-08-31: "whatever is best long term practice."** Read as: `engines.node` becomes an unbounded floor, a `.nvmrc` names the blessed version, and CI reads that file instead of a hardcoded literal — one source of truth, no upper bound to age out. Shape recorded in [PF11](2026-features/pf-performance-platform.md). | PF11     |
 | ~~9~~  | ~~Which host serves production?~~ **FULLY ANSWERED 2026-08-31 — AWS Amplify Hosting**, confirmed by the user after `curl` had narrowed it to CloudFront-fronted AWS running a live Next server (Vercel and static-S3 eliminated). Auto-deploys from `main` in ~15 min. Recorded in `CLAUDE.md`; shipped as PF9 (#365).                                                      | —        |
+| 12     | Cache Components: adopt app-wide (PF13's 3-sitting migration, after PF12), or park PF13 and accept the home page rendering per request? Next 16.3.1 gives no per-route opt-in, so there is no smaller version                                                                                                                                                               | PF13     |
 | 10     | `/explore` direction: reconcile Option C with the H5 MenuDropdown review                                                                                                                                                                                                                                                                                                    | SD4      |
 
 Collections-as-tags D1–D12 (item CT2) joins this list after CT1 rewrites the matrix in current
@@ -336,7 +344,8 @@ version of that flow, not a new mechanism.
 
 ## Group EM — Email & client galleries
 
-Context file: [2026-features/em-email-galleries.md](2026-features/em-email-galleries.md)
+Context file: [2026-features/em-email-galleries.md](2026-features/em-email-galleries.md) —
+1 shipped (EM5, #370); its write-up is in that file's Closed section.
 
 ### ☐ EM1 · SES production checklist — COLD, ops
 
@@ -347,9 +356,15 @@ sandbox exit, flip `EMAIL_ENABLED` on EC2. User drives the console; sessions pre
 
 ### ☐ EM2 · New-recipient-only send flow — COLD
 
-Saving gallery access currently re-emails the whole recipient list. `InfoTab.tsx` has no recipient
-field today, so this is a UI addition: read-only existing-recipients list + add-one input, only
-the new address mailed.
+Saving gallery access currently re-emails the whole recipient list.
+
+**Premise corrected 2026-08-31 (4) — this is a modification, not an addition.** The row said
+`InfoTab.tsx` "has no recipient field today". It does: `InfoTab.tsx:303` renders a
+`Recipient email` input (`multiple`, comma-separated), and `useCollectionEdit.tsx:559` seeds it
+from `collection.recipientEmails` on load. So the work is splitting one input that round-trips the
+whole list into a read-only existing-recipients list plus an add-one field, and narrowing the send
+to the new address — reshaping a control that exists rather than adding one. Size it accordingly.
+Found by re-checking refs in the files #370 touched.
 
 ### ☐ EM3 · Contact-owner notification + `created_by` — COLD, backend
 
@@ -375,11 +390,19 @@ sheet. Eleven FE tasks — `patchCollection` + `buildFieldPatch`, `commitField` 
 `InlineEditableDate` + `InlineEditableLocations`, rating into `titleAside`,
 `CollectionAdminRail` as `railExtras`, delete `CollectionEditSheet.tsx` + `InfoTab.tsx` +
 `StructureTab.tsx` + 3 stylesheets, density-tier persistence, reset-to-chronological, dead-code
-sweep (drop `FIXED`, prune orphaned `CollectionUpdateRequest` fields, resolve `TODO(A3)`), test
+sweep (drop `FIXED`, prune orphaned `CollectionUpdateRequest` fields), test
 rewrite (`useCollectionEdit.buffer.test.tsx` pins the buffer policy this deletes). Prereqs merged
 (`railExtras` threads through; 0244–0247 landed). **Backend `PATCH /collections/{id}` does NOT
-exist** — verified 2026-08-31 against the backend's `origin/main`; the five `@PatchMapping`s there
-are all sub-resource or unrelated. It is MR 1 of this item and belongs on the backend board. **Collides with:** anything touching
+exist** — re-verified 2026-08-31 (4) with `git grep -n "@PatchMapping" origin/main -- src/`: five
+hits, all sub-resource or unrelated (`/content/images`, `/content/gifs/{id}`, admin-user `/{id}`,
+`/collections/{collectionId}/rating`, `/collections/{collectionId}/images`).
+
+**Task 10 shrank — `TODO(A3)` is gone and its feature shipped (corrected 2026-08-31 (4)).** The
+task list said "resolve `TODO(A3)` at `useCollectionEdit.tsx:1571`". Zero hits for `TODO(A3)`
+anywhere in `app/` now: `c1dd1d4`'s inline-comment sweep deleted the comment on 2026-08-30, and
+`b66c39a` had already built what it asked for — `saveTagAsCollection` is live at
+`useCollectionEdit.tsx:1441`, wired through `StructureTab.tsx:167`, with its own
+`SaveAsCollectionModal`. Nothing to resolve; the sub-item is struck from task 10. It is MR 1 of this item and belongs on the backend board. **Collides with:** anything touching
 `InfoTab`/`StructureTab` (EM2, the roles section) and the refactor board's F1 — sequence
 deliberately. Wants its own sessions.
 
@@ -457,6 +480,23 @@ Full write-up and commands in
 run races the deploy rather than gating it. Fix is branch protection + the host's wait-for-checks
 setting, not repo code. Worth doing _because_ the deploy is fast.
 
+**Premise verified live 2026-08-31 (4), and the item is now fully specified.** Nothing is
+configured today, so this is create-from-scratch, not modify-existing:
+
+```bash
+gh api repos/themancalledzac/edens.zac/branches/main/protection   # 404 Branch not protected
+gh api repos/themancalledzac/edens.zac/rulesets                   # []
+```
+
+`.github/workflows/ci.yml` fires on `pull_request` and `push: branches: [main]`, confirming the
+race. Half of the fix is scriptable from here — branch protection with a required
+`Type check, lint, test` check can be set via `gh api` — and half is console-only, since Amplify's
+wait-for-checks lives in its own settings and the repo carries no `amplify.yml`. Say which half
+landed; a PR that does the scriptable half and reports the console half is a complete MR.
+
+**PF13 wants this first.** Its mechanical step changes caching semantics for every route at once,
+which is the wrong change to land through an ungated deploy.
+
 ### ☐ PF6 · External error tracking — BLOCKED (user, decision #8)
 
 Zero `Sentry` and zero `reportToService` hits in `app/` (both re-run 2026-08-31).
@@ -476,13 +516,14 @@ rate-limit page rule on `*/api/public/*`, re-key `RateLimitFilter` off `CF-Conne
 
 ## Group LY — Layout decisions
 
-Context file: [2026-features/ly-layout-decisions.md](2026-features/ly-layout-decisions.md)
+Context file: [2026-features/ly-layout-decisions.md](2026-features/ly-layout-decisions.md) —
+1 closed (LY2, #369, adjudication only); its write-up is in that file's Closed section.
 
 ### ☐ LY1 · Lone-last-row sizing — BLOCKED (user, decision #6)
 
 Two incompatible designs exist and neither is built — `grep -rn "FILLER\|gapBox\|endRowGap"
 app/utils` returns **0** (re-run 2026-08-31). Note the case-insensitive form returns 2, both the
-word "filler" inside prose comments (`rowCombination.ts:1049`, `contentRatingUtils.ts:58`) rather
+word "filler" inside prose comments (`rowCombination.ts:1055`, `contentRatingUtils.ts:58`) rather
 than a symbol; use the case-sensitive command above so this does not get re-disputed. The two
 designs: the gap-box spacer (`005-end-row-gap.md`) vs the redesign spec's §13 FILLER atom.
 Pick one, then TDD it. Note the BLANK-spacer post-pass in `buildRows` already handles row-width
@@ -493,6 +534,24 @@ normalization — read the group file so the chosen design composes with it.
 _Newest first, local dates. One line per `/next` run: what shipped (PR numbers), what was filed,
 what's next. Older entries move to
 [2026-features/session-log.md](2026-features/session-log.md)._
+
+- 2026-08-31 (4) — shipped **LY2 (#369)**, **EM5 (#370)**, **SD3's badge slice (#373)**; **PF13
+  (#372) re-specified rather than built**. **Decision #7 answered** — the shared-width rule holds;
+  asking it narrowly is what closed it, since `pinnedWidthSpread` turned out to constrain only
+  side-by-side panel columns, never a stack (a `'V'` split hands both children the full width).
+  **PF13's guardrail was unsatisfiable and the run stopped on it**: `cacheComponents` is app-wide
+  in Next 16.3.1, enabling it errors 19 of 21 route segments, and `Footer.tsx:29`'s `new Date()`
+  blocks every prerender regardless — re-sized to 3 sittings behind PF12, filed as **decision
+  #12**. **Two premises were wrong and both were found by reading behavior, not grepping strings**:
+  EM5's row said no email-disabled handling existed, but `ShareCard` already had the copy keyed on
+  `sent === false` alone, so it blamed the email switch for every failure; and SD3's "removable
+  badges + Clear-all" was half-built, since Clear-all is the trailing ×. **Estimates missed the
+  same way three times** — EM5 "one callout" landed 12 files, SD3 "one slice" landed 8, both
+  through shared primitives and their test fixtures; hoisted as a new sizing rule. **Reconciliation
+  found three stale things**: LY1's `rowCombination.ts:1049` → `:1055` (drift from #369's own
+  docblock), MA1's `TODO(A3)` sub-task gone AND its feature already shipped (`b66c39a`), and EM2's
+  "no recipient field" premise false (`InfoTab.tsx:303`). **PF12's premise verified live** — no
+  branch protection, no rulesets. Next: ask decision #12, then EM2, SD3 year chips, PF12.
 
 - 2026-08-31 (3) — shipped **PF9 (#365)**, **PF11 (#366)**, **PF8 (#367)**; PF group is now 5
   shipped. **Decision #9 fully closed**: the user confirmed AWS Amplify Hosting, recorded in
@@ -510,18 +569,3 @@ what's next. Older entries move to
   exist. Both corrected; the lesson is hoisted into "How to use this doc". **EM5 re-specified** —
   the backend exposes no email-enabled flag, so it is a post-send callout on
   `reason === 'email-disabled'`. Next: ask decision #7, then EM5, PF13, SD3.
-
-- 2026-08-31 — shipped **PF4 (#360)**, **PF10 (#361)**, **PF3 (#362)**; also closed refactor-board
-  **G6 (#351)** and opened-then-closed **#363**. **PF4 closed as VOID**: its backend blocker really
-  had cleared (asked production, not source), but the `@todo`'s recipe fails `next build` on
-  `headers()`, and its premise measured false — 8 renders, 1 backend fetch, with `force-dynamic`
-  present, because `getCollectionBySlug`'s explicit `next: { revalidate, tags }` beats the
-  `force-no-store` default the flag implies. Real question refiled as **PF13**. **PF10** shipped
-  `qualities: [65]` + `quality={IMAGE.quality}` at eight sites for a measured 12.9% at w=1920; the
-  row's "8 `sizes=` call sites" was the wrong work list (two were the BoxTree dimensions map, and
-  it missed five real render sites — same count, different set). **PF3** narrowed `priority` to one
-  LCP candidate, scoped `will-change` to elements actually animating (3 CSS rules → 1), and added a
-  CloudFront `preconnect`: home went 2 eager / 2 preloads / 0 preconnect → 1 / 1 / 1. Filed
-  **PF11** from decision #11 and **PF13** from PF4's closure. **#363 was closed on the user's
-  call**: a docblock-length rule scoped to one repo belongs in `~/.claude/CLAUDE.md`, where the
-  inline-comment ban it completes already lives — moved there instead. Next: PF9, PF11, PF8.
