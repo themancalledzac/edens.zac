@@ -2,38 +2,28 @@
 
 _Context file for board items SD1–SD5 on [2026-features.md](../2026-features.md)._
 
-## SD2 · Backend: enrich `locations` on collection blocks
+## SD7 · Backend: enrich `people` on collection blocks
 
-**MR open: backend [#277](https://github.com/themancalledzac/edens.zac.backend/pull/277).** Filed on
-the backend board as #24 in the same pass.
+The identical gap SD2 closed for `locations`, found while shipping it. Filed rather than bundled,
+because SD2 was scoped to locations and this board's rule is one MR per item.
 
-The diagnosis was right and the prescription was wrong, in the cheap direction.
-`SyntheticCollectionResolver` did drop locations, so the location dimension of the shipped
-`/collections` filter bar matched nothing, and the FE was complete and waiting
-(`collectionRefMatchesCriteria` matches on `ref.locations`).
+`CollectionProcessingUtil.batchConvertToBasicModels:95-96` already batch-loads `peopleByCollectionId`
+via `collectionPeopleRepository.findPeopleForCollections` and sets it on the model. The frontend
+already reads `ref.people` in both `collectionRefMatchesCriteria` and `extractFilterOptions`. But
+`ContentModels.Collection` has no `people` component, so the value has nowhere to ride out — exactly
+the shape `locations` was in.
 
-But "mirror the tags batch-load with a `withLocations` wither" asked for work that was already
-done. `CollectionProcessingUtil.batchConvertToBasicModels:92-93` already runs
-`locationRepository.findLocationsByCollectionIds` once for the whole page, and `buildBasicModel`
-already sets `CollectionModel.locations`. The resolver simply never read the field. So the fix was
-one component on the `ContentModels.Collection` record plus a copy in `fromCollectionModel` — no
-new repository method, no new query, no migration, no added N+1.
+Same three backend files, same zero added queries. Backend #277 is the worked example: one record
+component, a copy in `fromCollectionModel`, `List.of()` at
+`ContentModelConverter.buildCollectionRecord` (per-row, no batched map, so filling it there is a
+real N+1), and no `withPeople` wither because the value arrives on the model.
 
-Hence no `withLocations`. `withTags` exists because tags are fetched AFTER conversion; locations
-arrive on the model, so a wither nobody calls would be dead code.
+**Guardrail: do this before anything else reshapes `ContentModels.Collection`.** It edits the same
+20-component positional constructor and the same four test call sites SD2 just edited
+(`CollectionFlagSerializationTest:74`, `CollectionServiceTest` ×3). Two items paying that cost is
+the price of not bundling; three would not be.
 
-Confirmed non-issue: `convertCollectionContentToParallax` hard-coding `locations: []` does not
-matter, because `applyCollectionFilters` runs on the raw `collection.content` before
-`processContentBlocks` reaches the parallax converter.
-
-Additive API change — the synthetic list views, the tag view and the `/user` page all gain a
-`locations` array of `{id, name, slug}` on each `COLLECTION` block.
-
-**`people` has the identical gap and was deliberately not bundled** — see SD7 on the board, and
-backend board #25. Same three files, same zero added queries; splitting it costs a second edit of
-the same 20-component positional constructor.
-
-Source: `2026-08-05-collections-page-filter-bar-design.md` §4 and `docs/004-content-discovery.md:28`.
+Cross-repo: already filed on the backend board as #25. Est: 1 sitting.
 
 ## SD3 · Filter-bar dimension gaps
 
@@ -156,12 +146,6 @@ becomes, this decision now also has to say where Search is linked from; adding t
 in `MenuDropdown.tsx` (the Explore entry is at `:294`, re-verified 2026-08-31). Until then `/search`
 is effectively unlisted, which is a real cost the decision should weigh.
 
-## SD5 · Verify chip-click-to-filter
-
-Open verification task from `docs/004-content-discovery.md`: confirm people/location chips on
-public pages actually apply filters when clicked. One browser pass on :3000; either close the item
-or file what's broken as a concrete bug.
-
 ## Not here, deliberately
 
 - Collection tags Phase 2 / auto-tag → CT5.
@@ -171,7 +155,40 @@ or file what's broken as a concrete bug.
 
 ## Closed
 
-### ✅ SD5 · Verify chip-click-to-filter — SETTLED 2026-08-31 (7)
+### ✅ SD2 · `locations` on collection blocks — backend #277, merged 2026-08-31
+
+**MR open: backend [#277](https://github.com/themancalledzac/edens.zac.backend/pull/277).** Filed on
+the backend board as #24 in the same pass.
+
+The diagnosis was right and the prescription was wrong, in the cheap direction.
+`SyntheticCollectionResolver` did drop locations, so the location dimension of the shipped
+`/collections` filter bar matched nothing, and the FE was complete and waiting
+(`collectionRefMatchesCriteria` matches on `ref.locations`).
+
+But "mirror the tags batch-load with a `withLocations` wither" asked for work that was already
+done. `CollectionProcessingUtil.batchConvertToBasicModels:92-93` already runs
+`locationRepository.findLocationsByCollectionIds` once for the whole page, and `buildBasicModel`
+already sets `CollectionModel.locations`. The resolver simply never read the field. So the fix was
+one component on the `ContentModels.Collection` record plus a copy in `fromCollectionModel` — no
+new repository method, no new query, no migration, no added N+1.
+
+Hence no `withLocations`. `withTags` exists because tags are fetched AFTER conversion; locations
+arrive on the model, so a wither nobody calls would be dead code.
+
+Confirmed non-issue: `convertCollectionContentToParallax` hard-coding `locations: []` does not
+matter, because `applyCollectionFilters` runs on the raw `collection.content` before
+`processContentBlocks` reaches the parallax converter.
+
+Additive API change — the synthetic list views, the tag view and the `/user` page all gain a
+`locations` array of `{id, name, slug}` on each `COLLECTION` block.
+
+**`people` has the identical gap and was deliberately not bundled** — see SD7 on the board, and
+backend board #25. Same three files, same zero added queries; splitting it costs a second edit of
+the same 20-component positional constructor.
+
+Source: `2026-08-05-collections-page-filter-bar-design.md` §4 and `docs/004-content-discovery.md:28`.
+
+### ✅ SD5 · Verify chip-click-to-filter — SETTLED 2026-08-31 (7); fix in #382, STILL OPEN
 
 **They never filtered, and that is not a regression.** Only `FilterToolbar` chips filter. The chips
 a visitor actually sees on a photo — Tags and People in the fullscreen viewer — were plain `<div>`s
