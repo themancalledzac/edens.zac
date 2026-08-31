@@ -1,13 +1,6 @@
-# Frontend verification on every pull request and every push to main.
-#
-# Runs the same four checks CLAUDE.md prescribes locally — type check, ESLint,
-# Stylelint, Jest — so a claim that they pass stops being local-only.
-#
-# One job, not four: `npm ci` dominates the wall clock, and splitting the checks
-# would pay for it once per job. Every check step is `if: always()` so a single
-# run reports all four verdicts instead of stopping at the first failure.
-#
-# Node 22 is the top of the `engines` range in package.json (`>=20 <23`).
+# Runs the four checks CLAUDE.md prescribes locally, so they stop being local-only.
+# One job because `npm ci` dominates the clock; every check is `if: always()` so one run
+# reports all four. Node 22 is the top of the `engines` range in package.json.
 name: CI
 
 on:

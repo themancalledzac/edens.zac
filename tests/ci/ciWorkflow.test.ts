@@ -1,19 +1,8 @@
 /**
  * @jest-environment node
  *
- * Guards the CI workflow against the two ways it can quietly stop being verification.
- *
- * A dropped check step is the first. The workflow exists so that `type-check`, `lint:js`,
- * `lint:css` and `test` stop being local-only claims; a workflow that installs dependencies
- * and asserts nothing is a green badge over an unverified tree, which is worse than no badge
- * because it is trusted. Each script is matched as an invoked command rather than as a
- * substring, so `lint:js:fix` cannot stand in for `lint:js`.
- *
- * A drifting Node pin is the second. CI passing on a runtime the repo does not claim to
- * support proves nothing about the runtime it does, and the drift is invisible in a diff
- * that touches only one of the two files. The bound is read from `engines.node` rather than
- * hardcoded, so widening the supported range is a one-file change and narrowing it below the
- * pinned version fails here.
+ * Guards the CI workflow against a dropped check step and against the pinned Node major
+ * drifting outside `engines.node`.
  */
 
 import { readFileSync } from 'node:fs';
@@ -34,19 +23,13 @@ const runCommands = [...workflow.matchAll(/^\s*run: (.+)$/gm)].map(match =>
   (match[1] ?? '').trim()
 );
 
-/**
- * True when some `run:` step invokes `npm <script>` or `npm run <script>` as the command
- * itself. The trailing boundary keeps a longer script name from satisfying a shorter one.
- */
+/** True when a `run:` step invokes `npm <script>`. The boundary stops `lint:js:fix` matching `lint:js`. */
 function invokesScript(script: string): boolean {
   const pattern = new RegExp(String.raw`^npm (run )?${script}(\s|$)`);
   return runCommands.some(command => pattern.test(command));
 }
 
-/**
- * Evaluates a major version against the comparators in an `engines`-style range such as
- * `">=20 <23"`. Only major-level comparators are read, which is all this repo pins.
- */
+/** Evaluates a major against an `engines`-style range such as `">=20 <23"`. */
 function majorSatisfies(major: number, range: string): boolean {
   const comparators = [...range.matchAll(/(>=|<=|>|<)\s*(\d+)/g)];
   expect(comparators.length).toBeGreaterThan(0);
