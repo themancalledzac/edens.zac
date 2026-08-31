@@ -17,6 +17,7 @@ import { BoxRenderer } from './BoxRenderer';
 import {
   buildContentRows,
   computeFirstNonVisibleRowIndex,
+  computePriorityContentId,
   computePriorityRowIndex,
   createSimpleBoxTree,
   excludeFailedImages,
@@ -33,9 +34,10 @@ import {
 export interface ContentComponentProps extends SharedRendererProps {
   content: AnyContentModel[];
   /**
-   * Fallback priority row when the layout is header-only. Normally the layout auto-extends eager
-   * loading through the first content row (see {@link computePriorityRowIndex}), so the true LCP
-   * grid image — not just the height-constrained cover — loads eagerly.
+   * Fallback priority row when the layout is header-only. Normally the layout searches from the
+   * top through the first content row (see {@link computePriorityRowIndex}) and marks the one
+   * block inside it that is the LCP candidate (see {@link computePriorityContentId}), so the true
+   * LCP grid image — not just the height-constrained cover — loads eagerly.
    */
   priorityIndex?: number;
   /** Accepts any viewable content (image, parallax image, or GIF/MP4 — normalized in renderer) */
@@ -209,6 +211,11 @@ export default function Component({
     [rows, priorityIndex]
   );
 
+  const priorityContentId = useMemo(
+    () => computePriorityContentId(rows, priorityRowIndex),
+    [rows, priorityRowIndex]
+  );
+
   if (layoutError) {
     return (
       <div className={cbStyles.wrapper}>
@@ -245,7 +252,7 @@ export default function Component({
           tree={tree}
           sizes={sizesMap}
           isMobile={viewport.isMobile}
-          priority={rowIndex <= priorityRowIndex}
+          priorityContentId={rowIndex <= priorityRowIndex ? priorityContentId : undefined}
         />
       </div>
     );

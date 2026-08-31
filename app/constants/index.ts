@@ -134,6 +134,16 @@ export const TIMING = {
   revalidateCache: 3600, // seconds (1 hour) for Next.js cache
 } as const;
 
+/**
+ * The production CloudFront distribution that serves every image.
+ *
+ * Duplicated from `next.config.js`'s `CLOUDFRONT_HOST`, which cannot be imported here — it is ESM
+ * wrapped in the bundle analyzer, and importing it would pull the analyzer into the client bundle.
+ * `tests/config/cdnHost.test.ts` asserts the two agree, which is the only thing standing between a
+ * changed distribution and a `preconnect` pointing at a host nothing then requests.
+ */
+export const CDN_ORIGIN = 'https://d2qp8h5pbkohe6.cloudfront.net';
+
 // =============================================================================
 // IMAGE DEFAULTS
 // =============================================================================

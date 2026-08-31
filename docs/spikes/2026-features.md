@@ -99,7 +99,6 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | MA5  | Admin collections list at 100× (paged/filtered/sorted)             | BE+FE   | ☐ COLD — low priority until collection count grows                                        |
 | MA6  | User change log + non-admin canonical mutation path                | BE+FE   | ☐ BLOCKED — user: §10 decisions in the logged-in-flow review                              |
 | PF2  | Blur placeholders (`blurDataURL`)                                  | FE      | ☐ COLD                                                                                    |
-| PF3  | Narrow `priority`, scope `will-change`, add preconnect             | FE      | ☐ COLD — small batch                                                                      |
 | PF6  | External error tracking                                            | FE      | ☐ BLOCKED — user: Sentry vs CloudWatch                                                    |
 | PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)           | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                        |
 | PF8  | Small orphans: JSON-LD, `<Suspense>` wrappers, SaveHeart 44px      | FE      | ☐ COLD — all three re-verified absent 08-31                                               |
@@ -459,6 +458,12 @@ trade looks intrinsic. Pure adjudication.
 _Newest first, local dates. One line per `/next` run: what shipped (PR numbers), what was filed,
 what's next. Older entries move to
 [2026-features/session-log.md](2026-features/session-log.md)._
+
+- 2026-08-30 — shipped **PF3 (#362)**: one LCP candidate instead of a whole row
+  (`computePriorityContentId`), `will-change` scoped to elements that are actually animating
+  (3 unconditional CSS rules → 1, and that one only while pinch-zoomed), and a CloudFront
+  `preconnect`. Measured on identical data: home went 2 eager / 2 preloads / 0 preconnect → 1 / 1 /
+  1. Guard test `tests/config/cdnHost.test.ts` stops `CDN_ORIGIN` drifting from `next.config.js`.
 
 - 2026-08-30 — shipped **PF10 (#361)**: `qualities: [65]` plus `quality={IMAGE.quality}` at the
   eight optimized `<Image>` sites. 12.9% off a real CDN image at w=1920, measured through the
