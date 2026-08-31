@@ -39,16 +39,16 @@ Both are backend items — file rows on the backend board when picked up.
 
 Score for candidate B relative to current collection A:
 
-| Signal | Weight | Source |
-| --- | --- | --- |
-| A and B are parent/child | +5 | `collection_content` COLLECTION rows |
-| A and B are siblings (either direction, incl. one-way) | +5 | `collection_sibling` |
-| Co-children of a shared parent (excluding `home`) | +3 per shared parent | inverted child map |
-| Shared images (Jaccard over image ids) | ×4 | `collection_content` |
-| Location overlap (Jaccard) | ×3 | `collection_locations` |
-| People overlap (Jaccard) | ×2 | `collection_people` |
-| Image-tag overlap (Jaccard) | ×1.5 | `content_tags` |
-| Date proximity | ×1, decay `exp(-days/90)` | `collection_date` |
+| Signal                                                 | Weight                    | Source                               |
+| ------------------------------------------------------ | ------------------------- | ------------------------------------ |
+| A and B are parent/child                               | +5                        | `collection_content` COLLECTION rows |
+| A and B are siblings (either direction, incl. one-way) | +5                        | `collection_sibling`                 |
+| Co-children of a shared parent (excluding `home`)      | +3 per shared parent      | inverted child map                   |
+| Shared images (Jaccard over image ids)                 | ×4                        | `collection_content`                 |
+| Location overlap (Jaccard)                             | ×3                        | `collection_locations`               |
+| People overlap (Jaccard)                               | ×2                        | `collection_people`                  |
+| Image-tag overlap (Jaccard)                            | ×1.5                      | `content_tags`                       |
+| Date proximity                                         | ×1, decay `exp(-days/90)` | `collection_date`                    |
 
 Client galleries excluded as candidates. Hubs can appear (a parent is usually the most-related
 page, as requested). Verified results on live data:
@@ -131,7 +131,7 @@ RC2 does not wait on any of this.
 ## Build order (from the spike)
 
 1. RC1 plumbing → 2. RC2 v1 (+RC3's promote rule) → 3. CT1–CT3 → 4. RC4 → 5. RC5 → 6. RC3 full +
-MA5. Items 1–2 are one plan; 3 is its own (existing spec, needs CT1's refresh).
+   MA5. Items 1–2 are one plan; 3 is its own (existing spec, needs CT1's refresh).
 
 ## Closed
 

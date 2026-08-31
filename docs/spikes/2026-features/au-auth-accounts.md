@@ -39,23 +39,18 @@ merged; the UI needs the credentials list). Also open nearby, from CURRENT-STATE
 guard against `rpId=localhost`; passkey login has never been e2e-verified against a deployed
 environment.
 
-## AU3 · Enforce `UserStatus.DISABLED`
-
-CURRENT-STATE §5 (2026-07-28): "Disabling an account does not prevent it logging in" — called the
-most serious open item there. On the backend board this is S-1, which the parked-passwords entry
-explicitly says is NOT parked. First step of any session picking this up: confirm against the
-backend board's closed-security ledger (in its history file) that S-1 hasn't shipped since
-2026-07-28; then enforce in the auth path. Backend-only; file the row there.
-
 ## AU4 · Local admin dev-session affordance
 
 Backend #243 (merged 2026-08-30) removed the `app.admin.enforce-authz` toggle:
 `SecurityConfig.java:75-76` now gates `/api/admin/**` behind `hasRole('ADMIN')` unconditionally in
 every profile (`/api/edit/**` likewise behind `hasRole('USER')`). The frontend's three anonymous
 local layers still pass, so local `/admin` renders but every data fetch 401s. The refactor board's
-G6 fixes the now-false `CLAUDE.md` Critical Rule; **this item builds the missing capability**: a
-sanctioned way to get a local admin session (documented bootstrap login, seeded dev admin, or a
-dev-profile session mint — scope after G6 states the new reality). Without it, all local admin
+G6 **shipped 2026-08-31 as PR #351** and fixed the now-false `CLAUDE.md` Critical Rule;
+**this item builds the missing capability**: a sanctioned way to get a local admin session
+(documented bootstrap login, seeded dev admin, or a dev-profile session mint). The corrected
+rule already names the ingredients — `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD` in
+`docker-compose.yml` + `AdminBootstrap.java`, then `POST /api/auth/login` — so this is packaging
+an existing flow, not inventing one. Without it, all local admin
 development is broken for agents and slow for the user.
 
 ## Deferred by design (no rows — do not resurrect without a decision)
@@ -71,4 +66,20 @@ development is broken for agents and slow for the user.
 
 ## Closed
 
-_Nothing yet._
+### ✅ AU3 · Enforce `UserStatus.DISABLED` — closed 2026-08-31 with no work; already shipped upstream
+
+The item's own first step was "confirm S-1 hasn't shipped." It had. Run, not re-read, on 2026-08-31:
+
+- Backend board `ai_docs/reviews/2026-08-22-backend-cleanup-spike.md:200` —
+  `- [x] **S-1** (HIGH) UserStatus.DISABLED enforced nowhere in the auth path — #192, 2026-08-24.`
+- Confirmed in source rather than only in the ledger: `AuthController.java:80` refuses login unless
+  `SessionService.mayHoldSession(maybeUser.get().getStatus())`, and `SessionService.java:175`
+  re-checks the same predicate when a session is used.
+
+CURRENT-STATE §5's "disabling an account does not prevent it logging in" has therefore been false
+since 2026-08-24, and this row spent a week advertising a fixed bug as the most serious open item.
+
+**The lesson is about the row, not the bug.** An item whose first step is "confirm X hasn't already
+shipped" reads as available work until someone spends the one command. Where the premise lives in
+another repo's ledger, re-run that check at close-out rather than at pickup — same cost, and it
+stops the board offering work that no longer exists.

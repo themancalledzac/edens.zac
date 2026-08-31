@@ -66,48 +66,47 @@ whole record.
 
 Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra work.
 
-| Item | Scope                                                              | Repo    | Status                                                                                    |
-| ---- | ------------------------------------------------------------------ | ------- | ----------------------------------------------------------------------------------------- |
-| SD2  | Enrich `locations` on collection blocks                            | BE      | ☐ COLD — small; makes the shipped `/collections` location filter work                     |
-| SD3  | Filter-bar dimension gaps (focal length, film stock, year, badges) | FE      | ☐ COLD — sliceable; re-sized DOWN after SD1                                               |
-| SD4  | `/explore` as a real drill-down explorer (Option C)                | FE      | ☐ BLOCKED — reconcile with refactor-board H5 design review first                          |
-| SD5  | Verify people/location chip-click-to-filter                        | FE      | ☐ COLD — cheap verification task                                                          |
-| RC1  | Populate `parents` on public reads + `isFilm` backfill             | BE      | ☐ COLD — unblocks RC2's public rendering; two verified data bugs                          |
-| RC2  | Similar-collections v1 (metadata-graph score + Related swap)       | BE+FE   | ☐ BLOCKED — user: spike decisions D1–D4                                                   |
-| RC3  | Collections_List render mode (embedded hub as card-row)            | BE+FE   | ☐ COLD — small; no new entity                                                             |
-| RC4  | Suggested collections (admin suggestion rows)                      | BE+FE   | ☐ BLOCKED — needs CT3 engine + RC1 metadata quality                                       |
-| RC5  | CLIP/pgvector embedding tier                                       | BE+ML   | ☐ BLOCKED — user: spike decision D6 (infra commitment)                                    |
-| CT1  | Collections-as-tags spec refresh against the typeless model        | docs    | ☐ COLD — produces a current D1–D12 matrix for CT2                                         |
-| CT2  | Adjudicate the collections-as-tags decision matrix                 | user    | ☐ BLOCKED — user; after CT1                                                               |
-| CT3  | Saved-filter engine (AND-tag query, `source` column, sync)         | BE+FE   | ☐ BLOCKED — on CT2                                                                        |
-| CT4  | Blog-as-date surface (`/blog` stream, per-day entries)             | BE+FE   | ☐ BLOCKED — on CT2                                                                        |
-| CT5  | Auto-tag: `POST /collections/{id}/auto-tag` + admin button         | BE+FE   | ☐ COLD — independent of CT2                                                               |
-| CT6  | Tag `type`/visibility model                                        | BE      | ☐ COLD — design confirm, then small schema work                                           |
-| AU1  | Self-serve password reset                                          | BE+FE   | ☐ COLD — plan written and verified current                                                |
-| AU2  | Passkey credential list + revoke, enrollment-state UI              | BE+FE   | ☐ BLOCKED — user: endpoint shape (admin, user-facing, or both)                            |
-| AU3  | Enforce `UserStatus.DISABLED` in the auth path                     | BE      | ☐ COLD — confirm backend S-1 not already closed, then fix                                 |
-| AU4  | Local admin dev-session affordance (post backend #243)             | FE+BE   | ☐ COLD — after refactor-board G6 lands the docs correction                                |
-| EM1  | SES production checklist (verify domain, DKIM, sandbox exit)       | OPS     | ☐ COLD — ops; user drives the AWS console half                                            |
-| EM2  | New-recipient-only gallery send flow                               | FE      | ☐ COLD — UI addition, plan written                                                        |
-| EM3  | Contact-owner notification + `user_invite.created_by`              | BE      | ☐ COLD — two small backend items                                                          |
-| EM4  | Gallery-password design pass (precedes any BCrypt work)            | user    | ☐ BLOCKED — user; backend board PARKED BCrypt behind it                                   |
-| EM5  | Email-disabled warning callout in gallery admin                    | FE      | ☐ COLD — small                                                                            |
-| MA1  | Manage rail restructure (per-field PATCH, delete edit sheet)       | FE(+BE) | ☐ BLOCKED — backend `PATCH /collections/{id}` does NOT exist (verified 08-31); it is MR 1 |
-| MA2  | `staging` system collection                                        | BE+FE   | ☐ BLOCKED — user: `HIDDEN` vs `UNLISTED` seed visibility                                  |
-| MA3  | Mobile-first admin Phase 3 remainder                               | FE      | ☐ BLOCKED — user: does the dark-admin premise survive its partial reversal?               |
-| MA4  | Messages admin: retention TTL, read/delete/search, notify channel  | BE+FE   | ☐ COLD — sliceable                                                                        |
-| MA5  | Admin collections list at 100× (paged/filtered/sorted)             | BE+FE   | ☐ COLD — low priority until collection count grows                                        |
-| MA6  | User change log + non-admin canonical mutation path                | BE+FE   | ☐ BLOCKED — user: §10 decisions in the logged-in-flow review                              |
-| PF2  | Blur placeholders (`blurDataURL`)                                  | FE      | ☐ COLD                                                                                    |
-| PF6  | External error tracking                                            | FE      | ☐ BLOCKED — user: Sentry vs CloudWatch                                                    |
-| PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)           | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                        |
-| PF8  | Small orphans: JSON-LD, `<Suspense>` wrappers, SaveHeart 44px      | FE      | ☐ COLD — all three re-verified absent 08-31                                               |
-| PF9  | Record the deploy target (answered: CloudFront/AWS, auto-deploy)   | FE      | ☐ COLD — measured 08-31; only the recording is left                                       |
-| PF11 | Reconcile `engines.node` (`>=20 <23`) with the dev machine (25.3)  | FE      | ☐ COLD — decision #11 answered 08-30; shape settled, ready to build                       |
-| PF12 | Gate the auto-deploy on CI                                         | OPS     | ☐ COLD — console work; `main` deploys today regardless of CI                              |
-| PF13 | Home page genuinely static (Cache Components / PPR)                | FE      | ☐ COLD — created by PF4's closure; render-path change, not a config flip                  |
-| LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build           | FE      | ☐ BLOCKED — user: two competing designs, neither built                                    |
-| LY2  | Admin panel width vs page height                                   | FE      | ☐ BLOCKED — user: adjudication; both outcomes already test-pinned                         |
+| Item | Scope                                                              | Repo    | Status                                                                                     |
+| ---- | ------------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------ |
+| SD2  | Enrich `locations` on collection blocks                            | BE      | ☐ COLD — small; makes the shipped `/collections` location filter work                      |
+| SD3  | Filter-bar dimension gaps (focal length, film stock, year, badges) | FE      | ☐ COLD — sliceable; re-sized DOWN after SD1                                                |
+| SD4  | `/explore` as a real drill-down explorer (Option C)                | FE      | ☐ BLOCKED — reconcile with refactor-board H5 design review first                           |
+| SD5  | Verify people/location chip-click-to-filter                        | FE      | ☐ COLD — cheap verification task                                                           |
+| RC1  | Populate `parents` on public reads + `isFilm` backfill             | BE      | ☐ COLD — unblocks RC2's public rendering; two verified data bugs                           |
+| RC2  | Similar-collections v1 (metadata-graph score + Related swap)       | BE+FE   | ☐ BLOCKED — user: spike decisions D1–D4                                                    |
+| RC3  | Collections_List render mode (embedded hub as card-row)            | BE+FE   | ☐ COLD — small; no new entity                                                              |
+| RC4  | Suggested collections (admin suggestion rows)                      | BE+FE   | ☐ BLOCKED — needs CT3 engine + RC1 metadata quality                                        |
+| RC5  | CLIP/pgvector embedding tier                                       | BE+ML   | ☐ BLOCKED — user: spike decision D6 (infra commitment)                                     |
+| CT1  | Collections-as-tags spec refresh against the typeless model        | docs    | ☐ COLD — produces a current D1–D12 matrix for CT2                                          |
+| CT2  | Adjudicate the collections-as-tags decision matrix                 | user    | ☐ BLOCKED — user; after CT1                                                                |
+| CT3  | Saved-filter engine (AND-tag query, `source` column, sync)         | BE+FE   | ☐ BLOCKED — on CT2                                                                         |
+| CT4  | Blog-as-date surface (`/blog` stream, per-day entries)             | BE+FE   | ☐ BLOCKED — on CT2                                                                         |
+| CT5  | Auto-tag: `POST /collections/{id}/auto-tag` + admin button         | BE+FE   | ☐ COLD — independent of CT2                                                                |
+| CT6  | Tag `type`/visibility model                                        | BE      | ☐ COLD — design confirm, then small schema work                                            |
+| AU1  | Self-serve password reset                                          | BE+FE   | ☐ COLD — plan written and verified current                                                 |
+| AU2  | Passkey credential list + revoke, enrollment-state UI              | BE+FE   | ☐ BLOCKED — user: endpoint shape (admin, user-facing, or both)                             |
+| AU4  | Local admin dev-session affordance (post backend #243)             | FE+BE   | ☐ COLD — unblocked 08-31: G6 landed as #351, so the corrected rule now states the reality  |
+| EM1  | SES production checklist (verify domain, DKIM, sandbox exit)       | OPS     | ☐ COLD — ops; user drives the AWS console half                                             |
+| EM2  | New-recipient-only gallery send flow                               | FE      | ☐ COLD — UI addition, plan written                                                         |
+| EM3  | Contact-owner notification + `user_invite.created_by`              | BE      | ☐ COLD — two small backend items                                                           |
+| EM4  | Gallery-password design pass (precedes any BCrypt work)            | user    | ☐ BLOCKED — user; backend board PARKED BCrypt behind it                                    |
+| EM5  | Email-disabled warning callout in gallery admin                    | FE      | ☐ COLD — small                                                                             |
+| MA1  | Manage rail restructure (per-field PATCH, delete edit sheet)       | FE(+BE) | ☐ BLOCKED — backend `PATCH /collections/{id}` still absent (re-checked 08-31); it is MR 1  |
+| MA2  | `staging` system collection                                        | BE+FE   | ☐ BLOCKED — user: `HIDDEN` vs `UNLISTED` seed visibility                                   |
+| MA3  | Mobile-first admin Phase 3 remainder                               | FE      | ☐ BLOCKED — user: does the dark-admin premise survive its partial reversal?                |
+| MA4  | Messages admin: retention TTL, read/delete/search, notify channel  | BE+FE   | ☐ COLD — sliceable                                                                         |
+| MA5  | Admin collections list at 100× (paged/filtered/sorted)             | BE+FE   | ☐ COLD — low priority until collection count grows                                         |
+| MA6  | User change log + non-admin canonical mutation path                | BE+FE   | ☐ BLOCKED — user: §10 decisions in the logged-in-flow review                               |
+| PF2  | Blur placeholders (`blurDataURL`)                                  | FE      | ☐ COLD                                                                                     |
+| PF6  | External error tracking                                            | FE      | ☐ BLOCKED — user: Sentry vs CloudWatch                                                     |
+| PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)           | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                         |
+| PF8  | Small orphans: JSON-LD, `<Suspense>` wrappers, SaveHeart 44px      | FE      | ☐ COLD — greps re-run 08-31: 0 and 0; SaveHeart measured 36px/40px against the 44px target |
+| PF9  | Record the deploy target (answered: CloudFront/AWS, auto-deploy)   | FE      | ☐ COLD — measured 08-31; only the recording is left                                        |
+| PF11 | Reconcile `engines.node` (`>=20 <23`) with the dev machine (25.3)  | FE      | ☐ COLD — decision #11 answered 08-30; shape settled, ready to build                        |
+| PF12 | Gate the auto-deploy on CI                                         | OPS     | ☐ COLD — console work; `main` deploys today regardless of CI                               |
+| PF13 | Home page genuinely static (Cache Components / PPR)                | FE      | ☐ COLD — created by PF4's closure; render-path change, not a config flip                   |
+| LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build           | FE      | ☐ BLOCKED — user: two competing designs, neither built                                     |
+| LY2  | Admin panel width vs page height                                   | FE      | ☐ BLOCKED — user: adjudication; both outcomes already test-pinned                          |
 
 **Not on this board, deliberately:** everything with a row on
 [2026-summer-refactor.md](2026-summer-refactor.md) (H1's `/user` merge, F4's TaxonomyPage
@@ -116,6 +115,43 @@ consolidation, G3's `/user/selects`, F1's hook decomposition, C-group bugs); bac
 tests and function decomposition (debt, chapter 006); and three self-labeled unapproved ideas
 (liked images, mobile text overlay, React 19 follow-ups), listed in the group files so they are
 not rediscovered as new.
+
+## NEXT RUN — set 2026-08-31
+
+Three FE items, all small, all fully specified, ordered cheapest-first so a truncated session still
+banks MRs. Context is warm: all three sit in the PF group the last run just worked.
+
+1. **PF9** — record the deploy target. Decision #9 was answered by measurement on 08-31
+   (CloudFront-fronted AWS, auto-deploy from `main` in ~15 min); only the writing-down is left, in
+   `CLAUDE.md` plus the three docs that name three different hosts.
+   **Guardrail: do not also gate the deploy on CI.** That is PF12, it is console work in the
+   host's UI rather than a repo change, and folding it in would make this MR unrevertable.
+   ⚠ **`CLAUDE.md` has uncommitted local changes** (a docs consolidation that predates this run).
+   Rebase onto them rather than overwriting, and leave them uncommitted — they are not this run's.
+
+2. **PF11** — Node reconciliation, shape settled by decision #11. `engines.node` becomes an
+   unbounded floor (`">=20"`), a `.nvmrc` names the blessed version, and CI switches to
+   `node-version-file: .nvmrc` so pin and blessed version stop being two literals.
+   `tests/ci/ciWorkflow.test.ts` asserts the CI pin satisfies `engines` and needs updating to read
+   the pin from `.nvmrc`. Check the Node release schedule when picking the version — 24 is Active
+   LTS and 22 is in Maintenance, so 24 is likely right, but verify rather than trust that sentence.
+   **Guardrail: do not change the dev machine's Node, and do not touch any other CI step.** The
+   widened floor is what makes 25.3.0 legal; switching runtimes is not part of this.
+
+3. **PF8** — the three small orphans, all re-verified absent 2026-08-31 by running the greps:
+   `application/ld+json` 0 hits, `<Suspense` 0 hits in `app/`, and SaveHeart measured at **36px
+   mobile / 40px at ≥768px** (`SaveHeart.module.scss:12-13,37-38`) against the 44px target.
+   **Guardrail: keep JSON-LD to one type on one route and report what full coverage would cost.**
+   Structured data sprawls into per-route schema graphs; that is a separate item if it is worth
+   doing at all.
+
+**No blocked-on-user question gates this run.** The standing batch (decisions #1–#8 and #10) is
+unchanged and none of these three depend on it. One optional confirm rides with PF9: the host is
+CloudFront-fronted AWS for certain, but _Amplify specifically_ versus a hand-rolled Next server
+behind CloudFront was inferred, not proven — ask if the user knows, and record whichever is true.
+
+**Re-derive refs between MRs?** Not needed here. PF9 touches docs, PF11 touches `package.json` /
+`.nvmrc` / the workflow, PF8 touches `app/` components — three disjoint trees.
 
 ## Decisions for Zac
 
@@ -131,7 +167,7 @@ Batch these at the start of a session. Each unblocks the named item; none blocks
 | 6      | Lone-last-row: gap-box spacer or FILLER atom?                                                                                                                                                                                                                                                                                                                               | LY1      |
 | 7      | Panel width vs page height (values pinned in `tests/(admin)/admin/page.collapseStates.test.ts`)                                                                                                                                                                                                                                                                             | LY2      |
 | 8      | Error tracking: Sentry or CloudWatch?                                                                                                                                                                                                                                                                                                                                       | PF6      |
-| ~~11~~ | ~~`engines.node` vs the dev machine~~ **ANSWERED 2026-08-30: "whatever is best long term practice."** Read as: `engines.node` becomes an unbounded floor, a `.nvmrc` names the blessed version, and CI reads that file instead of a hardcoded literal — one source of truth, no upper bound to age out. Shape recorded in [PF11](2026-features/pf-performance-platform.md). | PF11     |
+| ~~11~~ | ~~`engines.node` vs the dev machine~~ **ANSWERED 2026-08-31: "whatever is best long term practice."** Read as: `engines.node` becomes an unbounded floor, a `.nvmrc` names the blessed version, and CI reads that file instead of a hardcoded literal — one source of truth, no upper bound to age out. Shape recorded in [PF11](2026-features/pf-performance-platform.md). | PF11     |
 | ~~9~~  | ~~Which host serves production?~~ **ANSWERED 2026-08-31 by `curl -sI https://zacedens.com/`** — CloudFront-fronted AWS running a live Next server, auto-deploying from `main` in ~15 min. Vercel and static-S3 both eliminated; see [PF9](2026-features/pf-performance-platform.md).                                                                                        | —        |
 | 10     | `/explore` direction: reconcile Option C with the H5 MenuDropdown review                                                                                                                                                                                                                                                                                                    | SD4      |
 
@@ -266,19 +302,18 @@ delete. A compromised authenticator can only be handled by disabling the whole a
 named in three docs (009, CURRENT-STATE §5, backend board decisions). The FE enrollment-state UI
 follows the endpoint.
 
-### ☐ AU3 · Enforce `UserStatus.DISABLED` — COLD after one check
-
-CURRENT-STATE §5: "Disabling an account does not prevent it logging in" — backend S-1, explicitly
-NOT parked with the gallery-password work. First step: confirm against the backend board's closed
-ledger that S-1 has not shipped since 2026-07-28; then fix in the auth path.
-
 ### ☐ AU4 · Local admin dev-session affordance — COLD, after refactor-board G6
 
 Backend #243 made `/api/admin/**` unconditionally gated in every profile, so local admin
 development now needs a real admin session and no local login/dev-session affordance exists. G6
-(refactor board) fixes the false `CLAUDE.md` rule; this item builds the missing capability —
-likely a documented local bootstrap login flow. Scope it after G6's docs correction states the
-new reality.
+(refactor board) fixed the false `CLAUDE.md` rule; this item builds the missing capability —
+likely a documented local bootstrap login flow.
+
+**Unblocked 2026-08-31: G6 shipped as PR #351.** The corrected rule now states the reality this
+item has to build against — the admin shell renders locally while its data 401s, and a real
+session comes from `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD` (`docker-compose.yml`,
+`AdminBootstrap.java`) plus `POST /api/auth/login`. So the affordance is a documented or scripted
+version of that flow, not a new mechanism.
 
 ## Group EM — Email & client galleries
 
@@ -377,19 +412,14 @@ Context file: [2026-features/pf-performance-platform.md](2026-features/pf-perfor
 Zero `blurDataURL` / `placeholder="blur"` hits in `app/`. Needs server-side generation (sharp) at
 upload or build time — scope the generation point first.
 
-### ☐ PF3 · Priority narrowing, `will-change` scoping, preconnect — COLD
+### ☐ PF13 · Make the home page genuinely static — COLD, real work
 
-`priority` is row-scoped (`computePriorityRowIndex` deliberately extends eager loading — narrow to
-the single LCP candidate); `will-change: transform` is unconditional in three modules
-(`fullscreen-image.module.scss:125`, `CoverCard.module.scss:53`,
-`ParallaxImageRenderer.module.scss:17`); no CloudFront `preconnect` in `app/layout.tsx`.
-
-### ☐ PF10 · Image quality 65 — COLD, and NOT config-only
-
-Split out of PF1. Next 16 defaults `images.qualities` to `[75]`, `next/image` sends 75 when no
-`quality` prop is given, and the optimizer **rejects** rather than clamps anything else — so
-`qualities: [65]` alone 400s every image. Needs `quality={65}` at the 8 `sizes=` call sites too.
-Measured prize: **13.3%** (258,556 vs 298,282 bytes at `w=1920`).
+Created by PF4's closure (#360). The home page renders per request because `CollectionPageWrapper`
+awaits `headers()` (`resolveSsrViewport`) and `cookies()` (`meServer`) — so no segment-config value
+can prerender it. Making it static means moving both personalized reads behind Suspense boundaries
+(Cache Components / PPR), which touches the shared wrapper and therefore `/[slug]` too. The
+collection fetch is already cached, so the prize is the render and the per-request `/auth/me` round
+trip, not the Spring call. Its own sitting or two, not a config change.
 
 ### ☐ PF11 · Reconcile `engines.node` — COLD, one decision then one line
 
@@ -459,25 +489,20 @@ _Newest first, local dates. One line per `/next` run: what shipped (PR numbers),
 what's next. Older entries move to
 [2026-features/session-log.md](2026-features/session-log.md)._
 
-- 2026-08-30 — shipped **PF3 (#362)**: one LCP candidate instead of a whole row
-  (`computePriorityContentId`), `will-change` scoped to elements that are actually animating
-  (3 unconditional CSS rules → 1, and that one only while pinch-zoomed), and a CloudFront
-  `preconnect`. Measured on identical data: home went 2 eager / 2 preloads / 0 preconnect → 1 / 1 /
-  1. Guard test `tests/config/cdnHost.test.ts` stops `CDN_ORIGIN` drifting from `next.config.js`.
-
-- 2026-08-30 — shipped **PF10 (#361)**: `qualities: [65]` plus `quality={IMAGE.quality}` at the
-  eight optimized `<Image>` sites. 12.9% off a real CDN image at w=1920, measured through the
-  optimizer. The row's "8 `sizes=` call sites" was the wrong work list — two of those were the
-  BoxTree dimensions map, not an image prop, and it missed five real render sites. Corrected
-  inventory and a guard test (`tests/config/imageQuality.test.ts`) in the group file.
-
-- 2026-08-30 — **PF4 closed as VOID (#360)**, no behavior change. Its backend blocker really had
-  cleared (asked production, not source), but the `@todo`'s recipe fails `next build` on
-  `headers()`, and its premise — a live Spring fetch per visitor — measured false: 8 renders, 1
-  backend fetch, `force-dynamic` present. `getCollectionBySlug`'s explicit
-  `next: { revalidate, tags }` beats the `force-no-store` default the flag implies. The MR
-  replaced the misleading comment; the real question refiled as **PF13** (Cache Components / PPR).
-  Filed **PF11** from decision #11.
+- 2026-08-31 — shipped **PF4 (#360)**, **PF10 (#361)**, **PF3 (#362)**; also closed refactor-board
+  **G6 (#351)** and opened-then-closed **#363**. **PF4 closed as VOID**: its backend blocker really
+  had cleared (asked production, not source), but the `@todo`'s recipe fails `next build` on
+  `headers()`, and its premise measured false — 8 renders, 1 backend fetch, with `force-dynamic`
+  present, because `getCollectionBySlug`'s explicit `next: { revalidate, tags }` beats the
+  `force-no-store` default the flag implies. Real question refiled as **PF13**. **PF10** shipped
+  `qualities: [65]` + `quality={IMAGE.quality}` at eight sites for a measured 12.9% at w=1920; the
+  row's "8 `sizes=` call sites" was the wrong work list (two were the BoxTree dimensions map, and
+  it missed five real render sites — same count, different set). **PF3** narrowed `priority` to one
+  LCP candidate, scoped `will-change` to elements actually animating (3 CSS rules → 1), and added a
+  CloudFront `preconnect`: home went 2 eager / 2 preloads / 0 preconnect → 1 / 1 / 1. Filed
+  **PF11** from decision #11 and **PF13** from PF4's closure. **#363 was closed on the user's
+  call**: a docblock-length rule scoped to one repo belongs in `~/.claude/CLAUDE.md`, where the
+  inline-comment ban it completes already lives — moved there instead. Next: PF9, PF11, PF8.
 
 - 2026-08-31 — shipped **SD1 (#357)**, **PF5 (#356)**, **PF1 (#358)**; all merged and live in
   production. Filed **PF10** (image quality — split out of PF1, which could not do it), **PF11**
@@ -488,11 +513,3 @@ what's next. Older entries move to
   stated prerequisite, backend `PATCH /collections/{id}`, does not exist on the backend's
   `origin/main`. **PF4 re-classified BLOCKED → COLD**: `blocks_per_page` is gone from backend
   `origin/main`. PF5 invalidated PF9's "no `.github/`" premise in the same run. Next: PF9, PF4, SD3.
-
-- 2026-08-30 — board created from the three-agent sweep (specs ×22, plans ×38, numbered docs +
-  handoffs + backend board), reconciled against code and git. Headline corrections: `/search` is
-  NOT backend-blocked (all endpoints live in `ContentControllerProd.java`; four docs wrong);
-  gallery-password BCrypt is PARKED behind a design pass (two docs wrong); Breadcrumb and the
-  shared IntersectionObserver are shipped, not pending. 42 rows filed across 8 groups; 10 user
-  decisions batched. Next: SD1 (`/search`), PF5 (CI), PF1 (image bytes) — with the decision batch
-  asked first.

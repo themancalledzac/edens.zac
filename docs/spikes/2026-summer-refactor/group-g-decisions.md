@@ -5,8 +5,8 @@ superseded measurement history for the open G2 and G4. **G5 closed 2026-08-30.**
 
 ## Closed rows
 
-| MR  | Scope            | Outcome                     |
-| --- | ---------------- | --------------------------- |
+| MR  | Scope            | Outcome                      |
+| --- | ---------------- | ---------------------------- |
 | G1  | Docs corrections | +106 / −72 (est. ±50) · #303 |
 
 ### ✅ G1 · Docs corrections — PR #303
@@ -45,10 +45,10 @@ down: the method that matched 6 of 11 files exactly is the method.
 
 **Re-derived against `main` at `dbc706a`. Six of eleven were exact; five had drifted:**
 
-> ⚠ **`useCollectionEdit.tsx` gained one docblock in #339 (raw `/**` count 27 → 28), and this table
-> cannot be updated for it, because the table does not record how its numbers were counted.** The raw
-> count is 28 and the table says 16, so the 16 is a filtered subset — but the filter is not written
-> down anywhere in G4, so there is no way to know whether the new `adoptSaveResponse` docblock falls
+> ⚠ **`useCollectionEdit.tsx` gained one docblock in #339 (raw `/**`count 27 → 28), and this table
+cannot be updated for it, because the table does not record how its numbers were counted.** The raw
+count is 28 and the table says 16, so the 16 is a filtered subset — but the filter is not written
+down anywhere in G4, so there is no way to know whether the new`adoptSaveResponse` docblock falls
 > inside it. **This is the same defect G4 exists to fix, in G4's own measurement.** Before this table
 > is used to size anything, record the command that produces it; until then treat every row as
 > approximate rather than re-deriving one row and trusting the rest.
@@ -81,8 +81,8 @@ into work someone has to schedule.** Say so when G2c is next picked up rather th
 **Re-derived after #336/#337 and the counts did NOT move: `CollectionPageClient.tsx` is still 24,
 `CollectionPageWrapper.tsx` still 9.** Command: `awk` over each file counting runs of consecutive
 lines whose first non-whitespace is `//`. This is worth recording as a property of the metric, not
-just a result — **#337 added two `/** */` docblocks to `CollectionPageClient.tsx` and the count
-did not budge, because the metric counts `//` runs only.** So the inventory measures exactly the
+just a result — **#337 added two `/** \*/`docblocks to`CollectionPageClient.tsx`and the count
+did not budge, because the metric counts`//` runs only.\*\* So the inventory measures exactly the
 thing the project's own rule wants removed (inline comments in bodies) and is blind to the thing
 the rule wants added (docblocks). That is the right metric, and it means ordinary docblock-adding
 work cannot inflate this table. For contrast, the same files hold 15 and 3 JSDoc blocks.
@@ -205,3 +205,74 @@ miss, now moot).
 **The lesson, hoisted: read the other repo's board and HEAD before stamping BLOCKED-on-user.** This
 row sat blocked on a decision that was already made and written down in the other repository. It
 cost nothing to check and would have cost a session to schedule around.
+
+---
+
+### ✅ G6 · HIGH — `CLAUDE.md`'s "Localhost Admin Needs No Login" rule was FALSE — PR #351, 2026-08-31
+
+Filed 2026-08-30 while reading the backend repo to settle G5. **Recommended next MR.** This is not
+a docs nicety: the rule instructs every agent _not to investigate_ a breakage that is now real.
+
+`CLAUDE.md:14` (Critical Rules) currently claims local `/admin` is reachable anonymously "at every
+layer", enumerating four, and ends: _"Do not 'fix' any of those as a security hole and do not ask
+the user to log in for you."_ **The fourth layer is no longer true.** Backend
+[#243](https://github.com/themancalledzac/edens.zac.backend/pull/243) merged 2026-08-30 and removed
+the `app.admin.enforce-authz` toggle that let local dev fall through to `permitAll`.
+
+Verified in backend source, not from the commit message:
+
+- `SecurityConfig.java:75-76` — `.requestMatchers("/api/admin/**").hasRole("ADMIN")`, with no
+  profile condition, and a 401 authentication entry point.
+- `SecurityConfig.java:41-42` docblock — "Both write tiers sat behind `app.admin.enforce-authz`
+  until 2026-08-30, which let local dev fall through to `permitAll`. **That toggle is gone and the
+  gate is unconditional in every profile.**"
+- `/api/edit/**` went the same way, to `hasRole("USER")`.
+
+**Why this is worse than an ordinary stale doc.** The frontend's own three layers still pass
+anonymously by design — `proxy.ts` passes the route group, the BFF's anonymous-admin reject is
+production-only, and `requireAdmin()` returns early on `isLocalEnvironment()`. So the admin page
+still _renders_ locally; it is the data fetch behind it that now gets a 401. An agent hitting that
+will read the Critical Rule, see "do not fix this, do not ask the user to log in", and conclude the
+401 must be something else. **A false instruction that forbids investigation is strictly worse than
+one that merely misleads** — this is the same class A9 just closed, with the failure mode inverted:
+A9's stale line produced working commands and so stayed invisible; this one produces a confusing
+failure and actively deflects the diagnosis.
+
+- [ ] Correct the fourth clause of `CLAUDE.md:14` — the local backend now requires an admin session
+      on `/api/admin/**`. Keep the first three layers' description, which is still accurate and is
+      still worth protecting from well-meaning "security fixes".
+- [ ] Say what a local session now requires, so the rule answers the question it raises instead of
+      leaving the next agent to rediscover it.
+- [ ] Check whether `tests/utils/admin.test.ts` encodes the old backend assumption anywhere. The
+      frontend gates it covers are unchanged, so this is expected to be a no-op — confirm rather
+      than assume.
+- [ ] **Guardrail: do not "fix" the three frontend layers.** They are deliberate and the rule is
+      right about them. Only the backend clause is false. If the local flow turns out to need a
+      frontend change too, report what it would cost rather than making it in this MR.
+
+Est: ~4 docs lines, 0 src. The verification is reading the backend config, which is done and
+recorded above.
+
+**Cross-repo note.** The consequence is logged on the backend board's session log too, so the trail
+runs both ways. A backend security change silently falsifying a frontend standing instruction is a
+class of breakage neither board was watching for — see the rule now in "How to use this doc".
+
+**Shipped 2026-08-31 as PR #351.** Premise re-verified against the backend's `origin/main` at
+close, by running the check rather than re-reading it: `SecurityConfig.java:75-77` gates
+`/api/admin/**` on `hasRole("ADMIN")` and `/api/edit/**` on `hasRole("USER")`, with no profile
+condition, and the four surviving `app.admin.enforce-authz` references in backend source are all
+prose in docblocks describing the removal — it appears in no properties file.
+
+Both checklist bullets landed, and the third was confirmed rather than assumed: `tests/utils/admin.test.ts`
+does not encode the old backend assumption (it mocks `meServer` and asserts only `requireAdmin`'s
+branching), 6/6 pass unchanged. The guardrail held — the three frontend layers were left alone, with
+the cost of changing them reported in the PR body (~10 src / 20 test) and a recommendation not to.
+
+Two decisions worth carrying forward:
+
+- **The heading was kept, not renamed**, as "Localhost Admin Needs No Login — Frontend Only". Five
+  sites cite the rule by that name (`clearCache.ts`, `proxy/[...path]/route.ts`,
+  `revalidate/route.ts`, and two test docblocks); renaming would have dangled all five for no gain.
+- **The prose was cut roughly in half at close**, after the user objected to docblock bloat
+  elsewhere in the same session. The rule that produced the cut is now global, in
+  `~/.claude/CLAUDE.md`, not repo-local — see the 2026-08-31 session-log entry.

@@ -60,7 +60,8 @@ Three verified-absent smalls tracked nowhere else (previous-work.md tail + 000 n
 
 - JSON-LD structured data — zero `application/ld+json` in `app/`
 - Component-level `<Suspense>` wrappers in pages — zero `<Suspense` in `app/`
-- SaveHeart 44px tap target (`app/components/Content/SaveHeart.tsx`)
+- SaveHeart 44px tap target — measured 2026-08-31 at **36px mobile, 40px at ≥768px**
+  (`SaveHeart.module.scss:12-13` and `:37-38`), so the gap is 8px and 4px respectively
 
 One MR, or ride-alongs on adjacent work.
 
@@ -107,7 +108,7 @@ will sit. Either `engines` is stale and should widen to include 25, or the dev e
 drop to 22. `tests/ci/ciWorkflow.test.ts` already asserts the CI pin satisfies `engines`, so the two
 cannot silently diverge further — whichever way it is resolved, that test keeps them honest.
 
-**Answered 2026-08-30.** The user asked for "whatever is best long term practice" rather than
+**Answered 2026-08-31.** The user asked for "whatever is best long term practice" rather than
 picking one of the two offered options, so neither half is taken on its own:
 
 1. `engines.node` becomes `">=20"` — a floor, with no upper bound. The `<23` is what created this
@@ -153,7 +154,7 @@ against current paths first — the findings may be live, the line numbers are n
 
 ## Closed
 
-### ✅ PF3 · Priority narrowing, will-change scoping, preconnect — PR #362, 2026-08-30
+### ✅ PF3 · Priority narrowing, will-change scoping, preconnect — PR #362, 2026-08-31
 
 Three separate changes, each verified against a build rather than reasoned about.
 
@@ -214,7 +215,7 @@ Production before the change, for reference: home 2 eager / 2 preloads, `/collec
 4 preloads**, 0 preconnect on both. `/collections` is where the narrowing pays most, and the unit
 tests pin that a four-item row now yields exactly one id.
 
-### ✅ PF10 · Image quality 65 — PR #361, 2026-08-30
+### ✅ PF10 · Image quality 65 — PR #361, 2026-08-31
 
 `images.qualities: [65]` in `next.config.js`, `IMAGE.quality` in `app/constants/index.ts`, and
 `quality={IMAGE.quality}` at every optimized `<Image>`. Guard test:
@@ -265,7 +266,7 @@ and the guard test keeps them in agreement.
 The stale claim "Quality is not settable here in Next 16" was corrected in `next.config.js` — the
 _allowlist_ is settable; only a _default_ is not.
 
-### ✅ PF4 · Restore ISR on the home page — closed as VOID, PR #360, 2026-08-30
+### ✅ PF4 · Restore ISR on the home page — closed as VOID, PR #360, 2026-08-31
 
 No behavior change shipped. The MR replaced the `@todo` in `app/page.tsx` with what the
 measurements actually showed, because the comment was sending each new reader down the same
