@@ -38,8 +38,13 @@ describe('FilterState helpers', () => {
     expect(INITIAL_FILTER_STATE.selectedDates).toEqual([]);
   });
 
-  it('leads ARRAY_FILTER_KEYS with selectedDates (task 6 dropdown-fallback ordering depends on this)', () => {
-    expect(ARRAY_FILTER_KEYS[0]).toBe('selectedDates');
+  it('carries a years dimension', () => {
+    expect(ARRAY_FILTER_KEYS).toContain('selectedYears');
+    expect(INITIAL_FILTER_STATE.selectedYears).toEqual([]);
+  });
+
+  it('leads ARRAY_FILTER_KEYS with the time dimensions, coarse before fine', () => {
+    expect(ARRAY_FILTER_KEYS.slice(0, 2)).toEqual(['selectedYears', 'selectedDates']);
   });
 
   it('cycleDateSort uses one canonical order: off -> asc -> desc -> off', () => {

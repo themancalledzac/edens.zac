@@ -1538,8 +1538,95 @@ describe('hasFilterableOptions', () => {
       lenses: { values: [], filterable: true },
       locations: { values: [], filterable: false },
       dates: { values: [], filterable: false },
+      years: { values: [], filterable: false },
     };
     expect(hasFilterableOptions(options, false, false)).toBe(false);
+  });
+});
+
+describe('year filtering', () => {
+  const y2024 = makeImage({ id: 71, captureDate: '2024-07-20T10:00:00' });
+  const y2026 = makeImage({ id: 72, captureDate: '2026-02-01T10:00:00' });
+
+  it('keeps only images captured in a selected year', () => {
+    const result = filterContent([y2024, y2026], { years: ['2026'] });
+    expect(result.map(i => i.id)).toEqual([72]);
+  });
+
+  it('drops images with no capture date once a year is selected', () => {
+    const undated = makeImage({ id: 73, captureDate: undefined });
+    const result = filterContent([y2024, undated], { years: ['2024'] });
+    expect(result.map(i => i.id)).toEqual([71]);
+  });
+
+  it('narrows collection tiles by their own collectionDate, which a capture day cannot', () => {
+    const ref2024 = makeCollectionRef({ id: 1001, collectionDate: '2024-05-01' });
+    const ref2026 = makeCollectionRef({ id: 1002, collectionDate: '2026-05-01' });
+
+    expect(collectionRefMatchesCriteria(ref2024, { years: ['2024'] })).toBe(true);
+    expect(collectionRefMatchesCriteria(ref2026, { years: ['2024'] })).toBe(false);
+    expect(collectionRefMatchesCriteria(ref2026, { dates: ['2024-05-01'] })).toBe(true);
+  });
+
+  it('drops a dated GIF outside the selected year and keeps an undated one', () => {
+    const datedGif = makeGif({ id: 201, captureDate: '2024-07-20T10:00:00' });
+    const undatedGif = makeGif({ id: 202 });
+    const content: AnyContentModel[] = [datedGif, undatedGif, y2026];
+
+    const result = applyCollectionFilters(content, [y2026], { years: ['2026'] });
+    expect(result.map(i => i.id)).toEqual([202, 72]);
+  });
+
+  it('builds a years criterion from filter state and round-trips it through the URL', () => {
+    const criteria = buildCollectionCriteria(makeFilterState({ selectedYears: ['2024'] }));
+    expect(criteria.years).toEqual(['2024']);
+
+    const params = serializeFilterToParams(criteria);
+    expect(params.getAll('year')).toEqual(['2024']);
+    expect(parseFilterFromParams(params).years).toEqual(['2024']);
+  });
+
+  it('counts a selected year as an active filter', () => {
+    expect(hasAnyActiveFilter(makeFilterState({ selectedYears: ['2024'] }))).toBe(true);
+    expect(hasAnyActiveFilter(makeFilterState())).toBe(false);
+  });
+});
+
+describe('the years dimension', () => {
+  it('draws on collection dates as well as capture dates', () => {
+    const dims = extractCollectionFilterOptions(
+      [makeImage({ id: 81, captureDate: '2026-02-01T10:00:00' })],
+      [makeCollectionRef({ id: 1003, collectionDate: '2019-08-01' })]
+    );
+    expect(dims.years.values).toEqual(['2019', '2026']);
+  });
+
+  it('is filterable at two years with fewer images than the day filter requires', () => {
+    const images = [
+      makeImage({ id: 91, captureDate: '2024-07-20T10:00:00' }),
+      makeImage({ id: 92, captureDate: '2026-07-20T10:00:00' }),
+    ];
+    expect(images.length).toBeLessThan(MIN_IMAGES_FOR_DATE_FILTER);
+
+    const dims = extractCollectionFilterOptions(images);
+    expect(dims.years.filterable).toBe(true);
+    expect(dims.dates.filterable).toBe(false);
+  });
+
+  it('is not filterable when everything falls in one year', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 93, captureDate: '2026-01-01T10:00:00' }),
+      makeImage({ id: 94, captureDate: '2026-12-31T10:00:00' }),
+    ]);
+    expect(dims.years.filterable).toBe(false);
+  });
+
+  it('opens the filter bar on its own', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 95, captureDate: '2024-07-20T10:00:00' }),
+      makeImage({ id: 96, captureDate: '2026-07-20T10:00:00' }),
+    ]);
+    expect(hasFilterableOptions(dims, false, false)).toBe(true);
   });
 });
 

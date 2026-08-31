@@ -150,6 +150,20 @@ const ORDER_GLYPHS: Record<FilterState['dateSortDirection'], string> = {
 export const MAX_FLAT_DATE_CHIPS = 5;
 
 /**
+ * The same collapse threshold for the Year dimension, set higher because a year chip is four
+ * characters where a day chip is a formatted label several times as wide.
+ */
+export const MAX_FLAT_YEAR_CHIPS = 8;
+
+/**
+ * A dimension that should render as flat chips rather than a dropdown: present, non-empty, and
+ * within `cap` options. Returns null when it should collapse into the standard dropdown instead.
+ */
+function flatDimension(dim: ToolbarDimension | undefined, cap: number): ToolbarDimension | null {
+  return dim !== undefined && dim.options.length > 0 && dim.options.length <= cap ? dim : null;
+}
+
+/**
  * Canonical, config-driven filter toolbar: dropdowns with a 3-state availability model, count
  * badges, highly-rated / film (neutral tri-state) / digital toggles, and an optional density slider.
  *
@@ -215,20 +229,13 @@ export function FilterToolbar({
     closeAll();
   };
 
-  const dateDim = dimensions.selectedDates;
-  const flatDates =
-    dateDim !== undefined &&
-    dateDim.options.length > 0 &&
-    dateDim.options.length <= MAX_FLAT_DATE_CHIPS
-      ? dateDim
-      : null;
+  const flatDates = flatDimension(dimensions.selectedDates, MAX_FLAT_DATE_CHIPS);
+  const flatYears = flatDimension(dimensions.selectedYears, MAX_FLAT_YEAR_CHIPS);
 
-  const activeBadges = collectActiveFilterBadges(
-    filterState,
-    dimensions,
-    ARRAY_FILTER_KEYS,
-    flatDates ? ['selectedDates'] : []
-  );
+  const activeBadges = collectActiveFilterBadges(filterState, dimensions, ARRAY_FILTER_KEYS, [
+    ...(flatDates ? (['selectedDates'] as const) : []),
+    ...(flatYears ? (['selectedYears'] as const) : []),
+  ]);
 
   return (
     <div ref={barRef} className={styles.toolbar}>
@@ -291,6 +298,21 @@ export function FilterToolbar({
           />
         )}
 
+        {flatYears?.options.map(year => {
+          const isSelected = filterState.selectedYears.includes(year);
+          const available =
+            isSelected || isOptionAvailable(filteredAvailable, 'selectedYears', year);
+          return (
+            <FilterChip
+              key={`year-${year}`}
+              label={year}
+              active={isSelected}
+              state={available ? 'available' : 'unavailable'}
+              onToggle={() => toggleArrayFilter(filterState, onFilterChange, 'selectedYears', year)}
+            />
+          );
+        })}
+
         {flatDates?.options.map(day => {
           const isSelected = filterState.selectedDates.includes(day);
           const available =
@@ -308,6 +330,7 @@ export function FilterToolbar({
 
         {ARRAY_FILTER_KEYS.map(key => {
           if (key === 'selectedDates' && flatDates) return null;
+          if (key === 'selectedYears' && flatYears) return null;
           const dim = dimensions[key];
           if (!dim || dim.options.length === 0) return null;
           const selected = filterState[key] as readonly string[];

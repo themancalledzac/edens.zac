@@ -18,6 +18,19 @@ export function captureDayKey(captureDate: string | null | undefined): string | 
   return DAY_KEY_PATTERN.test(day) ? day : null;
 }
 
+const YEAR_KEY_PATTERN = /^\d{4}$/;
+
+/**
+ * The calendar year of a date as 'YYYY', or null when there is no usable date. Accepts both the
+ * zoneless LocalDateTime `captureDate` an image carries and the plain LocalDate `collectionDate`
+ * a collection tile carries, since the year is the same leading four characters of either.
+ */
+export function captureYearKey(date: string | null | undefined): string | null {
+  if (!date) return null;
+  const year = date.slice(0, 4);
+  return YEAR_KEY_PATTERN.test(year) ? year : null;
+}
+
 /** Ascending, de-duplicated calendar days across the given capture dates. */
 export function distinctDays(captureDates: readonly (string | null | undefined)[]): string[] {
   const days = new Set<string>();
@@ -26,6 +39,16 @@ export function distinctDays(captureDates: readonly (string | null | undefined)[
     if (key) days.add(key);
   }
   return Array.from(days).sort();
+}
+
+/** Ascending, de-duplicated calendar years across the given dates. */
+export function distinctYears(dates: readonly (string | null | undefined)[]): string[] {
+  const years = new Set<string>();
+  for (const date of dates) {
+    const key = captureYearKey(date);
+    if (key) years.add(key);
+  }
+  return Array.from(years).sort();
 }
 
 /**

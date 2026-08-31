@@ -4,6 +4,7 @@ import { type ComponentProps } from 'react';
 import {
   FilterToolbar,
   MAX_FLAT_DATE_CHIPS,
+  MAX_FLAT_YEAR_CHIPS,
 } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import { dayLabels } from '@/app/utils/collectionDates';
@@ -681,5 +682,74 @@ describe('FilterToolbar active-filter summary', () => {
       filterState: { ...INITIAL_FILTER_STATE, selectedDates: [options[0]!] },
     });
     expect(screen.getByRole('button', { name: 'Remove 2026-07-10 from Date' })).toBeInTheDocument();
+  });
+});
+
+describe('FilterToolbar year chips', () => {
+  const threeYears = { selectedYears: { label: 'Year', options: ['2019', '2024', '2026'] } };
+
+  it('renders each year as its own flat chip', () => {
+    renderToolbar({ dimensions: threeYears });
+    for (const year of ['2019', '2024', '2026']) {
+      expect(screen.getByRole('button', { name: year })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole('button', { name: /^Year/ })).not.toBeInTheDocument();
+  });
+
+  it('selects a year on click', () => {
+    const { onFilterChange } = renderToolbar({ dimensions: threeYears });
+    fireEvent.click(screen.getByRole('button', { name: '2024' }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedYears: ['2024'] });
+  });
+
+  it('switches rather than accumulates, since an image has one capture year', () => {
+    const { onFilterChange } = renderToolbar({
+      dimensions: threeYears,
+      filterState: { ...INITIAL_FILTER_STATE, selectedYears: ['2024'] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '2026' }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedYears: ['2026'] });
+  });
+
+  it('clears the dimension when the sole selection is clicked again', () => {
+    const { onFilterChange } = renderToolbar({
+      dimensions: threeYears,
+      filterState: { ...INITIAL_FILTER_STATE, selectedYears: ['2024'] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '2024' }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedYears: [] });
+  });
+
+  it('collapses into a dropdown above the flat-chip cap', () => {
+    const options = Array.from({ length: MAX_FLAT_YEAR_CHIPS + 1 }, (_, i) => String(2010 + i));
+    renderToolbar({ dimensions: { selectedYears: { label: 'Year', options } } });
+    expect(screen.getByRole('button', { name: /^Year/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '2010' })).not.toBeInTheDocument();
+  });
+
+  it('does not repeat a year that is already a flat chip', () => {
+    renderToolbar({
+      dimensions: threeYears,
+      filterState: { ...INITIAL_FILTER_STATE, selectedYears: ['2024'] },
+    });
+    expect(screen.queryByRole('button', { name: /^Remove / })).not.toBeInTheDocument();
+  });
+
+  it('summarises a year once the dimension has collapsed into a dropdown', () => {
+    const options = Array.from({ length: MAX_FLAT_YEAR_CHIPS + 1 }, (_, i) => String(2010 + i));
+    renderToolbar({
+      dimensions: { selectedYears: { label: 'Year', options } },
+      filterState: { ...INITIAL_FILTER_STATE, selectedYears: ['2010'] },
+    });
+    expect(screen.getByRole('button', { name: 'Remove 2010 from Year' })).toBeInTheDocument();
+  });
+
+  it('greys out a year no longer reachable under the other active filters', () => {
+    renderToolbar({
+      dimensions: threeYears,
+      filteredAvailable: { selectedYears: ['2026'] },
+    });
+    expect(screen.getByRole('button', { name: '2019' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '2026' })).toBeEnabled();
   });
 });
