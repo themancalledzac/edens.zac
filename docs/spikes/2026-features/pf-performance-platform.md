@@ -197,6 +197,27 @@ against current paths first — the findings may be live, the line numbers are n
 
 ## Closed
 
+### ⛔ PF2 · Blur placeholders — DROPPED 2026-08-31 (7) by the user. Do not re-propose.
+
+Scoped, then declined. Kept here rather than deleted so it is not rediscovered as a new idea.
+
+**Why it was dropped.** `docs/002-performance.md:25` had already downgraded it: PR #161's SSR
+BoxTree gave rows real dimensions server-side, so there is no layout shift left to fix. This was
+only ever about what fills the box while bytes arrive. Weighed against the cost, the user said no.
+
+**What it would have cost, since the scoping was done.** Real per-image blur is backend-first: a
+new column (a 20px base64 JPEG is ~515 chars, ~18KB per collection page before gzip), a Flyway
+migration, `ContentImageEntity`, six repository touch points, and — the bulk — a **31-component
+positional record** whose four production and fourteen test construction sites all need editing.
+Then a backfill over **1424 images** (`curl "localhost:8080/api/read/content/images/search?size=1"`
+→ `"totalElements":1424`, re-run 2026-08-31 (7)), about half an hour unattended.
+
+**The one genuinely cheap thing, also declined.** Next 16.3.1 accepts a raw data URI as the
+`placeholder` value with no `blurDataURL` at all — verified in the shipped runtime at
+`node_modules/next/dist/shared/lib/get-img-props.js:414`. A generic shimmer would have been one
+edit to the shared `imageProps` object at `CollectionContentRenderer.tsx:668`. Worth knowing if
+this ever comes back: the gallery funnels every image through that one object literal.
+
 ### ✅ PF12 · Gate the auto-deploy on CI — applied 2026-08-31 (no PR; repo + host settings)
 
 `main` had **no protection of any kind** — `gh api repos/themancalledzac/edens.zac/branches/main/protection`
