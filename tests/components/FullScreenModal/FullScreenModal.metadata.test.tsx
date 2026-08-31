@@ -164,3 +164,39 @@ describe('FullScreenModal — location link', () => {
     expect(screen.queryByRole('link', { name: 'Nowhere' })).not.toBeInTheDocument();
   });
 });
+
+describe('FullScreenModal — tag links', () => {
+  const withTags = () =>
+    img(1, {
+      tags: [
+        { id: 17, name: 'enchantments', slug: 'enchantments' },
+        { id: 18, name: 'alpine', slug: 'alpine' },
+      ],
+    });
+
+  it('renders each tag as a real link to its tag page', () => {
+    renderModal(withTags(), collection({}));
+    expect(screen.getByRole('link', { name: 'enchantments' })).toHaveAttribute(
+      'href',
+      '/tag/enchantments'
+    );
+    expect(screen.getByRole('link', { name: 'alpine' })).toHaveAttribute('href', '/tag/alpine');
+  });
+
+  it('falls back to inert text for a tag with no slug', () => {
+    renderModal(
+      img(1, {
+        tags: [{ id: 19, name: 'unslugged' } as NonNullable<ContentImageModel['tags']>[number]],
+      }),
+      collection({})
+    );
+    expect(screen.getByText('unslugged')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'unslugged' })).not.toBeInTheDocument();
+  });
+
+  it('leaves people inert — there is no person route to link to yet', () => {
+    renderModal(img(1, { people: [{ id: 3, name: 'Nate Weigel' }] }), collection({}));
+    expect(screen.getByText('Nate Weigel')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Nate Weigel' })).not.toBeInTheDocument();
+  });
+});
