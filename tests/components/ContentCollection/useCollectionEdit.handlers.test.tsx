@@ -540,7 +540,33 @@ describe('useCollectionEdit — handler tests', () => {
         await result.current.handleSaveAccess();
       });
 
-      expect(result.current.galleryStatus).toBe('Password saved, email not sent (email-disabled).');
+      expect(result.current.galleryStatus).toBe('Password saved. Email was not sent.');
+      expect(result.current.galleryEmailDisabled).toBe(true);
+    });
+
+    it('reports an unrecognised reason verbatim and does not raise the disabled flag', async () => {
+      mockSaveGalleryAccess.mockResolvedValue({
+        saved: true,
+        emailsSent: false,
+        reason: 'ses-rejected',
+        password: 'pass1234',
+        emails: ['a@b.com'],
+      });
+
+      const { result } = renderGallery();
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      act(() => {
+        result.current.setGalleryPassword('pass1234');
+        result.current.setGalleryEmail('a@b.com');
+      });
+
+      await act(async () => {
+        await result.current.handleSaveAccess();
+      });
+
+      expect(result.current.galleryStatus).toBe('Password saved, email not sent (ses-rejected).');
+      expect(result.current.galleryEmailDisabled).toBe(false);
     });
 
     it('saves WITHOUT email and reports no email sent', async () => {

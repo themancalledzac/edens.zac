@@ -35,6 +35,25 @@ function renderInfoTab(updateData: Partial<CollectionUpdateRequest>) {
 
 const WARNING = 'End date is before the collection date.';
 
+const EMAIL_OFF = /email sending is switched off/i;
+
+/**
+ * The gallery-access section renders only for a client gallery, so these cases set `isClient`.
+ * `galleryEmailDisabled` is the hook's post-send signal — there is no readable config flag, so the
+ * callout can only appear after a save has come back reporting the send was skipped.
+ */
+function renderGalleryAccess(galleryEmailDisabled: boolean, galleryStatus: string | null = null) {
+  render(
+    <InfoTab
+      edit={makeEdit({
+        updateData: makeUpdateData({ isClient: true }),
+        galleryEmailDisabled,
+        galleryStatus,
+      })}
+    />
+  );
+}
+
 describe('InfoTab — end-date soft validation', () => {
   it('renders the advisory when the end date is before the collection date', () => {
     renderInfoTab({ collectionDate: '2026-03-07', collectionEndDate: '2026-03-01' });
@@ -57,7 +76,6 @@ describe('InfoTab — end-date soft validation', () => {
   });
 
   it('does not render the advisory when the start date is unset', () => {
-    // The fourth combination: an end date alone has nothing to be "before".
     renderInfoTab({ collectionDate: undefined, collectionEndDate: '2026-03-01' });
     expect(screen.queryByText(WARNING)).not.toBeInTheDocument();
   });
@@ -140,5 +158,32 @@ describe('InfoTab — the cover picker has moved to the grid', () => {
     renderInfoTab({});
     expect(screen.queryByText('Cover image')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /cover/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('InfoTab — email-disabled callout', () => {
+  it('warns that the client was not emailed when a save reports the send was skipped', () => {
+    renderGalleryAccess(true, 'Password saved. Email was not sent.');
+    expect(screen.getByText(EMAIL_OFF)).toBeInTheDocument();
+  });
+
+  it('stays absent before any save, since nothing has reported on email yet', () => {
+    renderGalleryAccess(false);
+    expect(screen.queryByText(EMAIL_OFF)).not.toBeInTheDocument();
+  });
+
+  it('stays absent when the email went out', () => {
+    renderGalleryAccess(false, 'Password saved and sent to a@b.com.');
+    expect(screen.queryByText(EMAIL_OFF)).not.toBeInTheDocument();
+  });
+
+  /**
+   * The callout and the status line carry different information — what to do about it, and what
+   * just happened — so the status line must survive alongside it rather than being replaced.
+   */
+  it('renders alongside the status line rather than replacing it', () => {
+    renderGalleryAccess(true, 'Password saved. Email was not sent.');
+    expect(screen.getByRole('status')).toHaveTextContent('Password saved. Email was not sent.');
+    expect(screen.getByText(EMAIL_OFF)).toBeInTheDocument();
   });
 });

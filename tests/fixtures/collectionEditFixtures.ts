@@ -161,6 +161,7 @@ export function makeEdit(
     setGalleryEmail: jest.fn(),
     gallerySaving: false,
     galleryStatus: null,
+    galleryEmailDisabled: false,
     handleSaveAccess: jest.fn(),
     handleClearPassword: jest.fn(),
 

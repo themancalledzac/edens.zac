@@ -16,6 +16,7 @@ import {
   type ShareSettingsRead,
 } from '@/app/lib/api/share';
 import { type CollectionModel } from '@/app/types/Collection';
+import { isEmailDisabled } from '@/app/utils/emailSendReason';
 
 import styles from './ShareCard.module.scss';
 
@@ -66,6 +67,13 @@ function mapError(error: unknown, fallback: string): string {
  * The opt-in list is off by default and covers only galleries the owner was granted access to but
  * is not tagged in. Tagged-in work is in every share already; a gallery someone else let them into
  * is not theirs to pass on, so sharing it has to be a deliberate act.
+ *
+ * Three smaller choices, so they are not undone by accident: the origin is read on the client so a
+ * copied link matches the host the owner is actually on, without threading a base URL down from
+ * the server; a refused clipboard permission is not an error, since the link is on screen and
+ * selectable either way; and a failed settings read renders "unavailable" rather than the
+ * create-a-link empty state, which would read as "you have none" to someone whose link is out
+ * there working.
  */
 export function ShareCard({ read }: ShareCardProps) {
   const [settings, setSettings] = useState<ShareSettings | null>(read.ok ? read.settings : null);
@@ -76,8 +84,6 @@ export function ShareCard({ read }: ShareCardProps) {
   const [emailNote, setEmailNote] = useState<string | null>(null);
   const [origin, setOrigin] = useState('');
 
-  // Read on the client so the copied link matches the origin the owner is actually on — localhost
-  // in dev, the real domain in production — without threading a base URL through from the server.
   useEffect(() => setOrigin(window.location.origin), []);
 
   const shareUrl = useMemo(
@@ -110,7 +116,6 @@ export function ShareCard({ read }: ShareCardProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard permission can be refused; the link is on screen and selectable regardless.
       setError('Could not copy automatically — select the link above and copy it.');
     }
   };
@@ -127,7 +132,9 @@ export function ShareCard({ read }: ShareCardProps) {
       setEmailNote(
         result.sent
           ? `Sent to ${recipient.trim()}.`
-          : 'Email is not switched on right now — copy the link and send it yourself.'
+          : isEmailDisabled(result.reason)
+            ? 'Email is not switched on right now — copy the link and send it yourself.'
+            : 'That email did not go out — copy the link and send it yourself.'
       );
       setRecipient('');
     }, 'Could not send that email. Please try again.');
@@ -149,8 +156,6 @@ export function ShareCard({ read }: ShareCardProps) {
 
   const busy = phase === 'pending';
 
-  // A failed read says nothing about whether a link exists, so the card must not offer to create
-  // one — that would read as "you have none" to someone whose link is out there working.
   if (!read.ok) {
     return (
       <Card title="Share">

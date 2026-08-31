@@ -30,6 +30,11 @@ interface InfoTabProps {
 /**
  * Info tab: title, kind, date, description, locations, visibility, tags, people, and (when
  * applicable) gallery access. Tags + people were consolidated here from a former Tags tab.
+ *
+ * `showGalleryAccess` keys on the stored `isClient` discriminator rather than the legacy enum: a
+ * standalone client gallery has no child collections, so `isParent` alone would hide the password
+ * SET and REVOKE controls while the collection stayed gated. The end-before-start date check is a
+ * soft advisory that never blocks a save; ISO `YYYY-MM-DD` compares correctly as strings.
  */
 export function InfoTab({ edit }: InfoTabProps) {
   const {
@@ -52,18 +57,15 @@ export function InfoTab({ edit }: InfoTabProps) {
     setGalleryEmail,
     gallerySaving,
     galleryStatus,
+    galleryEmailDisabled,
     handleSaveAccess,
     handleClearPassword,
     isParent,
   } = edit;
 
   const collection = currentState?.collection;
-  // Keyed on the stored discriminator, not the legacy enum: a standalone client gallery has
-  // no child collections, so `isParent` alone would hide the password SET and REVOKE controls
-  // while the collection stayed gated (blast radius R12).
   const showGalleryAccess = updateData.isClient === true || isParent;
 
-  // Soft advisory only — never blocks a save. ISO YYYY-MM-DD compares correctly as strings.
   const isEndBeforeStart = Boolean(
     updateData.collectionDate &&
     updateData.collectionEndDate &&
@@ -328,6 +330,12 @@ export function InfoTab({ edit }: InfoTabProps) {
           {galleryStatus && (
             <p role="status" className={styles.statusMessage}>
               {galleryStatus}
+            </p>
+          )}
+          {galleryEmailDisabled && (
+            <p className={styles.emailDisabledNotice}>
+              Email sending is switched off for the site, so nothing reached the client. The
+              password is saved — pass it on yourself.
             </p>
           )}
         </section>
