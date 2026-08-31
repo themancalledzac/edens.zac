@@ -92,36 +92,10 @@ const nextConfig = {
     ],
     formats: ['image/webp'], // Don't attempt AVIF — backend already serves optimized WebP
     minimumCacheTTL: 86400, // Cache optimized images for 24 hours
-    /**
-     * Both arrays are pinned to what this site's images can actually supply and what its
-     * layout can actually ask for. Measured 2026-08-30 against the live CloudFront origin.
-     *
-     * Every source image is 2500px on its long edge — the backend's export ceiling, checked
-     * across six images spanning 2019 to 2026. Next never enlarges, so the default `deviceSizes`
-     * top three (2560, 3200, 3840) all return the identical natural-size encode: 685 KB for
-     * `DSC_0045`, byte-for-byte the same file under three different cache keys. They are not
-     * higher quality, only more cache entries and a longer srcset.
-     *
-     * Dropping them makes 2048 the top candidate, and that is where the win is: a retina browser
-     * on a full-bleed image picked 3840 and got 685 KB, and now picks 2048 and gets 329 KB. The
-     * cost is a 2048px file shown in a slot that could have taken 2500 — a 1.22x upscale on
-     * photographic content, not the 1.875x it would be if the sources really were 3840.
-     *
-     * Nothing in the middle is removed. A browser picks the smallest candidate at or above what
-     * it needs, so deleting an intermediate width rounds those requests UP to the next one and
-     * costs bytes rather than saving them. 828 stays for that reason alone.
-     *
-     * `imageSizes` only appears in a srcset when a `sizes` prop is set. The smallest `sizes` in
-     * the app is 140px (`CollectionContentRenderer`, `CollectionHeader`), so nothing below 128
-     * is reachable even at 1x; those entries only lengthened the attribute. 128 is kept as the
-     * floor for any future smaller thumbnail.
-     *
-     * Quality is deliberately absent. Next 16 defaults `images.qualities` to `[75]` and the
-     * optimizer rejects — does not clamp — any other value, while `next/image` sends 75 whenever
-     * no `quality` prop is given. So `qualities: [65]` alone would 400 every image on the site;
-     * lowering it needs a `quality` prop at the call sites too, which is a render-path change
-     * rather than config. Measured prize if that is ever taken: q65 is 13% smaller than q75.
-     */
+    // Sources are 2500px on the long edge, so 2560/3200/3840 returned the same bytes as 2048;
+    // capping at 2048 halves the largest request. Intermediates stay — browsers round up to the
+    // next candidate, so removing one costs bytes. Quality is not settable here in Next 16.
+    // Measurements: docs/spikes/2026-features/pf-performance-platform.md
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
     imageSizes: [128, 256, 384],
   },

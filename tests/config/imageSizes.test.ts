@@ -1,23 +1,10 @@
 /**
  * @jest-environment node
  *
- * Pins the reasoning behind the image size arrays in `next.config.js`, which is measured rather
- * than conventional and so is easy to "fix" back to the Next defaults.
- *
- * The measurement: every image the backend exports is 2500px on its long edge, checked across six
- * files spanning 2019 to 2026. Next never enlarges, so the default `deviceSizes` entries above
- * that (2560, 3200, 3840) all returned the identical natural-size encode under different cache
- * keys — 685 KB each for `DSC_0045`, versus 329 KB at 2048. Removing them is what makes 2048 the
- * top candidate, and that is the entire byte win.
- *
- * The opposite mistake is guarded too. Tightening an array sounds like it should always save
- * bytes, but a browser picks the smallest candidate at or above what it needs — so deleting an
- * intermediate width rounds those requests UP to the next one and costs bytes. The ladder below
- * 2048 must stay dense.
- *
- * The config is read as text rather than imported: it is ESM that wraps itself in
- * `@next/bundle-analyzer`, and executing that to read two arrays would be a worse trade than
- * parsing them.
+ * Pins the image size arrays in `next.config.js` against both the obvious regression (restoring
+ * widths the sources cannot fill) and the plausible-looking one (thinning the middle of the
+ * ladder, which costs bytes). Read as text because the config is ESM wrapped in the bundle
+ * analyzer. Measurements: docs/spikes/2026-features/pf-performance-platform.md
  */
 
 import { readFileSync } from 'node:fs';
@@ -26,17 +13,10 @@ import { join } from 'node:path';
 /** The backend's export ceiling — the long edge of every image on the CDN. */
 const SOURCE_IMAGE_CEILING = 2500;
 
-/**
- * Next's own `imageConfigDefault.deviceSizes`. The config is this list minus the entries above
- * {@link SOURCE_IMAGE_CEILING} — nothing else. Stating it that way is what distinguishes the
- * intended change from the plausible-looking mistake of thinning the middle of the ladder.
- */
+/** Next's own `imageConfigDefault.deviceSizes`. The config is this, minus what exceeds the ceiling. */
 const NEXT_DEFAULT_DEVICE_SIZES = [640, 750, 828, 1080, 1200, 1920, 2048, 3840];
 
-/**
- * The smallest `sizes` value any component declares today (`CollectionContentRenderer`'s
- * 140px thumbnail, matched by `CollectionHeader`'s cover). Nothing below this is reachable.
- */
+/** Smallest `sizes` any component declares (`CollectionContentRenderer`, `CollectionHeader`). */
 const SMALLEST_DECLARED_SIZE = 140;
 
 const config = readFileSync(join(process.cwd(), 'next.config.js'), 'utf8');

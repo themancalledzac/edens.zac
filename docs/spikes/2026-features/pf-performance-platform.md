@@ -4,13 +4,57 @@ _Context file for board items PF1–PF9 on [2026-features.md](../2026-features.m
 the dominant issue (hero not in server HTML) closed via PR #161's server-side layout seeding; the
 rest of the 002 chapter is this group._
 
-## PF1 · Image bytes (config-only)
+## PF1 · Image bytes — DONE, PR #358
 
-`next.config.js` has no `quality`, `deviceSizes`, or `imageSizes` keys — verified 2026-08-30, only
-`remotePatterns` is configured. Set explicit `quality` (~65 per the 002 chapter) and tighten the
-size arrays to the widths the layout actually requests. Note the 002 chapter's step 1 (a prod
-Lighthouse + view-source baseline) was never taken — take it in the same MR so the win is
-measured, not asserted. Verification of served formats is PF9-gated (need to know the host).
+Set `deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048]` and `imageSizes: [128, 256, 384]`.
+Guard test: `tests/config/imageSizes.test.ts`.
+
+**The source ceiling is 2500px.** Every image the backend exports is 2500px on its long edge,
+measured 2026-08-30 against the live CloudFront origin across six files spanning 2019–2026
+(`DSC_0045` 2500×2000, `DSC_9873-Pano` 2500×2500, `DSC_8842` 2500×2500, `000024950001` 2024×1994,
+`DSC_0104` 2500×1663, `DSC_9897` 2500×1663).
+
+Next never enlarges, so the default `deviceSizes` entries above that ceiling were the same file
+under three cache keys, not higher quality:
+
+| Requested width | Bytes returned |
+| --------------- | -------------- |
+| 1200            | 153,038        |
+| 1920            | 298,282        |
+| 2048            | 328,916        |
+| 2560            | 685,082        |
+| 3200            | 685,082        |
+| 3840            | 685,082        |
+
+Removing them makes 2048 the top candidate, which is the whole win. Home page HTML, before → after:
+srcSet candidates `640…2048, 3840` → `640…2048`; srcSet attribute bytes 6,324 → 5,535; fallback
+`src` **w=3840 (685 KB) → w=2048 (329 KB)**. The fallback `src` is what anything without srcset
+support fetches, crawlers and social preview bots included. For real browsers the cap engages
+above 2048 device px — e.g. `/hidden-lake`'s largest slot is 944 CSS px, so a DPR-3 device needs
+2832 and selected 3840, now selects 2048. Cost is a 1.22× upscale from the 2500px source.
+
+**Do not thin the middle.** A browser picks the smallest candidate ≥ what it needs, so deleting an
+intermediate width rounds those requests UP and costs bytes. 828 stays for that reason alone. A
+max-gap-ratio guard cannot express this: deleting 828 leaves a 750→1080 gap of 1.44×, smaller than
+the ladder's own inherent 1200→1920 gap of 1.60×. The test asserts "defaults minus what exceeds
+the ceiling" instead.
+
+`imageSizes` drops 32/48/64/96 — the smallest `sizes` any component declares is 140px, so nothing
+below 128 is selectable even at 1×.
+
+**Quality is not config-only in Next 16**, contrary to the 002 chapter's "set quality ~65".
+`imageConfigDefault.qualities` is `[75]`; `next/image` sends 75 whenever no `quality` prop is given
+(`get-img-props.js:459`); and the optimizer _rejects rather than clamps_ anything outside
+`images.qualities` (`image-optimizer.js:657`, HTTP 400). So `qualities: [65]` alone would 400 every
+image on the site. Lowering it needs `quality={65}` at the call sites — a render-path change.
+Measured prize: **q65 is 13.3% smaller than q75** (258,556 vs 298,282 bytes at w=1920). Not
+ticketed; open a row if wanted.
+
+**No Lighthouse baseline was taken.** A dev-server run measures unminified bundles and a cold
+optimizer, and a production run is PF9-gated — three docs name three hosts and there is no deploy
+config, so there is nowhere agreed to point it. The byte measurements above cover what this change
+alters and are reproducible against the live CDN. The PF9-gated question is unchanged: whether the
+host actually serves the WebP the optimizer emits.
 
 ## PF2 · Blur placeholders
 
