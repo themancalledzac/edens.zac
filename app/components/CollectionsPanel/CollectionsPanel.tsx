@@ -10,6 +10,7 @@ import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadError } from '@/app/components/ui/StatusText/LoadError';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
+import { IMAGE } from '@/app/constants';
 import { useCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { getMetadata } from '@/app/lib/api/collections';
 import { type CollectionListModel } from '@/app/types/Collection';
@@ -103,6 +104,7 @@ export function CollectionsPanel({ collapsed, onCollapsedChange }: CollectionsPa
                       width={THUMBNAIL_SIZE}
                       height={THUMBNAIL_SIZE}
                       className={styles.cover}
+                      quality={IMAGE.quality}
                     />
                   ) : (
                     <span className={styles.coverPlaceholder} aria-hidden="true" />

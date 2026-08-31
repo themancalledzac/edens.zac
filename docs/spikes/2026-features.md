@@ -104,7 +104,6 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)           | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                        |
 | PF8  | Small orphans: JSON-LD, `<Suspense>` wrappers, SaveHeart 44px      | FE      | ☐ COLD — all three re-verified absent 08-31                                               |
 | PF9  | Record the deploy target (answered: CloudFront/AWS, auto-deploy)   | FE      | ☐ COLD — measured 08-31; only the recording is left                                       |
-| PF10 | Image quality 65 — config + `quality` props at 8 call sites        | FE      | ☐ COLD — split from PF1; NOT config-only in Next 16; 13.3% measured                       |
 | PF11 | Reconcile `engines.node` (`>=20 <23`) with the dev machine (25.3)  | FE      | ☐ COLD — decision #11 answered 08-30; shape settled, ready to build                       |
 | PF12 | Gate the auto-deploy on CI                                         | OPS     | ☐ COLD — console work; `main` deploys today regardless of CI                              |
 | PF13 | Home page genuinely static (Cache Components / PPR)                | FE      | ☐ COLD — created by PF4's closure; render-path change, not a config flip                  |
@@ -460,6 +459,12 @@ trade looks intrinsic. Pure adjudication.
 _Newest first, local dates. One line per `/next` run: what shipped (PR numbers), what was filed,
 what's next. Older entries move to
 [2026-features/session-log.md](2026-features/session-log.md)._
+
+- 2026-08-30 — shipped **PF10 (#361)**: `qualities: [65]` plus `quality={IMAGE.quality}` at the
+  eight optimized `<Image>` sites. 12.9% off a real CDN image at w=1920, measured through the
+  optimizer. The row's "8 `sizes=` call sites" was the wrong work list — two of those were the
+  BoxTree dimensions map, not an image prop, and it missed five real render sites. Corrected
+  inventory and a guard test (`tests/config/imageQuality.test.ts`) in the group file.
 
 - 2026-08-30 — **PF4 closed as VOID (#360)**, no behavior change. Its backend blocker really had
   cleared (asked production, not source), but the `@todo`'s recipe fails `next build` on

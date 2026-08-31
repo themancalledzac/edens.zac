@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { type ReactNode } from 'react';
 
+import { IMAGE } from '@/app/constants';
 import { useParallax } from '@/app/hooks/useParallax';
 
 import styles from './CoverCard.module.scss';
@@ -63,6 +64,7 @@ export function CoverCard({
               height={height ?? 225}
               sizes={sizes}
               className={`${styles.cardImage} parallax-bg`}
+              quality={IMAGE.quality}
             />
           ) : (
             <div className={`${styles.placeholder} parallax-bg`} />
