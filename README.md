@@ -189,13 +189,13 @@ API_URL=http://localhost:8080
 NEXT_PUBLIC_CLOUDFRONT_URL=https://your-distribution.cloudfront.net
 
 # Next.js
-NEXT_PUBLIC_BASE_URL=http://localhost:3001
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
 ### Development
 
 ```bash
-# Start the development server (port 3001)
+# Start the development server (port 3000)
 npm run dev
 
 # Type checking
@@ -213,7 +213,28 @@ npm test
 npm run test:watch
 ```
 
-The application runs at `http://localhost:3001`.
+The application runs at `http://localhost:3000` — `npm run dev` is a bare `next dev`, which uses
+Next's default port.
+
+### Working on admin pages
+
+`/admin` and the other `(admin)` routes render anonymously in local dev, but **the backend does
+not**: since backend #243, `/api/admin/**` requires an admin role in every profile. The symptom is
+the admin panels sitting on "Loading users…" forever with 401s in the console. That is expected,
+and it is not a frontend gate to loosen.
+
+To get real data, sign in at `http://localhost:3000/login` with your own email and password. That
+is the whole procedure — the dev profile sets `app.auth.cookie-secure=false` so the session cookie
+works over plain http, and the BFF forwards `Set-Cookie` back to the browser. The session lasts 60
+days.
+
+`ADMIN_BOOTSTRAP_PASSWORD` does not help. It only seeds a user that does not exist yet, so once the
+admin account exists it is ignored.
+
+> **The local backend writes to production.** There is no local Postgres. The backend container's
+> datasource is `host.docker.internal:5432`, which is an SSH tunnel to the production EC2 database.
+> Every admin mutation you make against localhost edits live rows — real users, real collections.
+> Treat local admin as production admin.
 
 ---
 
