@@ -105,6 +105,16 @@ const nextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  experimental: {
+    /**
+     * Maps for the server bundle only. They stay on the server filesystem — nothing reaches a
+     * browser, which is why `productionBrowserSourceMaps` stays off.
+     *
+     * Reading them is a second, separate switch: `NODE_OPTIONS=--enable-source-maps` in the
+     * Amplify console. Without that variable this costs build output and buys nothing.
+     */
+    serverSourceMaps: true,
+  },
 };
 
 export default withBundleAnalyzer(nextConfig);
