@@ -39,38 +39,6 @@ merged; the UI needs the credentials list). Also open nearby, from CURRENT-STATE
 guard against `rpId=localhost`; passkey login has never been e2e-verified against a deployed
 environment.
 
-## AU4 · Local admin dev-session affordance
-
-Backend #243 (merged 2026-08-30) removed the `app.admin.enforce-authz` toggle:
-`SecurityConfig.java:75-76` now gates `/api/admin/**` behind `hasRole('ADMIN')` unconditionally in
-every profile (`/api/edit/**` likewise behind `hasRole('USER')`). The frontend's three anonymous
-local layers still pass, so local `/admin` renders but every data fetch 401s. The refactor board's
-G6 **shipped 2026-08-31 as PR #351** and fixed the now-false `CLAUDE.md` Critical Rule.
-
-**Re-scoped 2026-08-31 (6): documentation, not capability.** The paragraph that used to sit here
-said this was "packaging an existing flow" out of `ADMIN_BOOTSTRAP_EMAIL` /
-`ADMIN_BOOTSTRAP_PASSWORD` + `POST /api/auth/login`. Those ingredients do not combine.
-`AdminBootstrap.java:50-63` uses the password only to seed a user that does not exist yet; for an
-existing account it flips `is_admin`, logs "already admin but ADMIN_BOOTSTRAP_PASSWORD is still
-set", and returns without ever setting a password. `docker exec edenszacbackend-backend-1 printenv`
-shows the variable present and empty, so there is nothing to substitute even if it did work.
-
-**The login form at `/login` already works, and always did.** `application-dev.properties:9` sets
-`app.auth.cookie-secure=false`, so `ezac_session` survives plain http; the BFF re-emits
-`Set-Cookie` to the browser (`app/api/proxy/[...path]/route.ts:178-181`, pinned by
-`tests/api/proxy/route.test.ts:34`); sessions last 60 days. The friction was discoverability —
-nothing said a login was needed, and the panels hang on "Loading users…" rather than reporting the 401.
-
-**Do not build a dev-only session-minting route**, which was one of the options listed here. The
-backend has no local database: port 5432 is an autossh tunnel to the production EC2, and the
-container's `SPRING_DATASOURCE_URL` is `host.docker.internal:5432/edens_zac`. Such a route would
-mint production admin sessions from an unauthenticated localhost endpoint. For the same reason an
-agent cannot self-serve a session here, and should not try — the only working password is the
-owner's own.
-
-**What ships instead:** the README's Getting Started gains a "Working on admin pages" section
-covering the login step and the production-database warning. That is the whole item.
-
 ## Deferred by design (no rows — do not resurrect without a decision)
 
 - **ABAC Phase A** (admin MFA + admin-from-anywhere): `mfa_satisfied` is surfaced in `MeResponse`
@@ -83,6 +51,45 @@ covering the login step and the production-database warning. That is the whole i
   deleted when someone is in that area (logged-in-flow review §1.7).
 
 ## Closed
+
+### ✅ AU4 · Local admin dev-session affordance — docs shipped in #383
+
+There was no affordance to build; the `/login` form always worked. The item was re-scoped from
+capability to documentation, and what shipped is the README's "Working on admin pages" section.
+
+**Why `ADMIN_BOOTSTRAP_PASSWORD` is not the answer**, verified by running commands rather than
+reading. `AdminBootstrap.java:50-63` uses it only to seed a user that does not yet exist; for an
+account that already exists it flips `is_admin`, logs "already admin but ADMIN_BOOTSTRAP_PASSWORD
+is still set", and returns without ever setting a password. It is also empty on this machine —
+`docker exec edenszacbackend-backend-1 printenv` shows the variable present with no value.
+
+**The flow that does work** is the existing login form. The dev profile sets
+`app.auth.cookie-secure=false` (`application-dev.properties:9`) so `ezac_session` survives plain
+http, and the BFF re-emits `Set-Cookie` to the browser
+(`app/api/proxy/[...path]/route.ts:178-181`, pinned by `tests/api/proxy/route.test.ts:34`).
+Sessions last 60 days. The friction was never a missing mechanism — nothing said a login was
+needed, and the panels hang on "Loading users…" rather than reporting the 401.
+
+**Do not build a dev-only session-minting route.** It was one of the options originally listed
+here, and it is the one thing this item must prevent: against the database below, such a route
+would mint production admin sessions from an unauthenticated localhost endpoint. For the same
+reason an agent cannot self-serve a session here and should not try — the only working password is
+the owner's own, which is correct and should not be engineered around.
+
+**Its history is a case study in the board's own trap.** Run (7) recorded this SHIPPED on the
+strength of #383 being _opened_. Run (8) caught that, and also found AU4 keeping an open section
+beside this closed one. #383 then sat conflicting for two runs — and because GitHub builds
+`refs/pull/N/merge` for a `pull_request` event, a conflicting PR has no merge ref and **its CI
+never ran at all**. Not red, absent. A PR that has been open a while with no checks showing is
+worth a second look, not a glance.
+
+**The one fact that must not get lost with the item: the local backend writes to production.**
+Port 5432 is an autossh tunnel to the production EC2 (`ps aux | grep 'ssh.*5432'` →
+`-L 5432:localhost:5432 ec2-user@<prod-ip>`), and the backend container's `SPRING_DATASOURCE_URL`
+is `host.docker.internal:5432/edens_zac`. There is no local Postgres. Every admin mutation made at
+localhost edits live production rows. This is repeated here rather than only in the archive because
+it constrains **every** admin item on this board — MA1, MA2, MA3, MA4, MA5 and MA6 all mutate admin
+data, and none of them should be tested by bulk-editing through the local admin UI.
 
 ### ✅ AU3 · Enforce `UserStatus.DISABLED` — closed 2026-08-31 with no work; already shipped upstream
 

@@ -48,6 +48,15 @@ import { SaveHeart } from './SaveHeart';
 import { SelectStar } from './SelectStar';
 
 /**
+ * Content ids whose dimensions have already been reported this page load.
+ *
+ * The NaN guard below runs inside a per-tile render, so without this one dimensionless image is
+ * a log write per tile, per render, per viewer — and every one of them says the same thing.
+ * Module scope rather than component state because the point is to survive re-renders.
+ */
+const reportedDimensionFailures = new Set<number>();
+
+/**
  * Renders a single content item: IMAGE, GIF, COLLECTION, or TEXT metadata block.
  * Handles parallax, reorder mode, client gallery download, and image error fallback.
  *
@@ -645,7 +654,11 @@ export default function CollectionContentRenderer({
 
   const isNotVisible = contentType === 'IMAGE' && notVisible;
 
-  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+  if (
+    (!Number.isFinite(width) || !Number.isFinite(height)) &&
+    !reportedDimensionFailures.has(contentId)
+  ) {
+    reportedDimensionFailures.add(contentId);
     logger.error('CollectionContentRenderer', 'NaN detected in props', undefined, {
       contentId,
       contentType,

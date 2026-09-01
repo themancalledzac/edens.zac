@@ -4,12 +4,6 @@ _Context file for board items PF1–PF9 on [2026-features.md](../2026-features.m
 the dominant issue (hero not in server HTML) closed via PR #161's server-side layout seeding; the
 rest of the 002 chapter is this group._
 
-## PF2 · Blur placeholders
-
-Zero `blurDataURL` / `placeholder="blur"` hits in `app/`. Needs server-side generation (sharp) —
-the open scoping question is WHERE: at backend upload time (persisted per image) vs at request
-time in the FE. Scope that first; upload-time is the likely answer and makes this cross-repo.
-
 ## PF13 · Make the home page genuinely static (Cache Components / PPR) — COLD, real work
 
 Created by PF4's closure. PF4 asked for a segment-config flip and there is no flip to make; the
@@ -51,14 +45,24 @@ The documented incremental path is opt-OUT, not opt-in: enable the flag, delete 
 codemod, `npx @next/codemod@canary cache-components-instant-false ./app`), then convert routes one
 at a time. `instant` is real in 16.3.1 — `next/dist/build/segment-config/app/app-segment-config.js:144`.
 
-**One hard blocker that `instant = false` explicitly cannot defer — CLEARED by #375.**
-Synchronous IO during prerender is a build error regardless of opt-out, and
-`app/components/Footer/Footer.tsx` called `new Date().getFullYear()` from a server component in the
-**root layout**, so that one line failed the prerender of every route in the app. #375 moved the
-year into a Client Component; `grep -c 'new Date' app/components/Footer/Footer.tsx` returns **0**
-as of 2026-08-31 (5). Kept here because it is the reason step 1 existed, and because the same trap
-applies to any `Date`, `Math.random()` or `crypto.randomUUID()` added to a prerendered server
-component later.
+**One hard blocker that `instant = false` cannot defer — NOT cleared by #375, corrected
+2026-08-31 (6).** Synchronous IO during prerender is a build error regardless of opt-out.
+`Footer.tsx` called `new Date().getFullYear()` from a server component in the **root layout**, so
+that one line failed the prerender of every route. #375 moved the year into a Client Component,
+and `grep -c 'new Date' app/components/Footer/Footer.tsx` does return **0** — but the call did not
+go away, it moved to `app/components/Footer/CopyrightYear.tsx`, and **a Client Component is still
+server-rendered during prerender**. The read still happens at build time.
+
+Proven by build, not by reading. With the flag on and the 19 exports deleted, `next build` failed
+to prerender `/_not-found` — a route with no data fetching at all, rendering the root layout plus
+`StatusPage`. Replacing `new Date().getFullYear()` with a literal and rebuilding, changing nothing
+else, made `/_not-found` build. One variable moved.
+
+`CopyrightYear.tsx`'s own docblock states the opposite and is wrong: isolating the read in a Client
+Component is true, and "so no Server Component reads Date synchronously" is true, but neither
+implies the prerender is clear. Of Next's two documented escapes — Suspense plus `connection()`, or
+a Client Component — step 1 took the one that does not work here. The same trap applies to any
+`Date`, `Math.random()` or `crypto.randomUUID()` anywhere in a prerendered tree, client or server.
 
 **What `/[slug]` inherits — the question the guardrail asked.** `CollectionPageWrapper` is rendered
 by `app/page.tsx`, `app/[slug]/page.tsx` and `app/all-client-galleries/page.tsx`. Restructuring its
@@ -67,22 +71,78 @@ home-only version of it short of forking the wrapper or threading a flag through
 keep `instant = false` so it is not _validated_, but it still gets the restructured tree. So the
 guardrail's premise — that the wrapper change can be confined — does not hold either.
 
-**Adopted 2026-08-31 (decision #12): full speed.** Step 1 is shipped; steps 2 and 3 stand as
-written, and PF12 landing removes the reason to hold step 2.
+**Adopted 2026-08-31 (decision #12): full speed.** Step 2 was then attempted on 2026-08-31 (6)
+and stopped as blocked; see the build evidence below. Step 3 was not started, per its own
+precondition.
 
 **Revised work list**, in order, each a sitting:
 
-1. ~~Fix `Footer`'s `new Date()`.~~ **SHIPPED (#375).** The year renders from a Client Component.
-   Next documents two escapes for synchronous IO during prerender — Suspense plus `connection()`,
-   or a Client Component. Suspense would have made the footer a streamed hole on every page, so
-   the year popped in after paint; a client leaf costs a few bytes and keeps the footer in the
-   static shell. Worth carrying forward: `instant = false` does NOT clear synchronous-IO errors
-   (`migrating-to-cache-components.md:85`), so this genuinely blocked every route, not just home.
-2. The mechanical PR: `cacheComponents: true`, delete 19 `force-dynamic` exports, codemod
-   `instant = false` onto the segments. Verify `next build` and the full suite. No behavior change
-   intended, but this is where fetch-caching semantics shift app-wide, so it wants its own review.
-3. Convert home: Suspense around `resolveSsrViewport()` and `meServer()` in the wrapper, and decide
-   what `/[slug]` and `/all-client-galleries` do with the same tree.
+1. **Hoist cookie forwarding out of `fetchBase`.** This is the real MR 1 and it was not on the
+   list. `getServerCookieHeader()` is awaited inside `fetchBase`
+   (`app/lib/api/core.ts:269`), which every server-side backend read funnels through, so no read
+   can be wrapped in `use cache` — `cookies()` in a cached scope throws
+   `next-request-in-use-cache`, and per `use-cache.md:196` that failure "can pass `next build` and
+   fail under `next start`". Pass the cookie header in as an argument, or give the cacheable reads
+   a cookie-free path. Until this lands, nothing else in the list is reachable.
+2. **Re-do step 1 properly.** Move the footer year to Suspense plus `connection()`, or drop the
+   dynamic year outright (a copyright line does not need to be live). The Client Component does not
+   escape the prerender.
+3. **Decide what the build does about the backend.** Five of the 19 `force-dynamic` exports exist
+   precisely so `next build` never calls the backend — the canonical comment is at
+   `app/tag/[slug]/page.tsx:11-17`. Deleting them makes the build fetch, which is what failed
+   below. `instant = false` does not prevent it. Either the cacheable reads get build-time-safe
+   fallbacks, or those routes need `generateStaticParams` returning nothing meaningful, or they
+   stay dynamic by another means.
+4. **Then** the flag flip and the codemod, with the six tagged fetches rewritten as `use cache`
+   helpers carrying `cacheLife`/`cacheTag` so `/api/revalidate` still has something to invalidate.
+5. **Then** convert home: Suspense around `resolveSsrViewport()` and `meServer()` in the wrapper,
+   and decide what `/[slug]` and `/all-client-galleries` do with the same tree.
+
+### ATTEMPTED AND STOPPED 2026-08-31 (6) — step 2 is not mechanical
+
+Run under the guardrail "no behaviour change intended; verify with `next build` plus the full
+suite, not by reasoning". The build is what disproved it. Every number below is from a command,
+and each is reproducible by re-running it.
+
+**Baseline.** `next build` on `main` succeeds. Every route reports `ƒ` (dynamic) except
+`/_not-found`; 3 static pages generated. Nothing prerenders today.
+
+**Flag alone.** `cacheComponents: true` and nothing else: the build fails with
+`Route segment config "dynamic" is not compatible with nextConfig.cacheComponents` listing exactly
+**19 files**. The board's count was right.
+
+**Full mechanical migration.** Delete all 19 exports, then
+`npx @next/codemod@canary cache-components-instant-false ./app --force` — it adds
+`export const instant = false` to **21 files** (19 pages + both layouts), each with a TODO comment.
+The build now attempts 22 static pages instead of 3, and **fails**:
+
+- `/_not-found` — the root-layout `new Date()` above.
+- `/collections` — `ApiError: During prerendering, fetch() rejects when the prerender is complete`,
+  thrown at `app/lib/api/core.ts:236` via `getScopedAllCollections`
+  (`app/lib/api/collections.ts:130`), called from `app/collections/page.tsx:100`. This is the
+  build-container-cannot-reach-the-backend case the force-dynamic comments were written for.
+- `/` and `/search` — `Failed to build ... because it took more than 60 seconds`, three attempts
+  each, then the export exits. `/search` fails **despite already having a Suspense boundary and
+  `instant = false`**, which is the clearest single sign that the codemod is not the escape hatch
+  the row assumed.
+
+**Why `instant = false` does not rescue any of it.** It is a validation opt-out, not a rendering
+one. `migrating-to-cache-components.md` says plainly that it "does not force the route to be
+dynamic" and does not clear synchronous-IO build errors. The build still renders the tree, so it
+still calls the backend and still evaluates `new Date()`.
+
+**The behaviour change the guardrail was watching for is real and is in the fetches.** Under
+`cacheComponents` a bare `fetch` is dynamic; `next: { revalidate, tags }` applies only inside a
+`use cache` scope. Six call sites currently cache on `TIMING.revalidateCache = 3600` with tags —
+`collections-index`, `collection-{slug}`, `collections-location-{slug}` (`app/lib/api/collections.ts:84,108,151`),
+`content-tags`, `content-locations`, `search-images` (`app/lib/api/content.ts:42,58,139`). All six
+silently stop being cached, and `revalidateTag` in `app/api/revalidate/route.ts:62,69` loses its
+targets. That is a change to the hottest reads on the site, landing invisibly.
+
+**One more thing to weigh before adopting.** The `fetch` Data Cache persists across deployments and
+instances; `use cache` defaults to in-memory, scoped to one deployment and discarded on instance
+teardown. On Amplify Lambda the 1-hour collection cache becomes per-instance unless a cache handler
+or `use cache: remote` is configured. Measure before assuming it is a wash.
 
 **Sequencing risk, now retired.** Merging to `main` still auto-deploys to production in ~15
 minutes, but since PF12 only a commit with green CI can get to `main`. Step 2 changes caching
@@ -91,18 +151,6 @@ that condition is gone.
 
 Budget the test side. PF8 broke two suites purely by splitting two pages around Suspense
 boundaries; this splits the wrapper three routes render through.
-
-## PF6 · External error tracking
-
-Blocked on decision #8 (Sentry vs CloudWatch). Zero `Sentry` and zero `reportToService` hits in
-`app/`, both re-run 2026-08-31. Error-boundary work rides the same MR.
-
-**Premise correction, 2026-08-31.** This section said the #171 logger migration left a
-`// Future: reportToService()` seam. It did not. `app/utils/logger.ts` is 14 lines of plain
-`console.*` wrappers with no `TODO`, `Future` or `FIXME` marker in the file. Whoever picks this up
-is adding a reporting path, not filling one in — there is no seam to slot into, and the estimate
-should carry the cost of choosing where the call sites go. Found by running the grep rather than
-re-reading the item; the claim had survived at least two passes.
 
 ## PF7 · CloudFlare Phase 2
 
@@ -130,6 +178,98 @@ unlinked labels, `window.confirm`) is untriaged AND its file paths are stale
 against current paths first — the findings may be live, the line numbers are not.
 
 ## Closed
+
+### ✅ PF6 · External error tracking — PR #391, 2026-08-31
+
+**Decision #13 answered: yes.** Amplify Hosting already forwards this app's server stdout to a
+CloudWatch log group, which collapsed the item to roughly a third of its worst case. No
+`@aws-sdk/client-cloudwatch-logs`, no log group to create, no credentials, no execution-role
+permission; `package.json` is still five dependencies. Decision #8 had already chosen CloudWatch
+over Sentry.
+
+**What shipped.**
+
+- `app/utils/logger.ts` — one JSON object per line on the production server, because Logs Insights
+  can only filter on fields it can parse. The payload is flattened first: an `Error` does not
+  survive `JSON.stringify` unassisted, since `name`, `message` and `stack` are all non-enumerable,
+  so the obvious version logs `{}`. `digest` rides along. Dev output and the
+  `NODE_ENV === 'test'` early return are unchanged. No timestamp — CloudWatch stamps on ingest, and
+  a `new Date()` here would make any render that logs dynamic under Cache Components.
+- `app/api/client-errors/route.ts` — a same-origin POST whose stdout is the same stream, since a
+  browser `console.error` reaches nobody. Anonymous deliberately: the viewers whose errors matter
+  most never sign in. Gated on `Origin` with the shared `isAllowedWriteOrigin`, body capped at 8KB,
+  every field clipped, and `context` carried as one string so a caller-chosen key cannot overwrite
+  `level` or `module`.
+- The `CollectionContentRenderer` cap, which the run made a prerequisite — deduped by content id,
+  with a 20-per-page-load budget in the logger as the backstop for any other render-path error.
+- `app/global-error.tsx` — the one boundary that was genuinely missing. It owns `<html>`/`<body>`
+  and imports nothing but the logger, because anything else it imported could be what just crashed.
+- `next.config.js` — `experimental.serverSourceMaps: true`. Option 3 from the table below, which
+  the source-map pass had ranked best-readability-per-risk and withheld only because it needs a
+  hand on the console. The user supplied the hand.
+
+**Two deliberate deviations from the MR shape this file planned.**
+
+- The reporter lives inside `logger.error` rather than being called from the three `error.tsx`
+  boundaries. They already call `logger.error`, so one call path covers them and every other client
+  error site.
+- **No rate limit in the route**, though the plan listed one. A per-instance in-memory counter is
+  close to useless on serverless, and shipping one would advertise a protection that is not there.
+  The bounds that exist are the client budget, the body cap and the `Origin` gate. A forged
+  `Origin` from a non-browser client can still flood it; volume control belongs at the edge, with
+  PF7.
+
+**Still owed by the console, not by this repo.** `serverSourceMaps` generates maps; it does not
+apply them. Until `NODE_OPTIONS=--enable-source-maps` is set on the Amplify branch, server traces
+stay minified and the config costs build output for nothing.
+
+**The source-map options, priced 2026-08-31 (8).** Kept so 2, 4 and 5 are not re-proposed from
+scratch. Option 1 was the recommendation while nobody could touch the console; option 3 is what
+shipped once someone could.
+
+CloudWatch Logs stores and searches text. It does not ingest maps and will not un-minify a trace
+the way Sentry does on ingest. So "wire up source maps" is really five different options with
+different owners:
+
+| #   | Option                                                                      | Cost                                                                                                                            | Exposes                                                               | Reachable from this repo?                          |
+| --- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------- |
+| 1   | Accept minified; lean on `error.digest`                                     | zero                                                                                                                            | nothing                                                               | yes — nothing to change                            |
+| 2   | `productionBrowserSourceMaps: true`, symbolicate by hand per incident       | one config line, slower build, more build memory                                                                                | the whole frontend source, at public `/_next/static/**/*.js.map` URLs | yes                                                |
+| 3   | `experimental.serverSourceMaps: true` + `NODE_OPTIONS=--enable-source-maps` | config line + one console env var                                                                                               | nothing public                                                        | **no** — the env var is set in the Amplify console |
+| 4   | Upload maps to S3 in a `postBuild` step, symbolicate with a separate tool   | build-spec change + bucket + tool                                                                                               | nothing, if the bucket is private                                     | **no** — needs the Amplify build spec              |
+| 5   | Symbolicate in-process before writing the log line                          | new runtime dependency, maps shipped in the deploy, CPU on the error path, plus a `proxy.ts` rule to 404 the public `.map` URLs | nothing public                                                        | yes, but fiddly                                    |
+
+**Option 3 shipped.** It was already the best readability-per-risk on the list — Node applies the
+maps itself, so `error.stack` is un-minified by the time `logger.error` stringifies it, with no
+tooling and nothing served to browsers. The only thing holding it back was that it needs a hand on
+the console, and the user supplied one when answering decision #13.
+
+Option 1 was the recommendation while that was not true, and it is still what the client half
+runs on: the digest links a user-visible ID to the full server-side entry, and all three
+`error.tsx` boundaries render it. Browser traces stay minified, which is the accepted cost —
+option 2 buys readability you can only use by hand, per incident, in exchange for publishing the
+frontend source at a public URL permanently.
+
+### ⛔ PF2 · Blur placeholders — DROPPED 2026-08-31 (7) by the user. Do not re-propose.
+
+Scoped, then declined. Kept here rather than deleted so it is not rediscovered as a new idea.
+
+**Why it was dropped.** `docs/002-performance.md:25` had already downgraded it: PR #161's SSR
+BoxTree gave rows real dimensions server-side, so there is no layout shift left to fix. This was
+only ever about what fills the box while bytes arrive. Weighed against the cost, the user said no.
+
+**What it would have cost, since the scoping was done.** Real per-image blur is backend-first: a
+new column (a 20px base64 JPEG is ~515 chars, ~18KB per collection page before gzip), a Flyway
+migration, `ContentImageEntity`, six repository touch points, and — the bulk — a **31-component
+positional record** whose four production and fourteen test construction sites all need editing.
+Then a backfill over **1424 images** (`curl "localhost:8080/api/read/content/images/search?size=1"`
+→ `"totalElements":1424`, re-run 2026-08-31 (7)), about half an hour unattended.
+
+**The one genuinely cheap thing, also declined.** Next 16.3.1 accepts a raw data URI as the
+`placeholder` value with no `blurDataURL` at all — verified in the shipped runtime at
+`node_modules/next/dist/shared/lib/get-img-props.js:414`. A generic shimmer would have been one
+edit to the shared `imageProps` object at `CollectionContentRenderer.tsx:668`. Worth knowing if
+this ever comes back: the gallery funnels every image through that one object literal.
 
 ### ✅ PF12 · Gate the auto-deploy on CI — applied 2026-08-31 (no PR; repo + host settings)
 

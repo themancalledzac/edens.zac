@@ -52,3 +52,76 @@ same close-out that adds them._
   exist. Both corrected; the lesson is hoisted into "How to use this doc". **EM5 re-specified** —
   the backend exposes no email-enabled flag, so it is a post-send callout on
   `reason === 'email-disabled'`. Next: ask decision #7, then EM5, PF13, SD3.
+
+- 2026-08-31 (4) — shipped **LY2 (#369)**, **EM5 (#370)**, **SD3's badge slice (#373)**; **PF13
+  (#372) re-specified rather than built**. **Decision #7 answered** — the shared-width rule holds;
+  asking it narrowly is what closed it, since `pinnedWidthSpread` turned out to constrain only
+  side-by-side panel columns, never a stack (a `'V'` split hands both children the full width).
+  **PF13's guardrail was unsatisfiable and the run stopped on it**: `cacheComponents` is app-wide
+  in Next 16.3.1, enabling it errors 19 of 21 route segments, and `Footer.tsx:29`'s `new Date()`
+  blocks every prerender regardless — re-sized to 3 sittings behind PF12, filed as **decision
+  #12**. **Two premises were wrong and both were found by reading behavior, not grepping strings**:
+  EM5's row said no email-disabled handling existed, but `ShareCard` already had the copy keyed on
+  `sent === false` alone, so it blamed the email switch for every failure; and SD3's "removable
+  badges + Clear-all" was half-built, since Clear-all is the trailing ×. **Estimates missed the
+  same way three times** — EM5 "one callout" landed 12 files, SD3 "one slice" landed 8, both
+  through shared primitives and their test fixtures; hoisted as a new sizing rule. **Reconciliation
+  found three stale things**: LY1's `rowCombination.ts:1049` → `:1055` (drift from #369's own
+  docblock), MA1's `TODO(A3)` sub-task gone AND its feature already shipped (`b66c39a`), and EM2's
+  "no recipient field" premise false (`InfoTab.tsx:303`). **PF12's premise verified live** — no
+  branch protection, no rulesets. Next: ask decision #12, then EM2, SD3 year chips, PF12.
+
+- 2026-08-31 (5) — shipped **PF13 step 1 (#375)**, **SD3 year chips (#376)**, and closed **PF12**
+  by applying branch protection. **Decision #12 answered: adopt Cache Components, full speed**, so
+  #375 joined the run and steps 2–3 are now the next run. **EM2 went BLOCKED, and the blocker was
+  nowhere near where two passes had been looking** — both prior passes argued about whether
+  `InfoTab` had a recipient field; it does, and it never mattered. `recipient_emails` has one
+  writer, which overwrites the whole array while mailing every address in it, so the frontend can
+  preserve the stored list or narrow the send, never both. **PF12's own premise was half wrong**:
+  branch protection was settable as expected, but Amplify has no wait-for-checks setting to pair
+  with it — the branch API exposes `enableAutoBuild` and nothing else, so the "console half" the
+  row promised does not exist, and protection alone closes the hole. **SD3's browser pass earned
+  its keep twice**: `year` was missing from `FILTER_PARAM_KEYS` while its own drift-guard test
+  passed (the fixture omitted `years`), and `/all-collections` printed "No images match your
+  filters" above three matching tiles. Filed one follow-up: a pre-existing setState-in-render
+  warning on every collection page, confirmed on `main` before filing. Next: PF13 steps 2 and 3,
+  then an SD3 slice. Close-out landed as **#377**.
+  **Reconciliation this pass re-ran eight recorded counts and all eight held** (PF13's 19/21,
+  LY1's 0 case-sensitive / 2 case-insensitive, PF6's zero Sentry + zero `reportToService` + 14-line
+  `logger.ts`, PF2's zero `blurDataURL`), plus four backend facts (MA1's absent
+  `PATCH /collections/{id}`, CT5's zero auto-tag hits, AU2's exactly four WebAuthn mappings, SD2's
+  `withTags` still at `:109`). **Two refs did move, both inside the neighbourhood of what merged**:
+  `Footer.tsx:29` is GONE — #375 removed the `new Date()` the PF13 section still described in the
+  present tense as a live blocker — and `contentFilter.ts:670` drifted to `:689` because #376's own
+  `year` key pushed `FILTER_PARAM_KEYS` down. **This close-out also mis-filed its own log entry**,
+  labelling it `(4)` beside the existing `(4)` and placing it below rather than above; both fixed
+  here. **A third stale thing, and this one was outside any recent neighbourhood**: the PF group's
+  "5 shipped" had been wrong since PF3 (#362) and PF10 (#361) closed, and PF4's VOID closure was
+  never counted either — the real figure is 9. It is now written with the command that derives it.
+  **The estimate lesson did not take.** Entry (4) named "shared primitives plus their test
+  fixtures" as the failure mode after three misses; SD3's year chips were sized as "one slice" and
+  landed 17 files across 8 app and 6 test files, which is the same miss a fourth time with the rule
+  already written down. The rule is not the gap — applying it at scheduling time is, so the run
+  entries now carry the size call, not just the guardrail.
+
+- 2026-08-31 (6) — **nothing shipped.** SD3's focal-length slice was built and verified as **#379**
+  and then **dropped by the user before merge** — not wanted, and the stated direction is fewer
+  lens-related filters rather than more. **PF13 step 2 attempted and stopped as blocked**, which is
+  what its guardrail was for. Two items, two different kinds of stop; the board's job now is to not
+  re-propose either. **SD3's open data question was answered along the way, and it is yes**:
+  207 of 281 sampled images carry `focalLength` (74%), near-uniformly `'24 mm'`, and the gap is
+  film rather than focal length — `dolomites-film` 0/30, `lisbon-film` 0/23 — so the dimension
+  self-hides on film pages through the existing gate. The parser was restored from `266c56c`
+  rather than rewritten; it had been deleted as an orphan because lens NAMES beat lens types, not
+  because the bucketing was wrong. **PF13's stop produced two corrections, both found by building
+  rather than reading.** #375 did not clear the root-layout prerender blocker: the `new Date()`
+  moved into a Client Component, which still server-renders during prerender — proven by
+  hardcoding the year and watching `/_not-found` start building, one variable changed. And
+  `instant = false` does not make unconverted routes safe: `/search` failed the prerender carrying
+  both it and a Suspense boundary, while `/collections` 500'd calling the backend mid-build and `/`
+  timed out at 60s × 3. **The real blocker was nowhere in the row** — `cookies()` sits inside
+  `fetchBase`, so no read can enter a `use cache` scope, and the six tagged fetches would silently
+  stop caching. Three lessons hoisted into "How to use this doc" — including the one #379 taught,
+  which none of the existing guardrails would have caught: a facet can be built correctly and still
+  be unwanted. Next: PF13 MR 1 (hoist the cookie forwarding), re-do step 1, and **ask** whether the
+  film-stock dimension is wanted before building it.
