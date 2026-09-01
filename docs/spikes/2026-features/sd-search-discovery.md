@@ -1,29 +1,6 @@
 # SD — Search & discovery
 
-_Context file for board items SD1–SD5 on [2026-features.md](../2026-features.md)._
-
-## SD7 · Backend: enrich `people` on collection blocks
-
-The identical gap SD2 closed for `locations`, found while shipping it. Filed rather than bundled,
-because SD2 was scoped to locations and this board's rule is one MR per item.
-
-`CollectionProcessingUtil.batchConvertToBasicModels:95-96` already batch-loads `peopleByCollectionId`
-via `collectionPeopleRepository.findPeopleForCollections` and sets it on the model. The frontend
-already reads `ref.people` in both `collectionRefMatchesCriteria` and `extractFilterOptions`. But
-`ContentModels.Collection` has no `people` component, so the value has nowhere to ride out — exactly
-the shape `locations` was in.
-
-Same three backend files, same zero added queries. Backend #277 is the worked example: one record
-component, a copy in `fromCollectionModel`, `List.of()` at
-`ContentModelConverter.buildCollectionRecord` (per-row, no batched map, so filling it there is a
-real N+1), and no `withPeople` wither because the value arrives on the model.
-
-**Guardrail: do this before anything else reshapes `ContentModels.Collection`.** It edits the same
-20-component positional constructor and the same four test call sites SD2 just edited
-(`CollectionFlagSerializationTest:74`, `CollectionServiceTest` ×3). Two items paying that cost is
-the price of not bundling; three would not be.
-
-Cross-repo: already filed on the backend board as #25. Est: 1 sitting.
+_Context file for board items SD1–SD7 on [2026-features.md](../2026-features.md)._
 
 ## SD3 · Filter-bar dimension gaps
 
@@ -155,6 +132,29 @@ is effectively unlisted, which is a real cost the decision should weigh.
 
 ## Closed
 
+### ✅ SD7 · `people` on collection blocks — backend #293, 2026-08-31
+
+The identical gap SD2 closed for `locations`, found while shipping it and filed rather than
+bundled. `batchConvertToBasicModels` already batch-loaded people onto the model and the frontend
+already read `ref.people` — `contentFilter.ts:946` matches on `name` — but
+`ContentModels.Collection` had no `people` component, so the value had nowhere to ride out and the
+filter matched against nothing.
+
+Followed #277 exactly: one record component, one copy in `fromCollectionModel`, no repository
+method, no query, no migration, no N+1. No `withPeople` twin, for the same reason there is no
+`withLocations` twin — people arrive on the model, so one nobody calls would be dead code.
+`ContentModelConverter.buildCollectionRecord` keeps `List.of()`; its docblock now records that for
+all three of tags, locations and people.
+
+Additive: every `COLLECTION` block on the synthetic list views, the tag view and the `/user` page
+gains a `people` array of `{id, name}`. `Records.Person` has no slug, so unlike locations there is
+no second field to keep in step with the frontend.
+
+**The split's predicted cost landed exactly.** The board said splitting this from SD2 would mean
+editing the 20-component positional constructor and its four test call sites a second time. That
+is precisely what it cost, and nothing else. Built in a worktree off `origin/main`, because the
+backend checkout was occupied by another session.
+
 ### ✅ SD2 · `locations` on collection blocks — backend #277, merged 2026-08-31
 
 **MR open: backend [#277](https://github.com/themancalledzac/edens.zac.backend/pull/277).** Filed on
@@ -182,9 +182,10 @@ matter, because `applyCollectionFilters` runs on the raw `collection.content` be
 Additive API change — the synthetic list views, the tag view and the `/user` page all gain a
 `locations` array of `{id, name, slug}` on each `COLLECTION` block.
 
-**`people` has the identical gap and was deliberately not bundled** — see SD7 on the board, and
-backend board #25. Same three files, same zero added queries; splitting it costs a second edit of
-the same 20-component positional constructor.
+**`people` had the identical gap and was deliberately not bundled.** Shipped separately as SD7,
+backend [#293](https://github.com/themancalledzac/edens.zac.backend/pull/293) — see its entry in
+Closed below. The split cost exactly what was predicted: a second edit of the same 20-component
+positional constructor and its four test call sites, and nothing else.
 
 Source: `2026-08-05-collections-page-filter-bar-design.md` §4 and `docs/004-content-discovery.md:28`.
 
