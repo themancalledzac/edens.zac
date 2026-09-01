@@ -4,12 +4,6 @@ _Context file for board items PF1–PF9 on [2026-features.md](../2026-features.m
 the dominant issue (hero not in server HTML) closed via PR #161's server-side layout seeding; the
 rest of the 002 chapter is this group._
 
-## PF2 · Blur placeholders
-
-Zero `blurDataURL` / `placeholder="blur"` hits in `app/`. Needs server-side generation (sharp) —
-the open scoping question is WHERE: at backend upload time (persisted per image) vs at request
-time in the FE. Scope that first; upload-time is the likely answer and makes this cross-repo.
-
 ## PF13 · Make the home page genuinely static (Cache Components / PPR) — COLD, real work
 
 Created by PF4's closure. PF4 asked for a segment-config flip and there is no flip to make; the

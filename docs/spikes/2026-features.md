@@ -140,6 +140,26 @@ reportToService()` seam (it does not exist — `logger.ts` is 14 lines of `conso
   trees, so it still calls the backend and still evaluates synchronous IO. `/search` failed the
   prerender while carrying both a Suspense boundary and `instant = false`. Anything sized on "the
   codemod handles the rest" is sized wrong.
+- **A close-out that updates rows and not sections leaves the board lying, and it has now happened
+  four times.** Run (8)'s own close-out set SD2/MA3/MA4 to "MR OPEN" in the work-board table while
+  their `###` sections still described the work as unstarted, and filed SD7 as a row with no section
+  at all. Run (7) left three items with BOTH an open section and a closed one, because the archive
+  move copied without deleting — and two of those, SD5 and AU4, were recorded shipped on the
+  strength of a PR being **opened**, not merged (#382 is still open; #383 is open AND `DIRTY`).
+  PF2's leftover open section was the dangerous one: the group file said DROPPED, do not
+  re-propose, while an open section beside it still read as a live scoping task. Two checks, both
+  one line, run them every close-out:
+  ```bash
+  # every work-board row has a section, and every section has a row
+  awk '/^## Work board/{f=1} /^\*\*Not on this board/{f=0} f' docs/spikes/2026-features.md \
+    | grep -oE '^\| [A-Z]+[0-9]+' | tr -d '| ' | sort > /tmp/wb
+  grep -oE '^### ☐ [A-Z]+[0-9]+' docs/spikes/2026-features.md | sed 's/### ☐ //' | sort > /tmp/se
+  comm -3 /tmp/wb /tmp/se        # must be empty
+  # no item has two headings in one file (an archive move that copied instead of moving)
+  grep -ohE '^#{2,3} (☐ |✅ |⛔ )?[A-Z]{2}[0-9]+' <file> | grep -oE '[A-Z]{2}[0-9]+' | sort | uniq -d
+  ```
+  And never tick an item off a PR number alone — `gh pr view N --json state,mergedAt`. An opened PR
+  is not a merged one, and on this board the gap has been days.
 - **Every sizing rule on this board points one way. SD2 went the other.** Eleven guardrails above
   exist because items came in bigger than written; SD2 came in smaller. Its row asked for a
   locations batch-load "mirroring the tags batch-load" — and that query already ran, one line
@@ -175,7 +195,6 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 
 | Item | Scope                                                        | Repo    | Status                                                                                                                                         |
 | ---- | ------------------------------------------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| SD2  | Enrich `locations` on collection blocks                      | BE      | ☐ MR OPEN — backend [#277](https://github.com/themancalledzac/edens.zac.backend/pull/277); smaller than specced                                |
 | SD7  | Enrich `people` on collection blocks                         | BE      | ☐ COLD — identical gap to SD2, found shipping it; backend board #25                                                                            |
 | SD3  | Filter-bar dimension gaps (film stock, row merge)            | FE      | ☐ COLD — badges #373 and year #376 shipped; focal length BUILT AND DROPPED (user, #379)                                                        |
 | SD4  | `/explore` as a real drill-down explorer (Option C)          | FE      | ☐ BLOCKED — reconcile with refactor-board H5 design review first                                                                               |
@@ -217,57 +236,56 @@ tests and function decomposition (debt, chapter 006); and three self-labeled una
 (liked images, mobile text overlay, React 19 follow-ups), listed in the group files so they are
 not rediscovered as new.
 
-## NEXT RUN — set 2026-08-31 (8)
+## NEXT RUN — set 2026-08-31 (9)
 
-Four items, four MRs, nothing stopped. Two landed as code, two as findings — and both findings were
-the guardrail working, not the guardrail failing.
+Run (8) shipped five MRs and all five merged. The deferred ref sweep then ran and found the
+close-out's own damage, fixed as #389 — see the session log. Nothing below is blocked except item 1,
+and item 1 is a question you can answer in a minute.
 
-1. **Answer decision #13, then PF6 in one MR.** It is a console lookup: does Amplify already ship
-   this app's server stdout to a CloudWatch log group? Yes makes PF6 a `logger.ts` formatting change
-   plus an ingest route; no adds the AWS SDK and an execution-role permission. Source maps are
-   settled either way — set nothing, ship on `error.digest`. **Prerequisite inside the MR:** cap
-   `CollectionContentRenderer.tsx:649`, which logs from inside a per-tile render.
+1. **Decision #13 first, then PF6 in one MR.** It is a console lookup, not a judgment call: does
+   Amplify already ship this app's server stdout to a CloudWatch log group? Yes → PF6's server half
+   is a `logger.ts` formatting change plus a same-origin ingest route. No → it needs
+   `@aws-sdk/client-cloudwatch-logs`, a log group and an execution-role permission. Source maps are
+   already settled either way: set nothing, ship on `error.digest`. **Guardrail: cap
+   `CollectionContentRenderer.tsx:649` in the same MR** — it logs from inside a per-tile render, so
+   one dimensionless image is a write per tile, per render, per viewer. Do not ship the reporting
+   path without that cap.
 
-2. **MA3 §5.2 — the manage page's mobile filter bar.** Seen while measuring §5.1: at 375px the bar
-   stacks one chip per row (Lens, then each date, then Highly Rated, then Order), pushing the grid
-   most of a viewport down. Same surface, same method — mount it, measure it, do not reason about
-   it. **Same guardrail as §5.1: light surface, no admin-only dark; that is PF14's job.**
+2. **SD7 — `people` on collection blocks.** Backend, one sitting, fully specified; backend #277 is
+   the worked example. **Guardrail: do it before anything else reshapes `ContentModels.Collection`,**
+   because it edits the same 20-component positional constructor and the same four test call sites
+   SD2 just edited. Check the backend checkout is free first, and use a worktree if it is not.
 
-3. **SD7 — `people` on collection blocks.** The identical gap SD2 just closed for `locations`, in
-   the same three backend files, with the same zero added queries. Backend board #25 carries the
-   worked example. **Guardrail: it edits the same 20-component positional constructor and its four
-   test call sites, so do it before anything else reshapes that record.**
+3. **MA3 §5.2 — the manage page's mobile grid and bottom bar.** Warm from §5.1, same surface, same
+   method: mount it, measure it, do not reason about it from the stylesheet. The known defect is the
+   filter bar stacking one chip per row at 375px. **Guardrail: light surface, no admin-only dark
+   styling — that is PF14's job, site-wide, and decision #5 already rejected the alternative.**
 
-4. **The close-out's own ref sweep, run AFTER this run's PRs merge.** #386, #387, #277, #281 and
-   the four still open from run (7) are all unmerged as this is written, so every "MR OPEN" row
-   above is a ref that moves on merge. This board's own rule says the sharpest drift is what you
-   just shipped.
+**Re-derive refs between MRs?** 1 and 3 are both frontend but disjoint. 2 is in the other repo.
 
-**Re-derive refs between MRs?** 1 and 2 are disjoint. 3 is in the other repo. 4 is the sweep.
+**Ask first, batched:** #13 unblocks item 1. The rest (#1, #2, #3, #4, #6, #10) each unblock an item
+outside this run, so they can ride along or wait.
 
-**Ask first, batched:** decision #13 is the only one that unblocks an item in this run. The rest
-(#1, #2, #3, #4, #6, #10) each unblock an item that is not.
-
-**Not scheduled, and why.** PF13 steps 2–3 still wait on `getCollectionBySlug` and `meServer`.
-MA1 and EM2 wait on backend MRs. MA4's mark-as-read waits on a read column that `V17` does not
-have. SD3's film-stock slice is still a question, not a task — the board's own rule is to ask
-before adding another facet, and it was not asked this run because nothing in this run touched it.
+**Not scheduled, and why.** #381–#384 from run (7) are still open and unmerged — nothing in this run
+touches their files, but SD5 stays "settled, fix unmerged" until #382 lands. PF13 steps 2–3 wait on
+`getCollectionBySlug` and `meServer`. MA1 and EM2 wait on backend MRs. MA4's mark-as-read waits on a
+read column `V17` does not have, and still owes a backend-board row of its own. SD3's film-stock
+slice is a question, not a task.
 
 ## Verified and holding — do not re-investigate
 
-Re-run 2026-08-31 (7), with the command beside each. Every row below was re-run this pass, not
-re-read. Skip these on the next reconciliation unless something in their neighbourhood merges.
+Re-run 2026-08-31 (8), with the command beside each. Every row below was re-run this pass, not
+re-read. SD2's row was deleted rather than re-run — the item shipped, so the claim it pinned
+("`locations` not enriched") is now false by construction. Skip these on the next reconciliation unless something in their neighbourhood merges.
 
 | Claim                                                           | Command                                                                                                                       | Result                                     |
 | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
 | PF13: 19 segments export `dynamic`, and the flag rejects all 19 | `grep -rn 'export const dynamic' app --include='*.tsx' \| wc -l`, then `cacheComponents: true` + `next build`                 | 19; build names exactly those 19 files     |
 | LY1: no FILLER/gap-box symbol exists                            | `grep -rn 'FILLER\|gapBox\|endRowGap' app/utils \| wc -l` (case-sensitive)                                                    | 0 (case-insensitive: 2, both prose)        |
 | PF6: no error tracking, no seam to fill                         | `grep -rn 'Sentry' app`, `grep -rn 'reportToService' app`, `wc -l app/utils/logger.ts`                                        | 0, 0, 14                                   |
-| PF2: no blur placeholders                                       | `grep -rn 'blurDataURL\|placeholder="blur"' app \| wc -l`                                                                     | 0                                          |
 | MA1: `PATCH /collections/{id}` absent                           | `git grep -n '@PatchMapping' origin/main -- src/main/java/` in the backend                                                    | 5 hits, all sub-resource or unrelated      |
 | CT5: no auto-tag endpoint                                       | `git grep -c 'auto-tag' origin/main -- src/main/java/`                                                                        | 0                                          |
 | AU2: no passkey list/revoke                                     | `git show origin/main:...auth/WebAuthnController.java \| grep -cE '@(Get\|Post\|Put\|Patch\|Delete)Mapping'`                  | 4 endpoints, register/login × start/finish |
-| SD2: `locations` not enriched                                   | `git show origin/main:...SyntheticCollectionResolver.java \| grep -n 'withTags\|withLocations'`                               | `withTags` at `:109`, no `withLocations`   |
 | MA4: no read column on `messages`                               | `git grep -n -iE 'alter table (public\.)?messages\|read_at\|is_read\|unread' origin/main -- src/main/resources/db/migration/` | no matches; V17 is still the whole schema  |
 | MA4: delete already shipped                                     | `git grep -n 'DeleteMapping' origin/main -- '*MessagesControllerAdmin.java'`                                                  | `@DeleteMapping("/{id}")` at `:55`         |
 | PF2: image count for any backfill                               | `curl -s 'localhost:8080/api/read/content/images/search?page=0&size=1'` → `.totalElements`                                    | 1424 images across 39 collections          |
@@ -310,14 +328,18 @@ G2b, the CSS guard) — put all of these to the user as one sitting, not two lis
 ## Group SD — Search & discovery
 
 Context file: [2026-features/sd-search-discovery.md](2026-features/sd-search-discovery.md) —
-**2 closed** (SD1 #357, SD5 #382); their write-ups are in that file's Closed section.
+**2 merged** (SD1 #357, SD2 backend #277) and **1 settled whose fix is still unmerged** (SD5,
+#382); their write-ups are in that file's Closed section.
 
-### ☐ SD2 · Backend: enrich `locations` on collection blocks — COLD
+### ☐ SD7 · Backend: enrich `people` on collection blocks — COLD
 
-`SyntheticCollectionResolver.java` batch-loads tags only (`:109` `.withTags(...)`); it never
-enriches `locations`, so the shipped `/collections` location filter matches against nothing. FE
-matching (`collectionRefMatchesCriteria`) is wired and waiting. Mirror the tags batch-load.
-Cross-repo: file on the backend board when picked up. Est: 1 sitting.
+The identical gap SD2 closed for `locations`, found while shipping it and filed rather than bundled.
+`batchConvertToBasicModels:95-96` already batch-loads people onto the model and the frontend already
+reads `ref.people`, but `ContentModels.Collection` has no `people` component, so the value has
+nowhere to ride out. Backend #277 is the worked example: one record component, no new query.
+**Guardrail: do it before anything else reshapes that record** — it edits the same 20-component
+positional constructor and the same four test call sites SD2 just edited. Already on the backend
+board as #25. Est: 1 sitting.
 
 ### ☐ SD3 · Filter-bar dimension gaps — COLD, one slice per dimension
 
@@ -549,18 +571,34 @@ migration (`HIDDEN` vs `UNLISTED` first), auto-parent beyond the upload path, th
 `enforceVisibility()` slug-bypass carve-out, FE `STAGING_SLUG` beside `HOME_SLUG` in
 `app/utils/collectionSlugs.ts` + manage-page badge. Backend-heavy; file there when picked up.
 
-### ☐ MA3 · Mobile-first admin Phase 3 remainder — COLD, unblocked 2026-08-31 (7)
+### ☐ MA3 · Mobile-first admin Phase 3 remainder — COLD, §5.1 shipped 2026-08-31 (8)
 
-Open surfaces: §5.1 image-editor mobile layout (pinned photo), §5.2 manage-page full-screen grid +
-morphing bottom bar, §5.5 text-block editor migration onto the primitives. Three independent
-slices; take one per MR.
+**§5.1 shipped as [#386](https://github.com/themancalledzac/edens.zac/pull/386).** Open surfaces
+left: §5.2 manage-page full-screen grid + morphing bottom bar, §5.5 text-block editor migration onto
+the primitives. Independent slices; take one per MR.
+
+**§5.1's row named the wrong defect, and the correction generalizes.** It said the photo was
+"crammed into the top 30%". Upright it is 19.7% and fine. The failure was a phone in LANDSCAPE —
+under 768px wide, so it took the width-keyed stacked branch, where a flat `160px` strip is 44.4% of
+a 360px viewport and left the form 49.5px. Re-read every `@media (width >= …)` in a full-height
+admin component as "what does this do at 740x360?" before sizing §5.2.
+
+**How to see any of this, since the editor cannot be opened locally.** `/api/admin/**` 401s without
+a real session and the local backend can point at production, so signing in to inspect a layout is
+the wrong trade. Mount the real component in a throwaway route under `app/` with fixture props,
+measure with `getBoundingClientRect()`, delete the route before committing. Full method in the group
+file.
+
+**Carried into §5.2, seen while measuring §5.1:** at 375px the manage page's filter bar stacks one
+chip per row — Lens, then each date, then Highly Rated, then Order — pushing the grid most of a
+viewport down.
 
 **Decision #5 answered: the premise holds.** `app/(admin)/layout.tsx` was right to remove the
 admin-only dark wiring — a real dark mode belongs to the whole site behind a user preference. So
 these surfaces build on a **light** surface and need no theming work. Do not re-add admin-only dark
 styling while building them; that is now PF14's job, site-wide.
 
-### ☐ MA4 · Messages admin features — BLOCKED (backend: no read column), re-scoped 2026-08-31 (7)
+### ☐ MA4 · Messages admin features — BLOCKED (backend: no read column); TTL shipped 2026-08-31 (8)
 
 From 007's "Housekeeping". **The row oversized this by naming work that was already done.** Checked
 against the backend's `origin/main`:
@@ -586,10 +624,20 @@ NULL so mark-unread falls out of the same method; `readAt` as a fifth component 
 `@PatchMapping("/{id}/read")` returning 204/404 to match the existing delete, which is already the
 shape `useMessageDelete` expects.
 
-**Cross-repo filing DECLINED this pass, deliberately.** The backend repo was sitting on another
-session's branch (`docs/close-out-2026-08-31-fifth-run`) with its 198KB board mid-close-out;
-writing a row there would have collided. The spec above is complete enough to lift verbatim — file
-it on the backend board in the next backend session.
+**Cross-repo filing was DECLINED in run (7) and is now DONE.** That pass could not write to the
+backend board because another session held the checkout. Run (8) filed the TTL there as **#26** from
+a worktree, so the decline is closed. The mark-as-read spec above is still owed a backend row —
+file it as its own item, not folded into #26.
+
+**Retention TTL — shipped OFF, and the first opt-in only reports.**
+`app.messages.retention.days` defaults to `0` (the nightly job returns before touching the
+database); `app.messages.retention.dry-run` defaults to `true` (logs the count it would delete,
+deletes nothing). Set `days`, read the count from the logs, then set `dry-run=false`. Two properties
+rather than one because the deletion is irreversible — the contact form is the only writer, nothing
+archives what a purge removes — and a local backend can point at production, so the reporting mode
+is how you find out safely from the environment that actually holds the rows. Both guards
+mutation-proved. **A retention TTL has no frontend half**: it is configuration, not a control, so
+MA4's BE+FE scope applies to mark-as-read and the notify channel only.
 
 **Do not fake it with localStorage.** It is per-browser, so the read state is wrong the moment the
 page opens on a phone. Read status is server state.
@@ -774,7 +822,7 @@ _Newest first, local dates. One line per `/next` run: what shipped (PR numbers),
 what's next. Older entries move to
 [2026-features/session-log.md](2026-features/session-log.md)._
 
-- 2026-08-31 (8) — opened **#386 (MA3 §5.1)**, **#387 (PF6 source maps)**, backend
+- 2026-08-31 (8) — shipped **#386 (MA3 §5.1)**, **#387 (PF6 source maps)**, **#388 (close-out)**, backend
   **[#277](https://github.com/themancalledzac/edens.zac.backend/pull/277) (SD2)** and
   **[#281](https://github.com/themancalledzac/edens.zac.backend/pull/281) (MA4 retention TTL)**.
   Four items, four MRs, nothing stopped. **Two of the four were guardrails paying out.** PF6's
@@ -798,8 +846,20 @@ what's next. Older entries move to
   `fix/bug-18-update-location-slug-check`; it read clean two minutes earlier, and the `checkout -b`
   in between had silently moved that session onto a new branch. Reverted, and both backend MRs were
   built in worktrees. Two new rows filed: **SD7** (`people` has SD2's identical gap) and backend
-  board #24/#25/#26. Four lessons hoisted into "How to use this doc". Next: answer #13 then PF6,
-  MA3 §5.2, SD7, and a ref sweep after this run's PRs merge.
+  board #24/#25/#26. Four lessons hoisted into "How to use this doc". **All five merged, and the
+  deferred ref sweep then ran and found the close-out's own damage** — the rows were updated and the
+  tracker's `SD2`/`MA3`/`MA4` SECTIONS were not, so three rows contradicted their own prose, and
+  **SD7 shipped as a row with no section at all**. Fixed as **#389**, which also caught two errors
+  the previous run left: SD5's open section survived the move that archived it (duplicated), and
+  SD5 was recorded closed via **#382, which has not merged**. All five recorded frontend counts
+  re-run and held (PF13 19, LY1 0/2, PF6 0/0/14, PF2 0); SD2's and PF2's verified-and-holding rows
+  were deleted rather than re-run — one shipped and one was dropped, so neither claim pins anything.
+  **#389 also found the same defect twice more in run (7)'s work**: AU4 and PF2 each kept an open
+  section beside their closed one, and PF2's was the dangerous direction — the group file said
+  DROPPED, do not re-propose, while the open section beside it read as a live scoping task. **Three
+  items were ticked off a PR being opened rather than merged** (SD5/#382, AU4/#383 — and #383 is
+  also `DIRTY`, so it cannot merge until rebased). Hoisted as a rule with the two greps that catch
+  it. Next: answer #13 then PF6, MA3 §5.2, SD7.
 
 - 2026-08-31 (7) — opened **#381 (PF13 MR 1)**, **#382 (SD5 tag half)**, **#383 (AU4)**,
   **#384 (MA4 search)**; **#380 merged**. **Four PRs, after a run that shipped none** — the
