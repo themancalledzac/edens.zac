@@ -106,7 +106,34 @@ Shipped: the foundational pass, the dark/white-framed token layer (`globals.css`
   `overlay` variant for this, but applying it changes the desktop look too, so it wants its own
   call.
 
-- §5.2 manage page full-screen grid + morphing bottom bar
+- §5.2 manage page full-screen grid + morphing bottom bar — **the filter bar half shipped as
+  [#392](https://github.com/themancalledzac/edens.zac/pull/392); the rest is NOT startable as
+  written.** `.trailing` never shrinks and, with the manage view's density slider in it, measures
+  220.7px; at 375px that left `.controls` 126.3px, narrower than one "Highly Rated" chip, so all
+  six chips took a row each and the bar stood 230.6px tall. Wrapping below 768px with
+  `flex-basis: 100%` on `.controls` — the pair is the fix, since the basis is what forces
+  `.trailing` onto its own row instead of beside arbitrary chips. 360/375 230.6 -> 113.8;
+  414 155.4 -> 113.8; 740x360 80.2 -> 76.2.
+
+  **What is left needs a respec, not an implementation.** This section's §5.2 above puts the grid
+  and the morphing bottom bar on a dark canvas ("rendered in manage mode on dark"). Decision #5
+  removed admin-only dark and made a real dark mode site-wide (PF14), so that framing is void. The
+  bottom bar is also a four-mode state machine across several components — several MRs even once
+  respecified. Treat it as a design call for the user before anyone sizes it.
+
+  **The method lesson, sharper than §5.1's.** §5.1 taught "measure it, do not reason from the
+  stylesheet". This pass measured the defect and then still got the breakpoint wrong, setting it at
+  480px on the plausible argument that wrapping would cost more than it saved at 740x360. That
+  compared against a number that had been assumed rather than measured; forcing both states at ten
+  widths showed wrapping never loses in the range. **Measure BOTH sides of a change, including the
+  state you are replacing.** Also: a throwaway route in a `_`-prefixed folder never routes — the
+  App Router treats those as private — so the first measurement run silently 404'd.
+
+  **Reported, not fixed:** with two chip rows, `wrap-reverse` splits one dimension across rows and
+  inverts its order ("Jul 19 · Jul 20 · Lens" above "Order · Highly Rated · Jul 18").
+  `wrap-reverse` is deliberate and documented, so changing it is its own call; it only became
+  visible once the bar stopped being one chip per row.
+
 - §5.5 text-block editor: `TextBlockCreateModal/` was never migrated onto the primitives (raw
   `<select>/<textarea>/<button>` + hardcoded blue)
 

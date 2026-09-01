@@ -125,3 +125,19 @@ same close-out that adds them._
   which none of the existing guardrails would have caught: a facet can be built correctly and still
   be unwanted. Next: PF13 MR 1 (hoist the cookie forwarding), re-do step 1, and **ask** whether the
   film-stock dimension is wanted before building it.
+
+- 2026-08-31 (7) — opened **#381 (PF13 MR 1)**, **#382 (SD5 tag half)**, **#383 (AU4)**,
+  **#384 (MA4 search)**; **#380 merged**. **Four PRs, after a run that shipped none** — the
+  difference was that three of the four came from checking what already existed rather than
+  building what the board described. **Two rows were partly already done**: MA4's delete is
+  complete on both ends and the row listed it as unbuilt, and AU4 proposed building a local-session
+  affordance when `/login` always worked. **Two user decisions answered**: #5 (dark stays
+  site-wide — MA3 unblocked, dark mode spun out as PF14) and #8 (CloudWatch — PF6 unblocked).
+  **PF2 dropped by the user after scoping**, recorded rather than deleted so it is not
+  re-proposed. **The finding that outranks every item here: the local backend writes to
+  production** — 5432 is an autossh tunnel to the EC2, there is no local Postgres, and every admin
+  mutation at localhost edits live rows. Repeated on AU4's row because it constrains all six MA
+  items. **#381 also surfaced a latent hazard left unfixed**: `collection-{slug}` is a per-principal
+  response under a shared cache tag, safe today only because Next hashes headers into the cache key
+  and nothing pins that. Lesson hoisted: check whether a row's work already shipped before sizing
+  it — four items now. Next: MA3 §5.1, PF6, MA4 TTL, SD2.

@@ -193,39 +193,38 @@ reportToService()` seam (it does not exist — `logger.ts` is 14 lines of `conso
 
 Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra work.
 
-| Item | Scope                                                        | Repo    | Status                                                                                                                                         |
-| ---- | ------------------------------------------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| SD7  | Enrich `people` on collection blocks                         | BE      | ☐ COLD — identical gap to SD2, found shipping it; backend board #25                                                                            |
-| SD3  | Filter-bar dimension gaps (film stock, row merge)            | FE      | ☐ COLD — badges #373 and year #376 shipped; focal length BUILT AND DROPPED (user, #379)                                                        |
-| SD4  | `/explore` as a real drill-down explorer (Option C)          | FE      | ☐ BLOCKED — reconcile with refactor-board H5 design review first                                                                               |
-| SD6  | Clickable people chips (needs a person route + slug)         | BE+FE   | ☐ BLOCKED — no `/person` route and `ContentPersonModel` carries no slug                                                                        |
-| RC1  | Populate `parents` on public reads + `isFilm` backfill       | BE      | ☐ COLD — unblocks RC2's public rendering; two verified data bugs                                                                               |
-| RC2  | Similar-collections v1 (metadata-graph score + Related swap) | BE+FE   | ☐ BLOCKED — user: spike decisions D1–D4                                                                                                        |
-| RC3  | Collections_List render mode (embedded hub as card-row)      | BE+FE   | ☐ COLD — small; no new entity                                                                                                                  |
-| RC4  | Suggested collections (admin suggestion rows)                | BE+FE   | ☐ BLOCKED — needs CT3 engine + RC1 metadata quality                                                                                            |
-| RC5  | CLIP/pgvector embedding tier                                 | BE+ML   | ☐ BLOCKED — user: spike decision D6 (infra commitment)                                                                                         |
-| CT1  | Collections-as-tags spec refresh against the typeless model  | docs    | ☐ COLD — produces a current D1–D12 matrix for CT2                                                                                              |
-| CT2  | Adjudicate the collections-as-tags decision matrix           | user    | ☐ BLOCKED — user; after CT1                                                                                                                    |
-| CT3  | Saved-filter engine (AND-tag query, `source` column, sync)   | BE+FE   | ☐ BLOCKED — on CT2                                                                                                                             |
-| CT4  | Blog-as-date surface (`/blog` stream, per-day entries)       | BE+FE   | ☐ BLOCKED — on CT2                                                                                                                             |
-| CT5  | Auto-tag: `POST /collections/{id}/auto-tag` + admin button   | BE+FE   | ☐ COLD — independent of CT2                                                                                                                    |
-| CT6  | Tag `type`/visibility model                                  | BE      | ☐ COLD — design confirm, then small schema work                                                                                                |
-| AU1  | Self-serve password reset                                    | BE+FE   | ☐ COLD — plan written and verified current                                                                                                     |
-| AU2  | Passkey credential list + revoke, enrollment-state UI        | BE+FE   | ☐ BLOCKED — user: endpoint shape (admin, user-facing, or both)                                                                                 |
-| EM1  | SES production checklist (verify domain, DKIM, sandbox exit) | OPS     | ☐ COLD — ops; user drives the AWS console half                                                                                                 |
-| EM2  | New-recipient-only gallery send flow                         | BE+FE   | ☐ BLOCKED — backend: one field is both the stored list and the send list (verified 08-31)                                                      |
-| EM3  | Contact-owner notification + `user_invite.created_by`        | BE      | ☐ COLD — two small backend items                                                                                                               |
-| EM4  | Gallery-password design pass (precedes any BCrypt work)      | user    | ☐ BLOCKED — user; backend board PARKED BCrypt behind it                                                                                        |
-| MA1  | Manage rail restructure (per-field PATCH, delete edit sheet) | FE(+BE) | ☐ BLOCKED — backend `PATCH /collections/{id}` still absent (re-checked 08-31); it is MR 1                                                      |
-| MA2  | `staging` system collection                                  | BE+FE   | ☐ BLOCKED — user: `HIDDEN` vs `UNLISTED` seed visibility                                                                                       |
-| MA3  | Mobile-first admin Phase 3 remainder                         | FE      | ☐ COLD — §5.1 MR open ([#386](https://github.com/themancalledzac/edens.zac/pull/386)); §5.2 and §5.5 remain                                    |
-| MA4  | Messages admin: retention TTL, mark-as-read, notify channel  | BE+FE   | ☐ BLOCKED — TTL MR open (backend [#281](https://github.com/themancalledzac/edens.zac.backend/pull/281)); mark-as-read still has no read column |
-| MA5  | Admin collections list at 100× (paged/filtered/sorted)       | BE+FE   | ☐ COLD — low priority until collection count grows                                                                                             |
-| MA6  | User change log + non-admin canonical mutation path          | BE+FE   | ☐ BLOCKED — user: §10 decisions in the logged-in-flow review                                                                                   |
-| PF14 | Site-wide dark mode behind a user preference                 | FE      | ☐ COLD — spun out of MA3 by decision #5; admin does not get its own                                                                            |
-| PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)     | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                                                                             |
-| PF13 | Home page genuinely static (Cache Components / PPR)          | FE      | ☐ BLOCKED — MR 1 shipped #381; still gated on `getCollectionBySlug` + `meServer` cookies                                                       |
-| LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build     | FE      | ☐ BLOCKED — user: two competing designs, neither built                                                                                         |
+| Item | Scope                                                        | Repo    | Status                                                                                                                                                                       |
+| ---- | ------------------------------------------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SD3  | Filter-bar dimension gaps (film stock, row merge)            | FE      | ☐ COLD — badges #373 and year #376 shipped; focal length BUILT AND DROPPED (user, #379)                                                                                      |
+| SD4  | `/explore` as a real drill-down explorer (Option C)          | FE      | ☐ BLOCKED — reconcile with refactor-board H5 design review first                                                                                                             |
+| SD6  | Clickable people chips (needs a person route + slug)         | BE+FE   | ☐ BLOCKED — no `/person` route and `ContentPersonModel` carries no slug                                                                                                      |
+| RC1  | Populate `parents` on public reads + `isFilm` backfill       | BE      | ☐ COLD — unblocks RC2's public rendering; two verified data bugs                                                                                                             |
+| RC2  | Similar-collections v1 (metadata-graph score + Related swap) | BE+FE   | ☐ BLOCKED — user: spike decisions D1–D4                                                                                                                                      |
+| RC3  | Collections_List render mode (embedded hub as card-row)      | BE+FE   | ☐ COLD — small; no new entity                                                                                                                                                |
+| RC4  | Suggested collections (admin suggestion rows)                | BE+FE   | ☐ BLOCKED — needs CT3 engine + RC1 metadata quality                                                                                                                          |
+| RC5  | CLIP/pgvector embedding tier                                 | BE+ML   | ☐ BLOCKED — user: spike decision D6 (infra commitment)                                                                                                                       |
+| CT1  | Collections-as-tags spec refresh against the typeless model  | docs    | ☐ COLD — produces a current D1–D12 matrix for CT2                                                                                                                            |
+| CT2  | Adjudicate the collections-as-tags decision matrix           | user    | ☐ BLOCKED — user; after CT1                                                                                                                                                  |
+| CT3  | Saved-filter engine (AND-tag query, `source` column, sync)   | BE+FE   | ☐ BLOCKED — on CT2                                                                                                                                                           |
+| CT4  | Blog-as-date surface (`/blog` stream, per-day entries)       | BE+FE   | ☐ BLOCKED — on CT2                                                                                                                                                           |
+| CT5  | Auto-tag: `POST /collections/{id}/auto-tag` + admin button   | BE+FE   | ☐ COLD — independent of CT2                                                                                                                                                  |
+| CT6  | Tag `type`/visibility model                                  | BE      | ☐ COLD — design confirm, then small schema work                                                                                                                              |
+| AU1  | Self-serve password reset                                    | BE+FE   | ☐ COLD — plan written and verified current                                                                                                                                   |
+| AU2  | Passkey credential list + revoke, enrollment-state UI        | BE+FE   | ☐ BLOCKED — user: endpoint shape (admin, user-facing, or both)                                                                                                               |
+| EM1  | SES production checklist (verify domain, DKIM, sandbox exit) | OPS     | ☐ COLD — ops; user drives the AWS console half                                                                                                                               |
+| EM2  | New-recipient-only gallery send flow                         | BE+FE   | ☐ BLOCKED — backend: one field is both the stored list and the send list (verified 08-31)                                                                                    |
+| EM3  | Contact-owner notification + `user_invite.created_by`        | BE      | ☐ COLD — two small backend items                                                                                                                                             |
+| EM4  | Gallery-password design pass (precedes any BCrypt work)      | user    | ☐ BLOCKED — user; backend board PARKED BCrypt behind it                                                                                                                      |
+| MA1  | Manage rail restructure (per-field PATCH, delete edit sheet) | FE(+BE) | ☐ BLOCKED — backend `PATCH /collections/{id}` still absent (re-checked 08-31); it is MR 1                                                                                    |
+| MA2  | `staging` system collection                                  | BE+FE   | ☐ BLOCKED — user: `HIDDEN` vs `UNLISTED` seed visibility                                                                                                                     |
+| MA3  | Mobile-first admin Phase 3 remainder                         | FE      | ☐ COLD — §5.1 #386 and §5.2's filter bar [#392](https://github.com/themancalledzac/edens.zac/pull/392) shipped; §5.2's bottom bar needs re-specifying off dark, §5.5 remains |
+| MA4  | Messages admin: retention TTL, mark-as-read, notify channel  | BE+FE   | ☐ BLOCKED — TTL MR open (backend [#281](https://github.com/themancalledzac/edens.zac.backend/pull/281)); mark-as-read still has no read column                               |
+| MA5  | Admin collections list at 100× (paged/filtered/sorted)       | BE+FE   | ☐ COLD — low priority until collection count grows                                                                                                                           |
+| MA6  | User change log + non-admin canonical mutation path          | BE+FE   | ☐ BLOCKED — user: §10 decisions in the logged-in-flow review                                                                                                                 |
+| PF14 | Site-wide dark mode behind a user preference                 | FE      | ☐ COLD — spun out of MA3 by decision #5; admin does not get its own                                                                                                          |
+| PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)     | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                                                                                                           |
+| PF13 | Home page genuinely static (Cache Components / PPR)          | FE      | ☐ BLOCKED — MR 1 shipped #381; still gated on `getCollectionBySlug` + `meServer` cookies                                                                                     |
+| LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build     | FE      | ☐ BLOCKED — user: two competing designs, neither built                                                                                                                       |
 
 **Not on this board, deliberately:** everything with a row on
 [2026-summer-refactor.md](2026-summer-refactor.md) (H1's `/user` merge, F4's TaxonomyPage
@@ -237,39 +236,43 @@ not rediscovered as new.
 
 ## NEXT RUN — set 2026-08-31 (9)
 
-Run (8) shipped five MRs and all five merged. The deferred ref sweep then ran and found the
-close-out's own damage, fixed as #389 — see the session log. Nothing below is blocked except item 1,
-and item 1 is a question you can answer in a minute.
+Run (9) shipped three MRs, one per item, nothing stopped. Nothing below is blocked on the user
+except where marked.
 
-1. **Decision #13 first, then PF6 in one MR.** It is a console lookup, not a judgment call: does
-   Amplify already ship this app's server stdout to a CloudWatch log group? Yes → PF6's server half
-   is a `logger.ts` formatting change plus a same-origin ingest route. No → it needs
-   `@aws-sdk/client-cloudwatch-logs`, a log group and an execution-role permission. Source maps are
-   already settled either way: set nothing, ship on `error.digest`. **Guardrail: cap
-   `CollectionContentRenderer.tsx:649` in the same MR** — it logs from inside a per-tile render, so
-   one dimensionless image is a write per tile, per render, per viewer. Do not ship the reporting
-   path without that cap.
+1. **MA4 mark-as-read, backend first.** The spec is written and ready to lift — `V61__messages_read_at.sql`,
+   `readAt` through the entity/mapper/SELECTs, `markRead(long, boolean)`, `readAt` on
+   `AdminMessageView`, `@PatchMapping("/{id}/read")` returning 204/404. **Guardrail: fold the `?q=`
+   search param into the same MR.** MA4's own row already establishes that `?unread=` and `?q=` are
+   the same WHERE-clause work, and #384's client-side search is the thing `?q=` replaces. Two
+   filters, one migration, one MR. It also still owes the backend board a row of its own — #26 is
+   the TTL, not this.
 
-2. **SD7 — `people` on collection blocks.** Backend, one sitting, fully specified; backend #277 is
-   the worked example. **Guardrail: do it before anything else reshapes `ContentModels.Collection`,**
-   because it edits the same 20-component positional constructor and the same four test call sites
-   SD2 just edited. Check the backend checkout is free first, and use a worktree if it is not.
+2. **MA3 §5.5 — the text-block editor onto the primitives.** `TextBlockCreateModal/` is still raw
+   `<select>/<textarea>/<button>` with hardcoded blue. Self-contained, light surface, no dark work.
+   Same method as §5.1 and §5.2: mount it, measure it, and measure BOTH states of anything you
+   change.
 
-3. **MA3 §5.2 — the manage page's mobile grid and bottom bar.** Warm from §5.1, same surface, same
-   method: mount it, measure it, do not reason about it from the stylesheet. The known defect is the
-   filter bar stacking one chip per row at 375px. **Guardrail: light surface, no admin-only dark
-   styling — that is PF14's job, site-wide, and decision #5 already rejected the alternative.**
+3. **PF13 steps 2–3, or SD3's next slice.** Whichever is warmer. PF13 is the bigger win and the
+   better-understood blocker; SD3 is one slice per dimension and cheap.
 
-**Re-derive refs between MRs?** 1 and 3 are both frontend but disjoint. 2 is in the other repo.
+**Not startable as written: §5.2's morphing bottom bar.** The spec puts it on a dark canvas that
+decision #5 removed. It needs a light-surface respec before it can be sized, and that is a design
+call for the user, not an implementation task. Do not let its presence in the 2026-06-08 spec make
+it look ready.
 
-**Ask first, batched:** #13 unblocks item 1. The rest (#1, #2, #3, #4, #6, #10) each unblock an item
-outside this run, so they can ride along or wait.
+**Re-derive refs between MRs?** 1 is backend, 2 and 3 are frontend and disjoint from each other.
 
-**Not scheduled, and why.** #381–#384 from run (7) are still open and unmerged — nothing in this run
-touches their files, but SD5 stays "settled, fix unmerged" until #382 lands. PF13 steps 2–3 wait on
-`getCollectionBySlug` and `meServer`. MA1 and EM2 wait on backend MRs. MA4's mark-as-read waits on a
-read column `V17` does not have, and still owes a backend-board row of its own. SD3's film-stock
-slice is a question, not a task.
+**Ask first, batched:** nothing in this run is blocked on a decision. #1, #2, #3, #4, #6 and #10
+each unblock an item outside it, so put them to the user as one sitting whenever convenient — and
+note the refactor board has six more waiting, which should go in the same sitting rather than a
+second list.
+
+**Still open and unmerged from run (7):** #381–#384. SD5 stays "settled, fix unmerged" until #382
+lands, and #383 is `DIRTY` and cannot merge until rebased. **From this run, #391 and backend #293
+have merged; [#392](https://github.com/themancalledzac/edens.zac/pull/392) is still open**, so
+MA3's row stays as it reads until it lands. #392 needed a rebase after the other two merged —
+the work board conflicted, because each of the three removed a different row from it. Expect
+that whenever a run opens several MRs that all close items.
 
 ## Verified and holding — do not re-investigate
 
@@ -329,18 +332,9 @@ G2b, the CSS guard) — put all of these to the user as one sitting, not two lis
 ## Group SD — Search & discovery
 
 Context file: [2026-features/sd-search-discovery.md](2026-features/sd-search-discovery.md) —
-**2 merged** (SD1 #357, SD2 backend #277) and **1 settled whose fix is still unmerged** (SD5,
-#382); their write-ups are in that file's Closed section.
-
-### ☐ SD7 · Backend: enrich `people` on collection blocks — COLD
-
-The identical gap SD2 closed for `locations`, found while shipping it and filed rather than bundled.
-`batchConvertToBasicModels:95-96` already batch-loads people onto the model and the frontend already
-reads `ref.people`, but `ContentModels.Collection` has no `people` component, so the value has
-nowhere to ride out. Backend #277 is the worked example: one record component, no new query.
-**Guardrail: do it before anything else reshapes that record** — it edits the same 20-component
-positional constructor and the same four test call sites SD2 just edited. Already on the backend
-board as #25. Est: 1 sitting.
+**3 merged** (SD1 #357, SD2 backend #277, SD7 backend
+[#293](https://github.com/themancalledzac/edens.zac.backend/pull/293)) and **1 settled whose fix
+is still unmerged** (SD5, #382); their write-ups are in that file's Closed section.
 
 ### ☐ SD3 · Filter-bar dimension gaps — COLD, one slice per dimension
 
@@ -572,27 +566,50 @@ migration (`HIDDEN` vs `UNLISTED` first), auto-parent beyond the upload path, th
 `enforceVisibility()` slug-bypass carve-out, FE `STAGING_SLUG` beside `HOME_SLUG` in
 `app/utils/collectionSlugs.ts` + manage-page badge. Backend-heavy; file there when picked up.
 
-### ☐ MA3 · Mobile-first admin Phase 3 remainder — COLD, §5.1 shipped 2026-08-31 (8)
+### ☐ MA3 · Mobile-first admin Phase 3 remainder — COLD, §5.1 and §5.2's filter bar shipped
 
-**§5.1 shipped as [#386](https://github.com/themancalledzac/edens.zac/pull/386).** Open surfaces
-left: §5.2 manage-page full-screen grid + morphing bottom bar, §5.5 text-block editor migration onto
-the primitives. Independent slices; take one per MR.
+**Shipped: §5.1 as [#386](https://github.com/themancalledzac/edens.zac/pull/386), and §5.2's filter
+bar as [#392](https://github.com/themancalledzac/edens.zac/pull/392).** Open: the rest of §5.2, and
+§5.5's text-block editor migration onto the primitives. Independent slices; take one per MR.
 
-**§5.1's row named the wrong defect, and the correction generalizes.** It said the photo was
-"crammed into the top 30%". Upright it is 19.7% and fine. The failure was a phone in LANDSCAPE —
-under 768px wide, so it took the width-keyed stacked branch, where a flat `160px` strip is 44.4% of
-a 360px viewport and left the form 49.5px. Re-read every `@media (width >= …)` in a full-height
-admin component as "what does this do at 740x360?" before sizing §5.2.
+**§5.2 is now two things, and only one of them is a build.** The filter-bar defect is closed. The
+full-screen grid and morphing bottom bar are **not startable as specced**: the 2026-06-08 spec
+writes §5.2 against a dark canvas ("rendered in manage mode on dark"), and decision #5 removed
+admin-only dark and made a real dark mode site-wide (PF14). That half needs re-specifying on a
+light surface before anyone sizes it — it is a design call, not an implementation task. The bottom
+bar itself is a four-mode state machine (Select / Reorder / Add / Edit) across several components,
+so it is several MRs even once respecified.
 
-**How to see any of this, since the editor cannot be opened locally.** `/api/admin/**` 401s without
-a real session and the local backend can point at production, so signing in to inspect a layout is
-the wrong trade. Mount the real component in a throwaway route under `app/` with fixture props,
-measure with `getBoundingClientRect()`, delete the route before committing. Full method in the group
-file.
+**What the filter bar turned out to be.** `.trailing` is `flex: 0 0 auto` and never shrinks; with
+the manage view's density slider in it, it measures 220.7px. At 375px that left `.controls` 126.3px
+— narrower than the single "Highly Rated" chip at 131px — so all six chips took a row each and the
+bar stood 230.6px tall. Fixed by wrapping below 768px with `flex-basis: 100%` on `.controls`, which
+is what forces `.trailing` onto its own row rather than letting it land beside arbitrary chips.
+360/375 230.6 -> 113.8; 414 155.4 -> 113.8; 740x360 80.2 -> 76.2.
 
-**Carried into §5.2, seen while measuring §5.1:** at 375px the manage page's filter bar stacks one
-chip per row — Lens, then each date, then Highly Rated, then Order — pushing the grid most of a
-viewport down.
+**A measurement beats a plausible reason, even a well-argued one.** The threshold was first set at
+480px on the reasoning that giving `.trailing` its own row would cost more than it saved at
+740x360 — §5.1's own lesson, applied. It was wrong: the comparison was against a number that had
+been assumed rather than measured, and forcing both states at ten widths showed wrapping never
+loses in the range. **§5.1's rule was "measure it"; the sharper version is "measure BOTH sides of
+the change, including the state you are replacing."**
+
+**§5.1's generalization still stands for the unbuilt work.** Re-read every `@media (width >= …)`
+in a full-height admin component as "what does this do at 740x360?" — but note §5.2's filter bar
+was a horizontal starvation, not an orientation problem, so a width-keyed rule was the right tool
+there. Which axis is scarce is itself a thing to check, not assume.
+
+**How to see any of this, since the manage page cannot be opened locally.** `/api/admin/**` 401s
+without a real session and the local backend can point at production, so signing in to inspect a
+layout is the wrong trade. Mount the real component in a throwaway route under `app/` with fixture
+props, measure with `getBoundingClientRect()`, delete the route before committing. Note the folder
+must NOT start with `_` — Next treats those as private and never routes them. Full method in the
+group file.
+
+**Reported, not fixed, by [#392](https://github.com/themancalledzac/edens.zac/pull/392):** with two
+chip rows, `wrap-reverse` splits one dimension across rows and inverts its order — "Jul 19 · Jul 20
+· Lens" above "Order · Highly Rated · Jul 18". `wrap-reverse` is deliberate and documented, so
+changing it is its own call. It only became visible once the bar stopped being one chip per row.
 
 **Decision #5 answered: the premise holds.** `app/(admin)/layout.tsx` was right to remove the
 admin-only dark wiring — a real dark mode belongs to the whole site behind a user preference. So
@@ -774,6 +791,41 @@ _Newest first, local dates. One line per `/next` run: what shipped (PR numbers),
 what's next. Older entries move to
 [2026-features/session-log.md](2026-features/session-log.md)._
 
+- 2026-08-31 (9) — **merged [#391](https://github.com/themancalledzac/edens.zac/pull/391) (PF6
+  error tracking)** and backend
+  **[#293](https://github.com/themancalledzac/edens.zac.backend/pull/293) (SD7)**; **opened
+  [#392](https://github.com/themancalledzac/edens.zac/pull/392) (MA3 §5.2's filter bar)**, which
+  is still open. Three items, three MRs, nothing stopped. Stated as merged-vs-open on purpose:
+  this board has already been burned three times by ticking an item off a PR that was only
+  opened. **Decision #13 answered, and it collapsed PF6 to a third of its worst
+  case**: Amplify already ships this app's server stdout to CloudWatch, so the server half was a
+  `logger.ts` formatting change — no AWS SDK, no log group, no IAM, `package.json` still five
+  dependencies. The user also took option 3 off the source-map table, so `experimental.serverSourceMaps`
+  is on and `NODE_OPTIONS=--enable-source-maps` is theirs to set. **Two planned pieces were
+  deliberately not built**, both recorded in the MR: the client reporter went inside `logger.error`
+  rather than being wired into three `error.tsx` boundaries, and the route ships with **no rate
+  limit** — a per-instance counter is close to useless on serverless and would advertise a
+  protection that is not there. **The per-tile cap paid the guardrail out**: it was a prerequisite
+  precisely because forwarding turns a harmless console line into a write per tile, per render, per
+  viewer. **MA3 §5.2 produced the run's real lesson, and it sharpens §5.1's.** §5.1 taught "measure
+  it, do not reason from the stylesheet". This pass measured the defect, then set the breakpoint at
+  480px on a _plausible_ argument — that wrapping would cost more than it saved at 740x360, §5.1's
+  own landscape case. That argument compared against a number that had been assumed, not measured.
+  Forcing both states at ten widths showed wrapping never loses in the range, and the threshold
+  went back to 768px. **The rule to carry: measure BOTH sides of a change, including the state you
+  are replacing.** Also found: a `_`-prefixed folder is private in the App Router, so the first
+  throwaway measurement route silently 404'd. **§5.2 turned out to be two things, and only one was
+  buildable** — its full-screen grid and morphing bottom bar are specced against a dark canvas
+  decision #5 removed, so that half needs a light-surface respec before anyone sizes it; the row now
+  says so, so it is not mistaken for ready. **The backend checkout was occupied again**, by a
+  session on `docs/close-out-2026-09-01-eighth-run` with an unpushed local commit — checked before
+  branching this time, per run (8)'s lesson, and SD7 was built in a worktree off `origin/main`.
+  **Two integrity breaks fixed in passing**: a mangled line in the PF group header had split a
+  sentence into a bogus `### ✅'…` heading, leaving a stray section between the group intro and PF14;
+  and PF6's "verified and holding" row was deleted rather than re-run, for the reason the table's
+  own preamble already gives for SD2. Next: MA4 mark-as-read with `?q=` folded in, MA3 §5.5, then
+  PF13 steps 2–3 or SD3.
+
 - 2026-08-31 (8) — shipped **#386 (MA3 §5.1)**, **#387 (PF6 source maps)**, **#388 (close-out)**, backend
   **[#277](https://github.com/themancalledzac/edens.zac.backend/pull/277) (SD2)** and
   **[#281](https://github.com/themancalledzac/edens.zac.backend/pull/281) (MA4 retention TTL)**.
@@ -812,19 +864,3 @@ what's next. Older entries move to
   items were ticked off a PR being opened rather than merged** (SD5/#382, AU4/#383 — and #383 is
   also `DIRTY`, so it cannot merge until rebased). Hoisted as a rule with the two greps that catch
   it. Next: answer #13 then PF6, MA3 §5.2, SD7.
-
-- 2026-08-31 (7) — opened **#381 (PF13 MR 1)**, **#382 (SD5 tag half)**, **#383 (AU4)**,
-  **#384 (MA4 search)**; **#380 merged**. **Four PRs, after a run that shipped none** — the
-  difference was that three of the four came from checking what already existed rather than
-  building what the board described. **Two rows were partly already done**: MA4's delete is
-  complete on both ends and the row listed it as unbuilt, and AU4 proposed building a local-session
-  affordance when `/login` always worked. **Two user decisions answered**: #5 (dark stays
-  site-wide — MA3 unblocked, dark mode spun out as PF14) and #8 (CloudWatch — PF6 unblocked).
-  **PF2 dropped by the user after scoping**, recorded rather than deleted so it is not
-  re-proposed. **The finding that outranks every item here: the local backend writes to
-  production** — 5432 is an autossh tunnel to the EC2, there is no local Postgres, and every admin
-  mutation at localhost edits live rows. Repeated on AU4's row because it constrains all six MA
-  items. **#381 also surfaced a latent hazard left unfixed**: `collection-{slug}` is a per-principal
-  response under a shared cache tag, safe today only because Next hashes headers into the cache key
-  and nothing pins that. Lesson hoisted: check whether a row's work already shipped before sizing
-  it — four items now. Next: MA3 §5.1, PF6, MA4 TTL, SD2.
