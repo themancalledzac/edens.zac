@@ -39,20 +39,6 @@ merged; the UI needs the credentials list). Also open nearby, from CURRENT-STATE
 guard against `rpId=localhost`; passkey login has never been e2e-verified against a deployed
 environment.
 
-## AU4 · Local admin dev-session affordance
-
-Backend #243 (merged 2026-08-30) removed the `app.admin.enforce-authz` toggle:
-`SecurityConfig.java:75-76` now gates `/api/admin/**` behind `hasRole('ADMIN')` unconditionally in
-every profile (`/api/edit/**` likewise behind `hasRole('USER')`). The frontend's three anonymous
-local layers still pass, so local `/admin` renders but every data fetch 401s. The refactor board's
-G6 **shipped 2026-08-31 as PR #351** and fixed the now-false `CLAUDE.md` Critical Rule;
-**this item builds the missing capability**: a sanctioned way to get a local admin session
-(documented bootstrap login, seeded dev admin, or a dev-profile session mint). The corrected
-rule already names the ingredients — `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD` in
-`docker-compose.yml` + `AdminBootstrap.java`, then `POST /api/auth/login` — so this is packaging
-an existing flow, not inventing one. Without it, all local admin
-development is broken for agents and slow for the user.
-
 ## Deferred by design (no rows — do not resurrect without a decision)
 
 - **ABAC Phase A** (admin MFA + admin-from-anywhere): `mfa_satisfied` is surfaced in `MeResponse`
@@ -65,6 +51,23 @@ development is broken for agents and slow for the user.
   deleted when someone is in that area (logged-in-flow review §1.7).
 
 ## Closed
+
+### ✅ AU4 · Local admin dev-session affordance — SETTLED 2026-08-31 (7); docs in #383, OPEN AND CONFLICTING
+
+There was no affordance to build; the `/login` form always worked.
+
+**The finding is settled, the MR is not.** Run (7) recorded this SHIPPED on the strength of #383
+being opened. Re-checked 2026-08-31 (8): #383 is still `OPEN`, and `mergeStateStatus` is `DIRTY` —
+it conflicts with `main` and cannot merge until it is rebased. Nothing depends on it, but do not
+read the tick as "the docs are on main".
+
+**The one fact that must not get lost with the item: the local backend writes to production.**
+Port 5432 is an autossh tunnel to the production EC2 (`ps aux | grep 'ssh.*5432'` →
+`-L 5432:localhost:5432 ec2-user@<prod-ip>`), and the backend container's `SPRING_DATASOURCE_URL`
+is `host.docker.internal:5432/edens_zac`. There is no local Postgres. Every admin mutation made at
+localhost edits live production rows. This is repeated here rather than only in the archive because
+it constrains **every** admin item on this board — MA1, MA2, MA3, MA4, MA5 and MA6 all mutate admin
+data, and none of them should be tested by bulk-editing through the local admin UI.
 
 ### ✅ AU3 · Enforce `UserStatus.DISABLED` — closed 2026-08-31 with no work; already shipped upstream
 

@@ -1,16 +1,6 @@
 # SD — Search & discovery
 
-_Context file for board items SD1–SD5 on [2026-features.md](../2026-features.md)._
-
-## SD2 · Backend: enrich `locations` on collection blocks
-
-`SyntheticCollectionResolver.java` batch-loads tags only (docblock `:78`, `.withTags(...)` at
-`:109`) and never enriches `locations`, so the location dimension of the shipped `/collections`
-filter bar matches nothing. The FE is complete and waiting: `collectionRefMatchesCriteria` already
-matches on locations. Mirror the tags batch-load with a `withLocations` wither. Secondary,
-non-blocking: `convertCollectionContentToParallax` hard-codes `locations: []` on the card
-(filtering runs pre-conversion). Source: `2026-08-05-collections-page-filter-bar-design.md` §4 and
-`docs/004-content-discovery.md:28`. Cross-repo — file on the backend board when picked up.
+_Context file for board items SD1–SD7 on [2026-features.md](../2026-features.md)._
 
 ## SD3 · Filter-bar dimension gaps
 
@@ -18,8 +8,61 @@ From the 004 location-filter-bar plan's unshipped tail, verified absent from
 `app/types/GalleryFilter.ts` (state today: `selectedTags`, `selectedPeople`, `selectedCameras`,
 `selectedLenses`, `selectedLocations`, `selectedYears`, `selectedDates`):
 
-- Focal-length range filters (Wide/Normal/Tele)
-- Film-stock secondary filter, conditional on Film active with 2+ stocks
+- ⛔ **Focal-length range filters (Wide/Normal/Tele) — BUILT AND DROPPED 2026-08-31 (6). Do not
+  rebuild.** Written in full as **#379**, verified, then closed unmerged on the user's call: the
+  dimension is not wanted, and the direction is fewer lens-related filters rather than more. Lens
+  itself stays exactly as it is — that was asked and confirmed. Nothing merged; `main` never
+  carried it.
+
+  The rest of this entry is kept because the work was done and the findings are real, so nobody
+  re-derives them. What it would have been: `selectedFocalRanges`,
+  `?focal=`, a dropdown with `optionLabels` mapping `wide`/`normal`/`tele` to Wide/Normal/Tele,
+  single-choice like lenses and years. It needed no `FilterToolbar` change at all — the
+  `ARRAY_FILTER_KEYS` loop renders a dropdown for any dimension a page supplies, so the whole
+  render cost was one entry in `toCollectionDimensions`. 8 source files, 6 test files, +475/−10,
+  4648 tests green.
+
+  **The open data question is answered: the metadata is there.** Sampled 281 images across 15
+  collections against the live backend — 207 carry `focalLength` (74%), and the format is
+  near-uniformly `'24 mm'` (206 of 207, plus one bare `'50mm'` and decimals like `'25.5 mm'`), all
+  inside the parser's 4–2000mm sanity range. The gap is film, not focal length: `dolomites-film`
+  0/30, `lisbon-film` 0/23, `nyc-film` 1/12, `california-2026` 0/10, because film scans carry no
+  EXIF, while digital collections run at or near 100%. Verified in the browser that the dimension
+  self-hides on `/dolomites-film` through the existing two-value `filterable` gate.
+
+  **This is the first dimension whose options are a derived vocabulary rather than observed
+  values.** Every other one lists what is in the data; the three bands are fixed, so
+  `extractCollectionFilterOptions` reports which of them the images populate. Practical difference:
+  an empty year simply never gets a chip, whereas a band has to be computed as populated.
+
+  **The parser was restored from `266c56c`, not rewritten.** It and its 22-case suite were deleted
+  as orphans three weeks after the old `selectedLensTypes` dimension was removed — and that removal
+  was "lens NAMES beat lens types once lens names exist", not "the bucketing is wrong". Focal range
+  cuts across lenses in a way names cannot, which the live data shows directly: 24mm (51) and 70mm
+  (43) dominate, one 24-70mm zoom at both extremes. A prior 2026-06-01 decision had suppressed the
+  dimension when a single zoom spanned two buckets, on the reasoning that the dropdown showed the
+  same images either way. That does not hold — 24mm and 70mm are different photographs — so the
+  gate is bucket-count ≥ 2 with no lens-count guard, which would have suppressed it exactly where
+  it is most useful.
+
+  **None of that verification mattered to the outcome, and that is the lesson.** The dimension
+  worked, on real data, in the browser. It was dropped because it was not wanted. No guardrail on
+  this board asks that question — they all assume the item should exist and only check that it is
+  built correctly. Hoisted into "How to use this doc" on the main board: for a slice whose value is
+  "one more way to narrow a list", ask first.
+
+  Two things #376's write-up warned about, both handled in the same commit: `EVERY_CRITERION` in
+  the drift guard gained `focalRanges` (without it the guard silently stops guarding), and
+  `availabilityWithout('focalRanges')` re-derives availability with its own key omitted, so picking
+  one band does not grey out the other two. Browser-verified: with Tele selected, Wide and Normal
+  stay enabled.
+
+- Film-stock secondary filter, conditional on Film active with 2+ stocks — **do not start without
+  asking.** It is the last remaining dimension on this list, and the one immediately after a
+  dimension that was built and rejected. Confirm it is wanted first. If it is, note the data
+  question inverts: film collections are exactly the ones #379 found carry no EXIF, so stock is the
+  one dimension whose data lives where focal length's did not — check coverage against the live
+  backend before sizing it.
 - ~~Year filter chips~~ **SHIPPED (#376).** `selectedYears` ('YYYY'), `?year=`, flat chips
   collapsing to a dropdown above eight, single-choice like days and lenses. The row filed this
   beside the other three as a peer and it is not one: year is the only dimension here that reaches
@@ -80,12 +123,6 @@ becomes, this decision now also has to say where Search is linked from; adding t
 in `MenuDropdown.tsx` (the Explore entry is at `:294`, re-verified 2026-08-31). Until then `/search`
 is effectively unlisted, which is a real cost the decision should weigh.
 
-## SD5 · Verify chip-click-to-filter
-
-Open verification task from `docs/004-content-discovery.md`: confirm people/location chips on
-public pages actually apply filters when clicked. One browser pass on :3000; either close the item
-or file what's broken as a concrete bug.
-
 ## Not here, deliberately
 
 - Collection tags Phase 2 / auto-tag → CT5.
@@ -94,6 +131,95 @@ or file what's broken as a concrete bug.
   listed as open in `004:34` and `000` Next-steps #2 — both stale; do not re-ticket.
 
 ## Closed
+
+### ✅ SD7 · `people` on collection blocks — backend #293, 2026-08-31
+
+The identical gap SD2 closed for `locations`, found while shipping it and filed rather than
+bundled. `batchConvertToBasicModels` already batch-loaded people onto the model and the frontend
+already read `ref.people` — `contentFilter.ts:946` matches on `name` — but
+`ContentModels.Collection` had no `people` component, so the value had nowhere to ride out and the
+filter matched against nothing.
+
+Followed #277 exactly: one record component, one copy in `fromCollectionModel`, no repository
+method, no query, no migration, no N+1. No `withPeople` twin, for the same reason there is no
+`withLocations` twin — people arrive on the model, so one nobody calls would be dead code.
+`ContentModelConverter.buildCollectionRecord` keeps `List.of()`; its docblock now records that for
+all three of tags, locations and people.
+
+Additive: every `COLLECTION` block on the synthetic list views, the tag view and the `/user` page
+gains a `people` array of `{id, name}`. `Records.Person` has no slug, so unlike locations there is
+no second field to keep in step with the frontend.
+
+**The split's predicted cost landed exactly.** The board said splitting this from SD2 would mean
+editing the 20-component positional constructor and its four test call sites a second time. That
+is precisely what it cost, and nothing else. Built in a worktree off `origin/main`, because the
+backend checkout was occupied by another session.
+
+### ✅ SD2 · `locations` on collection blocks — backend #277, merged 2026-08-31
+
+**MR open: backend [#277](https://github.com/themancalledzac/edens.zac.backend/pull/277).** Filed on
+the backend board as #24 in the same pass.
+
+The diagnosis was right and the prescription was wrong, in the cheap direction.
+`SyntheticCollectionResolver` did drop locations, so the location dimension of the shipped
+`/collections` filter bar matched nothing, and the FE was complete and waiting
+(`collectionRefMatchesCriteria` matches on `ref.locations`).
+
+But "mirror the tags batch-load with a `withLocations` wither" asked for work that was already
+done. `CollectionProcessingUtil.batchConvertToBasicModels:92-93` already runs
+`locationRepository.findLocationsByCollectionIds` once for the whole page, and `buildBasicModel`
+already sets `CollectionModel.locations`. The resolver simply never read the field. So the fix was
+one component on the `ContentModels.Collection` record plus a copy in `fromCollectionModel` — no
+new repository method, no new query, no migration, no added N+1.
+
+Hence no `withLocations`. `withTags` exists because tags are fetched AFTER conversion; locations
+arrive on the model, so a wither nobody calls would be dead code.
+
+Confirmed non-issue: `convertCollectionContentToParallax` hard-coding `locations: []` does not
+matter, because `applyCollectionFilters` runs on the raw `collection.content` before
+`processContentBlocks` reaches the parallax converter.
+
+Additive API change — the synthetic list views, the tag view and the `/user` page all gain a
+`locations` array of `{id, name, slug}` on each `COLLECTION` block.
+
+**`people` had the identical gap and was deliberately not bundled.** Shipped separately as SD7,
+backend [#293](https://github.com/themancalledzac/edens.zac.backend/pull/293) — see its entry in
+Closed below. The split cost exactly what was predicted: a second edit of the same 20-component
+positional constructor and its four test call sites, and nothing else.
+
+Source: `2026-08-05-collections-page-filter-bar-design.md` §4 and `docs/004-content-discovery.md:28`.
+
+### ✅ SD5 · Verify chip-click-to-filter — SETTLED 2026-08-31 (7); fix in #382, STILL OPEN
+
+**They never filtered, and that is not a regression.** Only `FilterToolbar` chips filter. The chips
+a visitor actually sees on a photo — Tags and People in the fullscreen viewer — were plain `<div>`s
+in the same pill styling as the Collections chips beside them, which ARE links. They read as
+interactive and did nothing.
+
+The docblock that made this look like a bug was itself the bug. `GalleryFilter.ts` said
+`toggleArrayFilter` was "shared by the filter toolbar and the tag-click handlers in
+CollectionContentRenderer". That stopped being true at `81ca206` (2026-08-03), which deliberately
+removed collection tag chips and their handler. The item read as "did something break?" when the
+answer was "it was removed on purpose and one line never got updated". Corrected in #382.
+
+**Tag half shipped as #382.** Tags now link to `/tag/{slug}` — the data and the destination both
+already existed, so it mirrors the Collections branch directly below it. +55/−8 across 3 files.
+
+**People half split out as SD6**, because it is not a one-liner and hiding it inside a "verify"
+item would lose it.
+
+**What holds — do not re-investigate.** Per-surface, verified 2026-08-31 (7): fullscreen Location
+and Collections chips link correctly; `/explore` chips link correctly; `/location/[slug]` renders
+working Tags and People dropdowns; `/tag/[slug]` has no filter bar at all (header + grid only);
+collection pages deliberately surface no Tags dimension. Tags being absent from the collection
+filter bar is a product decision from `81ca206`, not an omission — do not "restore" it without
+asking.
+
+**One thing deliberately left alone.** A `filterItems` block at `CollectionContentRenderer.tsx:381`
+renders `type: 'text'` items and `buildMetadataItems` never emits that type, so it looks dead. It
+was NOT deleted: `textItems` is a prop, and a backend TEXT block's `items` legitimately allows
+`type: 'text'`, so "dead" is not provable from this repo alone. Confirm against the backend's text
+block payload before removing it.
 
 ### ✅ SD1 · The public `/search` route — PR #357, merged 2026-08-31
 
