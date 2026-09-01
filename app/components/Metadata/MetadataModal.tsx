@@ -72,10 +72,10 @@ interface MetadataModalProps {
 /**
  * Orchestrator for the image/GIF metadata editor sheet modal.
  *
- * Layout: pinned photo (top strip on mobile, left sidebar on desktop) + scrollable form + a
- * pinned bottom bar holding the tab row (Info · Camera · Tags · Collections) above the sticky
- * action bar. The sheet lives on the dark admin surface — primitives adapt automatically via
- * [data-surface] token inheritance; no per-component dark overrides are needed here.
+ * Layout: pinned photo + scrollable form + a pinned bottom bar holding the tab row
+ * (Info · Camera · Collections) above the action bar. The photo is a top strip when the sheet is
+ * tall and narrow and a left column otherwise — see `MetadataModal.module.scss`, which keys the
+ * switch on height as well as width so a landscape phone does not stack.
  */
 export default function MetadataModal({
   onClose,

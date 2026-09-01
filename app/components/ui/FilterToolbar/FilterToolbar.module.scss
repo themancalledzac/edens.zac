@@ -15,6 +15,37 @@
   padding: var(--space-2) var(--space-3) var(--space-1);
   border-top: 1px solid var(--color-border);
 
+  /* `.trailing` never shrinks, and with the manage view's density SLIDER in it, it measures
+     220.7px. On a phone that starves the chips: at a 375px viewport `.controls` was left 126.3px,
+     narrower than the single "Highly Rated" chip (131px), so all six chips took a row each and the
+     bar stood 230.6px tall — over a quarter of an 812px screen, above the grid it filters.
+
+     Wrapping gives the chips the width back, and `flex-basis: 100%` on `.controls` is what makes
+     the wrap deterministic: it forces `.trailing` onto a line of its own rather than letting it
+     land beside whichever chips happen to fit, which is the failure the nowrap rule above was
+     written to prevent. `.trailing` keeps its `margin-left: auto` and stays right-pinned.
+
+     Bar height, nowrap -> wrap, measured across the range this rule covers. Handing `.trailing`
+     its own row costs a row, so the question was whether that ever costs more than it saves. It
+     does not — the chips reclaim at least that row at every width, including 740x360, the
+     landscape phone §5.1 was about:
+
+       360  230.6 -> 113.8 (6 chip rows -> 2)    479  117.8 -> 113.8 (3 -> 2)
+       375  230.6 -> 113.8 (6 -> 2)              540  80.2 -> 76.2  (2 -> 1)
+       414  155.4 -> 113.8 (4 -> 2)              740  80.2 -> 76.2  (2 -> 1)
+
+     768px because that is where `.row` stops being a column, so below it this bar is
+     viewport-wide and the numbers above are the whole story. Above it the block can be a narrow
+     desktop rail where `.trailing` could starve the chips the same way — unmeasured, and left
+     alone rather than guessed at. */
+  @media (width < 768px) {
+    flex-wrap: wrap;
+
+    .controls {
+      flex-basis: 100%;
+    }
+  }
+
   @media (width >= 768px) {
     padding: var(--space-2) 0 var(--space-1);
   }

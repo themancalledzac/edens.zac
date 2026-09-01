@@ -10,6 +10,9 @@
   }
 }
 
+/* Stacked upright, side-by-side once there is either enough width or too little height. The
+   height half is what a width-only breakpoint missed: a landscape phone is under 768px wide but
+   only ~360-430px tall, so stacking gave the photo 44% of the viewport and left the form 50px. */
 .metadataLayout {
   display: flex;
   flex-direction: column;
@@ -19,24 +22,35 @@
   overflow: hidden;
   overscroll-behavior: none;
 
-  @media (width >= 768px) {
+  @media (width >= 768px), (height <= 480px) {
     flex-direction: row;
   }
 }
 
+/* Percentage rather than a flat 160px, so the strip is the same fraction of a 667px phone as of a
+   932px one. `%` and not `vh`: it resolves against the sheet's own box, which is definite all the
+   way up from the fixed backdrop, while `vh` measures the layout viewport and overshoots on a
+   phone showing its URL bar. */
 .imageSection {
   flex-shrink: 0;
   display: flex;
   justify-content: center;
   align-items: center;
   background: var(--content-frame);
-  height: 160px;
+  height: clamp(120px, 20%, 200px);
   padding: var(--space-3);
 
   @media (width >= 768px) {
     flex: 0 0 42%;
     height: 100%;
     padding: var(--space-5);
+  }
+
+  /* Narrower than the desktop sidebar, because on a landscape phone the form is the half that has
+     to fit a whole tab into ~360px. */
+  @media (width < 768px) and (height <= 480px) {
+    flex: 0 0 34%;
+    height: 100%;
   }
 }
 

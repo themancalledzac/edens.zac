@@ -14,6 +14,7 @@ import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 
 import CollectionContentRenderer from '@/app/components/Content/CollectionContentRenderer';
+import { logger } from '@/app/utils/logger';
 
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock('@/app/hooks/useParallax', () => ({ useParallax: () => ({ current: null }) }));
@@ -25,6 +26,9 @@ jest.mock('@/app/components/ui/FilterToolbar/FilterToolbar', () => ({
 }));
 jest.mock('@/app/components/auth/MeProvider', () => ({
   useMe: jest.fn(() => null),
+}));
+jest.mock('@/app/utils/logger', () => ({
+  logger: { debug: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
 const imageProps = {
@@ -69,5 +73,52 @@ describe('CollectionContentRenderer — sizes attribute with NaN dimensions', ()
     render(<CollectionContentRenderer {...imageProps} width={640} height={360} />);
 
     expect(screen.getByRole('img').getAttribute('sizes')).toBe('(max-width: 768px) 100vw, 640px');
+  });
+});
+
+/**
+ * The NaN guard sits inside a per-tile render, so before it was capped one dimensionless image
+ * was a log write per tile, per render, per viewer — and each write said the same thing. That
+ * only became expensive once `logger.error` started forwarding to CloudWatch, which is why the
+ * cap ships in the same change as the reporting path.
+ *
+ * Ids here are unique to this block: the cap is module state, and the cases above already
+ * render contentId 42 with NaN dimensions.
+ */
+describe('CollectionContentRenderer — dimension failures are reported once', () => {
+  const mockErrorLog = logger.error as jest.MockedFunction<typeof logger.error>;
+
+  beforeEach(() => {
+    mockErrorLog.mockClear();
+  });
+
+  it('should report a given content id once however often it re-renders', () => {
+    const props = { ...imageProps, contentId: 9001 };
+
+    render(<CollectionContentRenderer {...props} width={Number.NaN} height={Number.NaN} />);
+    render(<CollectionContentRenderer {...props} width={Number.NaN} height={Number.NaN} />);
+    render(<CollectionContentRenderer {...props} width={Number.NaN} height={Number.NaN} />);
+
+    expect(mockErrorLog).toHaveBeenCalledTimes(1);
+  });
+
+  it('should still report a different content id', () => {
+    render(
+      <CollectionContentRenderer
+        {...imageProps}
+        contentId={9002}
+        width={Number.NaN}
+        height={Number.NaN}
+      />
+    );
+
+    expect(mockErrorLog).toHaveBeenCalledTimes(1);
+    expect(mockErrorLog.mock.calls.at(0)?.[3]).toMatchObject({ contentId: 9002 });
+  });
+
+  it('should not report a tile whose dimensions are finite', () => {
+    render(<CollectionContentRenderer {...imageProps} contentId={9003} width={640} height={360} />);
+
+    expect(mockErrorLog).not.toHaveBeenCalled();
   });
 });
