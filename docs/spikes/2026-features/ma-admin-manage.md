@@ -134,8 +134,22 @@ Shipped: the foundational pass, the dark/white-framed token layer (`globals.css`
   `wrap-reverse` is deliberate and documented, so changing it is its own call; it only became
   visible once the bar stopped being one chip per row.
 
-- §5.5 text-block editor: `TextBlockCreateModal/` was never migrated onto the primitives (raw
-  `<select>/<textarea>/<button>` + hardcoded blue)
+- ~~§5.5 text-block editor: `TextBlockCreateModal/` was never migrated onto the primitives (raw
+  `<select>/<textarea>/<button>` + hardcoded blue)~~ — **CLOSED 2026-09-01 (10): the claim was
+  false, and had been for three months.** `b81b6ad feat(ui): migrate TextBlockCreateModal to
+surface-aware primitives` landed **2026-06-08** and is on `origin/main`. The component is
+  `Modal` + `Field` + `Select` + `Textarea` + `Button` + `CloseButton` + `FormError`, and both
+  files are entirely `var(--*)`:
+  `grep -nE '<(select|textarea|button)[ >]|#[0-9a-fA-F]{3,6}|rgb\(' app/components/TextBlockCreateModal/*`
+  → no matches.
+
+  **The row was written the same day the migration landed and never reconciled**, which is the
+  failure mode worth naming: a checklist item is only as good as its last verification, and this
+  one survived three planning passes because every pass re-read it instead of re-running it. The
+  "verified and holding" table exists for exactly this — §5.5 was never in it.
+
+  Only one thing was actually stale, and it is fixed here: the component docblock claimed `Modal`
+  "propagates the admin dark surface", which decision #5 removed from `app/(admin)/layout.tsx`.
 
 **The premise decision (board #5):** `app/(admin)/layout.tsx` deliberately deleted the admin-only
 dark wiring, recording that a real dark mode belongs to the whole site behind a user preference.

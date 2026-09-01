@@ -26,8 +26,9 @@ interface TextBlockCreateModalProps {
 /**
  * Modal for creating a new text block.
  *
- * Renders inside {@link Modal} which propagates the admin dark surface through
- * its portal, so all ui/ primitives adapt via token cascade with no hardcoded colors.
+ * Every control is a ui/ primitive on semantic tokens, so the surface decides the colors and
+ * nothing here is hardcoded. {@link Modal} bridges the surface token across its portal. Admin no
+ * longer sets a dark surface — board decision #5 moved dark mode site-wide — so this renders light.
  */
 export default function TextBlockCreateModal({ onClose, onSubmit }: TextBlockCreateModalProps) {
   const [content, setContent] = useState('');
