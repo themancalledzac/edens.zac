@@ -88,3 +88,96 @@ describe('CommentsList', () => {
     expect(screen.getByRole('time')).toHaveAttribute('dateTime', oneHourAgo);
   });
 });
+
+describe('CommentsList — search', () => {
+  const msg = (id: number, email: string, message: string) => ({
+    id,
+    email,
+    message,
+    createdAt: new Date().toISOString(),
+  });
+
+  const three = () => [
+    msg(1, 'alice@example.com', 'Loved the Dolomites set'),
+    msg(2, 'bob@example.com', 'Question about prints'),
+    msg(3, 'carol@example.com', 'Booking enquiry'),
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('filters by message body', () => {
+    render(<CommentsList initialMessages={three()} initialTotal={3} />);
+    fireEvent.change(screen.getByLabelText(/search messages/i), {
+      target: { value: 'prints' },
+    });
+    expect(screen.getByText('Question about prints')).toBeInTheDocument();
+    expect(screen.queryByText('Loved the Dolomites set')).not.toBeInTheDocument();
+    expect(screen.queryByText('Booking enquiry')).not.toBeInTheDocument();
+  });
+
+  it('filters by email, case-insensitively', () => {
+    render(<CommentsList initialMessages={three()} initialTotal={3} />);
+    fireEvent.change(screen.getByLabelText(/search messages/i), {
+      target: { value: 'CAROL' },
+    });
+    expect(screen.getByText('Booking enquiry')).toBeInTheDocument();
+    expect(screen.queryByText('Question about prints')).not.toBeInTheDocument();
+  });
+
+  it('reports how much of the loaded set matched', () => {
+    render(<CommentsList initialMessages={three()} initialTotal={3} />);
+    fireEvent.change(screen.getByLabelText(/search messages/i), {
+      target: { value: 'e' },
+    });
+    expect(screen.getByRole('status')).toHaveTextContent(/of 3 loaded/);
+  });
+
+  it('says so when messages remain unloaded, so search never looks exhaustive', () => {
+    render(<CommentsList initialMessages={three()} initialTotal={40} />);
+    fireEvent.change(screen.getByLabelText(/search messages/i), {
+      target: { value: 'prints' },
+    });
+    expect(screen.getByRole('status')).toHaveTextContent(/37 not yet loaded/);
+  });
+
+  it('omits the unloaded note when everything is loaded', () => {
+    render(<CommentsList initialMessages={three()} initialTotal={3} />);
+    fireEvent.change(screen.getByLabelText(/search messages/i), {
+      target: { value: 'prints' },
+    });
+    expect(screen.getByRole('status')).not.toHaveTextContent(/not yet loaded/);
+  });
+
+  it('shows an empty state naming the query when nothing matches', () => {
+    render(<CommentsList initialMessages={three()} initialTotal={3} />);
+    fireEvent.change(screen.getByLabelText(/search messages/i), {
+      target: { value: 'zzzz' },
+    });
+    expect(screen.getByText(/no messages match/i)).toHaveTextContent('zzzz');
+  });
+
+  it('keeps Load more available while searching', () => {
+    render(<CommentsList initialMessages={three()} initialTotal={40} />);
+    fireEvent.change(screen.getByLabelText(/search messages/i), {
+      target: { value: 'zzzz' },
+    });
+    expect(screen.getByRole('button', { name: /load more/i })).toBeInTheDocument();
+  });
+
+  it('restores the full list when the query is cleared', () => {
+    render(<CommentsList initialMessages={three()} initialTotal={3} />);
+    const box = screen.getByLabelText(/search messages/i);
+    fireEvent.change(box, { target: { value: 'prints' } });
+    expect(screen.queryByText('Booking enquiry')).not.toBeInTheDocument();
+    fireEvent.change(box, { target: { value: '' } });
+    expect(screen.getByText('Booking enquiry')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('shows no search box before any message exists', () => {
+    render(<CommentsList initialMessages={[]} initialTotal={0} />);
+    expect(screen.queryByLabelText(/search messages/i)).not.toBeInTheDocument();
+  });
+});
