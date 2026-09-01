@@ -223,7 +223,6 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | MA5  | Admin collections list at 100× (paged/filtered/sorted)       | BE+FE   | ☐ COLD — low priority until collection count grows                                                                                             |
 | MA6  | User change log + non-admin canonical mutation path          | BE+FE   | ☐ BLOCKED — user: §10 decisions in the logged-in-flow review                                                                                   |
 | PF14 | Site-wide dark mode behind a user preference                 | FE      | ☐ COLD — spun out of MA3 by decision #5; admin does not get its own                                                                            |
-| PF6  | External error tracking (CloudWatch)                         | FE      | ☐ BLOCKED — user: decision #13, does Amplify already ship server logs to CloudWatch?                                                           |
 | PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)     | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                                                                             |
 | PF13 | Home page genuinely static (Cache Components / PPR)          | FE      | ☐ BLOCKED — MR 1 shipped #381; still gated on `getCollectionBySlug` + `meServer` cookies                                                       |
 | LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build     | FE      | ☐ BLOCKED — user: two competing designs, neither built                                                                                         |
@@ -275,14 +274,16 @@ slice is a question, not a task.
 ## Verified and holding — do not re-investigate
 
 Re-run 2026-08-31 (8), with the command beside each. Every row below was re-run this pass, not
-re-read. SD2's row was deleted rather than re-run — the item shipped, so the claim it pinned
-("`locations` not enriched") is now false by construction. Skip these on the next reconciliation unless something in their neighbourhood merges.
+re-read. Two rows have been deleted rather than re-run, because the items shipped and the claims
+they pinned are now false by construction: SD2's ("`locations` not enriched") in run (8), and
+PF6's ("no error tracking, no seam to fill") in run (9) — `logger.ts` is no longer 14 lines and
+the reporting path exists. Skip these on the next reconciliation unless something in their
+neighbourhood merges.
 
 | Claim                                                           | Command                                                                                                                       | Result                                     |
 | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
 | PF13: 19 segments export `dynamic`, and the flag rejects all 19 | `grep -rn 'export const dynamic' app --include='*.tsx' \| wc -l`, then `cacheComponents: true` + `next build`                 | 19; build names exactly those 19 files     |
 | LY1: no FILLER/gap-box symbol exists                            | `grep -rn 'FILLER\|gapBox\|endRowGap' app/utils \| wc -l` (case-sensitive)                                                    | 0 (case-insensitive: 2, both prose)        |
-| PF6: no error tracking, no seam to fill                         | `grep -rn 'Sentry' app`, `grep -rn 'reportToService' app`, `wc -l app/utils/logger.ts`                                        | 0, 0, 14                                   |
 | MA1: `PATCH /collections/{id}` absent                           | `git grep -n '@PatchMapping' origin/main -- src/main/java/` in the backend                                                    | 5 hits, all sub-resource or unrelated      |
 | CT5: no auto-tag endpoint                                       | `git grep -c 'auto-tag' origin/main -- src/main/java/`                                                                        | 0                                          |
 | AU2: no passkey list/revoke                                     | `git show origin/main:...auth/WebAuthnController.java \| grep -cE '@(Get\|Post\|Put\|Patch\|Delete)Mapping'`                  | 4 endpoints, register/login × start/finish |
@@ -305,21 +306,21 @@ rather than a current fact.
 
 Batch these at the start of a session. Each unblocks the named item; none blocks a COLD item.
 
-| #      | Question                                                                                                                                                                                                                                                                                                                                                                                                                             | Unblocks |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
-| 1      | Similar-collections spike D1–D6 (Related source mix, score location, hubs in slots, auto-promote threshold, suggestion surface, pgvector). Recommendations recorded in [2026-features/rc-similar-collections.md](2026-features/rc-similar-collections.md)                                                                                                                                                                            | RC2, RC5 |
-| 2      | Staging seed visibility: `HIDDEN` or `UNLISTED`?                                                                                                                                                                                                                                                                                                                                                                                     | MA2      |
-| 3      | Gallery passwords: what should they DO? (Design pass; BCrypt is parked behind it)                                                                                                                                                                                                                                                                                                                                                    | EM4      |
-| 4      | Passkey revocation shape: admin endpoint, user-facing list-and-remove, or both?                                                                                                                                                                                                                                                                                                                                                      | AU2      |
-| ~~5~~  | ~~Does the dark-admin premise survive?~~ **ANSWERED 2026-08-31 (7): yes — site-wide preference, later.** The removal was correct; admin does not get its own dark wiring. MA3's remaining surfaces build on a light surface and proceed now. Dark mode becomes its own item, filed as PF14.                                                                                                                                          | —        |
-| 6      | Lone-last-row: gap-box spacer or FILLER atom?                                                                                                                                                                                                                                                                                                                                                                                        | LY1      |
-| ~~7~~  | ~~Panel width vs page height~~ **ANSWERED 2026-08-31: keep the shared width; the height cost stands.** Asked narrowly, since a 'V' split makes a column uniform by construction and the predicate can only reject SIDE-BY-SIDE panel columns: those are still one group and still share a width. No code change — LY2 closed as pure adjudication.                                                                                   | —        |
-| ~~8~~  | ~~Error tracking: Sentry or CloudWatch?~~ **ANSWERED 2026-08-31 (7): CloudWatch.** Already on AWS, no new vendor, no third-party script on every page. Accepts the tradeoff — no grouping and no source maps unless wired — so PF6 must scope source-map upload or accept minified traces. Recorded in [PF6](2026-features/pf-performance-platform.md).                                                                              | —        |
-| ~~11~~ | ~~`engines.node` vs the dev machine~~ **ANSWERED 2026-08-31: "whatever is best long term practice."** Read as: `engines.node` becomes an unbounded floor, a `.nvmrc` names the blessed version, and CI reads that file instead of a hardcoded literal — one source of truth, no upper bound to age out. Shape recorded in [PF11](2026-features/pf-performance-platform.md).                                                          | PF11     |
-| ~~9~~  | ~~Which host serves production?~~ **FULLY ANSWERED 2026-08-31 — AWS Amplify Hosting**, confirmed by the user after `curl` had narrowed it to CloudFront-fronted AWS running a live Next server (Vercel and static-S3 eliminated). Auto-deploys from `main` in ~15 min. Recorded in `CLAUDE.md`; shipped as PF9 (#365).                                                                                                               | —        |
-| ~~12~~ | ~~Cache Components: adopt app-wide?~~ **ANSWERED 2026-08-31: adopt, full speed.** Step 1 (`Footer`'s `new Date()`) shipped as #375; the app-wide flag flip and the per-route conversion remain, and PF12 landing removes the reason to hold them                                                                                                                                                                                     | —        |
-| 10     | `/explore` direction: reconcile Option C with the H5 MenuDropdown review                                                                                                                                                                                                                                                                                                                                                             | SD4      |
-| 13     | Does Amplify already ship this app's server stdout/stderr to a CloudWatch log group? A console lookup, not a judgment call: yes → PF6's server half is a `logger.ts` formatting change; no → it needs the AWS SDK, a log group and an execution-role permission. Worth answering alongside: would you set `NODE_OPTIONS=--enable-source-maps` in the Amplify console? That alone buys readable server stacks with nothing published. | PF6      |
+| #      | Question                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Unblocks |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 1      | Similar-collections spike D1–D6 (Related source mix, score location, hubs in slots, auto-promote threshold, suggestion surface, pgvector). Recommendations recorded in [2026-features/rc-similar-collections.md](2026-features/rc-similar-collections.md)                                                                                                                                                                                                                                                                                                                                                                                                                                               | RC2, RC5 |
+| 2      | Staging seed visibility: `HIDDEN` or `UNLISTED`?                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | MA2      |
+| 3      | Gallery passwords: what should they DO? (Design pass; BCrypt is parked behind it)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | EM4      |
+| 4      | Passkey revocation shape: admin endpoint, user-facing list-and-remove, or both?                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | AU2      |
+| ~~5~~  | ~~Does the dark-admin premise survive?~~ **ANSWERED 2026-08-31 (7): yes — site-wide preference, later.** The removal was correct; admin does not get its own dark wiring. MA3's remaining surfaces build on a light surface and proceed now. Dark mode becomes its own item, filed as PF14.                                                                                                                                                                                                                                                                                                                                                                                                             | —        |
+| 6      | Lone-last-row: gap-box spacer or FILLER atom?                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | LY1      |
+| ~~7~~  | ~~Panel width vs page height~~ **ANSWERED 2026-08-31: keep the shared width; the height cost stands.** Asked narrowly, since a 'V' split makes a column uniform by construction and the predicate can only reject SIDE-BY-SIDE panel columns: those are still one group and still share a width. No code change — LY2 closed as pure adjudication.                                                                                                                                                                                                                                                                                                                                                      | —        |
+| ~~8~~  | ~~Error tracking: Sentry or CloudWatch?~~ **ANSWERED 2026-08-31 (7): CloudWatch.** Already on AWS, no new vendor, no third-party script on every page. Accepts the tradeoff — no grouping and no source maps unless wired — so PF6 must scope source-map upload or accept minified traces. Recorded in [PF6](2026-features/pf-performance-platform.md).                                                                                                                                                                                                                                                                                                                                                 | —        |
+| ~~11~~ | ~~`engines.node` vs the dev machine~~ **ANSWERED 2026-08-31: "whatever is best long term practice."** Read as: `engines.node` becomes an unbounded floor, a `.nvmrc` names the blessed version, and CI reads that file instead of a hardcoded literal — one source of truth, no upper bound to age out. Shape recorded in [PF11](2026-features/pf-performance-platform.md).                                                                                                                                                                                                                                                                                                                             | PF11     |
+| ~~9~~  | ~~Which host serves production?~~ **FULLY ANSWERED 2026-08-31 — AWS Amplify Hosting**, confirmed by the user after `curl` had narrowed it to CloudFront-fronted AWS running a live Next server (Vercel and static-S3 eliminated). Auto-deploys from `main` in ~15 min. Recorded in `CLAUDE.md`; shipped as PF9 (#365).                                                                                                                                                                                                                                                                                                                                                                                  | —        |
+| ~~12~~ | ~~Cache Components: adopt app-wide?~~ **ANSWERED 2026-08-31: adopt, full speed.** Step 1 (`Footer`'s `new Date()`) shipped as #375; the app-wide flag flip and the per-route conversion remain, and PF12 landing removes the reason to hold them                                                                                                                                                                                                                                                                                                                                                                                                                                                        | —        |
+| 10     | `/explore` direction: reconcile Option C with the H5 MenuDropdown review                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | SD4      |
+| ~~13~~ | ~~Does Amplify already ship this app's server stdout/stderr to a CloudWatch log group?~~ **ANSWERED 2026-08-31 (9): yes.** Amplify Hosting already forwards this app's server stdout to a log group, so the server half was a formatting change inside `logger.ts` — no AWS SDK, no log group to create, no credentials, no execution-role permission, and `package.json` stays at five dependencies. The rider was answered too: the user will set `NODE_OPTIONS=--enable-source-maps` in the console, so `experimental.serverSourceMaps` is now on and server traces are readable with nothing published to browsers. Shipped as PF6 ([#391](https://github.com/themancalledzac/edens.zac/pull/391)). | —        |
 
 Collections-as-tags D1–D12 (item CT2) joins this list after CT1 rewrites the matrix in current
 terms. Six more product calls are already batched on the refactor board (H1, F4, G3, `.srOnly`,
@@ -669,18 +670,13 @@ H2b per its sequencing note. Big; treat as a design adjudication first.
 ## Group PF — Performance & platform
 
 Context file: [2026-features/pf-performance-platform.md](2026-features/pf-performance-platform.md) —
-**10 closed** (PF5 #356, PF1 #358, PF4 #360 VOID, PF10 #361, PF3 #362, PF9 #365, PF11 #366,
-PF8 #367, PF12 settings-only, PF2 dropped by decision); their write-ups are in that file's Closed
-section. Count re-derived 2026-08-31 (7) with
-`grep -cE '^### (✅|⛔)' 2026-features/pf-performance-platform.md`. **The command changed this
-pass and the old one now undercounts**: it was `grep -c '^### ✅'`, which misses PF2 because a
-dropped item is marked ⛔ rather than ✅. Same failure mode as AU2's `grep -n 'Mapping('` — a
-command that was right until the thing it counted grew a second form.
-
-### ✅' 2026-features/pf-performance-platform.md` — the previous
-
-"5 shipped" had been stale since PF3 and PF10 closed, so re-run that command rather than
-incrementing this number by hand.
+**11 closed** (PF5 #356, PF1 #358, PF4 #360 VOID, PF10 #361, PF3 #362, PF9 #365, PF11 #366,
+PF8 #367, PF6 #391, PF12 settings-only, PF2 dropped by decision); their write-ups are in that
+file's Closed section. Count re-derived 2026-08-31 (9) with
+`grep -cE '^### (✅|⛔)' 2026-features/pf-performance-platform.md`. Re-run that command rather
+than incrementing the number by hand: the older `grep -c '^### ✅'` undercounts, because a
+dropped item is marked ⛔ rather than ✅ and PF2 is one. Same failure mode as AU2's
+`grep -n 'Mapping('` — a command that was right until the thing it counted grew a second form.
 
 ### ☐ PF14 · Site-wide dark mode behind a user preference — COLD
 
@@ -749,50 +745,6 @@ now renders from a Client Component, so the root-layout prerender blocker is gon
 route can be converted. Next's docs offer two escapes for synchronous IO, Suspense plus
 `connection()` or a Client Component; Suspense would have made the footer a streamed hole on every
 page, so the year popped in after paint. Steps 2 and 3 remain, in order and unchanged.
-
-### ☐ PF6 · External error tracking — BLOCKED (user, decision #13); source maps settled
-
-Zero `Sentry` and zero `reportToService` hits in `app/` (both re-run 2026-08-31).
-
-**Premise correction, 2026-08-31: there is no placeholder to fill in.** This row and the group
-file both said the #171 logger migration left a `// Future: reportToService()` seam. It does not
-exist — `app/utils/logger.ts` is 14 lines of plain `console.*` wrappers with no `TODO`, `Future`
-or `FIXME` marker anywhere in it. The item is "add error tracking", not "wire up the existing
-hook", so size it accordingly.
-
-**Decision #8 answered 2026-08-31 (7): CloudWatch, not Sentry.** Already on AWS, no new vendor, no
-third-party script on every page. The cost of that choice is no error grouping and minified stack
-traces unless maps are wired.
-
-**Source maps settled 2026-08-31 (8), as the run asked — and the item is still not one MR.**
-Recommendation: set nothing, ship on `error.digest`. Full option table, costs and exposure in
-[PF6](2026-features/pf-performance-platform.md). Three things that change the sizing:
-
-- **This row's own claim was wrong.** It said "where the maps come from is an Amplify-console
-  question, not a `next.config.js` one." Generating maps — browser _and_ server — is entirely a
-  `next.config.js` question. What needs the console is _applying_ them at runtime
-  (`NODE_OPTIONS=--enable-source-maps`) or _moving_ them after the build (a `postBuild` phase).
-  Verified: `git ls-files | grep -ci amplify` → 0, and `.github/workflows/` holds only `ci.yml`,
-  which has no build or deploy step.
-- **The blocking question is a console lookup, not a judgment call.** Does Amplify already ship
-  this app's server stdout/stderr to a CloudWatch log group? If yes, the server half of PF6 is a
-  formatting change inside `logger.ts` — emit JSON instead of `[module] message` — with no
-  dependency, no credentials and no IAM. If no, it needs `@aws-sdk/client-cloudwatch-logs`, a log
-  group and an execution-role permission, which is the first AWS dependency in a five-package
-  `package.json`. Nobody can answer it from this repo. It is decision #13.
-- **One `logger.error` site must be capped before anything is shipped.**
-  `CollectionContentRenderer.tsx:649`'s NaN guard sits inside a per-tile render in a client
-  component, so one dimensionless image is one write per tile, per render, per viewer. Everything
-  else is per-request or per-boundary. The known "logs on every render" case the board worried
-  about is already `logger.warn`, not `error` (`app/lib/api/users.ts:206,222`, `personal.ts:62`),
-  so an error-only integration never bills it.
-
-Counts behind this, all re-run 2026-08-31 (8): `logger.error` 30, `logger.warn` 28,
-`logger.debug` 1 (`grep -rEc "logger\.<level>\(" app`); three `error.tsx` boundaries and no
-`global-error.tsx` (`find app -name 'error.tsx' -o -name 'global-error.tsx'`), all three already
-logging and rendering `error.digest`; `productionBrowserSourceMaps` unset in `next.config.js` and
-defaulting to `false` in the installed 16.3.1
-(`grep -n 'productionBrowserSourceMaps:' node_modules/next/dist/server/config-shared.js` → `:128`).
 
 ### ☐ PF7 · CloudFlare Phase 2 — COLD, ops
 

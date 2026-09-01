@@ -152,120 +152,6 @@ that condition is gone.
 Budget the test side. PF8 broke two suites purely by splitting two pages around Suspense
 boundaries; this splits the wrapper three routes render through.
 
-## PF6 · External error tracking
-
-Blocked on decision #8 (Sentry vs CloudWatch). Zero `Sentry` and zero `reportToService` hits in
-`app/`, both re-run 2026-08-31. Error-boundary work rides the same MR.
-
-**Premise correction, 2026-08-31.** This section said the #171 logger migration left a
-`// Future: reportToService()` seam. It did not. `app/utils/logger.ts` is 14 lines of plain
-`console.*` wrappers with no `TODO`, `Future` or `FIXME` marker in the file. Whoever picks this up
-is adding a reporting path, not filling one in — there is no seam to slot into, and the estimate
-should carry the cost of choosing where the call sites go. Found by running the grep rather than
-re-reading the item; the claim had survived at least two passes.
-
-### Source maps, settled 2026-08-31 (8)
-
-The run asked for this before any integration was written. Answer: **set nothing. Ship on
-`error.digest`.** Then, if the client half proves blind after a few weeks of real logs, revisit.
-
-CloudWatch Logs stores and searches text. It does not ingest maps and will not un-minify a trace
-the way Sentry does on ingest. So "wire up source maps" is really five different options with
-different owners:
-
-| #   | Option                                                                      | Cost                                                                                                                            | Exposes                                                               | Reachable from this repo?                          |
-| --- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------- |
-| 1   | Accept minified; lean on `error.digest`                                     | zero                                                                                                                            | nothing                                                               | yes — nothing to change                            |
-| 2   | `productionBrowserSourceMaps: true`, symbolicate by hand per incident       | one config line, slower build, more build memory                                                                                | the whole frontend source, at public `/_next/static/**/*.js.map` URLs | yes                                                |
-| 3   | `experimental.serverSourceMaps: true` + `NODE_OPTIONS=--enable-source-maps` | config line + one console env var                                                                                               | nothing public                                                        | **no** — the env var is set in the Amplify console |
-| 4   | Upload maps to S3 in a `postBuild` step, symbolicate with a separate tool   | build-spec change + bucket + tool                                                                                               | nothing, if the bucket is private                                     | **no** — needs the Amplify build spec              |
-| 5   | Symbolicate in-process before writing the log line                          | new runtime dependency, maps shipped in the deploy, CPU on the error path, plus a `proxy.ts` rule to 404 the public `.map` URLs | nothing public                                                        | yes, but fiddly                                    |
-
-Option 3 is the best readability-per-risk on the list — Node applies the maps itself, so
-`error.stack` is already un-minified by the time `logger.error` stringifies it, with no tooling and
-nothing served to browsers. It is not the recommendation only because it needs a hand on the
-console. Worth asking for alongside decision #13.
-
-Option 1 is the recommendation because the digest already links a user-visible ID to the full
-server-side entry, and all three `error.tsx` boundaries already render it. That covers server
-errors, which are the ones that break pages. Browser traces are the weaker half either way, and
-option 2 buys readability you can only use by hand, per incident, in exchange for publishing the
-frontend source at a public URL permanently.
-
-**What the installed Next actually calls these.** Read from `node_modules/next/dist/docs/`, not
-from memory — 16.3.1 renamed and moved several of them:
-
-| Option                             | Where                                  | Default                                                 |
-| ---------------------------------- | -------------------------------------- | ------------------------------------------------------- |
-| `productionBrowserSourceMaps`      | top-level                              | `false` (`server/config-shared.js:128`)                 |
-| `experimental.serverSourceMaps`    | under `experimental`                   | unset; documented only for local debugging              |
-| `enablePrerenderSourceMaps`        | top-level, moved out of `experimental` | `true`; build-phase only, does nothing at runtime       |
-| `experimental.turbopackSourceMaps` | under `experimental`                   | dev `true`; build follows `productionBrowserSourceMaps` |
-
-`next.md:298` warns that `--debug-prerender`, which is what sets `serverSourceMaps`, is "for
-debugging in development only" and should not be deployed. Generating server maps is a supported
-config value on its own, but it is off the documented path, and generating is not applying.
-
-### The blocking question — a lookup, not a judgment call
-
-**Does Amplify already ship this app's server stdout/stderr to a CloudWatch log group?** Filed as
-decision #13. It cannot be answered from this repo and it changes the MR completely:
-
-- **Yes** → the server half is a formatting change inside `logger.ts`: emit one JSON line in
-  production, keep `[module] message` in dev, keep the `NODE_ENV === 'test'` early return. No
-  dependency, no credentials, no IAM.
-- **No** → add `@aws-sdk/client-cloudwatch-logs`, a log group and stream, batching, and an
-  execution-role permission. Roughly triples the item, and it would be the first AWS dependency in
-  a five-package `package.json`.
-
-### Where errors can be sent from
-
-Three runtimes, and only one of them is simple.
-
-- **Server components and route handlers** — whatever the lookup above says.
-- **The browser** — cannot call `PutLogEvents` without credentials in the page. A Cognito
-  identity pool granting unauthenticated `logs:PutLogEvents` hands every visitor a writable
-  credential and is new AWS infrastructure; there is no Cognito resource in this repo. The right
-  answer is a same-origin `app/api/client-errors/route.ts` that accepts a POST and writes
-  server-side. That also keeps `next.config.js`'s `connect-src 'self'` intact — it is
-  `Report-Only` today, but it is written to be flipped, and a cross-origin AWS endpoint would be
-  a violation waiting to become an outage.
-- **BFF proxy routes** — same Node runtime as the first. Note `app/api/proxy/[...path]/route.ts:162`
-  deliberately narrows what it logs, and `tests/api/proxy/route.logHygiene.test.ts` asserts no
-  `host`/`port` reaches the log line. Any richer error payload has to keep that green; CloudWatch is
-  exactly the kind of platform log that guard exists for.
-
-### Volume
-
-Order of magnitude is not the problem — CloudWatch Logs ingestion is ~$0.50/GB and a ~2KB JSON
-error line is about a dollar per million events. One call site is the problem:
-`CollectionContentRenderer.tsx:649`'s NaN guard runs inside a per-tile render in a client
-component, so one dimensionless image is one write per tile, per render, per viewer. Cap it before
-shipping. The rule to carry: never report from inside a per-item render without a cap.
-
-The site the board worried about is already safe. `app/lib/api/users.ts:206,222` and
-`personal.ts:62` log a known-missing endpoint on every render, but at `warn`, deliberately, with
-the reasoning in `users.ts`'s own docblock. An error-only integration never bills them.
-
-### MR shape, once decision #13 is answered
-
-Assuming the likely answer (Amplify stdout already reaches CloudWatch), one MR:
-
-- `app/utils/logger.ts`, ~+35 lines — production JSON, dev unchanged, test early-return unchanged.
-- `app/api/client-errors/route.ts`, new, ~60 lines — POST-only, origin check, body cap, rate limit.
-- A fire-and-forget client reporter called from the three `error.tsx` boundaries, ~25 lines.
-- The `CollectionContentRenderer.tsx:649` cap, ~5 lines. Prerequisite, not a nice-to-have.
-- `app/global-error.tsx`, ~30 lines. This is the only part of the row's "error-boundary work rides
-  the same MR" rider that is genuinely missing — the three route boundaries already exist and log.
-- Tests: a new `tests/utils/logger.test.ts` (there is none), a route test for `client-errors`, and
-  `route.logHygiene.test.ts` re-run unchanged.
-
-~+125 source, ~+150 test. If the answer is no, it is two MRs.
-
-Counts and paths above re-run 2026-08-31 (8): `logger.error` 30, `warn` 28, `debug` 1, across 39
-files (`grep -rEc "logger\.<level>\(" app`; `grep -rln 'logger\.' app | wc -l`). Three `error.tsx`,
-no `global-error.tsx`. No `aws-sdk` and no AWS env var anywhere in `app/` or `next.config.js`.
-
 ## PF7 · CloudFlare Phase 2
 
 Plan: `docs/superpowers/plans/007-cloudflare-phase2.md` (gitignored). ~1–2 weeks of elapsed lead
@@ -292,6 +178,77 @@ unlinked labels, `window.confirm`) is untriaged AND its file paths are stale
 against current paths first — the findings may be live, the line numbers are not.
 
 ## Closed
+
+### ✅ PF6 · External error tracking — PR #391, 2026-08-31
+
+**Decision #13 answered: yes.** Amplify Hosting already forwards this app's server stdout to a
+CloudWatch log group, which collapsed the item to roughly a third of its worst case. No
+`@aws-sdk/client-cloudwatch-logs`, no log group to create, no credentials, no execution-role
+permission; `package.json` is still five dependencies. Decision #8 had already chosen CloudWatch
+over Sentry.
+
+**What shipped.**
+
+- `app/utils/logger.ts` — one JSON object per line on the production server, because Logs Insights
+  can only filter on fields it can parse. The payload is flattened first: an `Error` does not
+  survive `JSON.stringify` unassisted, since `name`, `message` and `stack` are all non-enumerable,
+  so the obvious version logs `{}`. `digest` rides along. Dev output and the
+  `NODE_ENV === 'test'` early return are unchanged. No timestamp — CloudWatch stamps on ingest, and
+  a `new Date()` here would make any render that logs dynamic under Cache Components.
+- `app/api/client-errors/route.ts` — a same-origin POST whose stdout is the same stream, since a
+  browser `console.error` reaches nobody. Anonymous deliberately: the viewers whose errors matter
+  most never sign in. Gated on `Origin` with the shared `isAllowedWriteOrigin`, body capped at 8KB,
+  every field clipped, and `context` carried as one string so a caller-chosen key cannot overwrite
+  `level` or `module`.
+- The `CollectionContentRenderer` cap, which the run made a prerequisite — deduped by content id,
+  with a 20-per-page-load budget in the logger as the backstop for any other render-path error.
+- `app/global-error.tsx` — the one boundary that was genuinely missing. It owns `<html>`/`<body>`
+  and imports nothing but the logger, because anything else it imported could be what just crashed.
+- `next.config.js` — `experimental.serverSourceMaps: true`. Option 3 from the table below, which
+  the source-map pass had ranked best-readability-per-risk and withheld only because it needs a
+  hand on the console. The user supplied the hand.
+
+**Two deliberate deviations from the MR shape this file planned.**
+
+- The reporter lives inside `logger.error` rather than being called from the three `error.tsx`
+  boundaries. They already call `logger.error`, so one call path covers them and every other client
+  error site.
+- **No rate limit in the route**, though the plan listed one. A per-instance in-memory counter is
+  close to useless on serverless, and shipping one would advertise a protection that is not there.
+  The bounds that exist are the client budget, the body cap and the `Origin` gate. A forged
+  `Origin` from a non-browser client can still flood it; volume control belongs at the edge, with
+  PF7.
+
+**Still owed by the console, not by this repo.** `serverSourceMaps` generates maps; it does not
+apply them. Until `NODE_OPTIONS=--enable-source-maps` is set on the Amplify branch, server traces
+stay minified and the config costs build output for nothing.
+
+**The source-map options, priced 2026-08-31 (8).** Kept so 2, 4 and 5 are not re-proposed from
+scratch. Option 1 was the recommendation while nobody could touch the console; option 3 is what
+shipped once someone could.
+
+CloudWatch Logs stores and searches text. It does not ingest maps and will not un-minify a trace
+the way Sentry does on ingest. So "wire up source maps" is really five different options with
+different owners:
+
+| #   | Option                                                                      | Cost                                                                                                                            | Exposes                                                               | Reachable from this repo?                          |
+| --- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------- |
+| 1   | Accept minified; lean on `error.digest`                                     | zero                                                                                                                            | nothing                                                               | yes — nothing to change                            |
+| 2   | `productionBrowserSourceMaps: true`, symbolicate by hand per incident       | one config line, slower build, more build memory                                                                                | the whole frontend source, at public `/_next/static/**/*.js.map` URLs | yes                                                |
+| 3   | `experimental.serverSourceMaps: true` + `NODE_OPTIONS=--enable-source-maps` | config line + one console env var                                                                                               | nothing public                                                        | **no** — the env var is set in the Amplify console |
+| 4   | Upload maps to S3 in a `postBuild` step, symbolicate with a separate tool   | build-spec change + bucket + tool                                                                                               | nothing, if the bucket is private                                     | **no** — needs the Amplify build spec              |
+| 5   | Symbolicate in-process before writing the log line                          | new runtime dependency, maps shipped in the deploy, CPU on the error path, plus a `proxy.ts` rule to 404 the public `.map` URLs | nothing public                                                        | yes, but fiddly                                    |
+
+**Option 3 shipped.** It was already the best readability-per-risk on the list — Node applies the
+maps itself, so `error.stack` is un-minified by the time `logger.error` stringifies it, with no
+tooling and nothing served to browsers. The only thing holding it back was that it needs a hand on
+the console, and the user supplied one when answering decision #13.
+
+Option 1 was the recommendation while that was not true, and it is still what the client half
+runs on: the digest links a user-visible ID to the full server-side entry, and all three
+`error.tsx` boundaries render it. Browser traces stay minified, which is the accepted cost —
+option 2 buys readability you can only use by hand, per incident, in exchange for publishing the
+frontend source at a public URL permanently.
 
 ### ⛔ PF2 · Blur placeholders — DROPPED 2026-08-31 (7) by the user. Do not re-propose.
 
