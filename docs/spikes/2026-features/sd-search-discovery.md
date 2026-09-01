@@ -189,7 +189,7 @@ positional constructor and its four test call sites, and nothing else.
 
 Source: `2026-08-05-collections-page-filter-bar-design.md` §4 and `docs/004-content-discovery.md:28`.
 
-### ✅ SD5 · Verify chip-click-to-filter — SETTLED 2026-08-31 (7); fix in #382, STILL OPEN
+### ✅ SD5 · Verify chip-click-to-filter — settled 2026-08-31 (7); fix MERGED as #382, 2026-09-01
 
 **They never filtered, and that is not a regression.** Only `FilterToolbar` chips filter. The chips
 a visitor actually sees on a photo — Tags and People in the fullscreen viewer — were plain `<div>`s

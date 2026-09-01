@@ -141,9 +141,9 @@ const EXCLUSIVE_FILTER_KEYS: readonly ArrayFilterKey[] = [
 ];
 
 /**
- * Toggle a value in one of the array dimensions and emit a Partial update.
- * Shared by the filter toolbar and the tag-click handlers in
- * CollectionContentRenderer.
+ * Toggle a value in one of the array dimensions and emit a Partial update. The filter toolbar is
+ * the only caller — `CollectionContentRenderer`'s tag-click handlers went with the collection tag
+ * chips in `81ca206`, and this line claimed otherwise until 2026-08-31.
  *
  * Dimensions in {@link EXCLUSIVE_FILTER_KEYS} hold at most one value: picking a different option
  * switches the selection to it, and picking the current sole selection clears the dimension. Every

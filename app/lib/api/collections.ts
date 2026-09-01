@@ -16,6 +16,7 @@ import {
   fetchAdminPutJsonApi,
   fetchEditPatchJsonApi,
   fetchEditPostJsonApi,
+  fetchPublicRead,
   fetchReadApi,
 } from '@/app/lib/api/core';
 import {
@@ -80,7 +81,7 @@ export async function getAllCollections(
   size: number = PAGINATION.homePageSize
 ): Promise<CollectionModel[]> {
   try {
-    const data = await fetchReadApi<unknown>(`/collections?page=${page}&size=${size}`, {
+    const data = await fetchPublicRead<unknown>(`/collections?page=${page}&size=${size}`, {
       next: { revalidate: TIMING.revalidateCache, tags: ['collections-index'] },
     });
     return parseCollectionArrayResponse(data);
@@ -95,6 +96,12 @@ export async function getAllCollections(
  * GET /api/read/collections/{slug}
  * Get collection by slug with paginated content
  * Note: Returns collection regardless of visible flag (visible only affects listings/searches)
+ *
+ * Keeps {@link fetchReadApi} deliberately, despite looking like a public read. The response varies
+ * by the `gallery_access_<slug>` cookie: the backend nulls `content` when the cookie fails to
+ * validate, and that null IS the signal the gate reads (`galleryAccess.ts`,
+ * `CollectionPageWrapper`). On {@link fetchPublicRead} every viewer would share one cached entry,
+ * most likely the locked one, and entering the right password would not clear the gate.
  */
 export async function getCollectionBySlug(
   slug: string,
@@ -146,7 +153,7 @@ export async function getCollectionsByLocation(
 ): Promise<CollectionModel[]> {
   if (!slug) throw new Error('location slug is required');
   try {
-    const data = await fetchReadApi<unknown>(
+    const data = await fetchPublicRead<unknown>(
       `/collections/location/${encodeURIComponent(slug)}?page=${page}&size=${size}`,
       { next: { revalidate: TIMING.revalidateCache, tags: [`collections-location-${slug}`] } }
     );
@@ -242,10 +249,7 @@ export async function updateCollection(
   id: number,
   updateData: CollectionUpdateRequest
 ): Promise<CollectionUpdateResponseDTO | null> {
-  return fetchAdminPutJsonApi<CollectionUpdateResponseDTO>(
-    `/collections/${id}`,
-    updateData
-  );
+  return fetchAdminPutJsonApi<CollectionUpdateResponseDTO>(`/collections/${id}`, updateData);
 }
 
 /**

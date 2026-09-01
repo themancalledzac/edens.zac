@@ -159,7 +159,10 @@ From `docs/007-security-hardening.md`'s "Housekeeping". Slice by slice as of 202
   not a control; there is nothing to render.
 
 - **Delete** — already shipped, both halves (`@DeleteMapping("/{id}")`, `useMessageDelete`).
-- **Search** — shipped as [#384](https://github.com/themancalledzac/edens.zac/pull/384).
+- **Search** — **MR open**, [#384](https://github.com/themancalledzac/edens.zac/pull/384). Green
+  and merge-ready as of 2026-09-01, but NOT merged; this row said "shipped" for two runs on the
+  strength of the PR being opened. Its client-side filter is what mark-as-read's `?q=` replaces,
+  so merge it before starting that item.
 - **Mark-as-read — blocked.** There is no read column on `messages`; `V17__create_messages_table.sql`
   is still the whole schema (`id`, `email`, `message`, `created_at`). Needs a backend migration
   first.

@@ -12,7 +12,7 @@ import {
   fetchAdminGetApi,
   fetchAdminPatchJsonApi,
   fetchAdminPostJsonApi,
-  fetchReadApi,
+  fetchPublicRead,
 } from '@/app/lib/api/core';
 import {
   type CollectionUpdate,
@@ -37,7 +37,7 @@ import { logger } from '@/app/utils/logger';
  * Get all tags (ordered alphabetically)
  */
 export async function getAllTags(): Promise<ContentTagModel[] | null> {
-  const raw = await fetchReadApi<Array<{ id: number; tagName: string; slug: string }>>(
+  const raw = await fetchPublicRead<Array<{ id: number; tagName: string; slug: string }>>(
     '/content/tags',
     { next: { revalidate: TIMING.revalidateCache, tags: ['content-tags'] } }
   );
@@ -54,7 +54,7 @@ export async function getAllLocations(): Promise<Array<{
   slug: string;
   count?: number;
 }> | null> {
-  return fetchReadApi('/content/locations', {
+  return fetchPublicRead('/content/locations', {
     next: { revalidate: TIMING.revalidateCache, tags: ['content-locations'] },
   });
 }
@@ -134,7 +134,7 @@ export async function searchImages(params: SearchImagesParams): Promise<ContentI
   const query = searchParams.toString();
   const endpoint = `/content/images/search${query ? `?${query}` : ''}`;
 
-  const result = await fetchReadApi<ContentImageModel[] | { content: ContentImageModel[] }>(
+  const result = await fetchPublicRead<ContentImageModel[] | { content: ContentImageModel[] }>(
     endpoint,
     { next: { revalidate: TIMING.revalidateCache, tags: ['search-images'] } }
   );

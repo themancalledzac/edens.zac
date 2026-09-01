@@ -14,6 +14,7 @@ import {
   fetchAdminPutJsonApi,
   fetchEditPatchJsonApi,
   fetchEditPostJsonApi,
+  fetchPublicRead,
   fetchReadApi,
   getApiBaseUrl,
   getServerCookieHeader,
@@ -683,6 +684,63 @@ describe('admin fetchers forward the server session cookie (SSR)', () => {
       expect.objectContaining({
         headers: { Cookie: 'ezac_session=sess-token' },
       })
+    );
+  });
+
+  it('sends NO Cookie header on fetchPublicRead even when the store is populated', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: 'ok' }),
+    });
+
+    await fetchPublicRead('/content/tags');
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(init.headers).not.toHaveProperty('Cookie');
+  });
+
+  it('does not read the cookie store at all on fetchPublicRead', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: 'ok' }),
+    });
+
+    await fetchPublicRead('/content/locations');
+
+    expect(nextHeaders.cookies).not.toHaveBeenCalled();
+  });
+
+  it('still forwards cookies on fetchReadApi for the same endpoint shape', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: 'ok' }),
+    });
+
+    await fetchReadApi('/content/tags');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/read'),
+      expect.objectContaining({ headers: { Cookie: 'ezac_session=sess-token' } })
+    );
+  });
+
+  it('forwards caller fetch options through fetchPublicRead untouched', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: 'ok' }),
+    });
+
+    await fetchPublicRead('/content/tags', {
+      next: { revalidate: 3600, tags: ['content-tags'] },
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/read'),
+      expect.objectContaining({ next: { revalidate: 3600, tags: ['content-tags'] } })
     );
   });
 

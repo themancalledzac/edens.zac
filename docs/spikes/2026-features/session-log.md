@@ -141,3 +141,42 @@ same close-out that adds them._
   response under a shared cache tag, safe today only because Next hashes headers into the cache key
   and nothing pins that. Lesson hoisted: check whether a row's work already shipped before sizing
   it — four items now. Next: MA3 §5.1, PF6, MA4 TTL, SD2.
+
+- 2026-08-31 (8) — shipped **#386 (MA3 §5.1)**, **#387 (PF6 source maps)**, **#388 (close-out)**, backend
+  **[#277](https://github.com/themancalledzac/edens.zac.backend/pull/277) (SD2)** and
+  **[#281](https://github.com/themancalledzac/edens.zac.backend/pull/281) (MA4 retention TTL)**.
+  Four items, four MRs, nothing stopped. **Two of the four were guardrails paying out.** PF6's
+  "settle source maps first" produced a finding rather than an integration, and correctly:
+  the answer is set nothing and ship on `error.digest`, and this row's own claim that maps are
+  "an Amplify-console question, not a `next.config.js` one" was **backwards** — generating them is
+  entirely `next.config.js`; the console is needed to APPLY them (`NODE_OPTIONS`) or MOVE them (a
+  `postBuild` phase). The real blocker turned out to be a lookup nobody can do from the repo, filed
+  as decision #13. MA4's "explicit reviewed trigger only" produced two properties instead of one:
+  retention ships off, and the first opt-in reports a count rather than deleting. **SD2 broke the
+  board's sizing streak in the other direction** — eleven guardrails here exist because items came
+  in bigger; SD2's "mirror the tags batch-load" asked for a query that already ran one line above,
+  so the whole item was one record component and a copy. **MA3 §5.1's defect was not the one the row
+  named.** The row said the photo was "crammed into the top 30%"; at 375x812 it is 19.7% and fine.
+  The real failure is a landscape phone — under 768px wide, so it takes the stacked branch, where
+  the flat 160px strip is **44.4% of a 360px viewport and leaves the form 49.5px**. Found by
+  mounting the real `MetadataModal` in a throwaway route, because the editor cannot be opened
+  locally at all: `/api/admin/**` 401s, and the local backend can point at production, so logging in
+  to inspect a layout is the wrong trade. Four viewports, real `getBoundingClientRect()` numbers,
+  route deleted before the commit. **The backend checkout was occupied** by another session on
+  `fix/bug-18-update-location-slug-check`; it read clean two minutes earlier, and the `checkout -b`
+  in between had silently moved that session onto a new branch. Reverted, and both backend MRs were
+  built in worktrees. Two new rows filed: **SD7** (`people` has SD2's identical gap) and backend
+  board #24/#25/#26. Four lessons hoisted into "How to use this doc". **All five merged, and the
+  deferred ref sweep then ran and found the close-out's own damage** — the rows were updated and the
+  tracker's `SD2`/`MA3`/`MA4` SECTIONS were not, so three rows contradicted their own prose, and
+  **SD7 shipped as a row with no section at all**. Fixed as **#389**, which also caught two errors
+  the previous run left: SD5's open section survived the move that archived it (duplicated), and
+  SD5 was recorded closed via **#382, which has not merged**. All five recorded frontend counts
+  re-run and held (PF13 19, LY1 0/2, PF6 0/0/14, PF2 0); SD2's and PF2's verified-and-holding rows
+  were deleted rather than re-run — one shipped and one was dropped, so neither claim pins anything.
+  **#389 also found the same defect twice more in run (7)'s work**: AU4 and PF2 each kept an open
+  section beside their closed one, and PF2's was the dangerous direction — the group file said
+  DROPPED, do not re-propose, while the open section beside it read as a live scoping task. **Three
+  items were ticked off a PR being opened rather than merged** (SD5/#382, AU4/#383 — and #383 is
+  also `DIRTY`, so it cannot merge until rebased). Hoisted as a rule with the two greps that catch
+  it. Next: answer #13 then PF6, MA3 §5.2, SD7.

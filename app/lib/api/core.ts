@@ -250,28 +250,38 @@ async function throwApiError(error: unknown, response?: Response): Promise<never
  * `/admin/users/[id]`, and the per-gallery `gallery_access_<slug>` cookies on RSC re-fetches.
  * `getServerCookieHeader` returns null in the browser and at build time, so this affects SSR only.
  *
+ * `forwardCookies: false` skips that read entirely — see {@link fetchPublicRead}, the only caller
+ * that passes it. It is a parameter rather than two copies of this function because everything
+ * else here (URL building, error conversion, 204 handling, parsing) must not diverge between the
+ * two paths.
+ *
  * Each way a request can fail reaches {@link throwApiError} exactly once: a rejected `fetch`, a
  * non-OK status, or a body that will not parse.
  *
  * @param channel - Backend channel segment the request goes to
  * @param endpoint - API endpoint path (without the base URL)
  * @param options - Fetch options
+ * @param forwardCookies - When false, the request carries no Cookie header and `cookies()` is
+ *   never called. Defaults to true so a new wrapper cannot drop the session by omission.
  * @returns The parsed response data, or null for a 204
  * @throws ApiError if the request fails
  */
 const fetchBase = async <T>(
   channel: typeof READ | typeof ADMIN | typeof EDIT,
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  forwardCookies = true
 ): Promise<T | null> => {
   const url = buildSimpleApiUrl(channel, endpoint);
 
-  const cookieHeader = await getServerCookieHeader();
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> | undefined),
   };
-  if (cookieHeader) {
-    headers.Cookie = cookieHeader;
+  if (forwardCookies) {
+    const cookieHeader = await getServerCookieHeader();
+    if (cookieHeader) {
+      headers.Cookie = cookieHeader;
+    }
   }
 
   const response = await fetch(url, { ...options, headers }).catch(throwApiError);
@@ -300,6 +310,39 @@ export async function fetchReadApi<T>(
   options: RequestInit = {}
 ): Promise<T | null> {
   return await fetchBase<T>(READ, endpoint, options);
+}
+
+/**
+ * GET public read data with NO cookie forwarding — for responses that are identical for every
+ * visitor.
+ *
+ * Two reasons this exists rather than being the default for `READ`.
+ *
+ * The live one is cache fragmentation. Next hashes the request headers into the fetch cache key,
+ * and `getServerCookieHeader` forwards the whole cookie store, so today any cookie at all forks
+ * the entry. A cached public read is shared only among visitors carrying zero cookies, and every
+ * signed-in visitor holds a private copy of data that is the same for everyone. Dropping the
+ * header collapses those back into one entry.
+ *
+ * The second is that a request-scoped API in the call stack is what stops these reads from ever
+ * entering a `use cache` scope.
+ *
+ * **Only for responses that do not vary by principal.** Reads gated on `ezac_session` or a
+ * `gallery_access_<slug>` cookie must keep using {@link fetchReadApi}. `getCollectionBySlug` is
+ * the trap: it looks public, and the backend nulls its `content` when the gallery cookie fails to
+ * validate — that null IS the authorization signal the gate reads. Moving it here would serve one
+ * viewer's locked payload to everyone.
+ *
+ * @param endpoint - API endpoint path (without the base URL)
+ * @param options - Fetch options
+ * @returns The parsed response data
+ * @throws ApiError if the request fails
+ */
+export async function fetchPublicRead<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T | null> {
+  return await fetchBase<T>(READ, endpoint, options, false);
 }
 
 /** POST JSON to the admin endpoint */

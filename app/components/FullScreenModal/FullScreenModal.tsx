@@ -299,11 +299,22 @@ export function FullScreenModal({
                       <div className={styles.metadataSectionRow}>
                         <div className={styles.metadataSectionHeader}>Tags</div>
                         <div className={styles.metadataSectionItems}>
-                          {currentImage.tags.map((t, index) => (
-                            <div key={t.id || index} className={styles.metadataSectionItem}>
-                              {t.name}
-                            </div>
-                          ))}
+                          {currentImage.tags.map((t, index) =>
+                            t.slug ? (
+                              <Link
+                                key={t.id || index}
+                                href={`/tag/${t.slug}`}
+                                className={`${styles.metadataSectionItem} ${styles.metadataSectionItemClickable}`}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                {t.name}
+                              </Link>
+                            ) : (
+                              <div key={t.id || index} className={styles.metadataSectionItem}>
+                                {t.name}
+                              </div>
+                            )
+                          )}
                         </div>
                       </div>
                     </div>
