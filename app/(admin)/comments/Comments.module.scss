@@ -43,11 +43,38 @@
   margin-bottom: var(--space-4);
 }
 
+/*
+ * Search and the read filter stack on a phone and sit side by side from 768px. The search box
+ * takes the leftover width via flex-grow rather than a fixed max, so the two together occupy the
+ * same 24rem the search box alone used to.
+ */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  @media (width >= 768px) {
+    flex-direction: row;
+    align-items: center;
+    max-width: 32rem;
+  }
+}
+
 .search {
   width: 100%;
 
   @media (width >= 768px) {
-    max-width: 24rem;
+    flex: 1 1 auto;
+    width: auto;
+  }
+}
+
+.readFilter {
+  width: 100%;
+
+  @media (width >= 768px) {
+    flex: 0 0 auto;
+    width: auto;
   }
 }
 
@@ -70,6 +97,45 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-1);
   padding: var(--space-3);
+}
+
+/*
+ * An unread card carries a left accent bar as well as the Unread badge, so the state is legible
+ * while scanning the list rather than only when reading one card. Border-left replaces the
+ * existing 1px edge rather than adding to it, so the card's box size is unchanged and read and
+ * unread cards line up.
+ */
+.rowUnread {
+  border: 1px solid var(--color-border);
+  border-left: var(--space-1) solid var(--color-accent);
+  border-radius: var(--radius-1);
+  padding: var(--space-3);
+}
+
+/*
+ * The card's email-badge-timestamp line. It had no rule at all until the Unread badge made it a
+ * three-item row, at which point the three ran together as one string. The timestamp is pushed to
+ * the end so it sits in the same place whether or not the badge is there.
+ */
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.time {
+  margin-left: auto;
+  color: var(--color-on-surface-muted);
+  font-size: var(--text-sm);
+}
+
+.unread {
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .error {
