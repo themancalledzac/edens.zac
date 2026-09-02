@@ -34,11 +34,19 @@ whole record.
 - **A doc's "blocked on backend" claim is a claim, not a fact.** This board was born from four docs
   asserting the search endpoints were missing while all three sat live in
   `ContentControllerProd.java`. Before honoring any blocked status, grep the backend controller.
-- **Backend items get a row on the backend board when picked up**
-  (`edens.zac.backend/ai_docs/reviews/2026-08-22-backend-cleanup-spike.md`). This board is the
-  product-level view across both repos; the backend board is where a backend session tracks its MR.
-  File the row there in the same pass that starts the work — a cross-repo item filed on one board
-  only is invisible where it lands.
+- **Never open an MR or write a board row in `edens.zac.backend`.** That repo has its own agent and
+  its own board; a second writer there collides with work in flight. Settled by the owner
+  2026-09-01, after this board's own run instructions sent a frontend session to build two backend
+  MRs and append rows to the backend board while another session had it open and dirty. This board
+  stays the product-level view across both repos, but a backend item gets specced here and handed
+  off — [2026-features/backend-handoff-MA4-RC1.md](2026-features/backend-handoff-MA4-RC1.md) is the
+  worked example. Keep the row here for the frontend half only.
+- **A rule is not in force until it is on `main`.** The commit carrying the rule above was dropped
+  by the squash-merge of #394, which took only that PR's first commit. For four hours the board
+  went on telling sessions to do the opposite of what had just been decided. After any PR merges,
+  check every commit that was on the branch:
+  `git merge-base --is-ancestor <sha> origin/main`. A squash whose `--stat` lists fewer files than
+  the branch touched has dropped something.
 - **Stale-spec quarantine.** These specs will actively mislead a planner and must be re-read
   against current code before use: `2026-07-06-collections-as-tags-design.md` (pre-typeless; whole
   type model renamed), `009-abac-access-control.md` (`gallery_access` table deleted),
@@ -229,7 +237,7 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | SD3  | Filter-bar dimension gaps (film stock, row merge)            | FE      | ☐ COLD — badges #373 and year #376 shipped; focal length BUILT AND DROPPED (user, #379)                                                                                                                                                                    |
 | SD4  | `/explore` as a real drill-down explorer (Option C)          | FE      | ☐ BLOCKED — reconcile with refactor-board H5 design review first                                                                                                                                                                                           |
 | SD6  | Clickable people chips (needs a person route + slug)         | BE+FE   | ☐ BLOCKED — no `/person` route and `ContentPersonModel` carries no slug                                                                                                                                                                                    |
-| RC1  | Populate `parents` on public reads + `isFilm` backfill       | BE      | ☐ **MR open** [BE#301](https://github.com/themancalledzac/edens.zac.backend/pull/301), filed as BE board #31. `parents` fully fixed; the `isFilm` backfill needs a live re-measure after deploy (see RC1)                                                  |
+| RC1  | Populate `parents` on public reads + `isFilm` backfill       | BE      | ☐ HANDED OFF, [BE#301](https://github.com/themancalledzac/edens.zac.backend/pull/301) still OPEN as of 2026-09-02. No frontend half until it lands                                                                                                         |
 | RC2  | Similar-collections v1 (metadata-graph score + Related swap) | BE+FE   | ☐ BLOCKED — user: spike decisions D1–D4                                                                                                                                                                                                                    |
 | RC3  | Collections_List render mode (embedded hub as card-row)      | BE+FE   | ☐ COLD — small; no new entity                                                                                                                                                                                                                              |
 | RC4  | Suggested collections (admin suggestion rows)                | BE+FE   | ☐ BLOCKED — needs CT3 engine + RC1 metadata quality                                                                                                                                                                                                        |
@@ -249,7 +257,7 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | MA1  | Manage rail restructure (per-field PATCH, delete edit sheet) | FE(+BE) | ☐ BLOCKED — backend `PATCH /collections/{id}` still absent (re-checked 08-31); it is MR 1                                                                                                                                                                  |
 | MA2  | `staging` system collection                                  | BE+FE   | ☐ BLOCKED — user: `HIDDEN` vs `UNLISTED` seed visibility                                                                                                                                                                                                   |
 | MA3  | Mobile-first admin Phase 3 remainder                         | FE      | ☐ BLOCKED — §5.1 #386 and §5.2's filter bar [#392](https://github.com/themancalledzac/edens.zac/pull/392) shipped; **§5.5 closed 2026-09-01, it had shipped 2026-06-08**; only §5.2's bottom bar remains and it needs a light-surface respec from the user |
-| MA4  | Messages admin: retention TTL, mark-as-read, notify channel  | BE+FE   | ☐ COLD — TTL shipped; mark-as-read + `?unread=`/`?q=` **MR open** [BE#300](https://github.com/themancalledzac/edens.zac.backend/pull/300), filed as BE board #30. FE half owed: swap #384's client-side filter onto `?q=`. Notify channel untouched        |
+| MA4  | Messages admin: retention TTL, mark-as-read, notify channel  | BE+FE   | ☐ **COLD — the FE half is now ours to build.** BE half MERGED as [BE#300](https://github.com/themancalledzac/edens.zac.backend/pull/300) 2026-09-01; `?q=`, `?unread=` and `PATCH /{id}/read` are on backend `main`. Notify channel untouched              |
 | MA5  | Admin collections list at 100× (paged/filtered/sorted)       | BE+FE   | ☐ COLD — low priority until collection count grows                                                                                                                                                                                                         |
 | MA6  | User change log + non-admin canonical mutation path          | BE+FE   | ☐ BLOCKED — user: §10 decisions in the logged-in-flow review                                                                                                                                                                                               |
 | PF14 | Site-wide dark mode behind a user preference                 | FE      | ☐ COLD — spun out of MA3 by decision #5; admin does not get its own                                                                                                                                                                                        |
@@ -265,49 +273,59 @@ tests and function decomposition (debt, chapter 006); and three self-labeled una
 (liked images, mobile text overlay, React 19 follow-ups), listed in the group files so they are
 not rediscovered as new.
 
-## NEXT RUN — set 2026-09-01 (11)
+## NEXT RUN — set 2026-09-02 (12)
 
-**Run (10) closed out.** #383 and #384 merged (auto-merge is disabled on this repo, so each was
-updated, waited on, and merged by hand — `--auto` fails with `enablePullRequestAutoMerge`; record
-that before the next run tries it again). Two backend MRs opened and both board rows filed in the
-same pass: [BE#300](https://github.com/themancalledzac/edens.zac.backend/pull/300) (MA4
-mark-as-read + `?unread=`/`?q=`, board #30) and
-[BE#301](https://github.com/themancalledzac/edens.zac.backend/pull/301) (RC1, board #31). **The
-cross-repo filing debt is paid for both** — no repeat of the twice-late filing.
+**This board is frontend-only. Do not open an MR or write a board row in `edens.zac.backend`.**
+The rule and its history are in "How to use this doc". Backend items get specced here and handed
+off.
 
-**Item 2 of run (10) was not work.** MA3 §5.5's premise was false and had been for three months —
-`TextBlockCreateModal` was migrated onto the primitives on 2026-06-08 by `b81b6ad`. The row was
-written the same day the migration landed and survived three planning passes because each one
-re-read it rather than re-running it. **The lesson generalizes past this row:** the
-"verified and holding" table is the only thing on this board that gets re-run, and §5.5 was never
-in it. An unverified claim that gates an item belongs in that table, not in prose.
+**Run (11) closed out.** #383 and #384 merged by hand — auto-merge is disabled on this repo and
+`--auto` fails with `enablePullRequestAutoMerge`, so a stacked pair means update, wait, merge,
+repeat. MA3 §5.5 closed as already-shipped (#394). MA4's backend half and RC1 were built, then
+handed to the backend agent; **[BE#300](https://github.com/themancalledzac/edens.zac.backend/pull/300)
+has since merged**, which is what makes item 1 below startable.
+
+**Two corrections worth carrying, both about believing a record instead of checking it.**
+
+§5.5's premise was false and had been for three months. `TextBlockCreateModal` was migrated onto
+the primitives on 2026-06-08 by `b81b6ad`; the row was written the same day and survived three
+planning passes because each one re-read it rather than re-running it. The "verified and holding"
+table is the only part of this board that gets re-run, and §5.5 was never in it. An unverified
+claim that gates an item belongs in that table, not in prose.
+
+The squash-merge of #394 then dropped its second commit, taking the frontend-only rule and the
+handoff doc with it. Both were recovered here. A merged PR does not necessarily carry every commit
+that was on its branch — check, per the rule in "How to use this doc".
 
 ### This run
 
-1. **MA4's frontend half.** Swap the messages admin off #384's client-side filter onto `?q=`, and
-   add the read/unread toggle against `PATCH /{id}/read` and `?unread=`. Needs BE#300 merged and
-   deployed first. `useMessageDelete`'s optimistic-rollback shape is the precedent for the toggle.
-2. **RC2 is still blocked** (decision #1), but **RC1's `isFilm` half needs a live re-measure**
-   once BE#301 deploys — see RC1. That is a measurement, not an MR, and it may turn into a
-   one-word question for the user about a third film body.
-3. **SD3, CT5, CT6, EM3, AU1, PF14, RC3** are the remaining COLD items. RC3 is the smallest.
+Every item is frontend and needs no other repo.
 
-**Not startable, and why:** MA3 (§5.2's bottom bar needs a light-surface respec — a design call).
-PF13 steps 2–3. MA1, SD6, and every BLOCKED row above.
+1. **MA4's frontend half.** Swap `CommentsList` off #384's client-side filter onto `?q=`, and add
+   the read/unread toggle against `PATCH /{id}/read` and `?unread=`. The contract is on backend
+   `main` and the refs are in MA4's section, derived 2026-09-02 after #384 rewrote that file.
+   **Guardrail: `/comments` only. Leave `MessagesPanel` and `useCachedPanelData` alone and report
+   what adding read state to the cached payload would cost** — that cache maps a closed key set to
+   payload types, so a new field there is a typing change, not a prop.
+2. **RC3 — Collections_List render mode.** Add a per-row display hint so an embedded hub renders as
+   a labeled card-row of its children instead of one parallax card. No new entity. The Related
+   section's card-row renderer in `CollectionContentRenderer.tsx` is the visual precedent.
+   **Guardrail: do not touch what feeds the Related section.** Changing its source is RC2, which is
+   blocked on decision #1.
+3. **SD3 — film stock filter dimension.** One slice, matching how badges (#373) and year (#376)
+   shipped. **Guardrail: focal length was built and then dropped by the owner in #379. Do not
+   rebuild it**, and if the film-stock slice starts to look like it needs the same shape, report
+   that rather than reviving the dropped one.
 
-**Ask first, batched:** still nothing blocking a COLD item. Decisions #1, #2, #3, #4, #6 and #10
-each unblock an item, and the refactor board has six more — put all of them to the user in one
-sitting.
+**Ask first, batched.** Decision #6 — lone-last-row: gap-box spacer or FILLER atom? — is the one
+whose answer becomes a frontend MR, so ask it in the opening message and make LY1 item 4 if it
+comes back. Decisions #1, #2, #3, #4 and #10 each unblock something too, and the refactor board has
+six more; put all of them in the same sitting rather than a second list later.
 
-**Backend checkout:** occupied for a third consecutive run — the main clone sat on
-`docs/full-board-review-2026-09-01-tenth-run` with the backend board itself dirty. Both MRs were
-built in fresh worktrees off `origin/main`, which is now the standing pattern rather than the
-exception. Two are still live and reusable: `edens.zac.backend.worktrees/ma4-mark-as-read` and
-`.../rc1-parents-isfilm`; `.../0392-sd7-people` is clean and can be removed.
-
-**Filing the board row from a worktree conflicts with whoever holds the main checkout.** Both rows
-here were appended after #26 in `ai_docs/reviews/2026-08-22-backend-cleanup-spike.md`, a file that
-session was editing. Expect a merge conflict in that file and resolve toward keeping both.
+**Not startable, and why:** MA3 (§5.2's bottom bar needs a light-surface respec — a design call,
+not an implementation). PF13 steps 2–3 (`getCollectionBySlug` still cookie-forwarding and
+ISR-tagged at once). MA1 and SD6, both re-verified blocked. RC1 until BE#301 merges, and the
+`isFilm` re-measure after that is the backend agent's, not ours.
 
 ## Verified and holding — do not re-investigate
 
@@ -318,21 +336,19 @@ PF6's ("no error tracking, no seam to fill") in run (9) — `logger.ts` is no lo
 the reporting path exists. Skip these on the next reconciliation unless something in their
 neighbourhood merges.
 
-| Claim                                                           | Command                                                                                                                       | Result                                                                     |
-| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| PF13: 19 segments export `dynamic`, and the flag rejects all 19 | `grep -rn 'export const dynamic' app --include='*.tsx' \| wc -l`, then `cacheComponents: true` + `next build`                 | 19; build names exactly those 19 files                                     |
-| LY1: no FILLER/gap-box symbol exists                            | `grep -rn 'FILLER\|gapBox\|endRowGap' app/utils \| wc -l` (case-sensitive)                                                    | 0 (case-insensitive: 2, both prose)                                        |
-| MA1: `PATCH /collections/{id}` absent                           | `git grep -n '@PatchMapping' origin/main -- src/main/java/` in the backend                                                    | 5 hits, all sub-resource or unrelated                                      |
-| CT5: no auto-tag endpoint                                       | `git grep -c 'auto-tag' origin/main -- src/main/java/`                                                                        | 0                                                                          |
-| AU2: no passkey list/revoke                                     | `git show origin/main:...auth/WebAuthnController.java \| grep -cE '@(Get\|Post\|Put\|Patch\|Delete)Mapping'`                  | 4 endpoints, register/login × start/finish                                 |
-| MA4: no read column on `messages`                               | `git grep -n -iE 'alter table (public\.)?messages\|read_at\|is_read\|unread' origin/main -- src/main/resources/db/migration/` | no matches; V17 is still the whole schema                                  |
-| MA4: delete already shipped                                     | `git grep -n 'DeleteMapping' origin/main -- '*MessagesControllerAdmin.java'`                                                  | `@DeleteMapping("/{id}")` at `:55`                                         |
-| PF2: image count for any backfill                               | `curl -s 'localhost:8080/api/read/content/images/search?page=0&size=1'` → `.totalElements`                                    | 1424 images across 39 collections                                          |
-| PF13: `getCollectionBySlug` is cookie-forwarding AND ISR-tagged | read `app/lib/api/collections.ts:106-124`                                                                                     | `fetchReadApi` + `next: { revalidate, tags }` — blocker holds, hazard live |
-| MA1: `PATCH /collections/{id}` still absent                     | `git grep -n '@PatchMapping' origin/main -- 'src/main/java/**/CollectionController*.java'` in the backend                     | no matches                                                                 |
-| MA4: still no `read_at` on `messages`                           | `git grep -n -iE 'read_at\|is_read' origin/main -- src/main/resources/db/migration/` in the backend                           | no matches; latest migration is V60                                        |
-| SD6: no `/person` route and no slug on a person                 | `find app -type d -name 'person*'`, then `grep -n 'ContentPersonModel' app/types/Metadata.ts`                                 | route absent; `= IdNameModel` (id+name only)                               |
-| Every `file:line` ref on this tracker resolves                  | resolve all 11 against `main`, matching anchor text                                                                           | 11/11 correct, 0 drifted                                                   |
+| Claim                                                           | Command                                                                                                       | Result                                                                      |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| PF13: 19 segments export `dynamic`, and the flag rejects all 19 | `grep -rn 'export const dynamic' app --include='*.tsx' \| wc -l`, then `cacheComponents: true` + `next build` | 19; build names exactly those 19 files                                      |
+| LY1: no FILLER/gap-box symbol exists                            | `grep -rn 'FILLER\|gapBox\|endRowGap' app/utils \| wc -l` (case-sensitive)                                    | 0 (case-insensitive: 2, both prose)                                         |
+| MA1: `PATCH /collections/{id}` absent                           | `git grep -n '@PatchMapping' origin/main -- src/main/java/` in the backend                                    | 5 hits, all sub-resource or unrelated                                       |
+| CT5: no auto-tag endpoint                                       | `git grep -c 'auto-tag' origin/main -- src/main/java/`                                                        | 0                                                                           |
+| AU2: no passkey list/revoke                                     | `git show origin/main:...auth/WebAuthnController.java \| grep -cE '@(Get\|Post\|Put\|Patch\|Delete)Mapping'`  | 4 endpoints, register/login × start/finish                                  |
+| MA4: delete already shipped                                     | `git grep -n '@DeleteMapping' origin/main -- '*MessagesControllerAdmin.java'` in the backend                  | `@DeleteMapping("/{id}")` at `:85` (was `:55`; BE#300 added PATCH above it) |
+| PF2: image count for any backfill                               | `curl -s 'localhost:8080/api/read/content/images/search?page=0&size=1'` → `.totalElements`                    | 1424 images across 39 collections                                           |
+| PF13: `getCollectionBySlug` is cookie-forwarding AND ISR-tagged | read `app/lib/api/collections.ts:106-124`                                                                     | `fetchReadApi` + `next: { revalidate, tags }` — blocker holds, hazard live  |
+| MA1: `PATCH /collections/{id}` still absent                     | `git grep -n '@PatchMapping' origin/main -- 'src/main/java/**/CollectionController*.java'` in the backend     | no matches                                                                  |
+| SD6: no `/person` route and no slug on a person                 | `find app -type d -name 'person*'`, then `grep -n 'ContentPersonModel' app/types/Metadata.ts`                 | route absent; `= IdNameModel` (id+name only)                                |
+| Every `file:line` ref on this tracker resolves                  | resolve all 11 against `main`, matching anchor text                                                           | 11/11 correct, 0 drifted                                                    |
 
 **One recorded command was imprecise rather than wrong, and is now fixed.** AU2's
 `grep -n 'Mapping('` returns **5** lines, not the 4 the row claims — the fifth is the
@@ -340,9 +356,16 @@ class-level `@RequestMapping("/api/auth/webauthn")` at `:37`. The claim was righ
 command was sloppy, which is exactly the shape that gets a number disputed across three
 passes. The row now records a command whose output IS the number.
 
-**Three rows go false the moment two backend MRs merge, and should be deleted then, not re-run:**
-both MA4 `read_at` rows (BE#300 adds the column) and the RC1 line below (BE#301 populates
-`parents`). Delete them on the next reconciliation that sees those MRs merged.
+**Both MA4 `read_at` rows were deleted 2026-09-02 (11) — BE#300 merged and V61 is on backend
+`main`, so the claims are false by construction.** The prediction that they would go false was
+recorded a run earlier and acted on here; that is the intended lifecycle for a row, not an
+exception. The RC1 line below goes the same way when BE#301 merges.
+
+**One ref drifted this pass, in the neighborhood of what merged, as usual.**
+`@DeleteMapping("/{id}")` moved `:55` → `:85` because BE#300 inserted the PATCH endpoint above it.
+Its recorded command was also imprecise — bare `DeleteMapping` matches the import line too, so it
+returned 2 hits for 1 endpoint. Same shape as the AU2 correction: the command now names the
+annotation, so its output IS the answer.
 
 **Not re-checked this pass, and therefore unverified:** RC1's live data counts (`parents: null`
 everywhere; `isFilm` 0/5, 0/5, 0/7 against `dolomites-film`'s 33/33). Those were measured against
@@ -427,7 +450,7 @@ will see that test fail and know it is the contract changing rather than a break
 Context file: [2026-features/rc-similar-collections.md](2026-features/rc-similar-collections.md) —
 carries the full 2026-08-30 spike content (the source spec is gitignored).
 
-### ☐ RC1 · `parents` on public reads + `isFilm` backfill — MR open, backend, unblocks RC2
+### ☐ RC1 · `parents` on public reads + `isFilm` backfill — HANDED OFF, BE#301 still open
 
 Two data bugs verified live against all 39 collections on 2026-08-30: public reads return
 `parents: null` everywhere (so `contentLayout.ts`'s Related section can only show curated
@@ -626,7 +649,8 @@ deliberately. Wants its own sessions.
 Re-specced against the typeless model (the old plan targets the deleted enum). Open: seed
 migration (`HIDDEN` vs `UNLISTED` first), auto-parent beyond the upload path, the
 `enforceVisibility()` slug-bypass carve-out, FE `STAGING_SLUG` beside `HOME_SLUG` in
-`app/utils/collectionSlugs.ts` + manage-page badge. Backend-heavy; file there when picked up.
+`app/utils/collectionSlugs.ts` + manage-page badge. Backend-heavy: spec it here and hand it off, do
+not build it in that repo.
 
 ### ☐ MA3 · Mobile-first admin Phase 3 remainder — BLOCKED, only §5.2's respec remains
 
@@ -683,18 +707,56 @@ admin-only dark wiring — a real dark mode belongs to the whole site behind a u
 these surfaces build on a **light** surface and need no theming work. Do not re-add admin-only dark
 styling while building them; that is now PF14's job, site-wide.
 
-### ☐ MA4 · Messages admin features — COLD; re-classified 2026-09-01 (10). TTL shipped 2026-08-31 (8)
+### ☐ MA4 · Messages admin features — COLD, and the frontend half is startable now
+
+**BE#300 merged 2026-09-01, so the backend half is done.** The contract is on backend `main`,
+verified 2026-09-02 by re-running the command rather than trusting the PR page:
+
+```bash
+git grep -n 'PatchMapping("/{id}/read")\|Boolean unread\|String q' origin/main -- '*MessagesControllerAdmin.java'
+```
+
+→ `Boolean unread` at `:46`, `String q` at `:47`, `@PatchMapping("/{id}/read")` at `:70`.
+`AdminMessageView` gained `readAt` as a fifth component, additively, so nothing breaks until the
+frontend opts in.
+
+The backend agent kept the board row rather than reverting it, so this is their `#30`. The
+[handoff](2026-features/backend-handoff-MA4-RC1.md)'s revert instruction now applies to BE#301 only.
+
+#### The frontend half — what it touches
+
+Two surfaces render messages and both need the change:
+
+- `app/(admin)/comments/CommentsList.tsx` — #384's search. `matchesQuery` at `:22` and the `useMemo`
+  filter at `:50` are what `?q=` replaces. The `searching` scope line (`:63`, `:78`) exists only to
+  admit the filter is partial, and goes with it.
+- `app/components/MessagesPanel/MessagesPanel.tsx` — the `/admin` hub panel.
+
+`app/lib/api/messages.ts` needs `q`/`unread` on `getAdminMessages` (`:17`) plus a new
+`markMessageRead`; `AdminMessageView` (`:3`) gains `readAt`.
+
+**Those refs were derived 2026-09-02, after #384 rewrote `CommentsList.tsx`.** Do not trust any
+`CommentsList` ref written before that date.
+
+**`useMessageDelete` is the precedent for the toggle, not a thing to extend.** It owns optimistic
+update plus rollback-on-throw for one row-level mutation. Mark-read is that same shape.
+
+**The trap:** `MessagesPanel` reads through `useCachedPanelData`, whose cache keys are a closed set
+mapped to payload types deliberately — a free-form key hands the value back as `unknown`. Adding
+`readAt` to the cached payload touches that typing.
+
+---
 
 From 007's "Housekeeping". **The row oversized this by naming work that was already done.** Checked
 against the backend's `origin/main`:
 
-| Piece            | State                                                                                                                                                                                                                                                                               |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Delete**       | **already shipped, both ends, before this item was ever picked up.** `@DeleteMapping("/{id}")` at `MessagesControllerAdmin.java:55`; frontend `deleteAdminMessage` + `useMessageDelete` with optimistic rollback; the button has been rendering on both surfaces. Nothing to build. |
-| **Search**       | **shipped #384.** Client-side over the loaded set — see below.                                                                                                                                                                                                                      |
-| **Mark-as-read** | **MR open, [BE#300](https://github.com/themancalledzac/edens.zac.backend/pull/300)**, with `?unread=` and `?q=` folded in; filed on the backend board as **#30** in the same pass. FE half still owed: swap #384's client-side filter onto `?q=`, and add the read toggle.          |
-| Retention TTL    | **shipped 2026-08-31 (8)**, backend #281, filed as backend board #26                                                                                                                                                                                                                |
-| Notify channel   | untouched, still open                                                                                                                                                                                                                                                               |
+| Piece            | State                                                                                                                                                                                                                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Delete**       | **already shipped, both ends, before this item was ever picked up.** `@DeleteMapping("/{id}")` at `MessagesControllerAdmin.java:85` (was `:55` before BE#300); frontend `deleteAdminMessage` + `useMessageDelete` with optimistic rollback; the button has been rendering on both surfaces. Nothing to build. |
+| **Search**       | **shipped #384.** Client-side over the loaded set — see below.                                                                                                                                                                                                                                                |
+| **Mark-as-read** | **MERGED, [BE#300](https://github.com/themancalledzac/edens.zac.backend/pull/300)** 2026-09-01, with `?unread=` and `?q=` folded in; backend board `#30`. **FE half is now COLD** — swap #384's client-side filter onto `?q=`, add the read toggle. Refs above.                                               |
+| Retention TTL    | **shipped 2026-08-31 (8)**, backend #281, filed as backend board #26                                                                                                                                                                                                                                          |
+| Notify channel   | untouched, still open                                                                                                                                                                                                                                                                                         |
 
 **Re-classified BLOCKED → COLD, 2026-09-01 (10).** This item spent two runs marked BLOCKED on the
 `messages` table having no read column. That is not a blocker: the migration is one we write, and
@@ -873,6 +935,18 @@ _Newest first, local dates. One line per `/next` run: what shipped (PR numbers),
 what's next. Older entries move to
 [2026-features/session-log.md](2026-features/session-log.md)._
 
+- 2026-09-02 (11) — **merged #383, #384 and #394; opened two backend MRs that are no longer ours.**
+  Auto-merge is disabled on this repo, so the stacked pair was updated, waited on and merged by
+  hand. MA3 §5.5 turned out to be **already shipped three months earlier** (`b81b6ad`, 2026-06-08)
+  and closed as a correction rather than built — the row was written the same day the migration
+  landed and had survived three planning passes on re-reading. MA4's backend half and RC1 were
+  built as BE#300/BE#301 off this board's own instructions, then **handed to the backend agent
+  after the owner ruled this board frontend-only**; BE#300 has since merged, BE#301 is still open.
+  **The squash-merge of #394 silently dropped its second commit**, taking the frontend-only rule
+  and the handoff doc with it — both recovered this pass, and the check for it hoisted into "how to
+  use this doc". Deleted the two MA4 `read_at` rows (false once V61 landed) and fixed one drifted
+  ref (`@DeleteMapping` `:55` → `:85`). Next: MA4's frontend half, RC3, SD3.
+
 - 2026-09-01 (10) — **no new feature work; a merge-readiness and reconciliation pass.** Run (9)'s
   three MRs all merged ([#391](https://github.com/themancalledzac/edens.zac/pull/391),
   [#392](https://github.com/themancalledzac/edens.zac/pull/392), backend
@@ -895,38 +969,3 @@ what's next. Older entries move to
   which is exactly what SD6 waits on. Four working rules hoisted, including the CI-never-ran trap,
   "measure both sides of a change", and that `git checkout -b` fails _dirty_ under the agent
   sandbox. Next: merge #383/#384, then MA4 mark-as-read with `?q=`, MA3 §5.5, RC1.
-
-- 2026-08-31 (9) — **merged [#391](https://github.com/themancalledzac/edens.zac/pull/391) (PF6
-  error tracking)** and backend
-  **[#293](https://github.com/themancalledzac/edens.zac.backend/pull/293) (SD7)**; **opened
-  [#392](https://github.com/themancalledzac/edens.zac/pull/392) (MA3 §5.2's filter bar)**, which
-  is still open. Three items, three MRs, nothing stopped. Stated as merged-vs-open on purpose:
-  this board has already been burned three times by ticking an item off a PR that was only
-  opened. **Decision #13 answered, and it collapsed PF6 to a third of its worst
-  case**: Amplify already ships this app's server stdout to CloudWatch, so the server half was a
-  `logger.ts` formatting change — no AWS SDK, no log group, no IAM, `package.json` still five
-  dependencies. The user also took option 3 off the source-map table, so `experimental.serverSourceMaps`
-  is on and `NODE_OPTIONS=--enable-source-maps` is theirs to set. **Two planned pieces were
-  deliberately not built**, both recorded in the MR: the client reporter went inside `logger.error`
-  rather than being wired into three `error.tsx` boundaries, and the route ships with **no rate
-  limit** — a per-instance counter is close to useless on serverless and would advertise a
-  protection that is not there. **The per-tile cap paid the guardrail out**: it was a prerequisite
-  precisely because forwarding turns a harmless console line into a write per tile, per render, per
-  viewer. **MA3 §5.2 produced the run's real lesson, and it sharpens §5.1's.** §5.1 taught "measure
-  it, do not reason from the stylesheet". This pass measured the defect, then set the breakpoint at
-  480px on a _plausible_ argument — that wrapping would cost more than it saved at 740x360, §5.1's
-  own landscape case. That argument compared against a number that had been assumed, not measured.
-  Forcing both states at ten widths showed wrapping never loses in the range, and the threshold
-  went back to 768px. **The rule to carry: measure BOTH sides of a change, including the state you
-  are replacing.** Also found: a `_`-prefixed folder is private in the App Router, so the first
-  throwaway measurement route silently 404'd. **§5.2 turned out to be two things, and only one was
-  buildable** — its full-screen grid and morphing bottom bar are specced against a dark canvas
-  decision #5 removed, so that half needs a light-surface respec before anyone sizes it; the row now
-  says so, so it is not mistaken for ready. **The backend checkout was occupied again**, by a
-  session on `docs/close-out-2026-09-01-eighth-run` with an unpushed local commit — checked before
-  branching this time, per run (8)'s lesson, and SD7 was built in a worktree off `origin/main`.
-  **Two integrity breaks fixed in passing**: a mangled line in the PF group header had split a
-  sentence into a bogus `### ✅'…` heading, leaving a stray section between the group intro and PF14;
-  and PF6's "verified and holding" row was deleted rather than re-run, for the reason the table's
-  own preamble already gives for SD2. Next: MA4 mark-as-read with `?q=` folded in, MA3 §5.5, then
-  PF13 steps 2–3 or SD3.
