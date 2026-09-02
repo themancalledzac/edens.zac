@@ -130,3 +130,32 @@ describe('deep-link round trip', () => {
     expect(params.get('isFilm')).toBe('true');
   });
 });
+
+describe('film stock seeding and criteria', () => {
+  it('seeds a stock selection off the URL so a shared link opens filtered', () => {
+    const seeded = seedFilterState({ isFilm: true, filmTypes: ['Kodak Portra 400'] });
+    expect(seeded.selectedFilmTypes).toEqual(['Kodak Portra 400']);
+    expect(seeded.filmFilter).toBe('film');
+  });
+
+  it('seeds an empty selection when the URL carries no stock', () => {
+    expect(seedFilterState({}).selectedFilmTypes).toEqual([]);
+  });
+
+  it('carries a selected stock into the search criteria', () => {
+    const criteria = buildSearchCriteria(
+      state({ filmFilter: 'film', selectedFilmTypes: ['Ilford HP5 Plus'] })
+    );
+    expect(criteria.filmTypes).toEqual(['Ilford HP5 Plus']);
+    expect(criteria.isFilm).toBe(true);
+  });
+
+  it('round-trips a stock through params and back into state', () => {
+    const original = state({ filmFilter: 'film', selectedFilmTypes: ['Cinestill 800T'] });
+    const restored = seedFilterState(
+      parseFilterFromParams(serializeFilterToParams(buildSearchCriteria(original)))
+    );
+    expect(restored.selectedFilmTypes).toEqual(['Cinestill 800T']);
+    expect(restored.filmFilter).toBe('film');
+  });
+});

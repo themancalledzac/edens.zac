@@ -58,6 +58,12 @@ export interface ContentFilterCriteria {
   years?: readonly string[];
   /** Filter to film images only */
   isFilm?: boolean;
+  /**
+   * Film stock display names to include (OR logic). Only film frames carry one, so this narrows
+   * to film implicitly — but it is kept independent of {@link isFilm} rather than implying it, so
+   * the two read off the URL exactly as they were set.
+   */
+  filmTypes?: readonly string[];
   /** Filter to black & white images only */
   blackAndWhite?: boolean;
   /** Collection IDs to include (OR logic — matches if image belongs to ANY of these) */
@@ -171,6 +177,7 @@ export function filterContent(
     (criteria.dates && criteria.dates.length > 0) ||
     (criteria.years && criteria.years.length > 0) ||
     criteria.isFilm !== undefined ||
+    (criteria.filmTypes && criteria.filmTypes.length > 0) ||
     criteria.blackAndWhite !== undefined ||
     (criteria.collectionIds && criteria.collectionIds.length > 0);
 
@@ -252,6 +259,13 @@ export function filterContent(
     }
 
     if (
+      criteria.filmTypes &&
+      criteria.filmTypes.length > 0 &&
+      (!item.filmType || !criteria.filmTypes.includes(item.filmType))
+    )
+      return false;
+
+    if (
       criteria.blackAndWhite !== undefined &&
       (item.blackAndWhite ?? false) !== criteria.blackAndWhite
     ) {
@@ -282,6 +296,7 @@ export interface ContentFilterOptions {
   tags: string[];
   cameras: string[];
   lenses: string[];
+  filmTypes: string[];
   collections: Array<{ id: number; name: string }>;
   hasFilm: boolean;
   hasDigital: boolean;
@@ -303,6 +318,7 @@ export function extractFilterOptions(
   const tagFrequency = new Map<string, number>();
   const camerasSet = new Set<string>();
   const lensesSet = new Set<string>();
+  const filmTypesSet = new Set<string>();
   const collectionsMap = new Map<number, string>();
   let hasFilm = false;
   let hasDigital = false;
@@ -349,6 +365,10 @@ export function extractFilterOptions(
       lensesSet.add(item.lens.name);
     }
 
+    if (item.filmType) {
+      filmTypesSet.add(item.filmType);
+    }
+
     for (const c of item.collections ?? []) {
       if (c.collectionId && c.name) {
         collectionsMap.set(c.collectionId, c.name);
@@ -377,6 +397,7 @@ export function extractFilterOptions(
       .map(([name]) => name),
     cameras: Array.from(camerasSet).sort(),
     lenses: Array.from(lensesSet).sort(),
+    filmTypes: Array.from(filmTypesSet).sort(),
     collections: Array.from(collectionsMap, ([id, name]) => ({ id, name })).sort((a, b) =>
       a.name.localeCompare(b.name)
     ),
@@ -425,6 +446,7 @@ export interface FilterVisibility {
   people: boolean;
   cameras: boolean;
   lenses: boolean;
+  filmTypes: boolean;
   locations: boolean;
 }
 
@@ -433,6 +455,12 @@ export interface FilterVisibility {
  * computed from the FULL image set so controls don't appear/disappear as filters
  * are applied. The projections here are the canonical home for "what value(s)
  * does an image contribute to dimension X".
+ *
+ * `filmTypes` is the one dimension gated against a subset, and the subset is safe because it is a
+ * property of the content rather than of the active filters: a digital frame carries no stock at
+ * all, so scoring it against the full set would report "some value appears on fewer than all
+ * images" for a set with a single stock and one digital frame. Restricting to frames that have a
+ * stock makes the gate mean what it should — two or more distinct stocks to choose between.
  */
 export function computeFilterVisibility(images: ContentImageModel[]): FilterVisibility {
   return {
@@ -443,6 +471,10 @@ export function computeFilterVisibility(images: ContentImageModel[]): FilterVisi
     people: canFilter(images, img => (img.people ?? []).map(p => p.name)),
     cameras: canFilter(images, img => (img.camera?.name ? [img.camera.name] : [])),
     lenses: canFilter(images, img => (img.lens?.name ? [img.lens.name] : [])),
+    filmTypes: canFilter(
+      images.filter(img => Boolean(img.filmType)),
+      img => [img.filmType as string]
+    ),
     locations: canFilter(images, img => (img.locations ?? []).map(l => l.name)),
   };
 }
@@ -468,6 +500,7 @@ export function applyActiveOverride(
     people: visibility.people || filterState.selectedPeople.length > 0,
     cameras: visibility.cameras || filterState.selectedCameras.length > 0,
     lenses: visibility.lenses || filterState.selectedLenses.length > 0,
+    filmTypes: visibility.filmTypes || filterState.selectedFilmTypes.length > 0,
     locations: visibility.locations || filterState.selectedLocations.length > 0,
   };
 }
@@ -486,6 +519,7 @@ export interface FilterCounts {
   people: Record<string, number>;
   cameras: Record<string, number>;
   lenses: Record<string, number>;
+  filmTypes: Record<string, number>;
   locations: Record<string, number>;
 }
 
@@ -517,6 +551,7 @@ export function computeFilterCounts(
   const { people: _people, peopleMatchMode: _pm, ...withoutPeople } = criteria;
   const { cameras: _cameras, cameraMatchMode: _cm, ...withoutCameras } = criteria;
   const { lenses: _lenses, lensMatchMode: _lm, ...withoutLenses } = criteria;
+  const { filmTypes: _fts, ...withoutFilmTypes } = criteria;
   const { locations: _locations, ...withoutLocations } = criteria;
 
   const baseWithoutRating = filterContent(content, withoutRating);
@@ -526,6 +561,7 @@ export function computeFilterCounts(
   const baseWithoutPeople = filterContent(content, withoutPeople);
   const baseWithoutCameras = filterContent(content, withoutCameras);
   const baseWithoutLenses = filterContent(content, withoutLenses);
+  const baseWithoutFilmTypes = filterContent(content, withoutFilmTypes);
   const baseWithoutLocations = filterContent(content, withoutLocations);
 
   let highlyRated = 0;
@@ -587,6 +623,15 @@ export function computeFilterCounts(
     }
   }
 
+  const filmTypes: Record<string, number> = {};
+  for (const stock of availableOptions.filmTypes) filmTypes[stock] = 0;
+  for (const item of baseWithoutFilmTypes) {
+    if (!isImageContent(item)) continue;
+    if (item.filmType && item.filmType in filmTypes) {
+      filmTypes[item.filmType] = (filmTypes[item.filmType] ?? 0) + 1;
+    }
+  }
+
   const locations: Record<string, number> = {};
   for (const loc of availableOptions.locations) locations[loc] = 0;
   for (const item of baseWithoutLocations) {
@@ -596,7 +641,18 @@ export function computeFilterCounts(
     }
   }
 
-  return { highlyRated, film, digital, collections, tags, people, cameras, lenses, locations };
+  return {
+    highlyRated,
+    film,
+    digital,
+    collections,
+    tags,
+    people,
+    cameras,
+    lenses,
+    filmTypes,
+    locations,
+  };
 }
 
 /**
@@ -666,6 +722,9 @@ export function parseFilterFromParams(
   if (isFilm === 'true') criteria.isFilm = true;
   else if (isFilm === 'false') criteria.isFilm = false;
 
+  const filmTypes = getAll('filmType');
+  if (filmTypes.length > 0) criteria.filmTypes = filmTypes;
+
   const bw = get('bw');
   if (bw === 'true') criteria.blackAndWhite = true;
   else if (bw === 'false') criteria.blackAndWhite = false;
@@ -698,6 +757,7 @@ export const FILTER_PARAM_KEYS = [
   'from',
   'to',
   'isFilm',
+  'filmType',
   'bw',
   'collection',
 ] as const;
@@ -728,6 +788,7 @@ export function serializeFilterToParams(criteria: ContentFilterCriteria): URLSea
   if (criteria.dateTo) params.set('to', criteria.dateTo);
 
   if (criteria.isFilm !== undefined) params.set('isFilm', String(criteria.isFilm));
+  for (const stock of criteria.filmTypes ?? []) params.append('filmType', stock);
   if (criteria.blackAndWhite !== undefined) params.set('bw', String(criteria.blackAndWhite));
   for (const id of criteria.collectionIds ?? []) params.append('collection', String(id));
 
@@ -886,6 +947,9 @@ export function buildCollectionCriteria(filterState: FilterState): ContentFilter
       : {}),
     ...(filterState.selectedLocations.length > 0
       ? { locations: filterState.selectedLocations }
+      : {}),
+    ...(filterState.selectedFilmTypes.length > 0
+      ? { filmTypes: filterState.selectedFilmTypes }
       : {}),
     ...(filterState.selectedDates.length > 0 ? { dates: filterState.selectedDates } : {}),
     ...(filterState.selectedYears.length > 0 ? { years: filterState.selectedYears } : {}),
@@ -1157,6 +1221,9 @@ export function buildLocationCriteria(filterState: FilterState): ContentFilterCr
     ...(filterState.highlyRatedOnly ? { minRating: 4 } : {}),
     ...(filterState.filmFilter === 'film' ? { isFilm: true as const } : {}),
     ...(filterState.filmFilter === 'digital' ? { isFilm: false as const } : {}),
+    ...(filterState.selectedFilmTypes.length > 0
+      ? { filmTypes: filterState.selectedFilmTypes }
+      : {}),
     ...(filterState.selectedTags.length > 0 ? { tags: filterState.selectedTags } : {}),
     ...(filterState.selectedPeople.length > 0 ? { people: filterState.selectedPeople } : {}),
   };
