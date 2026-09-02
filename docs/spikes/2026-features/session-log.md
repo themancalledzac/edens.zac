@@ -180,3 +180,38 @@ same close-out that adds them._
   items were ticked off a PR being opened rather than merged** (SD5/#382, AU4/#383 — and #383 is
   also `DIRTY`, so it cannot merge until rebased). Hoisted as a rule with the two greps that catch
   it. Next: answer #13 then PF6, MA3 §5.2, SD7.
+
+- 2026-08-31 (9) — **merged [#391](https://github.com/themancalledzac/edens.zac/pull/391) (PF6
+  error tracking)** and backend
+  **[#293](https://github.com/themancalledzac/edens.zac.backend/pull/293) (SD7)**; **opened
+  [#392](https://github.com/themancalledzac/edens.zac/pull/392) (MA3 §5.2's filter bar)**, which
+  is still open. Three items, three MRs, nothing stopped. Stated as merged-vs-open on purpose:
+  this board has already been burned three times by ticking an item off a PR that was only
+  opened. **Decision #13 answered, and it collapsed PF6 to a third of its worst
+  case**: Amplify already ships this app's server stdout to CloudWatch, so the server half was a
+  `logger.ts` formatting change — no AWS SDK, no log group, no IAM, `package.json` still five
+  dependencies. The user also took option 3 off the source-map table, so `experimental.serverSourceMaps`
+  is on and `NODE_OPTIONS=--enable-source-maps` is theirs to set. **Two planned pieces were
+  deliberately not built**, both recorded in the MR: the client reporter went inside `logger.error`
+  rather than being wired into three `error.tsx` boundaries, and the route ships with **no rate
+  limit** — a per-instance counter is close to useless on serverless and would advertise a
+  protection that is not there. **The per-tile cap paid the guardrail out**: it was a prerequisite
+  precisely because forwarding turns a harmless console line into a write per tile, per render, per
+  viewer. **MA3 §5.2 produced the run's real lesson, and it sharpens §5.1's.** §5.1 taught "measure
+  it, do not reason from the stylesheet". This pass measured the defect, then set the breakpoint at
+  480px on a _plausible_ argument — that wrapping would cost more than it saved at 740x360, §5.1's
+  own landscape case. That argument compared against a number that had been assumed, not measured.
+  Forcing both states at ten widths showed wrapping never loses in the range, and the threshold
+  went back to 768px. **The rule to carry: measure BOTH sides of a change, including the state you
+  are replacing.** Also found: a `_`-prefixed folder is private in the App Router, so the first
+  throwaway measurement route silently 404'd. **§5.2 turned out to be two things, and only one was
+  buildable** — its full-screen grid and morphing bottom bar are specced against a dark canvas
+  decision #5 removed, so that half needs a light-surface respec before anyone sizes it; the row now
+  says so, so it is not mistaken for ready. **The backend checkout was occupied again**, by a
+  session on `docs/close-out-2026-09-01-eighth-run` with an unpushed local commit — checked before
+  branching this time, per run (8)'s lesson, and SD7 was built in a worktree off `origin/main`.
+  **Two integrity breaks fixed in passing**: a mangled line in the PF group header had split a
+  sentence into a bogus `### ✅'…` heading, leaving a stray section between the group intro and PF14;
+  and PF6's "verified and holding" row was deleted rather than re-run, for the reason the table's
+  own preamble already gives for SD2. Next: MA4 mark-as-read with `?q=` folded in, MA3 §5.5, then
+  PF13 steps 2–3 or SD3.
