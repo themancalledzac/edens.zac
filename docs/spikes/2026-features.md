@@ -263,7 +263,6 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | PF14 | Site-wide dark mode behind a user preference                 | FE      | ☐ COLD — spun out of MA3 by decision #5; admin does not get its own                                                                                                                                                                                        |
 | PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)     | OPS     | ☐ COLD — infra, plan written, ~1–2 weeks lead time                                                                                                                                                                                                         |
 | PF13 | Home page genuinely static (Cache Components / PPR)          | FE      | ☐ BLOCKED — MR 1 **merged** #381; still gated on `getCollectionBySlug` + `meServer` cookies (re-verified 2026-09-01)                                                                                                                                       |
-| LY1  | Lone-last-row sizing: pick gap-box vs FILLER, then build     | FE      | ☐ BLOCKED — user: two competing designs, neither built                                                                                                                                                                                                     |
 
 **Not on this board, deliberately:** everything with a row on
 [2026-summer-refactor.md](2026-summer-refactor.md) (H1's `/user` merge, F4's TaxonomyPage
@@ -339,7 +338,6 @@ neighbourhood merges.
 | Claim                                                           | Command                                                                                                       | Result                                                                      |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | PF13: 19 segments export `dynamic`, and the flag rejects all 19 | `grep -rn 'export const dynamic' app --include='*.tsx' \| wc -l`, then `cacheComponents: true` + `next build` | 19; build names exactly those 19 files                                      |
-| LY1: no FILLER/gap-box symbol exists                            | `grep -rn 'FILLER\|gapBox\|endRowGap' app/utils \| wc -l` (case-sensitive)                                    | 0 (case-insensitive: 2, both prose)                                         |
 | MA1: `PATCH /collections/{id}` absent                           | `git grep -n '@PatchMapping' origin/main -- src/main/java/` in the backend                                    | 5 hits, all sub-resource or unrelated                                       |
 | CT5: no auto-tag endpoint                                       | `git grep -c 'auto-tag' origin/main -- src/main/java/`                                                        | 0                                                                           |
 | AU2: no passkey list/revoke                                     | `git show origin/main:...auth/WebAuthnController.java \| grep -cE '@(Get\|Post\|Put\|Patch\|Delete)Mapping'`  | 4 endpoints, register/login × start/finish                                  |
@@ -383,7 +381,7 @@ Batch these at the start of a session. Each unblocks the named item; none blocks
 | 3      | Gallery passwords: what should they DO? (Design pass; BCrypt is parked behind it)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | EM4      |
 | 4      | Passkey revocation shape: admin endpoint, user-facing list-and-remove, or both?                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | AU2      |
 | ~~5~~  | ~~Does the dark-admin premise survive?~~ **ANSWERED 2026-08-31 (7): yes — site-wide preference, later.** The removal was correct; admin does not get its own dark wiring. MA3's remaining surfaces build on a light surface and proceed now. Dark mode becomes its own item, filed as PF14.                                                                                                                                                                                                                                                                                                                                                                                                             | —        |
-| 6      | Lone-last-row: gap-box spacer or FILLER atom?                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | LY1      |
+| ~~6~~  | ~~Lone-last-row: gap-box spacer or FILLER atom?~~ **ANSWERED 2026-09-02: neither — the gap-box behaviour already ships.** `padRowToWidth` has appended a BLANK spacer to an under-filled trailing row since the 2026-07-16 row-width normalization. Zac declined both the FILLER-atom rewrite (it changes no rendered output) and altering the solo-hero rule. LY1 closed as a correction.                                                                                                                                                                                                                                                                                                              | —        |
 | ~~7~~  | ~~Panel width vs page height~~ **ANSWERED 2026-08-31: keep the shared width; the height cost stands.** Asked narrowly, since a 'V' split makes a column uniform by construction and the predicate can only reject SIDE-BY-SIDE panel columns: those are still one group and still share a width. No code change — LY2 closed as pure adjudication.                                                                                                                                                                                                                                                                                                                                                      | —        |
 | ~~8~~  | ~~Error tracking: Sentry or CloudWatch?~~ **ANSWERED 2026-08-31 (7): CloudWatch.** Already on AWS, no new vendor, no third-party script on every page. Accepts the tradeoff — no grouping and no source maps unless wired — so PF6 must scope source-map upload or accept minified traces. Recorded in [PF6](2026-features/pf-performance-platform.md).                                                                                                                                                                                                                                                                                                                                                 | —        |
 | ~~11~~ | ~~`engines.node` vs the dev machine~~ **ANSWERED 2026-08-31: "whatever is best long term practice."** Read as: `engines.node` becomes an unbounded floor, a `.nvmrc` names the blessed version, and CI reads that file instead of a hardcoded literal — one source of truth, no upper bound to age out. Shape recorded in [PF11](2026-features/pf-performance-platform.md).                                                                                                                                                                                                                                                                                                                             | PF11     |
@@ -919,15 +917,38 @@ rate-limit page rule on `*/api/public/*`, re-key `RateLimitFilter` off `CF-Conne
 Context file: [2026-features/ly-layout-decisions.md](2026-features/ly-layout-decisions.md) —
 1 closed (LY2, #369, adjudication only); its write-up is in that file's Closed section.
 
-### ☐ LY1 · Lone-last-row sizing — BLOCKED (user, decision #6)
+### ✅ LY1 · Lone-last-row sizing — CLOSED 2026-09-02, the behaviour already shipped
 
-Two incompatible designs exist and neither is built — `grep -rn "FILLER\|gapBox\|endRowGap"
-app/utils` returns **0** (re-run 2026-08-31). Note the case-insensitive form returns 2, both the
-word "filler" inside prose comments (`rowCombination.ts:1055`, `contentRatingUtils.ts:58`) rather
-than a symbol; use the case-sensitive command above so this does not get re-disputed. The two
-designs: the gap-box spacer (`005-end-row-gap.md`) vs the redesign spec's §13 FILLER atom.
-Pick one, then TDD it. Note the BLANK-spacer post-pass in `buildRows` already handles row-width
-normalization — read the group file so the chosen design composes with it.
+**Decision #6 had a false premise.** The row said "two competing designs, neither built", on the
+evidence of `grep -rn "FILLER\|gapBox\|endRowGap" app/utils` returning 0. That grep is a NAMING
+check, not a behaviour check, and the gap-box design ships — under the name BLANK.
+
+`padRowToWidth` (`app/utils/rowCombination.ts:683`) appends a horizontal BLANK sibling to an
+under-filled trailing row so the real item renders at its proportional width share instead of
+stretching to full width. That is the gap-box design as written. It landed in the 2026-07-16
+row-width normalization, which is why a grep for the other design's vocabulary missed it.
+
+```bash
+npx jest tests/utils/rowCombination.blankPadding.test.ts   # → 14 passed
+```
+
+Among those 14: "pads an under-filled single-item row with one blank right sibling" and "renders
+the real item at its natural proportional share S/rowWidth".
+
+**The row's stated defect was also wrong about the mechanism.** "A lone image renders full-width
+regardless of its rating" — rating has nothing to do with it. The only lone item that still fills
+the row is one passing `isSoloHero`, which gates on aspect-ratio extremeness, and that full-width
+row is deliberate.
+
+**Zac's answer, 2026-09-02: close it, build nothing.** He declined the FILLER-atom rewrite — moving
+the same behaviour from a post-pass into `compose()`/`buildAtomic`, changing no rendered output —
+and declined altering the solo-hero panorama rule. **Do not re-propose either design.**
+
+The lesson, and the reason this sat blocked for weeks: this board already carries "a fix is not
+verified by the absence of the string it moved". This is that rule in reverse — a FEATURE was
+recorded as unbuilt because the string naming it was absent. A grep for a design's vocabulary
+cannot answer whether the behaviour exists. Only running it can, which is why the row above now
+records a command whose output IS the answer.
 
 ## Session log
 
