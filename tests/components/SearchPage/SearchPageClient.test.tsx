@@ -93,3 +93,48 @@ describe('SearchPageClient', () => {
     expect(screen.queryByText('Tags')).not.toBeInTheDocument();
   });
 });
+
+/**
+ * The film-stock dropdown is deliberately conditional on Film being the selected side of the
+ * film/digital toggle — the one control in this bar whose presence changes as filters are applied.
+ * These cases pin both halves of that condition, since it is the thing that makes it an exception.
+ */
+describe('SearchPageClient — film stock dropdown', () => {
+  const shot = (id: number, filmType: string | null): ContentImageModel =>
+    createImageContent(id, {
+      isFilm: filmType !== null,
+      filmType,
+      captureDate: '2026-07-20',
+    });
+
+  const twoStocks = () => [shot(1, 'Kodak Portra 400'), shot(2, 'Kodak Tri-X 400')];
+
+  it('offers the dropdown once Film is the selected side of the toggle', () => {
+    mockInitialCriteria = { isFilm: true };
+    render(<SearchPageClient images={twoStocks()} />);
+    expect(screen.getByRole('button', { name: 'Film stock' })).toBeInTheDocument();
+  });
+
+  it('withholds it while the toggle is off, even though two stocks are present', () => {
+    render(<SearchPageClient images={twoStocks()} />);
+    expect(screen.queryByRole('button', { name: 'Film stock' })).not.toBeInTheDocument();
+  });
+
+  it('withholds it on the digital side of the toggle', () => {
+    mockInitialCriteria = { isFilm: false };
+    render(<SearchPageClient images={[...twoStocks(), shot(3, null)]} />);
+    expect(screen.queryByRole('button', { name: 'Film stock' })).not.toBeInTheDocument();
+  });
+
+  it('withholds it when Film is selected but there is only one stock to choose', () => {
+    mockInitialCriteria = { isFilm: true };
+    render(<SearchPageClient images={[shot(1, 'Kodak Portra 400'), shot(2, null)]} />);
+    expect(screen.queryByRole('button', { name: 'Film stock' })).not.toBeInTheDocument();
+  });
+
+  it('narrows the results to the selected stock', () => {
+    mockInitialCriteria = { isFilm: true, filmTypes: ['Kodak Portra 400'] };
+    render(<SearchPageClient images={twoStocks()} />);
+    expect(screen.getByText('1 photo')).toBeInTheDocument();
+  });
+});

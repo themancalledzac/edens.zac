@@ -215,7 +215,19 @@ export function FilterToolbar({
 
   const toggleOpen = (key: ArrayFilterKey) => setOpenDropdown(prev => (prev === key ? null : key));
 
-  const cycleFilm = () => onFilterChange({ filmFilter: cycleFilmFilter(filterState.filmFilter) });
+  /**
+   * Cycle the film/digital toggle, dropping any film-stock selection on the way out of `film`.
+   * Stock is a secondary dimension under this toggle, so leaving `film` takes its control off the
+   * bar — and a filter still narrowing the results from behind a control that is no longer there
+   * is the failure this avoids.
+   */
+  const cycleFilm = () => {
+    const filmFilter = cycleFilmFilter(filterState.filmFilter);
+    onFilterChange({
+      filmFilter,
+      ...(filmFilter === 'film' ? {} : { selectedFilmTypes: [] }),
+    });
+  };
 
   const filmCount = filterState.filmFilter === 'off' ? undefined : counts?.[filterState.filmFilter];
 
