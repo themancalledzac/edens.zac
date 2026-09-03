@@ -32,6 +32,7 @@ const EMPTY_COUNTS: FilterCounts = {
   people: {},
   cameras: {},
   lenses: {},
+  filmTypes: {},
   locations: {},
 };
 
@@ -143,6 +144,15 @@ export default function SearchPageClient({ images }: SearchPageClientProps) {
                   label: 'Lenses',
                   options: availableOptions.lenses,
                   counts: filterCounts.lenses,
+                },
+              }
+            : {}),
+          ...(visibility.filmTypes && filterState.filmFilter === 'film'
+            ? {
+                selectedFilmTypes: {
+                  label: 'Film stock',
+                  options: availableOptions.filmTypes,
+                  counts: filterCounts.filmTypes,
                 },
               }
             : {}),

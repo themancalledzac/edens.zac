@@ -36,7 +36,7 @@ const makeMessage = (
   email: string,
   message: string,
   createdAt: string
-): messagesApi.AdminMessageView => ({ id, email, message, createdAt });
+): messagesApi.AdminMessageView => ({ id, email, message, createdAt, readAt: null });
 
 describe('MessagesPanel', () => {
   beforeEach(() => {

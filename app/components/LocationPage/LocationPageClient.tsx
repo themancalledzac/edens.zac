@@ -39,6 +39,7 @@ export default function LocationPageClient({ images, collections }: LocationPage
     filmFilter: filmFilterFromIsFilm(initialCriteria.isFilm),
     selectedTags: initialCriteria.tags ?? [],
     selectedPeople: initialCriteria.people ?? [],
+    selectedFilmTypes: initialCriteria.filmTypes ?? [],
   }));
 
   const availableOptions = useMemo(() => extractFilterOptions(images), [images]);
@@ -73,6 +74,7 @@ export default function LocationPageClient({ images, collections }: LocationPage
         people: {},
         cameras: {},
         lenses: {},
+        filmTypes: {},
         locations: {},
       };
     }
@@ -117,6 +119,15 @@ export default function LocationPageClient({ images, collections }: LocationPage
                   label: 'People',
                   options: availableOptions.people,
                   counts: filterCounts.people,
+                },
+              }
+            : {}),
+          ...(visibility.filmTypes && filterState.filmFilter === 'film'
+            ? {
+                selectedFilmTypes: {
+                  label: 'Film stock',
+                  options: availableOptions.filmTypes,
+                  counts: filterCounts.filmTypes,
                 },
               }
             : {}),

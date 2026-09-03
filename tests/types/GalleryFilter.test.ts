@@ -148,3 +148,32 @@ describe('FilterState helpers', () => {
     expect(updates).toEqual([{ selectedDates: ['2026-07-20'] }]);
   });
 });
+
+describe('film stock is a single-choice dimension', () => {
+  const withStock = (stocks: string[]): FilterState => ({
+    ...INITIAL_FILTER_STATE,
+    selectedFilmTypes: stocks,
+  });
+
+  it('starts empty and is listed as an array dimension', () => {
+    expect(INITIAL_FILTER_STATE.selectedFilmTypes).toEqual([]);
+    expect(ARRAY_FILTER_KEYS).toContain('selectedFilmTypes');
+  });
+
+  it('replaces the selection rather than accumulating', () => {
+    const onChange = jest.fn();
+    toggleArrayFilter(withStock(['Kodak Portra 400']), onChange, 'selectedFilmTypes', 'Ilford HP5');
+    expect(onChange).toHaveBeenCalledWith({ selectedFilmTypes: ['Ilford HP5'] });
+  });
+
+  it('clears the dimension when the current sole selection is picked again', () => {
+    const onChange = jest.fn();
+    toggleArrayFilter(
+      withStock(['Kodak Portra 400']),
+      onChange,
+      'selectedFilmTypes',
+      'Kodak Portra 400'
+    );
+    expect(onChange).toHaveBeenCalledWith({ selectedFilmTypes: [] });
+  });
+});
