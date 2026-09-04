@@ -38,6 +38,12 @@ _Origin: full critical review of `main` on 2026-08-22, produced by 8 parallel re
 > (`git check-ignore -v` to confirm). The tracking history, the accepted public-repo trade-off, and
 > the stale-local-main sync trap: [lessons.md](2026-summer-refactor/lessons.md).
 
+> **A cross-board review handoff was written 2026-09-04:**
+> [2026-features/2026-09-04-board-review-handoff.md](2026-features/2026-09-04-board-review-handoff.md).
+> It records what was re-run and what had drifted at `main` @ `29bd30f0`, and it names claims on
+> BOTH boards that are known false — including three items marked COLD that had already shipped.
+> Read it before trusting a status on either board.
+
 ## How to use this doc
 
 Each rule below is the distilled form; the incident that earned it is in

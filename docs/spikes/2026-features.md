@@ -25,6 +25,12 @@ whole record.
 > into the tracked group file. Do not plan from a `docs/superpowers/` path alone; if a spec detail
 > matters, it belongs in the group file.
 
+> **A cross-board review handoff was written 2026-09-04:**
+> [2026-features/2026-09-04-board-review-handoff.md](2026-features/2026-09-04-board-review-handoff.md).
+> It records what was re-run and what had drifted at `main` @ `29bd30f0`, and it names claims on
+> BOTH boards that are known false — including three items marked COLD that had already shipped.
+> Read it before trusting a status on either board.
+
 ## How to use this doc
 
 - One MR per numbered item slice (`SD1`, `RC2`, …). Do not bundle across items. Open every PR with
@@ -502,7 +508,7 @@ git show origin/main:src/main/java/edens/zac/portfolio/backend/model/ContentMode
 ```
 
 → `ContentCollectionModel` (`app/types/Content.ts:338-392`) and its backend record
-(`ContentModels.java:236`, 20 components) both carry no `hasChildren`, no `children`, no
+(`ContentModels.java:236`, 21 components) both carry no `hasChildren`, no `children`, no
 `contentCount`. The only frontend-only path is a `getCollectionBySlug` per embedded collection at
 render time — a request per card for a layout hint.
 
