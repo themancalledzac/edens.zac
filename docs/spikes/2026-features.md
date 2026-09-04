@@ -239,7 +239,7 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | SD6  | Clickable people chips (needs a person route + slug)         | BE+FE   | ☐ BLOCKED — no `/person` route and `ContentPersonModel` carries no slug                                                                                                                                                                                    |
 | RC1  | Populate `parents` on public reads + `isFilm` backfill       | BE      | ☐ HANDED OFF, [BE#301](https://github.com/themancalledzac/edens.zac.backend/pull/301) still OPEN as of 2026-09-02. No frontend half until it lands                                                                                                         |
 | RC2  | Similar-collections v1 (metadata-graph score + Related swap) | BE+FE   | ☐ BLOCKED — user: spike decisions D1–D4                                                                                                                                                                                                                    |
-| RC3  | Collections_List render mode (embedded hub as card-row)      | BE+FE   | ☐ COLD — small; no new entity                                                                                                                                                                                                                              |
+| RC3  | Collections_List render mode (embedded hub as card-row)      | BE+FE   | ☐ **BLOCKED — the COLLECTION content block carries nothing about children** (verified both sides 2026-09-02). Specced and handed off: [backend-handoff-RC3.md](2026-features/backend-handoff-RC3.md)                                                       |
 | RC4  | Suggested collections (admin suggestion rows)                | BE+FE   | ☐ BLOCKED — needs CT3 engine + RC1 metadata quality                                                                                                                                                                                                        |
 | RC5  | CLIP/pgvector embedding tier                                 | BE+ML   | ☐ BLOCKED — user: spike decision D6 (infra commitment)                                                                                                                                                                                                     |
 | CT1  | Collections-as-tags spec refresh against the typeless model  | docs    | ☐ COLD — produces a current D1–D12 matrix for CT2                                                                                                                                                                                                          |
@@ -485,12 +485,39 @@ request, cached by the existing `collection-{slug}` tag. Ticketed on the spike's
 as defaults; implementation waits for a reply-by-number on D1–D4. Full algorithm, weights and live
 results in the group file.
 
-### ☐ RC3 · Collections_List render mode — COLD, small
+### ☐ RC3 · Collections_List render mode — BLOCKED (backend field absent), specced and handed off
 
-An embedded COLLECTION content row today renders as one parallax card. Add a per-row display hint
-(`render_mode: CARD | LIST`, or infer LIST when the referenced collection `hasChildren`) so an
-embedded hub renders as a labeled card-row of its children. No new entity. The Related section's
-card-row renderer in `CollectionContentRenderer.tsx` is the visual precedent.
+An embedded COLLECTION content row today renders as one parallax card; the goal is that an embedded
+hub renders as a labeled card-row of its children instead.
+
+**"No new entity" was right; "small" and "COLD" were not.** The frontend cannot make the
+LIST-vs-CARD decision at all, because nothing it receives says whether the referenced collection has
+children. Both sides were read on `origin/main` rather than one inferred from the other:
+
+```bash
+grep -n 'interface ContentCollectionModel' -A 20 app/types/Content.ts
+# and, in edens.zac.backend:
+git show origin/main:src/main/java/edens/zac/portfolio/backend/model/ContentModels.java \
+  | grep -n 'record Collection' -A 30
+```
+
+→ `ContentCollectionModel` (`app/types/Content.ts:338-392`) and its backend record
+(`ContentModels.java:236`, 20 components) both carry no `hasChildren`, no `children`, no
+`contentCount`. The only frontend-only path is a `getCollectionBySlug` per embedded collection at
+render time — a request per card for a layout hint.
+
+**The backend ask is small and precedented**: `hasChildren` already exists, computed server-side and
+serialized onto the admin manage DTO (`app/types/Collection.ts:381`). It is a serialization change,
+not new logic. Full spec, including the child-summary shape, the visibility gates to consider, and
+the frontend work waiting on it: [backend-handoff-RC3.md](2026-features/backend-handoff-RC3.md).
+
+**Do not reuse `DisplayMode` for this.** `FIXED` shipped and reads like the per-row display hint the
+old row described. It is a per-collection SORT key, read on the collection being viewed, not on
+collections referenced from it — a category error, and one this row invited.
+
+The Related section's card-row is the visual target but is inlined JSX in the TEXT branch, not a
+component; `CoverCard` + a `LocationCollections`-style row is the reusable path. Related's own
+source is untouched — changing it is RC2, blocked on decision #1.
 
 ### ☐ RC4 · Suggested collections — BLOCKED (needs CT3 + RC1)
 
