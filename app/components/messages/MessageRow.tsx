@@ -12,7 +12,10 @@ import { gmailReplyUrl, relative, truncateWords } from '@/app/utils/messageForma
  * email-over-body left section. A caller declares the keys its own arrangement reaches for.
  */
 type MessageRowStyles = Partial<
-  Record<'meta' | 'identity' | 'email' | 'time' | 'body' | 'actions' | 'replyButton', string>
+  Record<
+    'meta' | 'identity' | 'email' | 'time' | 'body' | 'actions' | 'replyButton' | 'unread',
+    string
+  >
 >;
 
 interface MessagePartProps {
@@ -60,9 +63,24 @@ function MessageBody({ message, styles, excerptWords }: MessageBodyProps) {
 interface MessageActionsProps extends MessagePartProps {
   onDelete: (m: AdminMessageView) => void;
   deleting: boolean;
+  /**
+   * Toggles this message between read and unread. Passing it is what makes a surface read-aware:
+   * the button and the Unread badge both appear only when it is present, so a caller that does not
+   * manage read state — the admin hub's compact row — renders exactly as it did before.
+   */
+  onToggleRead?: (m: AdminMessageView) => void;
+  togglingRead?: boolean;
 }
 
-function MessageActions({ message, styles, onDelete, deleting }: MessageActionsProps) {
+function MessageActions({
+  message,
+  styles,
+  onDelete,
+  deleting,
+  onToggleRead,
+  togglingRead,
+}: MessageActionsProps) {
+  const read = message.readAt !== null;
   return (
     <div className={styles.actions}>
       <a
@@ -73,11 +91,29 @@ function MessageActions({ message, styles, onDelete, deleting }: MessageActionsP
       >
         Reply in Gmail
       </a>
+      {onToggleRead && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onToggleRead(message)}
+          disabled={togglingRead}
+        >
+          {read ? 'Mark unread' : 'Mark read'}
+        </Button>
+      )}
       <Button variant="danger" size="sm" onClick={() => onDelete(message)} disabled={deleting}>
         {deleting ? 'Deleting…' : 'Delete'}
       </Button>
     </div>
   );
+}
+
+/**
+ * The "Unread" badge. Real text rather than a coloured dot, so the state reaches a screen reader
+ * without an aria-label doing the work a visible word already does.
+ */
+function UnreadBadge({ styles }: { styles: MessageRowStyles }) {
+  return <span className={styles.unread}>Unread</span>;
 }
 
 type MessageRowProps = MessageActionsProps & MessageBodyProps;
@@ -86,16 +122,35 @@ type MessageRowProps = MessageActionsProps & MessageBodyProps;
  * Inner markup for one message CARD: email + time, body, reply + delete actions, stacked in one
  * column. The /comments page's arrangement — it has a full page width to spend and shows the whole
  * message body, so it does not split into left/right sections the way the hub row does.
+ *
+ * Passing `onToggleRead` adds the Unread badge and the read button; omitting it renders the card
+ * exactly as it did before read state existed.
  */
-export function MessageRow({ message, onDelete, deleting, styles, excerptWords }: MessageRowProps) {
+export function MessageRow({
+  message,
+  onDelete,
+  deleting,
+  styles,
+  excerptWords,
+  onToggleRead,
+  togglingRead,
+}: MessageRowProps) {
   return (
     <>
       <div className={styles.meta}>
         <EmailLink message={message} styles={styles} />
+        {onToggleRead && message.readAt === null && <UnreadBadge styles={styles} />}
         <Timestamp message={message} styles={styles} />
       </div>
       <MessageBody message={message} styles={styles} excerptWords={excerptWords} />
-      <MessageActions message={message} styles={styles} onDelete={onDelete} deleting={deleting} />
+      <MessageActions
+        message={message}
+        styles={styles}
+        onDelete={onDelete}
+        deleting={deleting}
+        onToggleRead={onToggleRead}
+        togglingRead={togglingRead}
+      />
     </>
   );
 }

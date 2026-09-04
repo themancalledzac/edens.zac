@@ -26,7 +26,8 @@ export function buildSearchCriteria(filterState: FilterState): ContentFilterCrit
 
 /**
  * Builds toolbar state from criteria parsed off the URL, so a shared `/search` link opens with
- * its filters applied. Lenses are omitted because no URL key carries them (SD3).
+ * its filters applied. Lenses are still omitted because no URL key carries them — `lenses` is a
+ * criteria field that `serializeFilterToParams` never emits, so a lens choice is not shareable.
  */
 export function seedFilterState(criteria: ContentFilterCriteria): FilterState {
   return {
@@ -37,6 +38,7 @@ export function seedFilterState(criteria: ContentFilterCriteria): FilterState {
     selectedPeople: criteria.people ?? [],
     selectedCameras: criteria.cameras ?? [],
     selectedLocations: criteria.locations ?? [],
+    selectedFilmTypes: criteria.filmTypes ?? [],
     selectedDates: criteria.dates ?? [],
   };
 }

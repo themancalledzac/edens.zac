@@ -753,3 +753,77 @@ describe('FilterToolbar year chips', () => {
     expect(screen.getByRole('button', { name: '2026' })).toBeEnabled();
   });
 });
+
+/**
+ * Film stock sits under the film/digital toggle, so the toggle owns clearing it. These cases pin
+ * that leaving `film` in either direction takes the selection with it — a stock still narrowing
+ * the results from behind a control the caller has stopped rendering is the failure to avoid.
+ */
+describe('FilterToolbar — film stock', () => {
+  const withStock = {
+    ...INITIAL_FILTER_STATE,
+    filmFilter: 'film' as const,
+    selectedFilmTypes: ['Kodak Portra 400'],
+  };
+
+  it('clears the stock selection when the toggle moves from film to digital', () => {
+    const { onFilterChange } = renderToolbar({ showFilm: true, filterState: withStock });
+    fireEvent.click(screen.getByRole('button', { name: /film/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({
+      filmFilter: 'digital',
+      selectedFilmTypes: [],
+    });
+  });
+
+  it('clears it when the toggle cycles from digital back to off', () => {
+    const { onFilterChange } = renderToolbar({
+      showFilm: true,
+      filterState: { ...withStock, filmFilter: 'digital' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /digital/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ filmFilter: 'off', selectedFilmTypes: [] });
+  });
+
+  it('does not clear it on the way into film', () => {
+    const { onFilterChange } = renderToolbar({ showFilm: true });
+    fireEvent.click(screen.getByRole('button', { name: /film/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ filmFilter: 'film' });
+  });
+
+  it('renders the stock dropdown and selects one stock at a time', () => {
+    const { onFilterChange } = renderToolbar({
+      showFilm: true,
+      filterState: { ...INITIAL_FILTER_STATE, filmFilter: 'film' },
+      dimensions: {
+        selectedFilmTypes: {
+          label: 'Film stock',
+          options: ['Cinestill 800T', 'Kodak Portra 400'],
+        },
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Film stock' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Kodak Portra 400' }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedFilmTypes: ['Kodak Portra 400'] });
+  });
+
+  it('switches rather than accumulates, because a frame has one stock', () => {
+    const { onFilterChange } = renderToolbar({
+      showFilm: true,
+      filterState: withStock,
+      dimensions: {
+        selectedFilmTypes: {
+          label: 'Film stock',
+          options: ['Cinestill 800T', 'Kodak Portra 400'],
+        },
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Film stock' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cinestill 800T' }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedFilmTypes: ['Cinestill 800T'] });
+  });
+
+  it('renders no stock dropdown when the caller does not pass the dimension', () => {
+    renderToolbar({ showFilm: true, filterState: withStock });
+    expect(screen.queryByRole('button', { name: 'Film stock' })).not.toBeInTheDocument();
+  });
+});

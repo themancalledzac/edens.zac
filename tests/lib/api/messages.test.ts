@@ -9,11 +9,17 @@
  * `useMessageDelete`, which rolls the row back on a throw.
  */
 
-import { ApiError, fetchAdminDeleteApi, fetchAdminGetApi } from '@/app/lib/api/core';
+import {
+  ApiError,
+  fetchAdminDeleteApi,
+  fetchAdminGetApi,
+  fetchAdminPatchJsonApi,
+} from '@/app/lib/api/core';
 import {
   type AdminMessageList,
   deleteAdminMessage,
   getAdminMessages,
+  markMessageRead,
 } from '@/app/lib/api/messages';
 
 // Keep ApiError real so the propagation specs assert on the real class.
@@ -21,14 +27,22 @@ jest.mock('@/app/lib/api/core', () => ({
   ...jest.requireActual('@/app/lib/api/core'),
   fetchAdminGetApi: jest.fn(),
   fetchAdminDeleteApi: jest.fn(),
+  fetchAdminPatchJsonApi: jest.fn(),
 }));
 
 const getMock = fetchAdminGetApi as jest.Mock;
 const deleteMock = fetchAdminDeleteApi as jest.Mock;
+const patchMock = fetchAdminPatchJsonApi as jest.Mock;
 
 const list: AdminMessageList = {
   messages: [
-    { id: 1, email: 'someone@example.com', message: 'Nice photos', createdAt: '2026-01-01T00:00Z' },
+    {
+      id: 1,
+      email: 'someone@example.com',
+      message: 'Nice photos',
+      createdAt: '2026-01-01T00:00Z',
+      readAt: null,
+    },
   ],
   total: 1,
   limit: 50,
@@ -73,6 +87,100 @@ describe('getAdminMessages', () => {
     getMock.mockRejectedValueOnce(new ApiError('Unauthorized', 401));
 
     await expect(getAdminMessages()).rejects.toMatchObject({ name: 'ApiError', status: 401 });
+  });
+});
+
+describe('getAdminMessages — server-side filtering', () => {
+  it('sends a trimmed query as ?q=', async () => {
+    getMock.mockResolvedValueOnce(list);
+
+    await getAdminMessages(50, 0, { q: '  prints  ' });
+
+    expect(getMock).toHaveBeenCalledWith('/messages?limit=50&offset=0&q=prints', {
+      cache: 'no-store',
+    });
+  });
+
+  it('omits ?q= entirely for an empty or whitespace-only query', async () => {
+    getMock.mockResolvedValueOnce(list);
+
+    await getAdminMessages(50, 0, { q: '   ' });
+
+    expect(getMock).toHaveBeenCalledWith('/messages?limit=50&offset=0', { cache: 'no-store' });
+  });
+
+  it('url-encodes a query rather than pasting it into the string raw', async () => {
+    getMock.mockResolvedValueOnce(list);
+
+    await getAdminMessages(50, 0, { q: 'a&b=c d' });
+
+    expect(getMock).toHaveBeenCalledWith('/messages?limit=50&offset=0&q=a%26b%3Dc+d', {
+      cache: 'no-store',
+    });
+  });
+
+  it('sends ?unread=true for unread only', async () => {
+    getMock.mockResolvedValueOnce(list);
+
+    await getAdminMessages(50, 0, { unread: true });
+
+    expect(getMock).toHaveBeenCalledWith('/messages?limit=50&offset=0&unread=true', {
+      cache: 'no-store',
+    });
+  });
+
+  it('sends ?unread=false for read only — false is a filter, not an absence', async () => {
+    getMock.mockResolvedValueOnce(list);
+
+    await getAdminMessages(50, 0, { unread: false });
+
+    expect(getMock).toHaveBeenCalledWith('/messages?limit=50&offset=0&unread=false', {
+      cache: 'no-store',
+    });
+  });
+
+  it('omits unread when it is undefined, which is how "both states" is asked for', async () => {
+    getMock.mockResolvedValueOnce(list);
+
+    await getAdminMessages(50, 0, { unread: undefined, q: 'x' });
+
+    expect(getMock).toHaveBeenCalledWith('/messages?limit=50&offset=0&q=x', { cache: 'no-store' });
+  });
+
+  it('sends both filters together', async () => {
+    getMock.mockResolvedValueOnce(list);
+
+    await getAdminMessages(20, 40, { q: 'prints', unread: true });
+
+    expect(getMock).toHaveBeenCalledWith('/messages?limit=20&offset=40&unread=true&q=prints', {
+      cache: 'no-store',
+    });
+  });
+});
+
+describe('markMessageRead', () => {
+  it('PATCHes the read sub-resource with an explicit read flag', async () => {
+    patchMock.mockResolvedValueOnce(null);
+
+    await expect(markMessageRead(42, true)).resolves.toBeUndefined();
+    expect(patchMock).toHaveBeenCalledWith('/messages/42/read', { read: true });
+  });
+
+  it('sends read:false to mark unread rather than omitting the body', async () => {
+    patchMock.mockResolvedValueOnce(null);
+
+    await markMessageRead(42, false);
+
+    expect(patchMock).toHaveBeenCalledWith('/messages/42/read', { read: false });
+  });
+
+  it('propagates an ApiError so the optimistic flip can roll back', async () => {
+    patchMock.mockRejectedValueOnce(new ApiError('Not Found', 404));
+
+    await expect(markMessageRead(42, true)).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 404,
+    });
   });
 });
 

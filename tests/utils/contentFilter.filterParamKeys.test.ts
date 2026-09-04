@@ -26,6 +26,7 @@ const EVERY_CRITERION: ContentFilterCriteria = {
   dateFrom: '2026-01-01',
   dateTo: '2026-12-31',
   isFilm: true,
+  filmTypes: ['Kodak Portra 400'],
   blackAndWhite: true,
   collectionIds: [10, 20],
 };

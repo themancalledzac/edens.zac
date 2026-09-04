@@ -36,6 +36,12 @@ export interface FilterState {
   readonly selectedLenses: readonly string[];
   readonly selectedLocations: readonly string[];
   /**
+   * Film stock display names ('Kodak Portra 400') to include. A secondary dimension under the
+   * film/digital toggle: a digital frame carries no stock, so this only narrows anything once
+   * Film is the selected side of that toggle.
+   */
+  readonly selectedFilmTypes: readonly string[];
+  /**
    * Calendar years ('YYYY') to include. The coarse counterpart to {@link selectedDates}: a year
    * also narrows COLLECTION tiles by their own `collectionDate`, which a capture day cannot do.
    */
@@ -54,6 +60,7 @@ export const INITIAL_FILTER_STATE: FilterState = Object.freeze({
   selectedCameras: Object.freeze([] as readonly string[]),
   selectedLenses: Object.freeze([] as readonly string[]),
   selectedLocations: Object.freeze([] as readonly string[]),
+  selectedFilmTypes: Object.freeze([] as readonly string[]),
   selectedYears: Object.freeze([] as readonly string[]),
   selectedDates: Object.freeze([] as readonly string[]),
 });
@@ -66,6 +73,7 @@ export type ArrayFilterKey =
   | 'selectedPeople'
   | 'selectedCameras'
   | 'selectedLenses'
+  | 'selectedFilmTypes'
   | 'selectedLocations';
 
 /**
@@ -81,6 +89,7 @@ export const ARRAY_FILTER_KEYS: readonly ArrayFilterKey[] = [
   'selectedPeople',
   'selectedCameras',
   'selectedLenses',
+  'selectedFilmTypes',
   'selectedLocations',
 ];
 
@@ -129,15 +138,16 @@ export function cycleFilmFilter(current: FilmFilter): FilmFilter {
 
 /**
  * Array dimensions whose values are mutually exclusive on a single item, making a multi-select
- * meaningless in both combine modes: an image has exactly one capture day, one capture year and
- * one lens. Two dates or two years OR two disjoint sets (a selection that only ever widens the
- * result); two lenses AND two disjoint sets (a selection that always yields nothing — see
- * `lensMatchMode: 'AND'` in `buildCollectionCriteria`). All three are single-choice.
+ * meaningless in both combine modes: an image has exactly one capture day, one capture year, one
+ * lens and one film stock. Two dates or two years OR two disjoint sets (a selection that only ever
+ * widens the result); two lenses AND two disjoint sets (a selection that always yields nothing —
+ * see `lensMatchMode: 'AND'` in `buildCollectionCriteria`). All four are single-choice.
  */
 const EXCLUSIVE_FILTER_KEYS: readonly ArrayFilterKey[] = [
   'selectedYears',
   'selectedDates',
   'selectedLenses',
+  'selectedFilmTypes',
 ];
 
 /**

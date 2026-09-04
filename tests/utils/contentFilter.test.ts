@@ -1710,6 +1710,7 @@ describe('computeFilterVisibility', () => {
       people: false,
       cameras: false,
       lenses: false,
+      filmTypes: false,
       locations: false,
     });
     expect(computeFilterVisibility([makeImage({ id: 1, isFilm: true, rating: 5 })]).film).toBe(
@@ -1805,6 +1806,7 @@ describe('applyActiveOverride', () => {
     people: false,
     cameras: false,
     lenses: false,
+    filmTypes: false,
     locations: false,
   };
 
@@ -1974,5 +1976,174 @@ describe('hasAnyActiveFilter dates', () => {
     expect(hasAnyActiveFilter({ ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] })).toBe(
       true
     );
+  });
+});
+
+/**
+ * Film stock — a secondary dimension under the film/digital toggle.
+ *
+ * The cases that matter are the ones a naive implementation gets wrong: the dimension filtering
+ * on its own (the early-out guard has to know about it), and the visibility gate not offering a
+ * one-option dropdown just because digital frames dilute the set.
+ */
+describe('film stock filtering', () => {
+  const portra = (id: number) => makeImage({ id, isFilm: true, filmType: 'Kodak Portra 400' });
+  const trix = (id: number) => makeImage({ id, isFilm: true, filmType: 'Kodak Tri-X 400' });
+  const digital = (id: number) => makeImage({ id, isFilm: false });
+
+  it('keeps only frames shot on the selected stock', () => {
+    const result = filterContent([portra(1), trix(2), portra(3)], {
+      filmTypes: ['Kodak Portra 400'],
+    });
+    expect(result.map(i => i.id)).toEqual([1, 3]);
+  });
+
+  it('filters on its own, without isFilm also being set', () => {
+    const result = filterContent([portra(1), digital(2)], { filmTypes: ['Kodak Portra 400'] });
+    expect(result.map(i => i.id)).toEqual([1]);
+  });
+
+  it('drops a frame carrying no stock at all', () => {
+    expect(filterContent([digital(1)], { filmTypes: ['Kodak Portra 400'] })).toHaveLength(0);
+  });
+
+  it('matches any of several stocks', () => {
+    const result = filterContent([portra(1), trix(2), digital(3)], {
+      filmTypes: ['Kodak Portra 400', 'Kodak Tri-X 400'],
+    });
+    expect(result.map(i => i.id)).toEqual([1, 2]);
+  });
+
+  it('is a no-op when the list is empty', () => {
+    expect(filterContent([portra(1), digital(2)], { filmTypes: [] })).toHaveLength(2);
+  });
+
+  it('matches exactly, not by substring', () => {
+    expect(filterContent([portra(1)], { filmTypes: ['Kodak Portra'] })).toHaveLength(0);
+  });
+});
+
+describe('extractFilterOptions — film stocks', () => {
+  it('collects distinct stocks, sorted', () => {
+    const options = extractFilterOptions([
+      makeImage({ id: 1, isFilm: true, filmType: 'Kodak Tri-X 400' }),
+      makeImage({ id: 2, isFilm: true, filmType: 'Cinestill 800T' }),
+      makeImage({ id: 3, isFilm: true, filmType: 'Kodak Tri-X 400' }),
+    ]);
+    expect(options.filmTypes).toEqual(['Cinestill 800T', 'Kodak Tri-X 400']);
+  });
+
+  it('is empty for an all-digital set', () => {
+    expect(extractFilterOptions([makeImage({ id: 1, isFilm: false })]).filmTypes).toEqual([]);
+  });
+});
+
+describe('computeFilterVisibility — film stocks', () => {
+  it('offers the dimension once two stocks are present', () => {
+    const visibility = computeFilterVisibility([
+      makeImage({ id: 1, isFilm: true, filmType: 'Kodak Portra 400' }),
+      makeImage({ id: 2, isFilm: true, filmType: 'Kodak Tri-X 400' }),
+    ]);
+    expect(visibility.filmTypes).toBe(true);
+  });
+
+  it('withholds it for a single stock, however many digital frames dilute the set', () => {
+    const visibility = computeFilterVisibility([
+      makeImage({ id: 1, isFilm: true, filmType: 'Kodak Portra 400' }),
+      makeImage({ id: 2, isFilm: false }),
+      makeImage({ id: 3, isFilm: false }),
+    ]);
+    expect(visibility.filmTypes).toBe(false);
+  });
+
+  it('withholds it when no frame carries a stock', () => {
+    const visibility = computeFilterVisibility([
+      makeImage({ id: 1, isFilm: false }),
+      makeImage({ id: 2, isFilm: false }),
+    ]);
+    expect(visibility.filmTypes).toBe(false);
+  });
+
+  it('keeps it on screen while a stock is selected, so it can be cleared', () => {
+    const hidden = computeFilterVisibility([]);
+    const result = applyActiveOverride(
+      hidden,
+      makeFilterState({ selectedFilmTypes: ['Kodak Portra 400'] })
+    );
+    expect(result.filmTypes).toBe(true);
+  });
+});
+
+describe('computeFilterCounts — film stocks', () => {
+  it('counts each stock ignoring its own dimension but honouring the others', () => {
+    const content = [
+      makeImage({ id: 1, isFilm: true, filmType: 'Kodak Portra 400', rating: 5 }),
+      makeImage({ id: 2, isFilm: true, filmType: 'Kodak Portra 400', rating: 1 }),
+      makeImage({ id: 3, isFilm: true, filmType: 'Kodak Tri-X 400', rating: 5 }),
+    ];
+    const options = extractFilterOptions(content);
+    const counts = computeFilterCounts(
+      content,
+      { minRating: 4, filmTypes: ['Kodak Tri-X 400'] },
+      options
+    );
+
+    expect(counts.filmTypes).toEqual({ 'Kodak Portra 400': 1, 'Kodak Tri-X 400': 1 });
+  });
+
+  it('reports zero for a stock excluded by another active filter', () => {
+    const content = [
+      makeImage({ id: 1, isFilm: true, filmType: 'Kodak Portra 400', rating: 1 }),
+      makeImage({ id: 2, isFilm: true, filmType: 'Kodak Tri-X 400', rating: 5 }),
+    ];
+    const counts = computeFilterCounts(content, { minRating: 4 }, extractFilterOptions(content));
+    expect(counts.filmTypes['Kodak Portra 400']).toBe(0);
+  });
+});
+
+describe('film stock URL round trip', () => {
+  it('serializes each stock as its own filmType param', () => {
+    const params = serializeFilterToParams({ filmTypes: ['Kodak Portra 400', 'Cinestill 800T'] });
+    expect(params.getAll('filmType')).toEqual(['Kodak Portra 400', 'Cinestill 800T']);
+  });
+
+  it('parses filmType params back into criteria', () => {
+    const criteria = parseFilterFromParams(
+      new URLSearchParams('filmType=Kodak+Portra+400&filmType=Cinestill+800T')
+    );
+    expect(criteria.filmTypes).toEqual(['Kodak Portra 400', 'Cinestill 800T']);
+  });
+
+  it('leaves filmTypes undefined when the param is absent', () => {
+    expect(parseFilterFromParams(new URLSearchParams('isFilm=true')).filmTypes).toBeUndefined();
+  });
+
+  it('survives a serialize-then-parse round trip', () => {
+    const original = { filmTypes: ['Ilford HP5 Plus'] };
+    expect(parseFilterFromParams(serializeFilterToParams(original)).filmTypes).toEqual(
+      original.filmTypes
+    );
+  });
+});
+
+describe('criteria builders — film stocks', () => {
+  it('buildLocationCriteria carries a selected stock', () => {
+    const criteria = buildLocationCriteria(
+      makeFilterState({ filmFilter: 'film', selectedFilmTypes: ['Kodak Portra 400'] })
+    );
+    expect(criteria.filmTypes).toEqual(['Kodak Portra 400']);
+    expect(criteria.isFilm).toBe(true);
+  });
+
+  it('buildCollectionCriteria carries a selected stock', () => {
+    const criteria = buildCollectionCriteria(
+      makeFilterState({ selectedFilmTypes: ['Kodak Tri-X 400'] })
+    );
+    expect(criteria.filmTypes).toEqual(['Kodak Tri-X 400']);
+  });
+
+  it('omits the key entirely when nothing is selected', () => {
+    expect(buildLocationCriteria(makeFilterState())).not.toHaveProperty('filmTypes');
+    expect(buildCollectionCriteria(makeFilterState())).not.toHaveProperty('filmTypes');
   });
 });

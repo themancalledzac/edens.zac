@@ -15,6 +15,7 @@ const msg: AdminMessageView = {
   email: 'alice@example.com',
   message: 'hello',
   createdAt: new Date().toISOString(),
+  readAt: null,
 };
 
 function setup(initial: AdminMessageView[] = [msg], initialTotal = 1) {
