@@ -27,32 +27,52 @@ Cross-repo: the V55 half gets a backend-board row when picked up.
 
 ## AU2 · Passkey credential list + revoke + enrollment-state UI
 
-**The admin endpoints exist — this section's 2026-08-30 verification grepped the wrong controller.**
-`WebAuthnController.java` still has exactly four mappings (`register/start` `:93`,
-`register/finish` `:110`, `login/start` `:140`, `login/finish` `:185`), but the list and revoke
-live on the users controller: `GET /api/admin/users/{id}/passkeys` (`AdminUserController.java:419`)
-and `DELETE /api/admin/users/{id}/passkeys/{credentialId}` (`:465`), on
-`WebAuthnCredentialRepository.deleteByIdAndUserId` (`:108`). BE#257, merged 2026-08-31. The
-backend board filed the missing consumer as **FE-4** the same day; the refactor board's **H7** is
-the same finding. Three records for one feature; this row is the one that survives.
+**Both admin endpoints exist.** Backend commit `70b5371c` (BE#257, merged 2026-08-31), in
+`AdminUserController.java` under `/api/admin/users`: `GET /{id}/passkeys` and
+`DELETE /{id}/passkeys/{credentialId}`, on `WebAuthnCredentialRepository.deleteByIdAndUserId`. An
+earlier verification here grepped `WebAuthnController.java`, which still has exactly four mappings
+(`register/start`, `register/finish`, `login/start`, `login/finish`) — the admin pair lives on the
+users controller. The backend board filed the missing consumer as **FE-4**; the refactor board's
+**H7** is the same finding. Three records for one feature; this row is the one that survives.
 
 ```bash
 git grep -n 'passkeys' origin/main -- 'src/main/java/**/*Controller.java' | grep -c 'Mapping('   # 2
 grep -rln 'passkeys' app/                                                                      # nothing — no caller
 ```
 
-**Startable now, frontend-only:** a passkey list with a per-row Remove on `/admin/users/[id]`,
-through the BFF. Removing an account's last passkey is allowed and, when the account has no
-password, leaves it unable to log in until re-invited (`AdminUserController.java:436-456`; backend
-S-28) — the UI says so before the delete. The response carries `remaining` and
-`passwordLoginAvailable` for exactly that message. The page cannot be exercised locally without a
-real login; mount with fixture props per the board's throwaway-route method.
+### Blocked: the pre-delete warning cannot be built from the GET
+
+Removing an account's last passkey is allowed, and when the account has no password it leaves the
+account unable to log in until re-invited. The admin UI has to say that before the delete. The two
+fields that message needs only arrive after the credential is already destroyed. Verified in the
+backend source 2026-09-05 (2):
+
+- `GET /{id}/passkeys` returns a bare `List<PasskeyRow>` — `(Long id, String label, String
+transports, LocalDateTime createdAt, LocalDateTime lastUsedAt)`. No count, no password field.
+- `PasskeyDeregisterResult` is `(int remainingPasskeys, boolean passwordLoginAvailable)` and exists
+  **only on the DELETE response**. The field is `remainingPasskeys` — an earlier note here called it
+  `remaining`.
+- `passwordLoginAvailable` is computed inside the delete handler and nowhere else. Grepping the
+  backend for `passwordLoginAvailable`, `hasPassword` and `passwordSet` returns no other site, and
+  `AdminUserSummary` excludes the password hash deliberately.
+
+**The unblock is small and is now specced:** expose `passwordLoginAvailable` and the passkey count
+on the GET response. §4 of [backend-handoff-MA1-EM2.md](backend-handoff-MA1-EM2.md).
+
+**One more behaviour the UI must state:** the delete calls `sessionService.revokeAllForUser(id)`, so
+revoking a single authenticator drops every live session that user has.
+
+### The frontend half, once the GET carries the fields
+
+`listPasskeys` and `deregisterPasskey` in `app/lib/api/users.ts`, a section on `/admin/users/[id]`
+with a per-row Remove, and the warning built from the GET. The page cannot be exercised locally
+without a real login; mount with fixture props per the board's throwaway-route method.
 
 **Still a decision (#4, narrowed):** whether a signed-in user gets a self-service list-and-remove
-on `/user`. `/api/auth/webauthn/**` has register and login only, so that half is a backend handoff.
-The enrollment-state UI (009's item) follows whichever list exists; `AccountCard.tsx` already
-drives `registerPasskey`. Also open nearby, from CURRENT-STATE: no prod startup guard against
-`rpId=localhost`; passkey login has never been e2e-verified against a deployed environment.
+on `/user`. `/api/auth/webauthn/**` has register and login only, so that half is a second backend
+handoff. The enrollment-state UI (009's item) follows whichever list exists; `AccountCard.tsx`
+already drives `registerPasskey`. Also open nearby, from CURRENT-STATE: no prod startup guard
+against `rpId=localhost`; passkey login has never been e2e-verified against a deployed environment.
 
 ## Deferred by design (no rows — do not resurrect without a decision)
 

@@ -196,7 +196,7 @@ are repo-root-relative by convention — they are checked against the repo root,
 
 ## MR board
 
-Open rows only. The 60 closed rows live as one-line ledgers under a "Closed rows" heading in each
+Open rows only. The 72 closed rows live as one-line ledgers under a "Closed rows" heading in each
 group's archive file in [`2026-summer-refactor/`](2026-summer-refactor/); the estimate-bias
 scorecard below keeps the est/actual pairs that still matter.
 
@@ -215,83 +215,53 @@ grep -ohE '^#{2,3} [☐◐⛔✅☑] [A-H][0-9]+[a-z]?' docs/spikes/2026-summer-
   | grep -oE '[A-H][0-9]+[a-z]?' | sort | uniq -d                  # must be empty
 ```
 
-| MR  | Scope                                                                                    | Status                                                                                                                                                          |
-| --- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| B8  | Fill the required-coverage gaps                                                          | ◐ 5 of 6 — #266, #267, #295, #296; only the optional bullet is open (`sharedObserver` 116 / `useParallax` 169 / `useContentReordering` 197 lines, all untested) |
-| C9  | Dimensionless cover renders no header, missing cover does                                | ☐ UNBLOCKED 2026-08-31 — backend #249 writes `null`; closes at zero FE code once the surviving pre-#249 `0 x 0` rows are counted (a live-data query, not code)  |
-| C12 | `.metadataToggle` is under the 44px tap target                                           | ☐ COLD — 36px, 40px at ≥768px (`fullscreen-image.module.scss:208`, `:229-231`); +3 src, no test pins the size                                                   |
-| C13 | Byline says "Zac Eden" in three literals across two files                                | ☐ COLD — `app/[slug]/page.tsx:38`, `app/page.tsx:8`, `:11`; +3 src literal, +8 via `AUTHOR_NAME`                                                                |
-| C14 | `getCollectionsByLocation` sends `page`/`size`; the endpoint reads neither               | ☐ COLD — two renamed params at `collections.ts:157`; +2 src / +15 test. Cheapest item on the board                                                              |
-| C15 | `LocationPage` props typed image-only; the backend field they name is mixed content      | ☐ COLD — re-scoped 2026-09-05: the backend answered the blocking question (it is dropping the array), so this is type hygiene only                              |
-| C16 | `imageWidth`/`imageHeight` non-nullable; backend writes `null`                           | ☐ COLD — widen `Content.ts:156-157`, run `tsc`, fix what it surfaces                                                                                            |
-| C17 | Lens selection is not URL-shareable                                                      | ☐ COLD — no `lens` key in the serializer, parser or `FILTER_PARAM_KEYS`; the drift guard's fixture never sets it. +6 src / +20 test                             |
-| C18 | `CollectionRolesSection`'s mount fetch has no unmount guard                              | ☐ COLD — 60 of the suite's 96 `act()` warnings trace here; +8 src / +20 test; check `UserRolesSection` for the same shape                                       |
-| D11 | Gallery-access save never evicts `collection-{slug}`; the cache-key contract is unpinned | ☐ COLD — one `revalidateCollectionCache` call per handler + a test against the real `generateCacheKey`. +2 src / +30 test                                       |
-| D12 | Client error reports log the share and invite tokens                                     | ☐ COLD — `logger.ts` sends `window.location.href`; on `/s/<token>` and `/invite/<token>` that is the credential. +6 src / +20 test                              |
-| D13 | Report-only CSP has no `report-uri`; apex host silently 403s every write                 | ☐ COLD — a `POST /api/csp-report` route and the directive; apex → www redirect rides PF7. ~+40 src / +30 test                                                   |
-| D14 | Proxy body-cap tests that cannot fail; `client-errors` cap counts UTF-16 units           | ☐ COLD — one `content-length` test, `Buffer.byteLength`, one normalized-path check, two headers on the strip list. +10 src / +30 test                           |
-| D15 | Public routes surface client-gallery images through the unfiltered backend search        | ⛔ BLOCKED — backend S-29 (HIGH, open there). No frontend mitigation exists; the frontend owes a cache purge when the fix deploys                               |
-| E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook)                                  | ◐ waste FIXED #337; hook REJECTED; one path open (`EditModeLayer.tsx:281` reorder branch, unsized)                                                              |
-| E9  | Download icon/hook, auth-card SCSS, `.srOnly`                                            | ◐ PR #300 — both COLD bullets shipped; srOnly ⛔ user call                                                                                                      |
-| F1  | Decompose `useCollectionEdit.tsx` (1,811 lines)                                          | ☐ COLD — largest open item; anchors re-derived 2026-09-05; goes BEFORE feature-board MA1 and leaves the update-form region alone (see section)                  |
-| F3  | File moves and renames                                                                   | ◐ five shipped (#324 #336 #343 #348 #349); invite REJECTED; four bullets open                                                                                   |
-| F4  | `TaxonomyPage` ← `LocationPageClient`                                                    | ⛔ USER DECISION                                                                                                                                                |
-| G2  | Inline-comment enforcement + migration (decided: keep the rule)                          | ◐ wording #268; G2a COLD, G2b ⛔ scope confirm, G2c ⛔ rides refactors; inventory re-taken 2026-09-05 (448 `.tsx` / 441 `.ts` lines, 14 JSX)                    |
-| G3  | `/user/selects` decision                                                                 | ⛔ USER DECISION — delete or rebuild                                                                                                                            |
-| G4  | Docblock standard — length, structure, and no history                                    | ◐ intersection pass #310; 1,494 blocks / 54 hits; 17 label docblocks + 4 inline; read, don't regex                                                              |
-| G7  | Test names call the BFF proxy "Vercel"; production is Amplify                            | ☐ COLD — seven `describe` strings across two files; ~7 test lines, 0 src                                                                                        |
-| G8  | Extend the panel `styles.<key>` guard repo-wide?                                         | ⛔ USER DECISION — 107 files / 411 keys; 10 files import a module under another name, so a `styles.` regex skips them                                           |
-| H1  | Merge `Following` into `Collections` on `/user`                                          | ☐ BLOCKED (user) — count semantics, followed-tile marker, and the 500-row catalog fetch                                                                         |
-| H7  | Passkey management on `/admin/users/[id]`                                                | ⛔ USER DECISION — the same feature as feature-board AU2 / decision #4; ask together, close this row against AU2                                                |
+| MR  | Scope                                                                             | Status                                                                                                                                                          |
+| --- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B8  | Fill the required-coverage gaps                                                   | ◐ 5 of 6 — #266, #267, #295, #296; only the optional bullet is open (`sharedObserver` 116 / `useParallax` 169 / `useContentReordering` 197 lines, all untested) |
+| B10 | `InfoTab.test.tsx` does not mock `@/app/lib/api/roles`                            | ☐ COLD — 60 of the suite's 96 `act()` warnings, all from the real rejecting fetch. Test-only; ~+5 test                                                          |
+| D13 | Report-only CSP has no `report-uri`; apex host silently 403s every write          | ☐ COLD — a `POST /api/csp-report` route and the directive; apex → www redirect rides PF7. ~+40 src / +30 test                                                   |
+| D15 | Public routes surface client-gallery images through the unfiltered backend search | ⛔ BLOCKED — backend S-29 (HIGH, open there). No frontend mitigation exists; the frontend owes a cache purge when the fix deploys                               |
+| E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook)                           | ◐ waste FIXED #337; hook REJECTED; one path open (`EditModeLayer.tsx:281` reorder branch, unsized)                                                              |
+| E9  | Download icon/hook, auth-card SCSS, `.srOnly`                                     | ◐ PR #300 — both COLD bullets shipped; srOnly ⛔ user call                                                                                                      |
+| F1  | Decompose `useCollectionEdit.tsx` (1,811 lines)                                   | ☐ COLD — largest open item; anchors re-derived 2026-09-05; goes BEFORE feature-board MA1 and leaves the update-form region alone (see section)                  |
+| F3  | File moves and renames                                                            | ◐ five shipped (#324 #336 #343 #348 #349); invite REJECTED; four bullets open                                                                                   |
+| F4  | `TaxonomyPage` ← `LocationPageClient`                                             | ⛔ USER DECISION                                                                                                                                                |
+| G2  | Inline-comment enforcement + migration (decided: keep the rule)                   | ◐ wording #268; G2a COLD, G2b ⛔ scope confirm, G2c ⛔ rides refactors; inventory re-taken 2026-09-05 (448 `.tsx` / 441 `.ts` lines, 14 JSX)                    |
+| G3  | `/user/selects` decision                                                          | ⛔ USER DECISION — delete or rebuild                                                                                                                            |
+| G4  | Docblock standard — length, structure, and no history                             | ◐ intersection pass #310; 1,494 blocks / 54 hits; 17 label docblocks + 4 inline; read, don't regex                                                              |
+| G8  | Extend the panel `styles.<key>` guard repo-wide?                                  | ⛔ USER DECISION — 107 files / 411 keys; 10 files import a module under another name, so a `styles.` regex skips them                                           |
+| H1  | Merge `Following` into `Collections` on `/user`                                   | ☐ BLOCKED (user) — count semantics, followed-tile marker, and the 500-row catalog fetch                                                                         |
+| H7  | Passkey management on `/admin/users/[id]`                                         | ⛔ USER DECISION — the same feature as feature-board AU2 / decision #4; ask together, close this row against AU2                                                |
 
-### NEXT RUN — updated 2026-09-05
+### NEXT RUN — updated 2026-09-05 (2)
 
-**C11 (#352), D10 (#353) and the whole of E18 (#354) shipped 2026-08-30.** The previous block
-listed them as its three items the day after they merged; the 2026-09-04 handoff caught it. E18's
-Half B was never a bug — the hook's `collection` has derived from `currentState` since `86a0f192`,
-and #354 pinned the two-save case — so the item closed whole. Nothing in this run needs a user
-answer.
+**The previous block is entirely done.** C9 closed at zero code on a production census, and C14,
+C17, C13, D11, D12, G7, C12, C18 plus the three "if there is room" items (C16, C15, D14) merged as
+#402, #403 and #404. **Group C is now fully closed and Group D has only D13 and D15 left.** Nothing
+in this run needs a user answer.
 
-**Do C9's check first, ahead of everything below.** It is a count, not code: how many
-`content_image` rows still carry `image_width = 0 OR image_height = 0` from before backend #249.
-A read-only query through the production tunnel (the user runs it), or a scan of the public
-`/api/read/content/images/search` output for `imageWidth === 0`. Zero rows → close C9 with no
-frontend change. Some rows → a backend backfill goes in a handoff; still no frontend change.
+**Post-merge state of `main`, measured after the three merges:** 264 suites / 4,792 tests, 0
+failures; `tsc --noEmit` clean; **96 React `act()` warnings, unchanged by C18.** Any older count
+quoted elsewhere on this board is superseded by this one.
 
-**In order, one MR each, all under 40 lines of source:**
+**In order, one MR each:**
 
-1. **C14** — rename `page`/`size` to `collectionPage`/`collectionSize` at
-   `app/lib/api/collections.ts:157`; test asserts `collectionPage=1` in the fetched URL. +2 src / +15 test.
-2. **C17** — the `lens` URL key, its parser and seed lines, the failing-first round-trip test, and
-   the `Required<ContentFilterCriteria>` fixture that makes the drift guard fail on the next omitted
-   field. +6 src / +20 test. Fold `hasAnyActiveFilter`'s missing `selectedFilmTypes` in.
-3. **C13** — three "Zac Eden" literals (`app/[slug]/page.tsx:38`, `app/page.tsx:8`, `:11`). Read
-   `AUTHOR_NAME` from `app/utils/structuredData.ts` at all four routes rather than fix three strings. +8 src.
-4. **D11** — `void revalidateCollectionCache(collection.slug)` after both `saveGalleryAccess` calls
-   in `useCollectionEdit.tsx`, plus `tests/lib/api/fetchCacheKey.test.ts` against the real
-   `IncrementalCache.prototype.generateCacheKey`. +2 src / +30 test.
-5. **D12** — `logger.ts` reports `pathname` with `/s/*` and `/invite/*` collapsed to a placeholder;
-   jsdom test that the posted body never contains the token. +6 src / +20 test.
-6. **G7** — seven `describe('Vercel BFF proxy …')` → `'BFF proxy …'`. Do not touch the `x-vercel-*`
-   header handling. ~7 test lines.
-7. **C12** — `.metadataToggle.metadataToggle` to 44px, drop the `≥768px` step
-   (`fullscreen-image.module.scss:208`, `:229-231`); check the doubled block at `:544`. +3 src.
-   SCSS: verify by `next build` or a resolution assertion.
-8. **C18** — an `isCurrent()`-style guard on `CollectionRolesSection`'s mount effect (the shape
-   `useFetchMe.ts:46` already uses); read `UserRolesSection.tsx:90-104` for the same gap. +8 src / +20 test.
+1. **B10** — mock `@/app/lib/api/roles` in `tests/components/ContentCollection/edit/sections/InfoTab.test.tsx`.
+   Test-only, ~+5 test lines, and it is 60 of the suite's 96 `act()` warnings. Do this first: it is
+   the cheapest item on the board and it makes the remaining 36 warnings readable.
+2. **F3's `fullscreen-image.module.scss` rename** — do it before E9 is ever scheduled; they share a
+   file, and #402 has just touched it.
+3. **D13** — a `POST /api/csp-report` route plus the `report-uri` directive. Needs a decision on the
+   apex host first (the redirect belongs to feature-board PF7), so read the section before starting.
 
-**If the sitting has room:** C16 (widen the two dimension types, run `tsc`, fix what it surfaces —
-run C9's check BEFORE this, since its churn may land in files C9 reads), C15 (type hygiene only now
-— widen or record images-only; the product question closed on the backend's side), D14, and F3's
-`fullscreen-image.module.scss` rename (do it before E9 is ever scheduled; they share a file).
+**Deliberately NOT in this run:** F1 (its own session; it goes BEFORE feature-board MA1, see the F1
+section), E7's reorder path (unsized; size it first), G2a (~60 lines of flat-config rule, wants a
+session with `eslint` in the loop), B8's optional bullet (+400–600 test), and everything ⛔.
 
-**Refs between MRs:** C14, C17, C13, D11, D12, G7, C12 and C18 touch disjoint files. C17 and C15
-both read `contentFilter.ts` — re-derive C15's refs if C17 lands first.
-
-**Deliberately NOT in this run:** F1 (its own session; it now goes BEFORE feature-board MA1, see
-the F1 section), E7's reorder path (unsized; size it first), G2a (~60 lines of flat-config rule,
-wants a session with `eslint` in the loop), D13 (needs a route and a decision on the apex host),
-B8's optional bullet (+400–600 test), and everything ⛔.
+**Feature-board AU2 is the next run's first item overall**, ahead of this board. Its admin half
+turned out to be blocked on a backend change (the pre-delete warning's two fields only exist on the
+DELETE response); the ask is in
+[backend-handoff-MA1-EM2.md](2026-features/backend-handoff-MA1-EM2.md). H7 here closes against it.
 
 ### State of the open items (re-stamped 2026-09-05)
 
@@ -303,24 +273,13 @@ is in [lessons.md](2026-summer-refactor/lessons.md).)
 
 | Item    | State              | If blocked: the question, and who answers it                                                                                                                                                                                                                                                          |
 | ------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **C9**  | COLD               | —— backend #249 writes `null`; closes at zero FE code **if** no pre-#249 `0 x 0` rows survive. Nobody has run the count                                                                                                                                                                               |
-| **C12** | COLD               | —— `.metadataToggle` still steps 36 → 40px against a 44px tap target; SaveHeart's identical gap closed in #367                                                                                                                                                                                        |
-| **C13** | COLD               | —— three literals, two files; consolidation onto `AUTHOR_NAME` is the better answer now                                                                                                                                                                                                               |
-| **C14** | COLD               | —— two renamed params. **Cheapest item on the board**                                                                                                                                                                                                                                                 |
-| **C15** | COLD               | —— was BLOCKED on "switch to the location endpoint's own `images` array?"; the backend closed that (FE-1: the array is being dropped, the page stays on `searchImages`). Type hygiene remains                                                                                                         |
-| **C16** | COLD               | —— widen two declarations; the value is in what `tsc` then complains about                                                                                                                                                                                                                            |
-| **C17** | COLD               | —— `lenses` is the one non-`*MatchMode` criterion the URL layer never carries                                                                                                                                                                                                                         |
-| **C18** | COLD               | —— no unmount guard on two mount-effect fetches                                                                                                                                                                                                                                                       |
-| **D11** | COLD               | —— two one-line evictions and one framework-contract test                                                                                                                                                                                                                                             |
-| **D12** | COLD               | —— report the pathname, not the href                                                                                                                                                                                                                                                                  |
 | **D13** | COLD               | —— a report route plus the directive; the apex redirect is a PF7 line                                                                                                                                                                                                                                 |
-| **D14** | COLD               | —— tests that can fail, a byte-length cap, a normalized-path check                                                                                                                                                                                                                                    |
 | **D15** | BLOCKED — backend  | Backend S-29 (HIGH, open on the backend board): the public image search has no visibility predicate. The frontend cannot filter — the payload carries no collection membership. When the backend fix deploys, the frontend purges `search-images` and the location/tag tags. Owner: the backend agent |
 | **E7**  | COLD               | —— the waste shipped as a handoff guard (#337); the hook is REJECTED with measurement. One wasted path open (`EditModeLayer.tsx:281` reorder branch)                                                                                                                                                  |
 | **B8**  | COLD               | —— 5 of 6 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                                                                                 |
+| **B10** | COLD               | —— `InfoTab.test.tsx` does not mock `@/app/lib/api/roles`, so 20 tests each fire three `setState`s off a real rejecting fetch. 60 of the suite's 96 `act()` warnings                                                                                                                                  |
 | **F3**  | COLD               | —— five bullets shipped; the invite bullet is COSTED and REJECTED (do not re-open the 3-function version). **Four bullets open**                                                                                                                                                                      |
 | **G4**  | COLD               | —— 1,494 blocks / 54 backward-looking hits (re-run 2026-09-05, method in the section); ~23 false positives; 17 label docblocks + 4 label inlines must be read block-by-block, not regexed                                                                                                             |
-| **G7**  | COLD               | —— six `describe('Vercel BFF proxy …')` names in `tests/api/proxy/route.test.ts` plus one in `route.logHygiene.test.ts`; production is Amplify (feature-board PF9, #365)                                                                                                                              |
 | **F1**  | COLD               | —— largest open item; no unanswered question, just size. Goes before feature-board MA1                                                                                                                                                                                                                |
 | **H1**  | BLOCKED — **user** | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? Also: accept a 500-row catalog fetch on every `/user` load, or ask the backend to return followed collections on the user-page read?                                   |
 | **H7**  | BLOCKED — **user** | Is passkey management on `/admin/users/[id]` wanted? Backend #257 built both routes; this repo calls neither. **Same feature as feature-board AU2 and its decision #4 — ask once, close this row against AU2**                                                                                        |
@@ -330,12 +289,11 @@ is in [lessons.md](2026-summer-refactor/lessons.md).)
 | **G2**  | BLOCKED — **user** | G2b: does the migration (and the `error` flip) cover `.ts` util/lib files? Evidence says yes (the global rule covers every language; #268's standard covers plain function bodies) — a confirm, not a design question. G2c rides other refactors. G2a is COLD                                         |
 | **G8**  | BLOCKED — **user** | Extend the panel `styles.<key>` guard repo-wide? **Re-measured 2026-09-05: 107 files, 411 distinct keys** (commands in the CSS rule). 10 files import a CSS module under a name other than `styles`, so a `styles.<key>` regex silently skips them                                                    |
 
-**Seven of the twenty-six rows are blocked on the user** (re-counted 2026-09-05; C15 came off the
-list when the backend answered its question from the other side, and H7 is the same question as
-feature-board decision #4), and one (D15) on the backend. The 2026-08-30 session cleared three
-blocked rows by asking two questions and reading one other repo; 2026-08-31 (3) cleared C9 the same
-way; 2026-09-05 cleared C15 the same way again. **Read the other repo's board before adding a row to
-the blocked list** — it has now paid five times.
+**Seven of the fifteen rows are blocked on the user** (re-counted 2026-09-05 (2) after twelve rows
+closed; H7 is the same question as feature-board decision #4), and one (D15) on the backend. The
+2026-08-30 session cleared three blocked rows by asking two questions and reading one other repo;
+2026-08-31 (3) cleared C9 the same way; 2026-09-05 cleared C15 the same way again. **Read the other
+repo's board before adding a row to the blocked list** — it has now paid five times.
 
 The seven that remain — H1, F4, G3, E9's `.srOnly`, G2b, G8, H7 — are genuine product or policy
 calls. None of them blocks the current run. Put them to the user as one batch with the feature
@@ -380,13 +338,14 @@ All nine items merged (#255–#263); A9's last bullet — the `CLAUDE.md` PATH c
 
 ---
 
-## Group B — Test-suite reductions — shipped except B8's optional bullet
+## Group B — Test-suite reductions — B8's optional bullet and B10 open
 
 B1–B7 and B9 closed — write-ups, estimate corrections and closed rows:
-[group-b-tests.md](2026-summer-refactor/group-b-tests.md). The suite is **57,306 lines against 36,685 source lines** (re-measured 2026-08-30:
+[group-b-tests.md](2026-summer-refactor/group-b-tests.md). The suite is **61,171 lines against 38,600 source lines** (re-measured 2026-09-05 (2):
 `find tests -type f \( -name '*.ts' -o -name '*.tsx' \) -exec cat {} + | wc -l`, same for `app`).
-The board carried 51,446/37,211 — stale by ~5,900 test lines, and nobody re-ran it because the
-number reads as measured. **Do not quote this figure without re-running the command beside it.** Hygiene is otherwise excellent: zero skips, zero `.only`, zero snapshots, zero stale
+This figure has now been stale twice — it read 51,446/37,211 while the truth was 57,306/36,685, and
+57,306/36,685 while the truth was this. **Do not quote it without re-running the command beside
+it.** Hygiene is otherwise excellent: zero skips, zero `.only`, zero snapshots, zero stale
 TODOs.
 
 ### ◐ B8 · Fill the required-coverage gaps — 5 of 6 shipped (#266, #267, #295, #296); only the optional bullet is open
@@ -402,301 +361,48 @@ The project rule requires tests for these and they had none. The five shipped sl
       (**was `:28`; corrected 2026-08-25**) re-exports `toggleRelation`, and its coverage lives in
       `tests/components/ContentCollection/edit/collectionEditUtils.test.ts` since B1's merge.
 
----
+### ☐ B10 · `InfoTab.test.tsx` does not mock `@/app/lib/api/roles` — 60 of the suite's 96 `act()` warnings
 
-## Group C — Bug fixes — C1–C8, C10 and C11 shipped; C9, C12–C18 open
-
-C1–C8 merged (#264, #281, #282, #279, #283, #327, #331, #291); **C10 merged 2026-08-30 (#346)**;
-**C11 merged 2026-08-30 (#352)** and sat on this board as COLD for six days.
-Full write-ups and closed rows: [group-c-bugs.md](2026-summer-refactor/group-c-bugs.md). C4's
-`collections-location-${slug}` report became E12.
-
-**C14, C15 and C16 were filed 2026-08-31 (3) from a backend-side cross-repo review** — they were
-found by an agent reading `edens.zac.backend`, not this repo. Every backend `file:line` below was
-re-resolved by hand against `edens.zac.backend`'s `origin/main` at `9a8f70f` on the day of filing,
-per this board's cross-repo rule. Re-verify them the same way before acting; they are outside every
-drift sweep here.
-
-### ☐ C12 · `.metadataToggle` is under the 44px tap target
-
-Filed 2026-08-31 from feature-board PF8 (#367), which raised `SaveHeart` from 36px / 40px to 44px
-at every width. `.metadataToggle` (`app/styles/fullscreen-image.module.scss:208`) is the control
-SaveHeart was originally built to mirror and still carries the identical gap: 36px, rising to 40px
-at `≥768px`. It is the fullscreen viewer's metadata toggle, so it is a touch control on a
-touch-first surface.
-
-PF8 named only SaveHeart, so this was deliberately left out of #367 rather than missed. SaveHeart's
-docblock was updated in that PR to stop claiming the two are sized alike and to record this gap.
-
-- [ ] `.metadataToggle` to 44px, dropping the `≥768px` step the way #367 did. Check the doubled
-      selector (`.metadataToggle.metadataToggle`) and the second doubled block at `:544` that cites
-      it by name. Est +3 src, no new tests — no suite pins either size.
-
-### ☐ C13 · The byline says "Zac Eden" in three literals across two files; every other route says "Zac Edens"
-
-Filed 2026-08-31, spotted while adding JSON-LD in #367; **re-scoped 2026-09-05 — three literals,
-not one.** `app/[slug]/page.tsx:38` builds its fallback description as
-`` `${title} — photography by Zac Eden` ``, and the home page's `metadata.description` and
-`openGraph.description` (`app/page.tsx:8`, `:11`) both say "Photography portfolio by Zac Eden".
-`/search`, `/tag/[slug]` and `/location/[slug]` say "Zac Edens", and the domain is `zacedens.com`,
-so the outlier is the singular. It reaches users: these are the meta and OG/Twitter descriptions.
+Filed 2026-09-05 (2) while closing C18, which was expected to remove ~64 of these warnings and
+removed none. The attribution was then measured rather than assumed:
 
 ```bash
-grep -rn 'Zac Eden\b' app --include='*.ts' --include='*.tsx' | grep -v Edens | wc -l   # 3
+npx jest 2>&1 | awk '/not wrapped in act/{print s} /^(PASS|FAIL) /{s=$2}' | sort | uniq -c | sort -rn
 ```
 
-`app/utils/structuredData.ts` already hardcodes `AUTHOR_NAME = 'Zac Edens'` for the JSON-LD author.
+| Suite                                                               | Warnings |
+| ------------------------------------------------------------------- | -------- |
+| `tests/components/ContentCollection/edit/sections/InfoTab.test.tsx` | 60       |
+| `tests/(admin)/admin/page.test.tsx`                                 | 22       |
+| `tests/components/ContentCollection/useCollectionEdit.test.tsx`     | 7        |
+| `tests/components/UserManagementPanel.test.tsx`                     | 2        |
+| `tests/components/UserForm.test.tsx`                                | 2        |
+| four suites with one each                                           | 4        |
 
-- [ ] Read `AUTHOR_NAME` at all four routes rather than fix three strings — with three literals the
-      consolidation is the smaller change. Est +8 src.
+`InfoTab.test.tsx` renders the real `CollectionRolesSection`, which calls the unmocked
+`@/app/lib/api/roles`. The fetch rejects, and each of the 20 tests fires three `setState` calls off
+that rejection — all while the component is still mounted and current, so no source guard can stop
+them. The fix is a `jest.mock('@/app/lib/api/roles')` in that suite, the way
+`CollectionRolesSection.test.tsx` already does it.
 
-### ☐ C14 · `getCollectionsByLocation` sends `page` and `size`; the location endpoint reads neither
-
-Filed 2026-08-31 (3) from the backend cross-repo review. **Live, mild. Cheapest item on the board.**
-
-`app/lib/api/collections.ts:157` builds the query string as
-`` `/collections/location/${encodeURIComponent(slug)}?page=${page}&size=${size}` ``. The backend's
-handler takes four differently-named params — `collectionPage`, `collectionSize`, `imagePage`,
-`imageSize` (`CollectionControllerProd.getLocationPage`, backend
-[#258](https://github.com/themancalledzac/edens.zac.backend/pull/258) tree). Spring binds none of
-`page`/`size` and drops them silently, so every request gets the defaults.
-
-**Why nothing looks broken.** The backend's `collectionSize` default is `35` and
-`PAGINATION.collectionPageSize` is also `35` (`app/constants/index.ts:175`), so today the ignored
-value and the applied value happen to agree. The defect is that
-`getCollectionsByLocation(slug, page, size)` at `app/lib/api/collections.ts:149-152` advertises two
-parameters that do nothing: any caller asking for page 1 silently gets page 0. There is no such
-caller yet — `app/location/[slug]/page.tsx:81` calls it with the slug alone — so this is a trap for
-the next one, not a bug a user can see.
-
-**Do not copy the fix to the two sibling calls.** `?page=&size=` is correct at
-`collections.ts:84` (`/collections`) and `:114` (`/collections/${slug}`); only the location route
-renamed its params. Check each route's own handler rather than sweeping the pattern.
-
-- [ ] Rename the two query params to `collectionPage` and `collectionSize` in
-      `getCollectionsByLocation`. Recommended test: assert the fetched URL contains
-      `collectionPage=1` when the function is called with page 1 — today it contains `page=1`, so
-      the test fails before the fix and passes after. Est +2 src / +15 test.
-
-### ☐ C15 · `LocationPage` props are typed image-only; the backend field they name is now mixed content — COLD, type hygiene only
-
-Filed 2026-08-31 (3) from the backend cross-repo review. **Re-scoped 2026-09-05: the product
-question this sat BLOCKED on was answered on the backend board without anyone here reading it.**
-Backend FE-1/BE-2 closed as won't-do — "the array is being dropped, so the location page stays on
-`searchImages({ locationId })`" — so "switch to the endpoint's own `images`" is off the table.
-What is left is the type mismatch below, and a watch: the backend's MR 19 "teach `searchImages`
-to return GIFs" (COLD there) will put GIFs into `/search`, `/location` and `/tag` through
-`ContentImageModel[]`-typed props the day it lands. Refs re-derived 2026-09-05 after #397 shifted
-`contentFilter.ts`.
-
-**What the backend changed.** [#258](https://github.com/themancalledzac/edens.zac.backend/pull/258)
-widened `LocationPageResponse.images` from `List<ContentModels.Image>` to `List<ContentModel>`. The
-orphan queries were renamed `findOrphanContentByLocationName`/`countOrphanContentByLocationName`
-and now predicate on `content_type IN ('IMAGE', 'GIF')` instead of joining `content_image`. A
-location-tagged GIF serializes into that array with `contentType: "GIF"`.
-
-**What this repo declares.** Both props are still image-only:
-
-- `app/components/LocationPage/LocationPage.tsx:14` — `images: ContentImageModel[]`
-- `app/components/LocationPage/LocationPageClient.tsx:29` — `images: ContentImageModel[]`
-
-**Why it is dormant.** Neither prop is fed by
-that endpoint. `app/location/[slug]/page.tsx:81-82` fetches two things in parallel:
-`getCollectionsByLocation(location.slug)` and `searchImages({ locationId: location.id })`.
-`getCollectionsByLocation` (`app/lib/api/collections.ts:149-165`) hands the body to
-`parseCollectionArrayResponse` (`:56-69`), which returns `data.content ?? data.collections ??
-data.items` — it takes `.collections` and throws `.images`, `.location`, `.totalCollections` and
-`.totalImages` away. The `images` prop comes from `searchImages`
-(`app/lib/api/content.ts:128-153`), which hits `/api/read/content/images/search` and returns
-images only, untouched by #258. **No GIF can reach this page today**, whatever the prop says.
-
-**What would actually happen if one did.** Nothing crashes and no tile renders blank.
-`LocationPageClient.tsx:56-58` already narrows before rendering, so the GIF is dropped from the
-grid. But the _unfiltered_ array still feeds the count and all three filter helpers:
-
-- `LocationPage.tsx:41` — `count={images.length}` on `CollectionHeader`
-- `LocationPageClient.tsx:45` — `extractFilterOptions(images)`
-- `LocationPageClient.tsx:47` — `computeFilterVisibility(images)`
-- `LocationPageClient.tsx:65` — `computeFilterCounts(images, ...)`
-
-So the symptom is an off-by-one header — "12 photos" over 11 tiles — plus filter counts that
-include a row the grid does not show. Not a crash, not a wrong aspect ratio.
-
-**Copy the precedent; do not invent one.** `CollectionPageClient.tsx:318-360` already solves this
-exact shape. It holds mixed `allContent`, derives `allImages = allContent.filter(isImageContent)`
-at `:323` purely to compute filter dimensions, and passes the mixed set to the renderer. Everything
-downstream of `LocationPageClient` already accepts mixed content — `filterContent`
-(`app/utils/contentFilter.ts:163`), `extractFilterOptions` (`:311`), `computeFilterCounts`
-(`:542`), `processContentBlocks` (`app/utils/contentLayout.ts:408-414`) and
-`ContentBlockWithFullScreen` (`app/components/Content/ContentBlockWithFullScreen.tsx:26`).
-**Only `computeFilterVisibility` (`contentFilter.ts:465`) is image-typed**, which is why the
-precedent narrows for that one call and nothing else. `normalizeContentToRendererProps`
-(`app/utils/contentRendererUtils.ts`) already has a GIF branch emitting `isGif`/`thumbnailUrl`, so
-the renderer needs nothing new.
-
-**Fix shape, when it is wanted.** Widen both props to `ViewableContent`
-(`app/types/Content.ts:443` — exactly `ContentImageModel | ContentParallaxImageModel |
-ContentGifModel`, the right union for a page showing stills and GIFs and nothing else). Keep an
-`isImageContent` narrowing for the `computeFilterVisibility` call. Delete the
-`contentType === 'IMAGE'` filter at `LocationPageClient.tsx:56-58`. **Leave `coverImage` at
-`LocationPage.tsx:15` as `ContentImageModel | null`** — a GIF makes a poor header cover, and
-`app/location/[slug]/page.tsx:87` picks it from the `searchImages` result either way.
-
-- ~~BLOCKED — user: should `/location/{slug}` switch to the location endpoint's own `images`?~~
-  **Answered on the backend board (FE-1, won't-do): the array is being dropped; the page stays on
-  `searchImages`.** Off the table here.
-- [ ] Widen the props as above as type hygiene, or record that the page is deliberately images-only
-      and close this item. Est +6 src / +25 test. Either way, add the watch: when the backend's
-      `searchImages` starts returning GIFs, the narrowing at `LocationPageClient.tsx:56-58` is the
-      only thing between a GIF and an image-typed grid on three routes.
-
-### ☐ C16 · `imageWidth` / `imageHeight` are declared non-nullable and the backend now writes `null`
-
-Filed 2026-08-31 (3) from the backend cross-repo review. **Type accuracy only. No runtime change,
-and that is verified rather than assumed.**
-
-Backend [#249](https://github.com/themancalledzac/edens.zac.backend/pull/249) changed both defaults
-in `ImageProcessingService.applyMetadataToEntity` from `0` to `null`
-(`parseIntegerOrDefault(metadata.get("imageWidth"), null)`). The wire type was already `Integer`,
-so only the value moved, and only when the image-header read fails — RAW or HEIC with no
-`ImageReader` plugin.
-
-`app/types/Content.ts:156-157` declares `imageWidth?: number; imageHeight?: number`, which cannot
-hold the value the backend now sends.
-
-**Nothing renders differently.** `getContentDimensions` (`app/utils/contentTypeGuards.ts:86`) gates on
-`if (block.imageWidth && block.imageHeight)`; `0` and `null` are both falsy, so both land on the
-same fallback chain (`width`/`height`, then 1300 at 3:2). This is a declaration that is false, not
-a bug a user can reach.
-
-- [ ] Widen to `imageWidth?: number | null; imageHeight?: number | null`, then run `tsc --noEmit`
-      and fix whatever the widening surfaces — the value of this item is entirely in what the
-      compiler then complains about. Est +2 src, unknown call-site churn until the compiler is run.
-      **This is C9's sibling, not a duplicate of it:** C9 is about the header that disappears, this
-      is about the type. See the C9 update below — the same backend PR unblocked it.
-
-### ☐ C17 · Lens selection is not URL-shareable
-
-Filed 2026-09-05 from the full-board review (the 2026-09-04 handoff's §8.5).
-`ContentFilterCriteria.lenses` is the only non-`*MatchMode` field `serializeFilterToParams`
-(`app/utils/contentFilter.ts`) never emits, `parseFilterFromParams` never reads, and
-`FILTER_PARAM_KEYS` never lists. A lens picked on `/search`, `/location/[slug]` or a collection
-page filters the live view and vanishes on reload or share — all three surfaces seed from
-`useFilterUrlState`. `buildCollectionCriteria`'s docblock records the drop as known;
-`searchFilters.ts:29` and `tests/components/SearchPage/searchFilters.test.ts:96` pin it as current
-behaviour.
-
-```bash
-sed -n '/^export interface ContentFilterCriteria/,/^}/p' app/utils/contentFilter.ts \
-  | grep -oE '^  [a-zA-Z]+\??:' | tr -d ' ?:' | sort > $TMPDIR/crit
-sed -n '/^export function serializeFilterToParams/,/^}/p' app/utils/contentFilter.ts \
-  | grep -oE 'criteria\.[a-zA-Z]+' | sed 's/criteria\.//' | sort -u > $TMPDIR/ser
-comm -23 $TMPDIR/crit $TMPDIR/ser
-# → cameraMatchMode lensMatchMode lenses peopleMatchMode tagMatchMode
-```
-
-The guard did not catch it because `EVERY_CRITERION` in
-`tests/utils/contentFilter.filterParamKeys.test.ts` never sets `lenses` — the same hole that hid
-`year` before #376 and that film stock had to close by hand in #397. A guard keyed on "every field"
-guards only what its fixture sets.
-
-- [ ] Add `'lens'` to `FILTER_PARAM_KEYS`; `params.append('lens', l)` per lens in the serializer;
-      `getAll('lens')` in the parser; seed `selectedLenses` from `initialCriteria.lenses` in
-      `seedFilterState`, `LocationPageClient` and `CollectionPageClient`. Delete the two docblock
-      sentences that describe the gap and flip `searchFilters.test.ts:96` to assert the round-trip.
-- [ ] Test that fails before the fix, in `contentFilter.filterParamKeys.test.ts`: serialize
-      `{ lenses: ['FE 35mm'] }`, expect `params.get('lens')` to be `'FE 35mm'` and
-      `parseFilterFromParams(params).lenses` to round-trip.
-- [ ] Durable guard: type the fixture `Required<ContentFilterCriteria>` so a field added without a
-      fixture value is a `tsc` error; then `it.each` over every key except the four `*MatchMode`s,
-      asserting that the single-field criteria emits at least one URL key. That second test is the
-      one that would have failed on `lenses` today and on `year` before #376.
-- [ ] Ride-along: `hasAnyActiveFilter` (`contentFilter.ts:962-973`) omits `selectedFilmTypes`.
-      Unobservable today — its consumers (`CollectionPageClient`, `EditModeLayer`) never render the
-      film toggle — and a bug the day one does. Its key-enumerating test at
-      `contentFilter.test.ts:1226-1232` omits it too. Est +6 src / +20 test for the whole item.
-
-### ☐ C18 · `CollectionRolesSection`'s mount fetch has no unmount guard
-
-Filed 2026-09-05 from the full jest run (260 suites, 4,737 tests, green — with 96 React `act()`
-warnings, 60 of which trace here). `app/components/ContentCollection/edit/sections/CollectionRolesSection.tsx:53-60`
-runs `listCollectionRoles(collectionId).then(setGrants).catch(…)` and
-`listRoles().then(setAllRoles).catch(…)` in its mount effect with no cancellation: `setGrants`,
-`setAllRoles` and `setError` fire whether or not the component is still mounted, and a fast
-`collectionId` change can land the previous collection's roles on the new one. `useFetchMe.ts:46`
-already shows the repo's shape for this (`if (isCurrent()) …`).
-
-- [ ] Add the guard (a `let current = true` flag cleared in the effect's cleanup, or the
-      `isCurrent()` pattern), gate all three setters on it, and add a test that unmounts before the
-      promise resolves and asserts no state update — it fails today with the `act()` warning as
-      the symptom. Est +8 src / +20 test.
-- [ ] `app/components/UserForm/UserRolesSection.tsx:90-104` has the same `useEffect`-fetch-then-set
-      shape (4 of the 96 warnings). Read it; fix it in the same MR if it lacks the guard.
-
-### ☐ C9 · A dimensionless cover renders no header — UNBLOCKED 2026-08-31: backend Bug #21 shipped
-
-Found by B4 (#289) while merging the duplicated `createHeaderRow` describes. Both test copies
-encoded it correctly, so it is behaviour as written rather than a regression.
-
-The two paths, both re-verified 2026-08-30 (`contentLayout.ts:644-646` and `:650-652`, byte-identical
-since E15 changed the signature):
-
-- `coverImage` absent (`undefined` **or** `null`) → `createTextOnlyHeaderRow`, a one-item TEXT row
-  when metadata exists. A collection with a description and no cover renders a header.
-- `coverImage` present but missing `imageWidth`/`imageHeight` → `null` unconditionally, metadata
-  ignored. The same collection with a broken cover renders nothing.
-
-**The user answered on 2026-08-30, and the answer re-routed the item rather than settling it: never
-fall back.** Verbatim: _"why would a cover image ever have no image width or height? This seems more
-like an edge case BUG or underlying issue from the backend... we should NEVER HAVE AN IMAGE WITHOUT
-height/width... we should NEVER be caught in this situation."_ So the frontend adds no fallback, and
-the existing pins stay as they are — `tests/utils/contentLayout.test.ts:1329`/`:1341` and
-`:1355-1367` already fail if either branch flips.
-
-**What the answer turned this into, chased down the same session.** The premise "this should never
-happen" is not true today, and the frontend is not where it is fixable:
-
-- `ImageProcessingService.applyMetadataToEntity:465-468` writes
-  `parseIntegerOrDefault(metadata.get("imageWidth"), 0)` — **the default is `0`, not null**. So a
-  photo whose dimensions cannot be determined is persisted as `0 x 0`, not as a null.
-- The backend already tries hard first: `ensureDimensions`/`ensureDimensionsFromPath` read width
-  and height off the image header when EXIF lacks them (`putDimensionsFromHeader:399-420`). **That
-  fallback fails soft in three places** — null input stream, no `ImageReader` for the format, or a
-  swallowed `IOException` — and each one lands on `0`. The realistic trigger is the no-reader
-  branch: RAW or HEIC without a plugin.
-- `0` is falsy in JS, so `!coverBlock.imageWidth` catches it exactly like `undefined` and the
-  header disappears.
-- **The sibling path gets it wrong the other way.** `parallaxCard.ts:135-136` falls back to a
-  1000px square via `raw.imageWidth ?? SQUARE_FALLBACK_SIDE` — but `??` catches only
-  null/undefined, so a `0` sails through the fallback built for exactly this case. One sentinel,
-  two consumers, two different wrong answers.
-
-**UNBLOCKED 2026-08-31 (3). Backend Bug #21 shipped as
-[#249](https://github.com/themancalledzac/edens.zac.backend/pull/249) and this item's own condition
-for closing is met.** Verified by reading the backend's `origin/main`, not the commit message: both
-defaults in `ImageProcessingService.applyMetadataToEntity` now read
-`parseIntegerOrDefault(metadata.get("imageWidth"), null)`. The backend fixed the sentinel only and
-deliberately left the frontend fallbacks alone, which is what this item asked for. So
-`parallaxCard.ts:135-136`'s `?? SQUARE_FALLBACK_SIDE` now catches the value it was written for.
-
-**One thing the backend PR does not do, and it decides whether this closes at zero code: there is
-no backfill.** #249 changed what new writes persist. Any row written as `0 x 0` before it is still
-`0 x 0`, and `??` still sails past those. Settle that before ticking the box.
-
-- [ ] **Check for surviving `0 x 0` rows before closing.** If none exist, close this item with
-      **zero frontend code** as designed and delete nothing else. If some do, the question is a
-      backend backfill — still not a frontend fallback. Do not pre-empt either with a frontend
-      guard; that is the fallback the user explicitly rejected on 2026-08-30.
-- [ ] Leave the existing pins alone — `tests/utils/contentLayout.test.ts:1329`/`:1341` and
-      `:1355-1367` already fail if either branch flips, and they stay correct under both outcomes.
-
-**Lesson, hoisted to "How to use this doc":** a "should we handle this bad state?" item is often a
-"why does this bad state exist?" item wearing a costume. Ask where the value is produced before
-costing a way to tolerate it.
+- [ ] Mock `@/app/lib/api/roles` in `InfoTab.test.tsx`. ~+5 test lines, 0 src. Re-run the awk
+      command above and record the new total; the remaining 36 warnings become readable once these
+      60 are gone.
 
 ---
 
-## Group D — Security — D1–D10 CLOSED; D11–D15 filed 2026-09-05 from an adversarial re-review
+## Group C — Bug fixes — ✅ FULLY CLOSED
+
+All eighteen items closed. C1–C8 (#264, #281, #282, #279, #283, #327, #331, #291), C10 and C11
+2026-08-30 (#346, #352), C12–C14 2026-09-05 (#402), C15–C17 (#403), C18 (#404), and C9 the same day
+at zero frontend code on a production census. Full write-ups and closed rows:
+[group-c-bugs.md](2026-summer-refactor/group-c-bugs.md). C4's `collections-location-${slug}` report
+became E12; C17's location-page half became feature-board SD8; C18's `act()` warnings became B10.
+**Nothing in Group C is open.**
+
+---
+
+## Group D — Security — D1–D12 and D14 CLOSED; D13 and D15 open
 
 D1–D9 merged 2026-08-24 and **D10 merged 2026-08-30 (#353)** while this board still called it COLD
 — full write-ups and closed rows: [group-d-security.md](2026-summer-refactor/group-d-security.md).
@@ -706,44 +412,8 @@ the admin gate including `?manage=1`, secrets) and found **no HIGH**; what held 
 "Verified fine". It also answered the cache-key question the feature board's PF13 left open: Next
 16.3.1 hashes request headers into the fetch-cache key (`incremental-cache/index.js:284-305`,
 only `traceparent`/`tracestate` excluded), so the gallery gate's locked and unlocked payloads never
-share an entry. D11 pins that. The five items below are what it found.
-
-### ☐ D11 · Gallery-access save never evicts `collection-{slug}`; the cache-key contract is unpinned
-
-`getCollectionBySlug` forwards cookies AND tags its fetch `collection-{slug}` with
-`revalidate: 3600`. That is safe only because Next hashes the `Cookie` header into the cache key —
-reproduced against the real `IncrementalCache.generateCacheKey`: four cookie strings on one URL,
-four distinct hashes. Two consequences, one item:
-
-- `handleSaveGalleryAccess` and `handleClearPassword` (`useCollectionEdit.tsx:851`, `:884`) call
-  `saveGalleryAccess` and never `revalidateCollectionCache(slug)`. A visitor who unlocked before a
-  password change or clear keeps getting the cached unlocked body under their old cookie for up to
-  `TIMING.revalidateCache` (3600s). Bounded, needs prior legitimate access — and the one place the
-  gate's "backend nulls `content`" contract is silently overridden by the cache. The admin edit
-  path already evicts every variant (`revalidateTag` is per entry, independent of the key).
-- Nothing pins the framework side. `tests/lib/api/core.test.ts:51` pins that `fetchReadApi` sends
-  the cookie; a `next` release that stopped hashing `cookie` the way it skips `traceparent` would
-  merge locked and unlocked payloads, and no test here would go red.
-
-- [ ] `void revalidateCollectionCache(collection.slug)` after both `saveGalleryAccess` calls (and
-      children when `propagateToChildren`). Test: a save posts the `collection-<slug>` tag; today it
-      posts nothing.
-- [ ] `tests/lib/api/fetchCacheKey.test.ts`: call `IncrementalCache.prototype.generateCacheKey`
-      from the installed Next with and without a `Cookie` header on one URL, assert the hashes
-      differ. Est +2 src / +30 test.
-
-### ☐ D12 · Client error reports log the share and invite tokens
-
-`logger.ts:113` sends `url: window.location.href` with every client error report. On `/s/<token>`
-and `/invite/<token>` the URL is the credential — the share token grants a rolling 30-day view and
-the invite token creates an account — and `app/s/[token]/ShareSession.tsx:34` and `app/error.tsx:16`
-both fire on those pages. `app/invite/[token]/page.tsx` sets `referrer: 'no-referrer'` specifically
-to keep that token off the wire; the log line undoes the control. Path: `logger.error` → `write` →
-`reportToServer` → POST `/api/client-errors` → `console.error` → CloudWatch.
-
-- [ ] Send `window.location.pathname` with `/s/*` and `/invite/*` collapsed to `/s/[token]` and
-      `/invite/[token]`. Pin with a jsdom test on `logger.error` asserting the posted body never
-      contains the token. Est +6 src / +20 test.
+share an entry. D11 pinned that in a test and shipped as #404, with D12 and D14. The two items
+below are what is left.
 
 ### ☐ D13 · Report-only CSP has no `report-uri`; the apex host silently 403s every write
 
@@ -762,29 +432,6 @@ feature-board PF7 (the CloudFlare pass), not here.
       `application/csp-report` and carry no usable `Origin`, so `/api/client-errors`' origin gate
       cannot be reused as-is), and `report-uri /api/csp-report` on the policy;
       `tests/next.config.test.ts` gains the assertion. Same cost model as PF6. Est ~+40 src / +30 test.
-
-### ☐ D14 · Proxy body-cap tests that cannot fail; `client-errors` cap counts UTF-16 units; two small proxy gaps
-
-- The declared-length early reject in `app/api/proxy/[...path]/route.ts:131-133` has no test
-  that can fail: `NextRequest` never sets `content-length` for a string or `Uint8Array` body, and
-  no proxy test sets the header by hand, so deleting the branch leaves all 35 tests green.
-  `tests/api/client-errors/route.test.ts` shows the pattern that bites (`contentLength: '900000'`).
-- `/api/client-errors`' cap compares `raw.length`, UTF-16 units: 4,096 astral characters is
-  `length === 8192` and 16,384 bytes.
-- The production admin/edit early reject (`route.ts:99-111`) reads the raw joined path while
-  `isProxyableApiPath` reads the normalized one; `api/../api/admin/users` passes the prefix check
-  and would be forwarded anonymously. Not reachable over HTTP (CloudFront and Next normalize first;
-  verified live with `curl --path-as-is`), and `api/..;/actuator/env` is forwarded but Spring's
-  firewall answers 400. Two lines close both.
-- The strip list omits `forwarded` and `true-client-ip`. The backend reads only `X-Real-IP`, so no
-  effect today.
-- The `getSetCookie()` re-emit block (`route.ts:158-163`) is redundant on Node 25 and its test
-  cannot detect deletion. Keep or drop; if kept, make the test's mock lack `getSetCookie`.
-
-- [ ] One proxy test with `headers: {'content-length': '17000'}` and a 2-byte body asserting 413
-      with `fetch` never called; `Buffer.byteLength(raw)` in `/api/client-errors`; compute
-      `normalized` once and run both proxy checks on it, rejecting `;`; add the two headers to the
-      strip list. Est +10 src / +30 test.
 
 ### ⛔ D15 · Public routes surface client-gallery images through the unfiltered backend search — BLOCKED on backend S-29
 
@@ -1003,8 +650,8 @@ rename sweep nobody reviews carefully.
 G1 shipped (#303) and **G5 closed 2026-08-30 with zero frontend code** — the backend blessed bare
 arrays in its own `CLAUDE.md` (#243), which was the decision G5 was waiting on. Write-ups and closed
 rows: [group-g-decisions.md](2026-summer-refactor/group-g-decisions.md), which also holds G2's
-superseded per-file inventory and G4's measurement history. **G6 shipped 2026-08-31 as PR #351.**
-G2, G3 and G4 are open below.
+superseded per-file inventory and G4's measurement history. **G6 shipped 2026-08-31 as PR #351;
+G7 shipped 2026-09-05 as PR #404.** G2, G3, G4 and G8 are open below.
 
 ### ◐ G2 · Inline-comment rule — DECIDED 2026-08-22: keep and enforce; G2a COLD, G2b/G2c ⛔
 
@@ -1169,26 +816,6 @@ guard sized off the `styles.` regex would skip them silently.
       a case per file, dynamic `styles[key]` lookups still invisible), or keep it panels-only and
       record why. If extended, enumerate importers by the import specifier, not the binding name.
 
-### ☐ G7 · Test names still call the BFF proxy "Vercel"; production is Amplify
-
-Filed 2026-08-31 from feature-board PF9 (#365), which recorded AWS Amplify as the production host.
-`tests/api/proxy/route.test.ts` carries **six** `describe('Vercel BFF proxy …')` blocks, plus
-`route.logHygiene.test.ts`'s `describe('Vercel BFF proxy — 502 log hygiene')`.
-
-**The route itself is already correct** — `app/api/proxy/[...path]/route.ts:72-80` says the
-`x-vercel-forwarded-for` hop is "harmless, absent on Amplify" and that `x-real-ip` is "spoofable on
-Amplify". The header handling is deliberate and must not change: it reads the Vercel header first
-and falls back to the last `x-forwarded-for` hop, which is the correct order on both hosts. This is
-a naming fix only.
-
-Worth doing because the names were actively misleading: PF9's row asserted "three docs name three
-hosts" and these strings were the third, which sent a session looking for a doc that does not
-exist.
-
-- [ ] Rename the seven `describe` strings to "BFF proxy". Do **not** touch
-      `x-vercel-forwarded-for` handling or the `x-vercel-ip-*` strip list — those are host-agnostic
-      by design. Est ~7 test lines, 0 src.
-
 ## Group H — Feature requests
 
 Filed 2026-08-23 from a user design review of `/user` plus an annotated screenshot. Six requests
@@ -1319,6 +946,41 @@ against real merge timestamps on 2026-08-24; only the labels were inconsistent. 
 Same-day runs are numbered "(1)", "(2)", … in run order; 2026-08-28's first two runs predate the
 numbering, so that day's numbered entries start at "(2)"._
 
+- 2026-09-05 (2) — **twelve items closed across three MRs: #402 (C13, C12, C14), #403 (C17, C16,
+  C15), #404 (D12, D11, D14, G7, C18), plus C9 at zero code.** Group C is now fully closed and
+  Group D is down to D13 and D15. All three PRs verified MERGED with `gh pr view` before any box was
+  ticked. **Post-merge `main`: 264 suites / 4,792 tests, 0 failures; `tsc` clean; 96 `act()`
+  warnings — unchanged.** **Five board rows were wrong about their own item, and the corrections are
+  the run's real output.** C12's premise: IconButton's `pointer: coarse` `::after` already gave 44px,
+  so the control was tappable; the defect was a 4px overhang that steals neighbouring taps. C14 was
+  two halves, not one — `PAGINATION` is `as const`, so `size` had narrowed to the literal `35` and no
+  caller could pass another page size; and the row's sibling-call count was 2 when it is 3
+  (`collections.ts:84`, `:114`, `:138`). D11's function is `handleSaveAccess`, and
+  `handleClearPassword` **cannot** propagate to children, so the "evict children too" half does not
+  apply to it — if clearing a parent should clear its children, that is a backend gap. D12 does not
+  cancel the invite page's `no-referrer`; the two cover different paths and both are needed. D14's
+  cap is 8KB not 4096, and the board understated part 3: only `isProxyableApiPath` normalized while
+  the anonymous-admin check ran `startsWith` on the raw path, so the two could **disagree** rather
+  than merely duplicate work. **C18's headline number was wrong in the most useful way.** The board
+  predicted ~64 fewer `act()` warnings; the fix removes **zero**, because React 19 discards updates
+  to an unmounted fiber silently — so the unmount test the board specified **passed against
+  unguarded source** and was deleted rather than shipped as a test that cannot fail. The real defect
+  was the stale-response race (a slow failing read for one collection blanked the next one's grant
+  list), and the 60 warnings come from `InfoTab.test.tsx` not mocking `@/app/lib/api/roles`, filed as
+  **B10**. **The rule this run earns: a board row's predicted number is a hypothesis about a
+  mechanism, and the mechanism is what to check first.** Four of the five wrong rows were wrong
+  because nobody had read the code that produces the symptom — an `::after` hit area, an `as const`,
+  a missing `propagateToChildren`, React 19's silent discard. **D14's real find** is that `;` reaches
+  the backend: `new URL()` preserves a path parameter Tomcat strips per segment, so
+  `api/..;/actuator/env` passed the `/api/` prefix check and resolved to `/actuator/env`, carrying
+  the `X-Internal-Secret` the proxy injects on every hop. **C9 closed on a production census** — 8
+  pages at `size=200`, 1,424 unique ids matching `totalElements`, zero `0 x 0` rows, and the count is
+  the whole table because `SELECT_CONTENT_IMAGE` has no `WHERE` at any tier. No frontend guard was
+  added and none is filed; the user rejected that on 2026-08-30. **Filed:** B10 (test hygiene) and
+  feature-board SD8 (the location page's Lens facet, which C17 could not carry). Next: B10, then
+  feature-board AU2 — whose admin half turned out blocked on a backend change, now specced in the
+  MA1/EM2 handoff.
+
 - 2026-09-05 — no MRs; **the full critical review the #400 handoff asked for, applied.** Seven
   read-only slices and one apply pass across both boards (the feature board's entry has the
   cross-board summary). **On this board, four open items had already shipped:** C11 (#352), D10
@@ -1338,38 +1000,6 @@ numbering, so that day's numbered entries start at "(2)"._
   lines, 88 style files, 38 components, 57 closed rows (60 after this pass), G4 1,494/54, G2's
   inventory re-taken (448/441/14). C13 is three literals, not one. "What to build next" replaced by
   a pointer. Next: C9's `0 x 0` count, then C14, C17, C13, D11, D12, G7, C12, C18.
-
-- 2026-08-31 (3) — no MRs; **docs-only, filed from a review run in `edens.zac.backend`, not here.**
-  A backend-side agent compared both repos and produced five frontend-owed findings. Filed as
-  **C14** (`getCollectionsByLocation` sends `page`/`size`; the location endpoint reads
-  `collectionPage`/`collectionSize` and drops both), **C15** (the `LocationPage` props are
-  image-typed while backend #258 widened `LocationPageResponse.images` to mixed content), **C16**
-  (`imageWidth`/`imageHeight` declared non-nullable; backend #249 now writes `null`) and **H7**
-  (backend #257's two passkey routes have no consumer here). The fifth was **already shipped as G6
-  (#351)** and is recorded under "Verified fine" instead of filed twice.
-  **The headline is a box that was ready to tick and nobody knew: C9 is UNBLOCKED.** It had sat
-  BLOCKED-on-backend since 2026-08-30 waiting for Bug #21; Bug #21 shipped as backend #249 the same
-  week, and C9's own stated closing condition ("when the backend defaults to `null` instead of `0`")
-  is met. Verified in that repo's `origin/main`, not from the commit message. One caveat found while
-  checking and written into the item: **#249 added no backfill**, so pre-#249 `0 x 0` rows would
-  still slip past `parallaxCard`'s `??`. C9 now leads the next run — an item that may already be
-  done is cheaper than the cheapest one that is not.
-  **This is the second consecutive run where reading the other repo closed a blocked row for free**
-  (2026-08-30 did it three times). The rule was already hoisted; what this run adds is that it works
-  in the pull direction too — the backend shipped our blocker and had no way to tell us.
-  **One archived claim corrected rather than annotated.** `group-e-consolidations.md`'s E13 bullet
-  said a location-tagged GIF "can never appear on `/location/{slug}`" because the orphan queries
-  joined `content_image`. Backend #258 replaced that join with a `content_type IN ('IMAGE','GIF')`
-  predicate, so the reason is false. The conclusion survives only because this repo discards the
-  field — rewritten to say so, and to say it collapses if C15 is answered "yes".
-  **Correction to what the backend board believed, carried into C15:** it recorded the GIF widening
-  as live-breaking against a `ContentImageModel[]` prop. `/location/[slug]` never reads
-  `LocationPageResponse.images` — `parseCollectionArrayResponse` takes `.collections` and throws the
-  rest away, and the grid is fed by a separate `searchImages({ locationId })` call. The item is
-  dormant, and the worst case if a GIF did arrive is an off-by-one header count, not a crash.
-  **Stale count fixed in passing:** "six of the fifteen rows are blocked on the user" had been wrong
-  by three rows since C12/C13/G7 were filed without updating it. Now eight of twenty-two.
-  Next: C9's check, then C11 + C14 together, then D10, E18.
 
 ## Verified fine — do not re-investigate
 
@@ -1393,9 +1023,10 @@ numbering, so that day's numbered entries start at "(2)"._
 - All 23 `ui/` primitives have live consumers. `useCachedPanelData`'s generation-counter design is sound. The localStorage admin cache is wiped on logout by design.
 - Suite-wide: no skipped or focused tests, no snapshots, no stale TODOs. (`app/` carries one
   scoped TODO comment — `route.ts:77` `TODO(CloudFlare Phase 2)`, feature-board PF7; the
-  `TODO(A3)` went with #354 — the clean claim is about `tests/`.) Re-run 2026-09-05: `tsc`,
-  `eslint app/ --max-warnings 0`, `stylelint`, and `jest` (260 suites / 4,737 tests) all clean;
-  the 96 `act()` warnings are C18.
+  `TODO(A3)` went with #354 — the clean claim is about `tests/`.) Re-run 2026-09-05 (2) after #402,
+  #403 and #404: `tsc`, `eslint app/ --max-warnings 0`, `stylelint`, and `jest` (264 suites / 4,792
+  tests) all clean; 60 of the 96 `act()` warnings are B10 and the rest are spread across seven
+  suites (table in B10's section).
 - The merged cleanup wave through #270 introduced no regression (2026-08-22 spot review of
   A5/A6/C1/E1/D2: overlay gate traced to every render site, adapter defaults diff-checked against
   pre-consolidation source, the C1 seed-effect state machine walked against all three failure

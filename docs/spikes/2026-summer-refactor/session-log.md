@@ -1231,3 +1231,35 @@ pageType="collectionsCollection">` is one line before and one line after — so 
   `group-g-decisions.md`. Prose was cut roughly in half at close after the user objected to docblock
   bloat; the rule that produced the cut now lives in `~/.claude/CLAUDE.md`, global rather than
   repo-local, because the inline-comment ban it completes was already global. Next: C11, D10, E18.
+
+- 2026-08-31 (3) — no MRs; **docs-only, filed from a review run in `edens.zac.backend`, not here.**
+  A backend-side agent compared both repos and produced five frontend-owed findings. Filed as
+  **C14** (`getCollectionsByLocation` sends `page`/`size`; the location endpoint reads
+  `collectionPage`/`collectionSize` and drops both), **C15** (the `LocationPage` props are
+  image-typed while backend #258 widened `LocationPageResponse.images` to mixed content), **C16**
+  (`imageWidth`/`imageHeight` declared non-nullable; backend #249 now writes `null`) and **H7**
+  (backend #257's two passkey routes have no consumer here). The fifth was **already shipped as G6
+  (#351)** and is recorded under "Verified fine" instead of filed twice.
+  **The headline is a box that was ready to tick and nobody knew: C9 is UNBLOCKED.** It had sat
+  BLOCKED-on-backend since 2026-08-30 waiting for Bug #21; Bug #21 shipped as backend #249 the same
+  week, and C9's own stated closing condition ("when the backend defaults to `null` instead of `0`")
+  is met. Verified in that repo's `origin/main`, not from the commit message. One caveat found while
+  checking and written into the item: **#249 added no backfill**, so pre-#249 `0 x 0` rows would
+  still slip past `parallaxCard`'s `??`. C9 now leads the next run — an item that may already be
+  done is cheaper than the cheapest one that is not.
+  **This is the second consecutive run where reading the other repo closed a blocked row for free**
+  (2026-08-30 did it three times). The rule was already hoisted; what this run adds is that it works
+  in the pull direction too — the backend shipped our blocker and had no way to tell us.
+  **One archived claim corrected rather than annotated.** `group-e-consolidations.md`'s E13 bullet
+  said a location-tagged GIF "can never appear on `/location/{slug}`" because the orphan queries
+  joined `content_image`. Backend #258 replaced that join with a `content_type IN ('IMAGE','GIF')`
+  predicate, so the reason is false. The conclusion survives only because this repo discards the
+  field — rewritten to say so, and to say it collapses if C15 is answered "yes".
+  **Correction to what the backend board believed, carried into C15:** it recorded the GIF widening
+  as live-breaking against a `ContentImageModel[]` prop. `/location/[slug]` never reads
+  `LocationPageResponse.images` — `parseCollectionArrayResponse` takes `.collections` and throws the
+  rest away, and the grid is fed by a separate `searchImages({ locationId })` call. The item is
+  dormant, and the worst case if a GIF did arrive is an off-by-one header count, not a crash.
+  **Stale count fixed in passing:** "six of the fifteen rows are blocked on the user" had been wrong
+  by three rows since C12/C13/G7 were filed without updating it. Now eight of twenty-two.
+  Next: C9's check, then C11 + C14 together, then D10, E18.
