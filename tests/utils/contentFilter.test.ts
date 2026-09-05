@@ -1229,6 +1229,7 @@ describe('hasAnyActiveFilter', () => {
     ['selectedPeople', { selectedPeople: ['Alice'] }],
     ['selectedCameras', { selectedCameras: ['Sony'] }],
     ['selectedLenses', { selectedLenses: ['FE 35mm'] }],
+    ['selectedFilmTypes', { selectedFilmTypes: ['Kodak Portra 400'] }],
     ['selectedLocations', { selectedLocations: ['Rome'] }],
   ])('is true when %s is active', (_label, overrides) => {
     expect(hasAnyActiveFilter(makeFilterState(overrides))).toBe(true);

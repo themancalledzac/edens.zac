@@ -4,14 +4,14 @@ import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { meServer } from '@/app/lib/api/auth';
 import { listFollowedCollectionIdsServer } from '@/app/lib/api/personal';
 import { type CollectionModel } from '@/app/types/Collection';
-import { type ContentImageModel } from '@/app/types/Content';
+import { type ContentImageModel, type ViewableContent } from '@/app/types/Content';
 
 import LocationPageClient from './LocationPageClient';
 
 interface LocationPageProps {
   locationName: string;
   collections: CollectionModel[];
-  images: ContentImageModel[];
+  images: ViewableContent[];
   coverImage: ContentImageModel | null;
 }
 

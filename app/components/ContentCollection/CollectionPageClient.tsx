@@ -176,6 +176,7 @@ export default function CollectionPageClient({
     highlyRatedOnly: initialCriteria.minRating !== undefined && initialCriteria.minRating >= 4,
     selectedPeople: initialCriteria.people ?? [],
     selectedCameras: initialCriteria.cameras ?? [],
+    selectedLenses: initialCriteria.lenses ?? [],
     selectedLocations: initialCriteria.locations ?? [],
     selectedDates: initialCriteria.dates ?? [],
     selectedYears: initialCriteria.years ?? [],
