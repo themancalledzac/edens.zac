@@ -8,16 +8,32 @@
 
 ## Post-Change Commands
 
+After editing files, run ESLint fix, then Prettier, then type check. **Order matters**: `eslint --fix`
+rewrites import blocks, so Prettier must run last or it will re-wrap them and leave the tree
+unformatted. **Scope the commands to the files you actually changed** — running them across the whole
+tree rewrites unrelated files and pollutes the diff.
+
 ```bash
-# Run ESLint
-npx eslint app/ --max-warnings 0
-
-# Fix auto-fixable issues
-npx eslint app/ --fix
-
-# Run TypeScript type checking
+# Lint fix first (matches Cursor's source.fixAll.eslint on save)
+npx eslint --fix <files>
+# Format last (matches .prettierrc.json)
+npx prettier --write <files>
+# Type check LAST of all — an ESLint autofix can break types (see below)
 npx tsc --noEmit
 ```
+
+Always re-run `tsc` **after** `eslint --fix`, never only before. `unicorn/no-useless-undefined`
+strips the argument from `jest.fn().mockResolvedValue(undefined)`, and the resulting
+`mockResolvedValue()` fails to type-check for a `Promise<void>` mock. Write those as
+`jest.fn(() => Promise.resolve())`, which satisfies both tools.
+
+For SCSS files, also run Stylelint:
+
+```bash
+npx stylelint --fix <files>
+```
+
+Full-tree check before a commit (not while editing): `npx eslint app/ --max-warnings 0`.
 
 ## Common ESLint Issues & Fixes
 
