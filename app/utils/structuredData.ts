@@ -9,7 +9,7 @@
 import { type CollectionModel } from '@/app/types/Collection';
 
 /** The byline used across route metadata; kept here so the JSON-LD author cannot drift from it. */
-const AUTHOR_NAME = 'Zac Edens';
+export const AUTHOR_NAME = 'Zac Edens';
 
 export interface ImageGalleryNode {
   '@context': 'https://schema.org';

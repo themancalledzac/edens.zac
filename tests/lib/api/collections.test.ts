@@ -219,6 +219,18 @@ describe('getCollectionsByLocation', () => {
     );
   });
 
+  it('paginates on collectionPage/collectionSize, the names the location route reads', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse([createCollection(1)]));
+
+    await getCollectionsByLocation('seattle', 1, 24);
+
+    const requestedUrl = String((global.fetch as jest.Mock).mock.calls[0][0]);
+    expect(requestedUrl).toContain('collectionPage=1');
+    expect(requestedUrl).toContain('collectionSize=24');
+    expect(requestedUrl).not.toMatch(/[&?]page=/);
+    expect(requestedUrl).not.toMatch(/[&?]size=/);
+  });
+
   it('should return empty array on 404', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
