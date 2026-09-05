@@ -7,7 +7,7 @@ import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { type CollectionModel } from '@/app/types/Collection';
-import { type ContentImageModel } from '@/app/types/Content';
+import { type ViewableContent } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import {
   applyActiveOverride,
@@ -18,6 +18,7 @@ import {
   filmFilterFromIsFilm,
   filterContent,
   type FilterCounts,
+  isImageContent,
 } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { logger } from '@/app/utils/logger';
@@ -26,7 +27,7 @@ import { sortByDate } from '@/app/utils/sortByDate';
 import LocationCollections from './LocationCollections';
 
 interface LocationPageClientProps {
-  images: ContentImageModel[];
+  images: ViewableContent[];
   collections: CollectionModel[];
 }
 
@@ -44,7 +45,9 @@ export default function LocationPageClient({ images, collections }: LocationPage
 
   const availableOptions = useMemo(() => extractFilterOptions(images), [images]);
 
-  const baseVisibility = useMemo(() => computeFilterVisibility(images), [images]);
+  const imagesOnly = useMemo(() => images.filter(isImageContent), [images]);
+
+  const baseVisibility = useMemo(() => computeFilterVisibility(imagesOnly), [imagesOnly]);
   const visibility = useMemo(
     () => applyActiveOverride(baseVisibility, filterState),
     [baseVisibility, filterState]
@@ -52,10 +55,8 @@ export default function LocationPageClient({ images, collections }: LocationPage
 
   const criteria = useMemo(() => buildLocationCriteria(filterState), [filterState]);
 
-  const filteredImages = useMemo(() => {
-    const filtered = filterContent(images, criteria).filter(
-      (item): item is ContentImageModel => item.contentType === 'IMAGE'
-    );
+  const filteredContent = useMemo(() => {
+    const filtered = filterContent(images, criteria);
     if (filterState.dateSortDirection === 'off') return filtered;
     return sortByDate(filtered, filterState.dateSortDirection);
   }, [images, criteria, filterState.dateSortDirection]);
@@ -80,15 +81,19 @@ export default function LocationPageClient({ images, collections }: LocationPage
     }
   }, [images, criteria, availableOptions]);
 
-  const contentBlocks = useMemo(() => processContentBlocks(filteredImages, true), [filteredImages]);
+  const contentBlocks = useMemo(
+    () => processContentBlocks(filteredContent, true),
+    [filteredContent]
+  );
 
+  /**
+   * Mirrors the `criteria` memo so the live filter and the URL are built by one function.
+   * `dateSortDirection` has no URL key in `serializeFilterToParams` and stays local.
+   */
   const handleFilterChange = useCallback(
     (update: Partial<FilterState>) => {
       setFilterState(prev => {
         const next = { ...prev, ...update };
-        // Single source of truth with the `criteria` memo. dateSortDirection /
-        // lens dimensions have no URL key in serializeFilterToParams and stay
-        // local by design.
         syncToUrl(buildLocationCriteria(next));
         return next;
       });

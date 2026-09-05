@@ -6,6 +6,7 @@ import { CollectionJsonLd } from '@/app/components/StructuredData/CollectionJson
 import { getCollectionBySlug } from '@/app/lib/api/collections';
 import { requireAdmin } from '@/app/utils/admin';
 import { logger } from '@/app/utils/logger';
+import { AUTHOR_NAME } from '@/app/utils/structuredData';
 
 interface CollectionPageProps {
   params: Promise<{
@@ -35,7 +36,7 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
   try {
     const collection = await getCollectionBySlug(slug, 0, 500);
     const title = collection.title;
-    const description = collection.description ?? `${title} — photography by Zac Eden`;
+    const description = collection.description ?? `${title} — photography by ${AUTHOR_NAME}`;
     // Suppress OG/Twitter image for password-protected collections — the cover image is private
     // until the password is verified, and meta tags are crawlable without auth. Keyed on
     // `isPasswordProtected` alone (not the collection kind): protected is private regardless of

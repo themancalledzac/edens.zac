@@ -11,6 +11,7 @@ import { getCollectionBySlug } from '@/app/lib/api/collections';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { logger } from '@/app/utils/logger';
+import { AUTHOR_NAME } from '@/app/utils/structuredData';
 
 jest.mock('@/app/lib/api/collections', () => ({
   getCollectionBySlug: jest.fn(),
@@ -111,5 +112,24 @@ describe('generateMetadata — protected-collection suppression', () => {
     });
 
     expect(metadata.openGraph?.images).toEqual([{ url: 'https://example.com/secret-cover.jpg' }]);
+  });
+});
+
+describe('generateMetadata — fallback byline', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('builds the fallback description from AUTHOR_NAME when the collection has none', async () => {
+    const metadata = await metadataFor({ description: undefined });
+
+    expect(metadata.description).toBe(`Smith Wedding — photography by ${AUTHOR_NAME}`);
+    expect(metadata.description).toContain('Zac Edens');
+  });
+
+  it('prefers the collection description over the byline fallback', async () => {
+    const metadata = await metadataFor({ description: 'A June wedding in the Cascades.' });
+
+    expect(metadata.description).toBe('A June wedding in the Cascades.');
   });
 });

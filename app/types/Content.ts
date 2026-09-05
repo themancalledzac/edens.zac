@@ -153,8 +153,8 @@ export interface ContentImageModel extends Content {
   contentType: 'IMAGE';
   imageUrl: string;
   imageUrlRaw?: string | null;
-  imageWidth?: number;
-  imageHeight?: number;
+  imageWidth?: number | null;
+  imageHeight?: number | null;
   iso?: number;
   author?: string | null;
   rating?: number;

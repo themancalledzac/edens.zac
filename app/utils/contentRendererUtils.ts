@@ -29,9 +29,9 @@ import { logger } from '@/app/utils/logger';
  * Prioritizes imageWidth/imageHeight over width/height, with default fallback
  */
 function extractImageDimensions(
-  imageWidth?: number,
+  imageWidth?: number | null,
   width?: number,
-  imageHeight?: number,
+  imageHeight?: number | null,
   height?: number,
   defaultDimension = 800
 ): { imageWidth: number; imageHeight: number } {
