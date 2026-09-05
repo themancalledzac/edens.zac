@@ -145,16 +145,20 @@ export async function getScopedAllCollections(size = 500): Promise<CollectionMod
 /**
  * GET /api/read/collections/location/{slug}
  * Get visible collections for a location, ordered by collection date (newest first)
+ *
+ * Paginates on `collectionPage`/`collectionSize`, not the `page`/`size` every other collections
+ * route uses — this is the one endpoint whose backend controller renamed them. Sending `page`/`size`
+ * here is silently ignored rather than rejected.
  */
 export async function getCollectionsByLocation(
   slug: string,
   page = 0,
-  size = PAGINATION.collectionPageSize
+  size: number = PAGINATION.collectionPageSize
 ): Promise<CollectionModel[]> {
   if (!slug) throw new Error('location slug is required');
   try {
     const data = await fetchPublicRead<unknown>(
-      `/collections/location/${encodeURIComponent(slug)}?page=${page}&size=${size}`,
+      `/collections/location/${encodeURIComponent(slug)}?collectionPage=${page}&collectionSize=${size}`,
       { next: { revalidate: TIMING.revalidateCache, tags: [`collections-location-${slug}`] } }
     );
     return parseCollectionArrayResponse(data);
