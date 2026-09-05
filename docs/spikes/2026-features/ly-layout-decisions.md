@@ -1,24 +1,8 @@
 # LY — Layout decisions
 
-_Context file for the LY items on [2026-features.md](../2026-features.md). LY1 is a user
-adjudication with the build gated behind it; LY2 closed on 2026-08-31._
-
-## LY1 · Lone-last-row sizing — pick one design, then build
-
-The problem: a lone image in a collection's last row renders full-width regardless of its rating.
-Two incompatible solutions were designed and neither was built (verified: zero
-`FILLER`/`gapBox`/`endRowGap` hits in `app/utils`):
-
-- **Gap-box spacer** (`docs/superpowers/plans/005-end-row-gap.md`, gitignored): append an
-  invisible spacer box to the final row so the real image takes its proportional width.
-- **FILLER atom** (row-composition redesign spec §13): a first-class atom type in the
-  `compose()`/`buildAtomic` pipeline.
-
-Context the chosen design must compose with: `buildRows` already carries a BLANK-spacer post-pass
-(`MIN_FILL_RATIO`, `padRowToWidth`, solo-hero skip) from the 2026-07-16 row-width normalization —
-the winner is whichever design extends that machinery rather than fighting it. `docs/005-layout.md`
-flags this as the one concrete unreconciled design conflict in the spec set. After the pick
-(decision #6), TDD the implementation against `tests/utils/rowCombination*` conventions.
+_Context file for the LY items on [2026-features.md](../2026-features.md). Both LY items are
+closed: LY2 on 2026-08-31 as a pure adjudication, LY1 on 2026-09-02 as a correction — the
+behaviour it proposed building was already shipped. No open LY row remains._
 
 ## Parked ideas (recorded so they are not rediscovered)
 
@@ -27,6 +11,43 @@ Tree. Property-based layout tests are debt, tracked via chapter 006 and the refa
 roadmap — not a feature row here.
 
 ## Closed
+
+### ☑ LY1 · Lone-last-row sizing — CLOSED 2026-09-02, the behaviour already shipped
+
+**Closed as a correction, not a build. The behaviour was already shipped.**
+
+The item said a lone image in a collection's last row renders full-width regardless of its rating,
+and that two designs existed to fix it with neither built — the gap-box spacer
+(`docs/superpowers/plans/005-end-row-gap.md`, gitignored) and the redesign spec's §13 FILLER atom.
+The evidence for "neither built" was `grep -rn "FILLER|gapBox|endRowGap" app/utils` returning 0.
+
+**That grep checked names, not behaviour, and the gap-box design ships under the name BLANK.**
+`padRowToWidth` (`app/utils/rowCombination.ts:683`) appends a horizontal BLANK sibling to an
+under-filled trailing row, so the real item renders at its proportional width share rather than
+stretching to fill. Three gates decide a genuine leftover — trailing row only, under `MIN_FILL_RATIO`,
+and the row could have absorbed another item — and it skips solo heroes and any row holding a
+declared `minWidth`. That is the gap-box design, built and pinned:
+
+```bash
+npx jest tests/utils/rowCombination.blankPadding.test.ts   # → 14 passed
+```
+
+This file itself named the machinery — "the winner is whichever design extends that machinery
+rather than fighting it" — without noticing that the machinery already WAS one of the two designs.
+
+**The stated defect was also wrong about the mechanism.** Rating does not enter into it. The only
+lone item that still fills its row is one passing `isSoloHero`, which gates on aspect-ratio
+extremeness (an extreme-wide panorama), and that row is intentional.
+
+**Zac's answer, put to him with the correction: close it, build nothing.** He declined the
+FILLER-atom rewrite, which would relocate the same behaviour from a post-pass into the
+`compose()`/`buildAtomic` pipeline and change no rendered output, and declined altering the
+solo-hero rule. Neither design is to be re-proposed.
+
+**The transferable lesson.** The feature board carries a rule that a fix is not verified by the
+absence of the string it moved. This is the same error inverted: a feature was recorded as unbuilt
+because the string naming it was absent. A design's vocabulary is not its behaviour, and a naming
+grep can only ever answer a question about names.
 
 ### ☑ LY2 · Admin panel width vs page height — ADJUDICATED 2026-08-31, no code change
 
