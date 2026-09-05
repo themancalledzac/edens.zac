@@ -88,6 +88,7 @@ export function UserRolesSection({
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
+    let active = true;
     setRolesError(null);
     void (async () => {
       try {
@@ -95,10 +96,12 @@ export function UserRolesSection({
           listUserRoles(userId),
           readOnly ? Promise.resolve<RoleSummary[]>([]) : listRoles(),
         ]);
+        if (!active) return;
         setUserRoles(membership);
         setAllRoles(all);
       } catch (error) {
         logger.error('UserRolesSection', 'Failed to load role membership', error, { userId });
+        if (!active) return;
         setUserRoles([]);
         setAllRoles([]);
         setRolesError(
@@ -106,6 +109,9 @@ export function UserRolesSection({
         );
       }
     })();
+    return () => {
+      active = false;
+    };
   }, [userId, readOnly]);
 
   const availableRoles = allRoles.filter(r => !userRoles.some(ur => ur.roleId === r.id));

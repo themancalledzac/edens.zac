@@ -16,7 +16,7 @@ import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/proxy/[...path]/route';
 import { logger } from '@/app/utils/logger';
 
-describe('Vercel BFF proxy — 502 log hygiene', () => {
+describe('BFF proxy — 502 log hygiene', () => {
   const ORIGINAL_ENV = process.env;
 
   beforeEach(() => {

@@ -1,5 +1,6 @@
 import { act, waitFor } from '@testing-library/react';
 
+import { revalidateCollectionCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import {
   getCollectionUpdateMetadata,
   getMetadata,
@@ -70,6 +71,9 @@ const mockStorageUpdateFull = collectionStorage.updateFull as jest.MockedFunctio
 >;
 const mockStorageUpdateImagesInCache = collectionStorage.updateImagesInCache as jest.MockedFunction<
   typeof collectionStorage.updateImagesInCache
+>;
+const mockRevalidateCollectionCache = revalidateCollectionCache as jest.MockedFunction<
+  typeof revalidateCollectionCache
 >;
 
 jest.mock('@/app/components/ContentCollection/edit/collectionEditUtils', () => {
@@ -632,6 +636,109 @@ describe('useCollectionEdit — handler tests', () => {
 
       expect(mockSaveGalleryAccess).toHaveBeenCalled();
       expect(result.current.galleryStatus).toBe('boom');
+    });
+  });
+
+  /**
+   * A visitor who unlocked a gallery holds a cached unlocked response body keyed on their cookie.
+   * Without an eviction after the password write, that body stays served for the full route TTL, so
+   * changing or clearing the password locks nobody out until it expires.
+   */
+  describe('gallery access — cache eviction after a password write', () => {
+    const savedResult = {
+      saved: true,
+      emailsSent: false,
+      reason: null,
+      password: 'pass1234',
+      emails: [],
+    };
+
+    it('evicts the collection cache after handleSaveAccess', async () => {
+      mockSaveGalleryAccess.mockResolvedValue(savedResult);
+
+      const collection = makeCollection({ isClient: true });
+      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse({ isClient: true }));
+      const { result } = renderEdit({ enabled: true, collection });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      mockRevalidateCollectionCache.mockClear();
+      act(() => result.current.setGalleryPassword('pass1234'));
+
+      await act(async () => {
+        await result.current.handleSaveAccess();
+      });
+
+      expect(mockRevalidateCollectionCache).toHaveBeenCalledWith('smith-wedding');
+    });
+
+    it('evicts the collection cache after handleClearPassword', async () => {
+      mockSaveGalleryAccess.mockResolvedValue({ ...savedResult, password: null });
+
+      const collection = makeCollection({ isClient: true });
+      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse({ isClient: true }));
+      const { result } = renderEdit({ enabled: true, collection });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      mockRevalidateCollectionCache.mockClear();
+
+      await act(async () => {
+        await result.current.handleClearPassword();
+      });
+
+      expect(mockRevalidateCollectionCache).toHaveBeenCalledWith('smith-wedding');
+    });
+
+    it('evicts every loaded child when the password is propagated to children', async () => {
+      const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
+      mockSaveGalleryAccess.mockResolvedValue(savedResult);
+
+      const children = [createCollectionContent(1), createCollectionContent(2)];
+      const collection = makeCollection({ content: children });
+      mockGetCollectionUpdateMetadata.mockResolvedValue(
+        makeResponse({ content: children }, { hasChildren: true })
+      );
+      const { result } = renderEdit({ enabled: true, collection });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      mockRevalidateCollectionCache.mockClear();
+      act(() => result.current.setGalleryPassword('pass1234'));
+
+      await act(async () => {
+        await result.current.handleSaveAccess();
+      });
+
+      expect(mockSaveGalleryAccess).toHaveBeenCalledWith(
+        42,
+        expect.objectContaining({ propagateToChildren: true })
+      );
+      expect(mockRevalidateCollectionCache).toHaveBeenCalledWith('smith-wedding');
+      expect(mockRevalidateCollectionCache).toHaveBeenCalledWith('collection-1');
+      expect(mockRevalidateCollectionCache).toHaveBeenCalledWith('collection-2');
+      confirmSpy.mockRestore();
+    });
+
+    it('leaves children alone when the propagate confirm is declined', async () => {
+      const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);
+      mockSaveGalleryAccess.mockResolvedValue(savedResult);
+
+      const children = [createCollectionContent(1)];
+      const collection = makeCollection({ content: children });
+      mockGetCollectionUpdateMetadata.mockResolvedValue(
+        makeResponse({ content: children }, { hasChildren: true })
+      );
+      const { result } = renderEdit({ enabled: true, collection });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      mockRevalidateCollectionCache.mockClear();
+      act(() => result.current.setGalleryPassword('pass1234'));
+
+      await act(async () => {
+        await result.current.handleSaveAccess();
+      });
+
+      expect(mockRevalidateCollectionCache).toHaveBeenCalledWith('smith-wedding');
+      expect(mockRevalidateCollectionCache).not.toHaveBeenCalledWith('collection-1');
+      confirmSpy.mockRestore();
     });
   });
 

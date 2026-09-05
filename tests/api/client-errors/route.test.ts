@@ -98,6 +98,15 @@ describe('POST /api/client-errors', () => {
 
       expect(res.status).toBe(413);
     });
+
+    it('should measure the body in bytes, not UTF-16 code units', async () => {
+      const body = { message: '…'.repeat(4_000) };
+      const raw = JSON.stringify(body);
+
+      expect(raw.length).toBeLessThan(8 * 1024);
+      expect(Buffer.byteLength(raw)).toBeGreaterThan(8 * 1024);
+      expect((await POST(makeRequest(body))).status).toBe(413);
+    });
   });
 
   describe('what reaches the log', () => {

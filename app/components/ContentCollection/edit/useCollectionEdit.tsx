@@ -89,6 +89,17 @@ function isAnimatedMediaFile(file: File): boolean {
 }
 
 /**
+ * Slugs of the child-collection refs in a parent's loaded content. Bounded by the page window the
+ * edit view fetches, so a parent with more children than that window returns only the loaded ones.
+ */
+function childCollectionSlugs(content: AnyContentModel[] | undefined): string[] {
+  return (content ?? [])
+    .filter(isContentCollection)
+    .map(child => child.slug)
+    .filter(Boolean);
+}
+
+/**
  * Push a collection's locations down onto every piece of content that has none of its own.
  *
  * Giving a collection a location is a statement about where its content was shot, so anything in
@@ -853,6 +864,12 @@ export function useCollectionEdit({
         emails,
         propagateToChildren,
       });
+      void revalidateCollectionCache(collection.slug);
+      if (propagateToChildren) {
+        for (const childSlug of childCollectionSlugs(collection.content)) {
+          void revalidateCollectionCache(childSlug);
+        }
+      }
       const emailDisabled = !result.emailsSent && isEmailDisabled(result.reason);
       setGalleryEmailDisabled(emailDisabled);
       if (emails) {
@@ -882,6 +899,7 @@ export function useCollectionEdit({
     setGalleryEmailDisabled(false);
     try {
       const result = await saveGalleryAccess(collection.id, { password: null });
+      void revalidateCollectionCache(collection.slug);
       setGalleryStatus('Password cleared. Gallery is now unprotected.');
       setGalleryPasswordInput(result.password ?? '');
       setGalleryEmail(result.emails.join(', '));

@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     return new NextResponse(null, { status: 400 });
   }
 
-  if (raw.length > MAX_BODY_BYTES) {
+  if (Buffer.byteLength(raw) > MAX_BODY_BYTES) {
     return new NextResponse(null, { status: 413 });
   }
 
