@@ -45,9 +45,11 @@ hint. It was considered and rejected rather than not thought of.
 One field on the COLLECTION content block, ideally two:
 
 - `hasChildren: boolean` — enough on its own to pick the render mode.
-- `children: [{ slug, title, coverImageUrl }]`, capped at some N — what the LIST row would actually
-  draw. Without it the frontend has the verdict but nothing to render, and is back to a fetch per
-  row.
+- `children: [{ id, name, slug, coverImageUrl }]`, capped at some N — what the LIST row would
+  actually draw. Without it the frontend has the verdict but nothing to render, and is back to a
+  fetch per row. Use `name`, not `title`: the frontend's existing related-list type is
+  `CollectionListModel { id, name, slug?, coverImageUrl? }` (`app/types/Collection.ts:69-81`) and
+  `buildMetadataItems` reads `related.name`, so that shape drops straight in.
 
 **This is serialization, not new logic.** The value already exists server-side: `hasChildren` is on
 the admin manage DTO today, surfaced to the frontend as `CollectionUpdateResponseDTO.hasChildren`
@@ -63,7 +65,7 @@ and a hidden child surfacing in a public card-row would be the same disclosure R
 **Do not reuse `DisplayMode`.** `DisplayMode` (`CHRONOLOGICAL | ORDERED | FIXED`) shipped and
 `FIXED` exists, which makes it look like the per-row display hint the board's row describes. It is
 not. It is a per-collection sort key, read on the collection being _viewed_, and the frontend
-consumes it only to decide chronological sorting (`app/utils/contentLayout.ts:412-419`). Using it
+consumes it only to decide chronological sorting (`app/utils/contentLayout.ts:408-421`). Using it
 as a render hint on a _referenced_ collection would overload one enum with two unrelated meanings
 on two different collections.
 
@@ -80,11 +82,11 @@ Small and localized, and it needs no new component:
   That flattening is why `CollectionContentRenderer` has no COLLECTION case to add one to — by the
   time a block reaches the renderer it is an image with a slug.
 - Render the LIST case with `CoverCard` (`app/components/ui/CoverCard/CoverCard.tsx`) in a wrapping
-  row, modeled on `LocationCollections` (`app/components/LocationPage/LocationCollections.tsx:18-29`),
+  row, modeled on `LocationCollections` (`app/components/LocationPage/LocationCollections.tsx:14-31`),
   which is already a labeled row of collection cards and is reusable.
 
 The Related section's card-row is inlined JSX inside the TEXT branch
-(`CollectionContentRenderer.tsx:407-441`), not a component. It is the visual target, not something
+(`CollectionContentRenderer.tsx:402-442`), not a component. It is the visual target, not something
 to call — reaching for `CoverCard` avoids extracting it and avoids touching Related at all.
 
 Sizing note for whoever picks up the frontend half: a LIST row is a different shape from the

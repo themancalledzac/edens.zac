@@ -215,3 +215,26 @@ same close-out that adds them._
   and PF6's "verified and holding" row was deleted rather than re-run, for the reason the table's
   own preamble already gives for SD2. Next: MA4 mark-as-read with `?q=` folded in, MA3 §5.5, then
   PF13 steps 2–3 or SD3.
+
+- 2026-09-01 (10) — **no new feature work; a merge-readiness and reconciliation pass.** Run (9)'s
+  three MRs all merged ([#391](https://github.com/themancalledzac/edens.zac/pull/391),
+  [#392](https://github.com/themancalledzac/edens.zac/pull/392), backend
+  [#293](https://github.com/themancalledzac/edens.zac.backend/pull/293)), and run (7)'s four-PR
+  backlog was cleared: **#381 and #382 merged**, #383 and #384 made merge-ready and left for the
+  user. **The find that justifies the pass: #383 had never run CI, once, in two runs.** Not red —
+  absent. GitHub builds `refs/pull/N/merge` for a `pull_request` event and a conflicting PR has no
+  merge ref, so the workflow never starts and the PR page shows nothing rather than a failure. Its
+  conflicts also turned out to be **stale intent rather than disagreement** — #389 had already
+  removed the AU4 sections #383 was written to remove, so resolving to `main` took its board diff
+  to zero and its unique prose was folded into the closed entry instead of dying with the losing
+  side. **Everything the board claimed, held.** All eight recorded counts re-run (PF13 19, LY1 0/2,
+  PF group 11, SD group 4, Sentry 0, migrations still V60) and all **11** `file:line` refs resolved
+  — 0 drifted, which is what the neighbourhood rule predicts, since nothing that merged touched a
+  file the tracker cites. Four fact-blocked items were re-checked and **all four still hold**
+  (PF13, MA1, MA4's missing column, SD6) — now recorded so the next pass can skip them. **One
+  re-classification: MA4 was BLOCKED and should have been COLD** — its "blocker" is a migration we
+  write ourselves, which is not a blocker, and the spec has been sitting complete in its own
+  section. **SD7 merged but did NOT unblock SD6**: `Records.Person` is `{id, name}` with no slug,
+  which is exactly what SD6 waits on. Four working rules hoisted, including the CI-never-ran trap,
+  "measure both sides of a change", and that `git checkout -b` fails _dirty_ under the agent
+  sandbox. Next: merge #383/#384, then MA4 mark-as-read with `?q=`, MA3 §5.5, RC1.

@@ -18,7 +18,7 @@ Key finding that stands: a reset mechanism already exists as the invite subsyste
 - `purpose` on `InvitePreview` so `/invite/[token]` distinguishes account setup from password
   choice
 - A public, rate-limited forgot-password entry point (route + backend trigger). Note PF7/007's
-  rate-limit generalization: `application.properties:79-80` is contact-specific today — a second
+  rate-limit generalization: `application.properties:81-82` (was `:79-80`; anchor on the `contact` rate-limit keys) is contact-specific today — a second
   public endpoint needs the per-path rate-limit map first or alongside
 - Reverse the expiry behavior from `notFound()` to a `/login` redirect, docblock explaining why
 
@@ -27,17 +27,32 @@ Cross-repo: the V55 half gets a backend-board row when picked up.
 
 ## AU2 · Passkey credential list + revoke + enrollment-state UI
 
-One gap named in three places (`docs/009`, `docs/handoffs/CURRENT-STATE.md` §5, the backend
-board's Decisions section). Verified 2026-08-30: `WebAuthnController.java` has exactly four
-mappings — `register/start` (`:93`), `register/finish` (`:110`), `login/start` (`:140`),
-`login/finish` (`:185`). `WebAuthnCredentialRepository` has insert/find/updateSignCount, no
-delete. A compromised authenticator can only be handled by disabling the whole account.
+**The admin endpoints exist — this section's 2026-08-30 verification grepped the wrong controller.**
+`WebAuthnController.java` still has exactly four mappings (`register/start` `:93`,
+`register/finish` `:110`, `login/start` `:140`, `login/finish` `:185`), but the list and revoke
+live on the users controller: `GET /api/admin/users/{id}/passkeys` (`AdminUserController.java:419`)
+and `DELETE /api/admin/users/{id}/passkeys/{credentialId}` (`:465`), on
+`WebAuthnCredentialRepository.deleteByIdAndUserId` (`:108`). BE#257, merged 2026-08-31. The
+backend board filed the missing consumer as **FE-4** the same day; the refactor board's **H7** is
+the same finding. Three records for one feature; this row is the one that survives.
 
-Blocked on the shape decision (board decision #4): admin endpoint, user-facing list-and-remove, or
-both. After the endpoint: the FE enrollment-state UI (009's item — FE and BE login fixes are
-merged; the UI needs the credentials list). Also open nearby, from CURRENT-STATE: no prod startup
-guard against `rpId=localhost`; passkey login has never been e2e-verified against a deployed
-environment.
+```bash
+git grep -n 'passkeys' origin/main -- 'src/main/java/**/*Controller.java' | grep -c 'Mapping('   # 2
+grep -rln 'passkeys' app/                                                                      # nothing — no caller
+```
+
+**Startable now, frontend-only:** a passkey list with a per-row Remove on `/admin/users/[id]`,
+through the BFF. Removing an account's last passkey is allowed and, when the account has no
+password, leaves it unable to log in until re-invited (`AdminUserController.java:436-456`; backend
+S-28) — the UI says so before the delete. The response carries `remaining` and
+`passwordLoginAvailable` for exactly that message. The page cannot be exercised locally without a
+real login; mount with fixture props per the board's throwaway-route method.
+
+**Still a decision (#4, narrowed):** whether a signed-in user gets a self-service list-and-remove
+on `/user`. `/api/auth/webauthn/**` has register and login only, so that half is a backend handoff.
+The enrollment-state UI (009's item) follows whichever list exists; `AccountCard.tsx` already
+drives `registerPasskey`. Also open nearby, from CURRENT-STATE: no prod startup guard against
+`rpId=localhost`; passkey login has never been e2e-verified against a deployed environment.
 
 ## Deferred by design (no rows — do not resurrect without a decision)
 

@@ -12,7 +12,7 @@ This chapter merges the client-gallery security work: a password-gated client ga
 
 The cookie gate + admin password input + basic recipient send already shipped (see RESOLVED above). What is genuinely left:
 
-- **Fix plaintext password storage/comparison → BCrypt** (backend `ClientGalleryAuthService`). _Highest-value security item._
+- **Fix plaintext password storage/comparison → BCrypt** (backend `ClientGalleryAuthService`). _Highest-value security item_ — and **PARKED** (backend board, 2026-08-24) behind the gallery-password design pass, feature board EM4 / decision #3: what should a gallery password DO, reconciling admin re-share, the shared-unlock cookie and revocation-on-change. Not ready to build until that is answered.
 - **New-recipient-only send flow** — today `saveGalleryAccess` re-emails the whole saved list on every save; only email newly-added recipients (see [003-gallery-recipient-send](superpowers/plans/003-gallery-recipient-send.md)).
 - **Proxy `Set-Cookie` regression test** — the `getSetCookie()` + per-cookie `append` forwarding is currently uncovered.
 - **SSR cookie-timing hardening** — the `router.refresh()` race: on first SSR after unlock the cookie may not be in the jar yet. Works across browsers but isn't spec-guaranteed.

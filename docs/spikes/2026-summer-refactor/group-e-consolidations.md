@@ -2,27 +2,28 @@
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
 
-E1–E5, E8, E10, E11 and E12–E17 are archived here, plus the shipped halves of E6, E7 and E9. E6,
-E7 and E9's open remainders (and E18, filed 2026-08-29) are on the live board.
+E1–E5, E8, E10, E11, E12–E18 are archived here, plus the shipped halves of E7 and E9 and the whole
+of E6 (closed 2026-08-30, last bullet folded into F1). E7 and E9's open remainders are on the live board.
 
 ## Closed rows
 
-| MR  | Scope                                                                    | Outcome                                                                                                     |
-| --- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| E1  | Parallax-card builder consolidation                                      | +98 src, +659 test (est. −120) · #269                                                                        |
-| E2  | `core.ts` fetch skeleton + `clientFetch`                                 | −115 src actual, +6 tests (est. −180 src, +150–200 test) · #333 (bullets 1–2) + #334 (bullets 3–4)           |
+| MR  | Scope                                                                    | Outcome                                                                                                                                |
+| --- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| E1  | Parallax-card builder consolidation                                      | +98 src, +659 test (est. −120) · #269                                                                                                  |
+| E2  | `core.ts` fetch skeleton + `clientFetch`                                 | −115 src actual, +6 tests (est. −180 src, +150–200 test) · #333 (bullets 1–2) + #334 (bullets 3–4)                                     |
 | E3  | `collectionStorage.ts` generics                                          | −12 src (−46 code, +39 comment); +927 test via #296 · #306 — guards answered by #306 itself in `collectionStorage.ts:47-55`, keep them |
-| E4  | Entity-diff generics + one IMAGE guard                                   | +44 src / +177 test for the twins half (est. −80) · #311 — IMAGE-guard half STRUCK, guards are NOT duplicates |
-| E5  | Filter/sort/date duplication                                             | 0 src / +139 test (est. −50 src) · #299 — all 4 "open" bullets shipped in #299 itself (swept 08-28)          |
-| E8  | Renderer + `MenuDropdown` dedup                                          | −49 src / +90 test (est. −120 src / +150–250 test) · #319                                                    |
+| E4  | Entity-diff generics + one IMAGE guard                                   | +44 src / +177 test for the twins half (est. −80) · #311 — IMAGE-guard half STRUCK, guards are NOT duplicates                          |
+| E5  | Filter/sort/date duplication                                             | 0 src / +139 test (est. −50 src) · #299 — all 4 "open" bullets shipped in #299 itself (swept 08-28)                                    |
+| E8  | Renderer + `MenuDropdown` dedup                                          | −49 src / +90 test (est. −120 src / +150–250 test) · #319                                                                              |
 | E10 | Admin panel dedup (`LoadError`, `.viewAll`, literals, comparator)        | −79 src code-only / +176 test code-only (est. −60 src) · #304 — 5 of 7 shipped, 1 never a task, `--color-danger` kept by user decision |
-| E11 | Make cache-tag register/revalidate drift detectable                      | +277 −28 · #280                                                                                              |
-| E12 | Wire up `collections-location-${slug}`                                   | +72 src / +293 test (est. +30 src) · #301 — image-path trigger split out as E13                              |
-| E13 | Trigger `collections-location-${slug}` from the image-metadata save path | +36 src net / +165 test (est. +30 src, +60 test) · #313 — location-RENAME gap split out as E16               |
-| E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value       | −3 src / −4 test net, 36 call sites · #307 — the one estimate on this board that held                        |
-| E15 | `createHeaderRow`'s two trailing boolean params → options object         | +22 src net / 14 test call sites (est. ±15 src, ~20 sites) · #314 — stacked on #313; first call-site estimate to come in OVER |
-| E16 | Revalidate the OLD slug when a location is RENAMED                       | +40 src / +281 test across 2 slices (est. +30 src / +120 test) · #316 + #317 — src held; test half 2.3x over |
-| E17 | Collapse the inert `pageType` union to a boolean                         | +3 src (−2 code, +5 comment) / +9 test (est. −15 src / ~0 test) · #322                                       |
+| E11 | Make cache-tag register/revalidate drift detectable                      | +277 −28 · #280                                                                                                                        |
+| E12 | Wire up `collections-location-${slug}`                                   | +72 src / +293 test (est. +30 src) · #301 — image-path trigger split out as E13                                                        |
+| E13 | Trigger `collections-location-${slug}` from the image-metadata save path | +36 src net / +165 test (est. +30 src, +60 test) · #313 — location-RENAME gap split out as E16                                         |
+| E14 | `createHeaderRow`'s `_chunkSize` is dead but receives a live value       | −3 src / −4 test net, 36 call sites · #307 — the one estimate on this board that held                                                  |
+| E15 | `createHeaderRow`'s two trailing boolean params → options object         | +22 src net / 14 test call sites (est. ±15 src, ~20 sites) · #314 — stacked on #313; first call-site estimate to come in OVER          |
+| E16 | Revalidate the OLD slug when a location is RENAMED                       | +40 src / +281 test across 2 slices (est. +30 src / +120 test) · #316 + #317 — src held; test half 2.3x over                           |
+| E17 | Collapse the inert `pageType` union to a boolean                         | +3 src (−2 code, +5 comment) / +9 test (est. −15 src / ~0 test) · #322                                                                 |
+| E18 | Location-tag revalidation gaps (four unwired paths + `previous`)         | +108 src, tests incl. `locationCacheRevalidation.test.tsx` · #354 (`c1dd1d41`)                                                         |
 
 ---
 
@@ -1293,10 +1294,42 @@ _Their final state at close, kept for forensics. The live board's table now list
 | **E10** | ✅ CLOSED | —— the user was asked and answered 2026-08-28: **keep `--color-danger`**, no code change. `RolesPanel.module.scss:66` is correct as written. The question was only ever open because the "other three panels" comparison was false — there is one `.deleteButton` repo-wide, so there was no majority to align with. Item is fully closed                                                                                                                                                      |
 | **E3**  | ✅ CLOSED | —— it was never a user call. #306 wrote the answer into `collectionStorage.ts:47-55`: the guards are deliberate, unreachable through this module's API but reachable from a foreign sessionStorage write or a non-string slug, where dropping them returns `undefined` through a declared `T \| null`. Pinned by mutation M3. Keep them; 0 code. **SIXTH occurrence of the board's dominant failure mode, and the first that was answered-but-still-blocked rather than shipped-but-unticked** |
 
-### ◐ E6 · `useCollectionEdit` refresh helpers — shipped bullets and close-out history (bullets 2 and 3, `_deletedIds`)
+### ✅ E6 · `useCollectionEdit` refresh helpers — CLOSED 2026-08-30; bullets 2 and 3 and `_deletedIds` shipped, bullet 1 folded into F1
 
-_Moved from the live board 2026-08-29. Bullet 1 (the three refresh copies) is still open there,
-BLOCKED on the user. Everything below is the record of the shipped half._
+_Two E6 headings sat in this file for six days (the closed entry was appended without deleting the
+open one). Folded 2026-09-05: the close-out first, then the shipped-half record._
+
+Bullets 2 (#339, +11 src), 3 (#342, +22 src) and `_deletedIds` (#341, −3 src) shipped with zero test
+churn. **Bullet 1 — the three copies of "refetch → adopt → storage-write → revalidate → clear
+selection" — was put to the user on 2026-08-30 and answered "leave it for the big hook rewrite".**
+E6 closes as an item; the bullet lives on as an F1 sub-task, where the full carried-forward detail
+now sits.
+
+**How the question was asked matters, and it took two attempts.** The first version led with the
+board code — "E6 bullet 1 — the three refresh paths disagree…" — and the user rejected it outright:
+_"never give me this sort of definition... this means NOTHING TO ME."_ The second version described
+the behaviour instead ("saving a GIF never tells the server to drop its cached copy, so the public
+page can serve stale data for an hour — bug or intentional?") and was answered immediately.
+**Rule, hoisted: a question to the user names the screen, the action and what breaks. The item code
+is bookkeeping and belongs nowhere near it.**
+
+**The cost analysis held up and is why the standalone consolidation never shipped.** The shared
+signature needs `revalidateMetadata`, `failLoudly`, and `adoptFirst`/`transform` — three of roughly
+six parameters existing purely to switch behaviour between callers, against bullet 3's shipped
+`buildRemoveFromCollectionDiffs` which passed the same test at zero switches. The narrow
+alternative (extending `refreshCollectionAfterOperation` to fold in `revalidateCache`) saved 6–9
+lines across three sites and still changed GIF-path behaviour, so it did not clear the user gate
+either. **Both readings pointed at F1, and the user's answer agreed.**
+
+**The behaviour gap is real and remains open inside F1**: `handleGifSaveSuccess` omits
+`revalidateMetadataCache` entirely, so the public page can serve stale metadata for up to
+`TIMING.revalidateCache` (3600s) after a GIF save. Two of the three current
+`refreshCollectionAfterOperation` callers skip server-cache revalidation the same way. Pre-existing,
+not introduced in-window; E18 tracks the location-tag half of the same class.
+
+---
+
+_The shipped-half record, moved from the live board 2026-08-29:_
 
 #### CLOSE-OUT 2026-08-28 (2) — the picked run landed in full: #341, #342, #343
 
@@ -1304,10 +1337,10 @@ BLOCKED on the user. Everything below is the record of the shipped half._
 **E6 is down to bullet 1 alone, and bullet 1 is BLOCKED on the user.** F3's logger bullet (#343) is
 recorded in that item.
 
-| MR | What | Src | Test | Suite after |
-| --- | --- | --- | --- | --- |
-| [#341](https://github.com/themancalledzac/edens.zac/pull/341) | `_deletedIds` removed from `handleDeleteSuccess` | +28/−31 | 3 call sites edited | 245 / 4454 |
-| [#342](https://github.com/themancalledzac/edens.zac/pull/342) | `buildRemoveFromCollectionDiffs` shared | +43/−21 | +65 (6 new specs) | 245 / 4460 |
+| MR                                                            | What                                             | Src     | Test                | Suite after |
+| ------------------------------------------------------------- | ------------------------------------------------ | ------- | ------------------- | ----------- |
+| [#341](https://github.com/themancalledzac/edens.zac/pull/341) | `_deletedIds` removed from `handleDeleteSuccess` | +28/−31 | 3 call sites edited | 245 / 4454  |
+| [#342](https://github.com/themancalledzac/edens.zac/pull/342) | `buildRemoveFromCollectionDiffs` shared          | +43/−21 | +65 (6 new specs)   | 245 / 4460  |
 
 **The helper did NOT go where this item predicted.** The run note said `collectionEditUtils.ts`.
 It went to `app/components/Metadata/metadataUtils.ts` — that is where `buildImageUpdateDiff` (which
@@ -1501,7 +1534,7 @@ currently pins them to each other. **Startable any time, no user decision needed
 be sold as drift-protection, not as a size win. Do not unify the handlers or the confirm strings
 (`useCollectionEdit.bulkRemove.test.tsx:180-184` pins the wording).
 
-### ◐ E7 · Edit-grid handoff — close-out history (the waste FIXED #337; the hook REJECTED)
+### ✅ E7 · Edit-grid handoff — close-out history (the waste FIXED #337; the hook REJECTED); one path is open on the live board
 
 _Moved from the live board 2026-08-29. The two remaining wasted paths are open there. Line refs in
 this section are as-measured pre-#337 (2026-08-27); the current equivalents, re-derived 2026-08-29:
@@ -1522,12 +1555,12 @@ with `git diff --cached --numstat` per group rather than quoted from memory.
 itself pending a fresh re-measure. Never quote either without stashing and re-running.**) The
 number moved THREE TIMES inside one day's work, every move legitimate:
 
-| When                  | Reading        | What moved it                             |
-| --------------------- | -------------- | ----------------------------------------- |
-| #324 close-out, 08-24 | 245 / 4399     | stamped "quote from here on"              |
-| #336 branch, 08-27    | 246 / 4451     | E2 merges (#332/#333/#334) added 52 tests |
-| #337 branch, 08-27    | 246 / 4454     | this item's 3 new specs                   |
-| `main`, 08-28         | 245 / 4454     | #336 deleted `tests/lib/api/user.test.ts` |
+| When                  | Reading    | What moved it                             |
+| --------------------- | ---------- | ----------------------------------------- |
+| #324 close-out, 08-24 | 245 / 4399 | stamped "quote from here on"              |
+| #336 branch, 08-27    | 246 / 4451 | E2 merges (#332/#333/#334) added 52 tests |
+| #337 branch, 08-27    | 246 / 4454 | this item's 3 new specs                   |
+| `main`, 08-28         | 245 / 4454 | #336 deleted `tests/lib/api/user.test.ts` |
 
 **Every one of those was correct when taken, and all of them are wrong now.** That is the whole
 argument for the re-measure rule: a baseline is a measurement with a timestamp, not a fact about the
@@ -1560,7 +1593,7 @@ live while editing. Only `contentBlocks` is dead. Gating the wrong one would bre
 
 - [x] ~~`CollectionPageClient` and `EditModeLayer` both run the full filter → process → sort pipeline, so it runs twice per filter change while editing. Extract one hook.~~ **Waste fixed by the handoff guard (#337); hook extraction rejected — see above.**
 
-### ◐ E9 · Download icon/hook, auth-card SCSS — shipped bullets (#300)
+### ✅ E9 · Download icon/hook, auth-card SCSS — shipped bullets (#300); `.srOnly` is open on the live board
 
 _Moved from the live board 2026-08-29. The `.srOnly` bullet is still open there, blocked on a user
 decision._
@@ -1574,32 +1607,20 @@ decision._
 
 ---
 
-### ✅ E6 · `useCollectionEdit` refresh helpers — CLOSED 2026-08-30, last bullet folded into F1
+### ✅ E18 · Location-tag revalidation gaps — PR #354, 2026-08-30; Half B's premise was false
 
-Bullets 2 (#339, +11 src), 3 (#342, +22 src) and `_deletedIds` (#341, −3 src) shipped with zero test
-churn. **Bullet 1 — the three copies of "refetch → adopt → storage-write → revalidate → clear
-selection" — was put to the user on 2026-08-30 and answered "leave it for the big hook rewrite".**
-E6 closes as an item; the bullet lives on as an F1 sub-task, where the full carried-forward detail
-now sits.
-
-**How the question was asked matters, and it took two attempts.** The first version led with the
-board code — "E6 bullet 1 — the three refresh paths disagree…" — and the user rejected it outright:
-*"never give me this sort of definition... this means NOTHING TO ME."* The second version described
-the behaviour instead ("saving a GIF never tells the server to drop its cached copy, so the public
-page can serve stale data for an hour — bug or intentional?") and was answered immediately.
-**Rule, hoisted: a question to the user names the screen, the action and what breaks. The item code
-is bookkeeping and belongs nowhere near it.**
-
-**The cost analysis held up and is why the standalone consolidation never shipped.** The shared
-signature needs `revalidateMetadata`, `failLoudly`, and `adoptFirst`/`transform` — three of roughly
-six parameters existing purely to switch behaviour between callers, against bullet 3's shipped
-`buildRemoveFromCollectionDiffs` which passed the same test at zero switches. The narrow
-alternative (extending `refreshCollectionAfterOperation` to fold in `revalidateCache`) saved 6–9
-lines across three sites and still changed GIF-path behaviour, so it did not clear the user gate
-either. **Both readings pointed at F1, and the user's answer agreed.**
-
-**The behaviour gap is real and remains open inside F1**: `handleGifSaveSuccess` omits
-`revalidateMetadataCache` entirely, so the public page can serve stale metadata for up to
-`TIMING.revalidateCache` (3600s) after a GIF save. Two of the three current
-`refreshCollectionAfterOperation` callers skip server-cache revalidation the same way. Pre-existing,
-not introduced in-window; E18 tracks the location-tag half of the same class.
+Filed 2026-08-29 from the adversarial review as two halves. **Half A** — image delete, both
+remove-from-collection paths and collection delete never fired `collections-location-${slug}` —
+shipped in `c1dd1d41`: `revalidateLocationCaches(` now has seven call sites across
+`useCollectionEdit.tsx` and `useMetadataSubmit.ts` (was two), with `locationCacheRevalidation.test.tsx`
+asserting the tag per deleted image's locations. **Half B** claimed `handleUpdate`'s `previous`
+read the page-load prop, so add-A-then-remove-A in one session left `/location/a` stale. The
+premise was false: `useCollectionEdit.tsx:384` is `const collection = currentState?.collection ?? seedCollection`
+(since `86a0f192`, 2026-06-08) and `adoptSaveResponse` sets `currentState`, so the second save's
+`collection.locations` is the first save's response. The same commit pinned exactly that scenario
+(`locationCacheRevalidation.test.tsx:262`, "chains across consecutive saves"). **The ride-along**
+(one assertion that no file outside `collectionEditUtils.ts` fetches `/api/revalidate`) landed in
+`cacheTagDrift.test.ts:231`. **Sat on the live board as COLD, and as item 3 of NEXT RUN, for six
+days after merging; the 2026-09-04 handoff caught Half A and still called Half B "genuinely open".**
+The accepted risk it recorded stands: a backend-only write (`from-disk`) reaches no frontend
+trigger, capped by the 3600s window.

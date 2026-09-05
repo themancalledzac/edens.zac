@@ -6,15 +6,15 @@ B1, B2, B3, B4 and B7 merged 2026-08-24 as PRs #290, #288, #287, #289 and #286 �
 
 ## Closed rows
 
-| MR  | Scope                                                | Outcome                                                                                  |
-| --- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| B1  | Merge `manageUtils.test.ts`                          | −209 net (est. −450) · #290                                                              |
-| B2  | `rowCombination` characterization dedup              | −229 (est. −250) · #288                                                                  |
-| B3  | `metadataUtils.test.ts` dedup                        | −125 (est. −200 to −300) · #287                                                          |
-| B4  | `contentLayout.test.ts` merge                        | −32 (est. −150 to −250) · #289                                                           |
-| B5  | `useCollectionEdit` fixture consolidation            | −145 actual (est. −350) · #298                                                           |
-| B6  | Fold in `CollectionContentRenderer` characterization | 0 actual (est. −150) · #294 + #297 (restore)                                             |
-| B7  | `useClickOutside` spy tests                          | −37 (est. −90) · #286                                                                    |
+| MR  | Scope                                                | Outcome                                                                                           |
+| --- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| B1  | Merge `manageUtils.test.ts`                          | −209 net (est. −450) · #290                                                                       |
+| B2  | `rowCombination` characterization dedup              | −229 (est. −250) · #288                                                                           |
+| B3  | `metadataUtils.test.ts` dedup                        | −125 (est. −200 to −300) · #287                                                                   |
+| B4  | `contentLayout.test.ts` merge                        | −32 (est. −150 to −250) · #289                                                                    |
+| B5  | `useCollectionEdit` fixture consolidation            | −145 actual (est. −350) · #298                                                                    |
+| B6  | Fold in `CollectionContentRenderer` characterization | 0 actual (est. −150) · #294 + #297 (restore)                                                      |
+| B7  | `useClickOutside` spy tests                          | −37 (est. −90) · #286                                                                             |
 | B9  | `useCollectionEdit.buffer.test.tsx` parallel flakes  | CLOSED not-reproducible 2026-08-24 — 0 repro in 22 runs / 3 worker configs; NOT fixed; CI untried |
 
 **Read the estimate corrections before sizing anything like these.** Every estimate in this group came in short, in the same direction, because it counted repeated text and assumed repetition meant redundancy: −450 → −209, −250 → −229, −200/−300 → −125, −150/−250 → −32, −90 → −37. B4 is the extreme, off by roughly an order of magnitude, because its "duplicate" describes turned out complementary — the work was merging, not deleting. B5 found the opposite failure: the board counted whole 122–169-line preambles (886 total) when only 460 of those lines were duplicated builders. Two items moved the opposite way from subtraction entirely (B3's test count went up 106 → 107; B7 gained a behavioural test). Four of five duplication claims were also wrong. Both patterns are recorded per item below and hoisted into the live board's "How to use this doc".
@@ -280,7 +280,7 @@ different core counts, and it is where an intermittent failure would actually co
 afternoon. If this resurfaces there, reopen with the CI run URL and go straight to the shared-state
 suspects named above; do not re-run the local measurement, which is now 22-for-22 uninformative.
 
-### ◐ B8 · Fill the required-coverage gaps — shipped slices (#266, #267, #295, #296)
+### ✅ B8 · Fill the required-coverage gaps — shipped slices (#266, #267, #295, #296); the optional bullet is open on the live board
 
 The item's open bullet (the optional `sharedObserver`/`useParallax`/`useContentReordering` slice)
 stays on the live board. The five shipped slices, moved here 2026-08-29:

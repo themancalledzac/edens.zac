@@ -4,21 +4,23 @@ _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-re
 
 All nine items merged: PR #265, #266, #274, #272, #273, #270, #253 (D7), #276, #277. The original
 Group D closed 2026-08-24; D10 (a `getApiBaseUrl` normalization gap of the same class as D8) was
-filed 2026-08-29 and is open on the live board.
+filed 2026-08-29 and merged 2026-08-30 (#353). D11–D15, filed 2026-09-05 from an adversarial
+re-review of everything here, are open on the live board.
 
 ## Closed rows
 
-| MR  | Scope                                                        | Outcome                                        |
-| --- | ------------------------------------------------------------ | ---------------------------------------------- |
-| D1  | Gate `POST /api/revalidate` (HIGH)                           | +175 · #265                                    |
-| D2  | Gate `clearCacheAction`                                      | +212 (est. +15) · #266                         |
-| D3  | Security headers                                             | +60 src · #274                                 |
-| D4  | Pin the CloudFront host                                      | ±1 (actual ±1) · #272                          |
-| D5  | Proxy path reject + `/cdn` matcher removal                   | ~+30 net · #273                                |
-| D6  | Shared Origin allowlist (CSRF on `/api/revalidate`)          | +75 src, +230 test (est. ±60) · #270           |
-| D7  | Wrong danger token on error text (a11y)                      | 0 (rode #253)                                  |
+| MR  | Scope                                                        | Outcome                                         |
+| --- | ------------------------------------------------------------ | ----------------------------------------------- |
+| D1  | Gate `POST /api/revalidate` (HIGH)                           | +175 · #265                                     |
+| D2  | Gate `clearCacheAction`                                      | +212 (est. +15) · #266                          |
+| D3  | Security headers                                             | +60 src · #274                                  |
+| D4  | Pin the CloudFront host                                      | ±1 (actual ±1) · #272                           |
+| D5  | Proxy path reject + `/cdn` matcher removal                   | ~+30 net · #273                                 |
+| D6  | Shared Origin allowlist (CSRF on `/api/revalidate`)          | +75 src, +230 test (est. ±60) · #270            |
+| D7  | Wrong danger token on error text (a11y)                      | 0 (rode #253)                                   |
 | D8  | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist      | +30 src, +52 test (est. ±5 src, +2 test) · #276 |
-| D9  | Decide: redundant localhost literals in the Origin allowlist | −5 src, +20 docblock, +7 test · #277 — deleted |
+| D9  | Decide: redundant localhost literals in the Origin allowlist | −5 src, +20 docblock, +7 test · #277 — deleted  |
+| D10 | `getApiBaseUrl` concatenates `NEXT_PUBLIC_APP_URL` raw       | +13 src, +102 test · #353 (`68fbb59b`)          |
 
 ---
 
@@ -472,3 +474,14 @@ tell the two mechanisms apart.
       re-litigated a third time.
 
 ---
+
+### ✅ D10 · `getApiBaseUrl` concatenates `NEXT_PUBLIC_APP_URL` raw — PR #353, 2026-08-30
+
+Filed 2026-08-29 from the adversarial review. D8 (#276) normalized the env var for
+`originAllowlist.ts` only; `getApiBaseUrl` (`app/lib/api/core.ts`) still returned
+`${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/proxy/…`, so a trailing slash yielded `//` and an
+unset value a relative URL Node `fetch` rejects. Shipped as `68fbb59b`: `core.ts:88` reuses
+`configuredAppOrigin()`; both bullets landed, including the `/api/revalidate` docblock fix
+(`route.ts:50-51` now says dev ports are NOT listed). The same commit added a board label to
+`originAllowlist.ts:14` — G4's "the refactor's own MR is where the rot enters", demonstrated.
+**Sat on the live board as COLD, and as item 2 of NEXT RUN, for six days after merging.**

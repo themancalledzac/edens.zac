@@ -25,9 +25,10 @@ The spec was written pre-V52 and will mislead a planner as-is. The refresh must:
   are typeless with `isClient`/`isBlog` booleans, PARENT derived via
   `hasChildren`/`childCollectionIds`, HOME via slug. New framing: client galleries (`isClient`)
   stay bespoke, blogs (`isBlog`) per the blog track, everything else is filter-capable.
-- Verify whether `DisplayMode FIXED` shipped (live data shows `CHRONOLOGICAL`/`ORDERED`; note
-  MA1's dead-code sweep plans to DROP `FIXED` — coordinate so one item doesn't delete what the
-  other needs).
+- `DisplayMode FIXED` **has shipped on both sides** (`app/types/Collection.ts:16` is
+  `'CHRONOLOGICAL' | 'ORDERED' | 'FIXED'`; `processContentBlocks` accepts it), but live data showed
+  no row using it and MA1's step 10 plans to DROP it. CT1 decides whether the saved-filter model
+  needs `FIXED` before MA1 deletes it — that is the coordination, not "verify whether it shipped".
 - Incorporate one-way siblings (`oneWaySiblingIds` shipped) — sibling links are directional where
   relevant.
 - Re-audit whatever backend V40–V52 changed beyond the type drop.
@@ -68,7 +69,11 @@ public payload — see RC live-data audit), so auto-tag is also what makes RC4 s
 
 From the 2026-08-02 filter-consolidation follow-ups: a `type` column on `TagEntity` (explicitly
 NOT generic key-value), migration, DTO threading, admin UI, and a backfill decision. The
-principled version of the D5 hack that shipped. Small backend design confirm, then mechanical.
+principled version of the shipped workaround: collection pages hide both tag surfaces (the Tags
+dropdown and the TEXT-block tag chips, removed in `81ca206`) because tags carry no type to tell a
+display tag from an organizational one. That workaround is "D5" only in the gitignored 2026-08-02
+filter-consolidation spec — the refactor board's D5 is an unrelated proxy fix. Small backend design
+confirm, then mechanical.
 
 ## Related debloat-review leftovers (2026-07-19, planks that did NOT ship)
 
@@ -76,7 +81,10 @@ Tracked here so they surface when CT work starts, verified 2026-08-30 unless not
 
 - **D2 unlisted-by-default on create** — the review found `applyTypeSpecificDefaults` flips the
   HIDDEN entity default to LISTED on every create (a privacy drift) and recommended shipping the
-  fix first, independently. No evidence it shipped. Backend; cheap; could be its own MR now.
+  fix first, independently. No evidence it shipped, and nothing here re-verified it. It is a
+  backend bug, not a feature, and it has no row on any board: it is listed as a question in
+  [backend-handoff-MA1-EM2.md](backend-handoff-MA1-EM2.md) so the backend agent can confirm or
+  dismiss it.
 - **D4 synthetic-slug prune** — FE partly done (`/all-collections` deleted; `all-client-galleries`
   survives); backend slug catalog unpruned.
 - **D9** full ancestor-walk cycle validation, **D10** chronological-by-default for existing rows —

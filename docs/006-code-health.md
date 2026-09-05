@@ -25,7 +25,7 @@ The **React 18 → 19 runtime upgrade** ([#176](https://github.com/themancalledz
 ## Remaining work
 
 - **001 design-system carve-outs (inherited)** 🟢 — two intentionally-deferred CSS sweeps routed here from [001](001-design-review.md): (a) the **`@custom-media` breakpoint bridge** (bridge `--breakpoint-*` tokens so the ~100 hardcoded `768px` queries become token-driven — deferred for a postcss/Next 16 conflict), and (b) the **gap-rule + `rgb()`-slash syntax sweeps** (Phase 4 Tasks 6d/6e). Mechanical, low-risk.
-- **Observability** 🟡 — the `console.error`/`console.warn` → `logger` migration is **done** (#171, zero remain outside `logger.ts`). **Remaining:** add external error tracking (Sentry or CloudWatch). `logger.error` writes to `console.error` and nothing else — the `// Future: reportToService()` placeholder that used to mark the hook is gone, so there is no stub to fill in; the reporting call has to be added. _Needs a service decision before scoping._
+- **Observability** 🟡 — the `console.error`/`console.warn` → `logger` migration is **done** (#171, zero remain outside `logger.ts`). **Decided and shipped:** CloudWatch (feature board decision #8, PF6 #391, 2026-09-01) — server errors reach CloudWatch through Amplify's stdout capture with a `logger.ts` formatting change, and client errors post to `/api/client-errors`. **Remaining:** alerting and dashboards on the log group, and the token-in-URL and CSP-report gaps filed as refactor board D12/D13.
 - **Cleanup (Wave B)** 🟢 — `bffPaths.ts` (kill hardcoded BFF prefixes), shared `<StatusBanner>`,
   `useApiSubmit` hook, `contactApi` `ApiError` standardization, shared test factories. _(The
   `<GalleryAccessSection>` extraction is moot — `ManageClient` was deleted in the `0179` overhaul,

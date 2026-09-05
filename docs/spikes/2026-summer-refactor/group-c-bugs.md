@@ -2,21 +2,22 @@
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
 
-C1–C8 merged: PR #264, #281, #282, #279, #283, #327, #331, #291. C10 merged 2026-08-30 (#346). C9 and C11 are open on the live board.
+C1–C8 merged: PR #264, #281, #282, #279, #283, #327, #331, #291. C10 merged 2026-08-30 (#346). C11 merged 2026-08-30 (#352) and was archived 2026-09-05, six days after it shipped. C9 and C12–C18 are open on the live board.
 
 ## Closed rows
 
-| MR  | Scope                                                 | Outcome                                                                                              |
-| --- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| C1  | Unsaved people/gallery-access wipe (HIGH)             | +73 −11 · #264                                                                                       |
-| C2  | About portrait aspect ratio                           | +99 −5 · #281                                                                                        |
-| C3  | `SelectsContext.toggle` purity                        | +121 −10 · #282                                                                                      |
-| C4  | Cache tags that never connect                         | +155 −62 · #279 — the `collections-location-${slug}` report became E12                               |
-| C5  | Assorted LOW bugs                                     | +497 −101 (11 files) · #283                                                                          |
+| MR  | Scope                                                 | Outcome                                                                                                |
+| --- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| C1  | Unsaved people/gallery-access wipe (HIGH)             | +73 −11 · #264                                                                                         |
+| C2  | About portrait aspect ratio                           | +99 −5 · #281                                                                                          |
+| C3  | `SelectsContext.toggle` purity                        | +121 −10 · #282                                                                                        |
+| C4  | Cache tags that never connect                         | +155 −62 · #279 — the `collections-location-${slug}` report became E12                                 |
+| C5  | Assorted LOW bugs                                     | +497 −101 (11 files) · #283                                                                            |
 | C6  | Password cover strip missing on the public card path  | +44 src / +73 test (est ±30) · #327 — premise was FALSE (backend never stripped); unification DECLINED |
-| C7  | `emailShareLink` POSTs to a route that does not exist | 0 src / +34 test (#331 total +185 −101) — FE was already complete, 409 included; unification DECLINED |
-| C8  | Unfollowing leaves the chip count stale               | +418 −22 (est. +40/+80) · #291                                                                       |
-| C10 | Exiting manage mode leaves a blank public page (HIGH) | +24 −6 src / +35 test · #346 — the section's own fix sketch was right; it under-counted the symptoms |
+| C7  | `emailShareLink` POSTs to a route that does not exist | 0 src / +34 test (#331 total +185 −101) — FE was already complete, 409 included; unification DECLINED  |
+| C8  | Unfollowing leaves the chip count stale               | +418 −22 (est. +40/+80) · #291                                                                         |
+| C10 | Exiting manage mode leaves a blank public page (HIGH) | +24 −6 src / +35 test · #346 — the section's own fix sketch was right; it under-counted the symptoms   |
+| C11 | `mapError` 429 branch for the share-email limiter     | +14 src, +44 test · #352 (`8cb7a66d`)                                                                  |
 
 ---
 
@@ -581,7 +582,7 @@ second, in the opposite direction — **re-entering** manage mode after an exit 
 already true, so `{!editLayerMounted && grid}` rendered nothing and the fallback grid never painted
 while the edit chunk streamed. The exit test failed with `data-content-count="0"`; the re-entry test
 failed with no grid in the document at all. The reset-on-exit the board offered as the alternative
-fix turned out to be *also required*, not instead — the shipped fix does both, and each half covers a
+fix turned out to be _also required_, not instead — the shipped fix does both, and each half covers a
 different direction of the transition.
 
 **Both tests were watched failing on the parent commit before the fix went in**, so the coverage
@@ -604,3 +605,12 @@ as a leak.
 alone, per the item's own instruction. One thing worth knowing that is out of scope for both:
 because the exit is a soft navigation, whether freshly-saved edits appear on the public page after
 it depends on the server cache tags being invalidated — that is the E18 class, not this bug.
+
+### ✅ C11 · `mapError` has no 429 branch for the share-email rate limiter — PR #352, 2026-08-30
+
+Filed 2026-08-29 from the cross-repo contract review: backend #233 added `ShareEmailLimiter`
+(5/sender/hour + 200/day global) and a 429 on the share `/email` route after C7 closed, and
+`ShareCard.tsx`'s `mapError` mapped 401/409/403 only. Shipped as `8cb7a66d` — `ShareCard.tsx:50`
+`if (error.status === 429)` returns the rate-limit copy, docblock at `:38` describes the limiter,
+one test beside the 403/409 coverage (+14 src / +44 test). **Sat on the live board as COLD, and as
+item 1 of NEXT RUN, for six days after merging** — the 2026-09-04 handoff caught it.

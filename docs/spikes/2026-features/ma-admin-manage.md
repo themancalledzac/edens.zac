@@ -9,27 +9,42 @@ verified UNBUILT 2026-08-30 — its Task 9 deletes `CollectionEditSheet.tsx`, `I
 `StructureTab.tsx`, and all three still exist.
 
 Approach B: replace the edit sheet's batch-save model with per-field optimistic PATCH commits into
-an admin rail. Task 1 (backend `PATCH /collections/{id}`) was assigned to a sibling agent.
+an admin rail.
 
-> **BLOCKED as of 2026-08-31 — the prerequisite does not exist.** The row told the next session to
-> verify before starting. It was verified, by running the command rather than re-reading the claim:
+> **The "absent endpoint" blocker is a question, and it is ours to answer (2026-09-05).** No
+> whole-collection `@PatchMapping` exists on the backend's `origin/main` — six PATCHes, all
+> sub-resource or unrelated (`AdminController.java:234` `/content/images`, `:308`
+> `/content/gifs/{id}`; `AdminUserController.java:329` `/{id}`; `MessagesControllerAdmin.java:70`
+> `/{id}/read`; `EditController.java:52` `/collections/{collectionId}/rating`, `:94`
+> `/collections/{collectionId}/images`):
 >
 > ```bash
-> git grep -n "PatchMapping(" origin/main -- 'src/main/java/**/controller/**'
+> git grep -n -E '@PatchMapping\("/collections/\{(id|collectionId)\}"\)' origin/main -- src/main/java/ | wc -l   # 0
 > ```
 >
-> Five `@PatchMapping`s exist on the backend's `origin/main`, and **none of them is
-> `PATCH /collections/{id}`**: `/content/images` and `/content/gifs/{id}` (`AdminController`
-> `:233`, `:341`), `/{id}` on `AdminUserController:313`, and `/collections/{collectionId}/rating`
-> and `/collections/{collectionId}/images` (`EditController:52`, `:94`). The last two are
-> sub-resource patches, not the whole-collection field patch this item's `buildFieldPatch` needs.
+> But the backend board already holds this as **#22**, filed from MA1 on 2026-08-31 and corrected
+> on 2026-09-01: both `PUT /collections/{id}` routes (`AdminController.java:112`,
+> `EditController.java:70`) are already null-guarded partial updates — `{id, title}` changes the
+> title and nothing else — and the row asks THIS board whether pointing `buildFieldPatch` at that
+> PUT unblocks MA1. The frontend's `updateCollection` (`app/lib/api/collections.ts:252`) already
+> calls that PUT and its docblock says "accepts partial updates".
 >
-> Checked against `origin/main` deliberately — the backend checkout was sitting on a working
-> branch, and its `.claude/worktrees/` copies produce convincing false positives for exactly this
-> grep.
+> **The answer, recorded here and handed off in
+> [backend-handoff-MA1-EM2.md](backend-handoff-MA1-EM2.md):** setting a field to a value works
+> through the existing PUT today, so MR 1 is frontend. What the PUT cannot do is CLEAR a nullable
+> field, because null means "unchanged" on that path — and MA1's per-field commits need to clear
+> the description, the collection date and the location list. The backend's small piece is a clear
+> semantics (an explicit-null marker or a `clear: [...]` list on the same PUT), not a new verb.
+> MA1's frontend can start on the set-a-value path now; the clear path waits on that one change.
 >
-> So the backend endpoint is **MR 1 of this item**, on the backend board, and every frontend task
-> below waits on it. This is the whole reason MA1 is no longer COLD.
+> Check the other repo's `origin/main`, never its checkout — its `.claude/worktrees/` copies
+> produce convincing false positives for exactly this grep.
+
+> **Ordering with refactor-board F1 (decided 2026-09-05): F1 lands first and leaves the
+> update-form region (`seedUpdateData` → `handleUpdate`) untouched for MA1.** MA1's Tasks 2–3
+> rewrite that region in place and must not re-inline the five hooks F1 extracts; MA1's Task 11
+> rewrites `useCollectionEdit.buffer.test.tsx`, which F1 must leave green. The file is 1,811 lines
+> at `699aa4f2`.
 
 The eleven frontend tasks:
 
@@ -60,7 +75,7 @@ tier (read `lib/api/collections.ts` first).
 
 **Collisions:** EM2 adds UI to `InfoTab` (which Task 8 deletes); `CollectionRolesSection` lives in
 `sections/` and moves into the rail; the refactor board's F1 decomposes `useCollectionEdit.tsx`
-along different lines. Sequence MA1 vs F1 deliberately — they rewrite the same 1,751-line file.
+along different lines. Sequence MA1 vs F1 deliberately — they rewrite the same 1,811-line file.
 Wants its own sessions; do not start it as a run's second item.
 
 ## MA2 · `staging` system collection
@@ -156,32 +171,32 @@ dark wiring, recording that a real dark mode belongs to the whole site behind a 
 The `[data-surface='dark']` tokens and `Modal` surface bridge survive as the mechanism. Settle
 whether remaining Phase 3 work targets dark-admin, light-admin, or waits for site-wide dark.
 
-## MA4 · Messages admin features
+## MA4 · Messages admin features — only the notify channel remains
 
-From `docs/007-security-hardening.md`'s "Housekeeping". Slice by slice as of 2026-08-31 (8):
+From `docs/007-security-hardening.md`'s "Housekeeping". Four of five slices shipped. The commands
+that prove each are on the board row; re-run them before re-sizing anything here.
 
-- **Retention TTL — MR open**, backend [#281](https://github.com/themancalledzac/edens.zac.backend/pull/281).
-  Ships OFF, and the first opt-in only reports. `app.messages.retention.days` defaults to `0` (the
-  nightly job returns before touching the database) and `app.messages.retention.dry-run` defaults to
-  `true` (logs the count it would delete, deletes nothing). Set `days`, read the count out of the
-  logs, then set `dry-run=false`. Two properties rather than one because the deletion is
-  irreversible — the contact form is the only writer, nothing archives what a purge removes — and a
-  local backend can point at production, so the reporting mode is how you find out safely from the
-  environment that actually holds the rows. Both guards mutation-proved.
+- **Retention TTL** — shipped OFF, backend [#281](https://github.com/themancalledzac/edens.zac.backend/pull/281)
+  (backend board #26). `app.messages.retention.days` defaults to `0` (the nightly job returns before
+  touching the database); `app.messages.retention.dry-run` defaults to `true` (logs the count,
+  deletes nothing). Set `days`, read the count from the logs, then set `dry-run=false`. Two
+  properties because the deletion is irreversible and a local backend can point at production.
+  Configuration, not a control: no frontend half.
+- **Delete** — shipped both ends before the item was picked up (`@DeleteMapping("/{id}")` at
+  `MessagesControllerAdmin.java:85`, `useMessageDelete` with optimistic rollback).
+- **Search** — client-side over the loaded page in #384 (merged 2026-09-01), replaced by
+  server-side `?q=` in #396 (merged 2026-09-03). The `matchesQuery`/`useMemo` filter and the "N of M
+  loaded" line are gone.
+- **Mark-as-read** — backend BE#300, merged 2026-09-01: V61 `read_at TIMESTAMP NULL` with a partial
+  index, `PATCH /api/admin/messages/{id}/read` (204/404, `COALESCE(read_at, NOW())` so re-marking is
+  idempotent), `readAt` as a fifth component on `AdminMessageView`, `?unread=` and `?q=` sharing one
+  WHERE clause. Frontend #396: `markMessageRead`, `useMessageRead`, the All/Unread/Read `Select` and
+  the Unread badge on `/comments`. `MessagesPanel` on the hub does not opt in; what that would cost
+  is on the board row.
+- **Notify channel** — unbuilt. Either/or with EM3's owner email; decision #14 on the board.
 
-  **This slice has no frontend half.** MA4's row reads BE+FE, but a retention TTL is configuration,
-  not a control; there is nothing to render.
-
-- **Delete** — already shipped, both halves (`@DeleteMapping("/{id}")`, `useMessageDelete`).
-- **Search** — **MR open**, [#384](https://github.com/themancalledzac/edens.zac/pull/384). Green
-  and merge-ready as of 2026-09-01, but NOT merged; this row said "shipped" for two runs on the
-  strength of the PR being opened. Its client-side filter is what mark-as-read's `?q=` replaces,
-  so merge it before starting that item.
-- **Mark-as-read — blocked.** There is no read column on `messages`; `V17__create_messages_table.sql`
-  is still the whole schema (`id`, `email`, `message`, `created_at`). Needs a backend migration
-  first.
-- **Discord/Slack notify channel** — still unbuilt, and still the either/or with EM3's email
-  notification. Pick one before building either.
+**Do not fake read state with localStorage.** Per-browser, so wrong the moment the page opens on a
+phone. Read status is server state, and since V61 it is.
 
 ## MA5 · Admin collections list at 100×
 

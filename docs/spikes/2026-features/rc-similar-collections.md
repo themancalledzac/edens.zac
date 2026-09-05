@@ -23,17 +23,30 @@ render-mode for embedded collection refs.
   collection-level `tags` **null/empty on every public payload**; image tags only on
   Lightroom-keyworded sets; `isFilm` inconsistent (see RC1).
 
-## RC1 · Data bugs (backend)
+## RC1 · Data bugs (backend) — BE#301 merged 2026-09-04; one measurement owed
 
-1. **`parents` is null on every public read** (verified all 39). `contentLayout.ts` builds the
-   Related section from `siblings + parents`, so public pages can only show curated siblings.
-   Either populate parents on the public payload or ship the computed list instead — the spike
-   recommends fixing the payload regardless.
-2. **`isFilm` unset on three film collections**: `chamonix-film` 0/5, `vienna-film` 0/5,
-   `gorge-50km-film` 0/7 (vs `dolomites-film` 33/33, `san-francisco-film` 14/14). Any
-   film-derived membership or suggestion inherits these errors until backfilled.
+1. ~~**`parents` is null on every public read**~~ **FIXED, BE#301.** `populateParents(model, true)`
+   runs on the public read path (`CollectionService.java:164`), gated on `c.visibility = 'LISTED'`
+   and `cc.visible = true`. **No frontend half exists:** `buildMetadataItems`
+   (`app/utils/contentLayout.ts:468`) has read `collection.parents` since the Related section was
+   built, `CollectionModel.parents` is typed at `app/types/Collection.ts:285`, and
+   `tests/utils/contentLayout.test.ts` pins "appends a collection item per parent". Parents arrive
+   without a cover (the backend deliberately loads none), so they render as text chips in the
+   Related row — the existing mixed-row fallback, not a defect.
+2. **`isFilm` unset on three film collections** — V62 (in BE#301) infers film from a stock or a
+   flagged body and V23 flags exactly two bodies, so `chamonix-film` 0/5, `vienna-film` 0/5 and
+   `gorge-50km-film` 0/7 (2026-08-30 numbers) may still read zero. **Re-measure against a live
+   backend** (down on 2026-09-05; port 8080 is held by a Docker proxy that times out):
 
-Both are backend items — file rows on the backend board when picked up.
+   ```bash
+   for s in chamonix-film vienna-film gorge-50km-film dolomites-film; do
+     curl -s "localhost:8080/api/read/collections/$s?page=0&size=50" \
+       | jq -r --arg s "$s" '[.content[]|select(.contentType=="IMAGE")]
+           | "\($s) \(map(select(.isFilm==true))|length)/\(length)"'
+   done
+   ```
+
+   If any still reads zero, flagging a third body is a data call for Zac. Close RC1 on the numbers.
 
 ## RC2 · The v1 algorithm (no ML, no schema change)
 

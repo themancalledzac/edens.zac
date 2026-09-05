@@ -1,7 +1,7 @@
 # Group G — Decisions and docs (shipped)
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md), plus
-superseded measurement history for the open G2 and G4. **G5 closed 2026-08-30.** G2, G3, G4 and the new G6 are open on the live board._
+superseded measurement history for the open G2 and G4. **G5 closed 2026-08-30; G6 shipped 2026-08-31 (#351).** G2, G3, G4, G7 and G8 are open on the live board._
 
 ## Closed rows
 
@@ -32,7 +32,7 @@ The book is wrong in six places.
       it asserts one public `EmailService` method (`:20`) and "invite email doesn't exist" (`:34`,
       `:73`), but its own C5 recommendation (`:161`) has since shipped.
 
-### ◐ G2 · Inline-comment rule — the per-file G2c inventory (superseded measurement)
+### ✅ G2 · Inline-comment rule — the per-file G2c inventory (superseded measurement; G2 is open on the live board)
 
 _Moved from the live board 2026-08-29. G2 itself is open there. This table's filter was never
 recorded, so treat every row as approximate; re-take the whole inventory in one pass (with the
@@ -94,7 +94,7 @@ this inventory is not as fragile as line refs are. It drifts on comment edits, n
 so it does not need re-checking after every merge — only after a session that touched comments.
 `UserManagementPanel.tsx` lives at `app/components/UserManagementPanel/`, not under `AdminPanel/`.
 
-### ◐ G4 · Docblock standard — measurement history (baselines, the intersection pass, and the 2026-08-28 sweep's spent findings)
+### ✅ G4 · Docblock standard — measurement history (G4 is open on the live board) (baselines, the intersection pass, and the 2026-08-28 sweep's spent findings)
 
 _Moved from the live board 2026-08-29. G4 itself is open there with the standard and the current
 counts. This is the record of how the numbers were taken and what each pass found._

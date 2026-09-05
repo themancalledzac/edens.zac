@@ -1,8 +1,8 @@
 # edens.zac
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
 [![SCSS Modules](https://img.shields.io/badge/SCSS-Modules-CC6699?logo=sass)](https://sass-lang.com/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-Backend-6DB33F?logo=spring-boot)](https://spring.io/projects/spring-boot)
 
@@ -16,7 +16,7 @@ A full-stack photography portfolio and content management platform. Built for pe
 
 | Layer        | Technology                                        |
 | ------------ | ------------------------------------------------- |
-| **Frontend** | Next.js 15 (App Router), React 18, TypeScript 5.8 |
+| **Frontend** | Next.js 16 (App Router), React 19, TypeScript 5.8 |
 | **Styling**  | SCSS Modules, responsive design                   |
 | **Backend**  | Spring Boot, Hibernate/JPA, RESTful API           |
 | **Database** | PostgreSQL on EC2                                 |
@@ -44,7 +44,7 @@ A full-stack photography portfolio and content management platform. Built for pe
 
 ```
                     +------------------+
-                    |   Next.js 15     |
+                    |   Next.js 16     |
                     |   (App Router)   |
                     +--------+---------+
                              |
@@ -97,7 +97,7 @@ This produces layouts where a single 5-star panoramic gets a full-width hero row
 
 ### Effective Rating System
 
-Images are classified by a rating (0-5 stars) that directly controls their visual prominence. Vertical images receive a -1 penalty to their effective rating (a vertical 5-star is treated as a 4-star equivalent), ensuring horizontals naturally dominate when both orientations are present.
+Images are classified by a rating (0-5 stars) that directly controls their visual prominence. The rating is orientation-agnostic: a vertical 5-star and a horizontal 5-star carry the same effective rating, and directionality is expressed downstream by aspect-ratio extremeness (width cost for horizontals, height demand for verticals) rather than by demoting the rating. Collection cards rate as 4; non-image content as 1. (The earlier "vertical −1 penalty" was retired in the directional-prominence rewrite, PR #182/#183.)
 
 ### Server Components
 
@@ -164,7 +164,7 @@ A collection can belong to several parents at once, so the content graph is a DA
 
 ### Prerequisites
 
-- Node.js 20+ (enforced via `engines` in package.json)
+- Node.js 22+ (`engines` in package.json is `>=22`; `.nvmrc` pins 24)
 - npm 9+
 - Access to the Spring Boot backend (localhost:8080 for development)
 
