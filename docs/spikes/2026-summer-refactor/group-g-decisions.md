@@ -1,13 +1,14 @@
 # Group G — Decisions and docs (shipped)
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md), plus
-superseded measurement history for the open G2 and G4. **G5 closed 2026-08-30; G6 shipped 2026-08-31 (#351).** G2, G3, G4, G7 and G8 are open on the live board._
+superseded measurement history for the open G2 and G4. **G5 closed 2026-08-30; G6 shipped 2026-08-31 (#351); G7 shipped 2026-09-05 (#404).** G2, G3, G4 and G8 are open on the live board._
 
 ## Closed rows
 
-| MR  | Scope            | Outcome                      |
-| --- | ---------------- | ---------------------------- |
-| G1  | Docs corrections | +106 / −72 (est. ±50) · #303 |
+| MR  | Scope                                    | Outcome                      |
+| --- | ---------------------------------------- | ---------------------------- |
+| G1  | Docs corrections                         | +106 / −72 (est. ±50) · #303 |
+| G7  | Rename the "Vercel BFF proxy" test names | ~7 test lines, 0 src · #404  |
 
 ### ✅ G1 · Docs corrections — PR #303
 
@@ -276,3 +277,13 @@ Two decisions worth carrying forward:
 - **The prose was cut roughly in half at close**, after the user objected to docblock bloat
   elsewhere in the same session. The rule that produced the cut is now global, in
   `~/.claude/CLAUDE.md`, not repo-local — see the 2026-08-31 session-log entry.
+
+---
+
+### ✅ G7 · Test names called the BFF proxy "Vercel"; production is Amplify — PR #404, 2026-09-05
+
+Seven `describe` strings renamed from `Vercel BFF proxy …` to `BFF proxy …` — six in
+`tests/api/proxy/route.test.ts` and one in `route.logHygiene.test.ts`. The board's count was right.
+
+Naming only. The `x-vercel-forwarded-for` read order and the `x-vercel-ip-*` strip list were left
+untouched, as the item instructed: they are host-agnostic and correct on both hosts.

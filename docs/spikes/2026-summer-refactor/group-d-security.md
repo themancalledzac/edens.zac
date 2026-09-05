@@ -4,23 +4,27 @@ _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-re
 
 All nine items merged: PR #265, #266, #274, #272, #273, #270, #253 (D7), #276, #277. The original
 Group D closed 2026-08-24; D10 (a `getApiBaseUrl` normalization gap of the same class as D8) was
-filed 2026-08-29 and merged 2026-08-30 (#353). D11–D15, filed 2026-09-05 from an adversarial
-re-review of everything here, are open on the live board.
+filed 2026-08-29 and merged 2026-08-30 (#353). D11, D12 and D14 were filed 2026-09-05 from an
+adversarial re-review of everything here and merged the same day (#404). D13 and D15 are open on the
+live board.
 
 ## Closed rows
 
-| MR  | Scope                                                        | Outcome                                         |
-| --- | ------------------------------------------------------------ | ----------------------------------------------- |
-| D1  | Gate `POST /api/revalidate` (HIGH)                           | +175 · #265                                     |
-| D2  | Gate `clearCacheAction`                                      | +212 (est. +15) · #266                          |
-| D3  | Security headers                                             | +60 src · #274                                  |
-| D4  | Pin the CloudFront host                                      | ±1 (actual ±1) · #272                           |
-| D5  | Proxy path reject + `/cdn` matcher removal                   | ~+30 net · #273                                 |
-| D6  | Shared Origin allowlist (CSRF on `/api/revalidate`)          | +75 src, +230 test (est. ±60) · #270            |
-| D7  | Wrong danger token on error text (a11y)                      | 0 (rode #253)                                   |
-| D8  | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist      | +30 src, +52 test (est. ±5 src, +2 test) · #276 |
-| D9  | Decide: redundant localhost literals in the Origin allowlist | −5 src, +20 docblock, +7 test · #277 — deleted  |
-| D10 | `getApiBaseUrl` concatenates `NEXT_PUBLIC_APP_URL` raw       | +13 src, +102 test · #353 (`68fbb59b`)          |
+| MR  | Scope                                                        | Outcome                                                                                         |
+| --- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| D1  | Gate `POST /api/revalidate` (HIGH)                           | +175 · #265                                                                                     |
+| D2  | Gate `clearCacheAction`                                      | +212 (est. +15) · #266                                                                          |
+| D3  | Security headers                                             | +60 src · #274                                                                                  |
+| D4  | Pin the CloudFront host                                      | ±1 (actual ±1) · #272                                                                           |
+| D5  | Proxy path reject + `/cdn` matcher removal                   | ~+30 net · #273                                                                                 |
+| D6  | Shared Origin allowlist (CSRF on `/api/revalidate`)          | +75 src, +230 test (est. ±60) · #270                                                            |
+| D7  | Wrong danger token on error text (a11y)                      | 0 (rode #253)                                                                                   |
+| D8  | Normalize `NEXT_PUBLIC_APP_URL` in the Origin allowlist      | +30 src, +52 test (est. ±5 src, +2 test) · #276                                                 |
+| D9  | Decide: redundant localhost literals in the Origin allowlist | −5 src, +20 docblock, +7 test · #277 — deleted                                                  |
+| D10 | `getApiBaseUrl` concatenates `NEXT_PUBLIC_APP_URL` raw       | +13 src, +102 test · #353 (`68fbb59b`)                                                          |
+| D11 | Gallery-access save never evicts `collection-{slug}`         | +18 src, +158 test · #404 — `handleClearPassword` cannot propagate                              |
+| D12 | Client error reports carry the share and invite tokens       | +24 −1 src, +113 test · #404 — complements the invite page's `no-referrer`, does not replace it |
+| D14 | Proxy body-cap tests that cannot fail; two proxy gaps        | +40 −26 src, +63 −6 test · #404 — the real find was `;` reaching `/actuator/env`                |
 
 ---
 
@@ -485,3 +489,66 @@ unset value a relative URL Node `fetch` rejects. Shipped as `68fbb59b`: `core.ts
 (`route.ts:50-51` now says dev ports are NOT listed). The same commit added a board label to
 `originAllowlist.ts:14` — G4's "the refactor's own MR is where the rot enters", demonstrated.
 **Sat on the live board as COLD, and as item 2 of NEXT RUN, for six days after merging.**
+
+---
+
+### ✅ D11 · Gallery-access save never evicts `collection-{slug}` — PR #404, 2026-09-05
+
+`handleSaveAccess` and `handleClearPassword` both saved gallery access and never called
+`revalidateCollectionCache`, so a revoked gallery password kept working for the full 3600s TTL under
+the visitor's old cookie. Both now evict, and `handleSaveAccess` evicts children too when the save
+propagates.
+
+**Three corrections to the board row.** The function is `handleSaveAccess`, not
+`handleSaveGalleryAccess`. Its line references were ~20 off. And **`handleClearPassword` cannot
+propagate**: it sends no `propagateToChildren`, so children are untouched backend-side and there is
+nothing to evict. If clearing a parent password should clear its children, that is a backend gap,
+not a missing eviction here.
+
+Child eviction is bounded by the edit view's 500-item page window — a collection with more children
+than that would leave the overflow stale.
+
+`tests/lib/api/fetchCacheKey.test.ts` pins the framework contract the gate rests on: Next's real
+`generateCacheKey` hashes a `Cookie` header into the key, so locked and unlocked payloads never
+share an entry. The test was proven to fail loudly by temporarily removing `headers` from Next's own
+`cacheString` array, so it is not a test that passes on absence. +18 src / +158 test.
+
+### ✅ D12 · Client error reports carried the share and invite tokens — PR #404, 2026-09-05
+
+`logger.ts` sent `window.location.href` with every client error report. On `/s/<token>` and
+`/invite/<token>` that URL is the credential, so live share and invite tokens reached CloudWatch.
+
+It now sends a pathname with those two prefixes collapsed to `/s/[token]` and `/invite/[token]`, and
+drops search and hash entirely — a token arrives as a query parameter as easily as a path segment,
+so redacting only the path segment would have left the other shape through.
+
+**The board framed this as undoing the invite page's `referrer: 'no-referrer'`. It does not.** The
+two controls cover different paths: `no-referrer` stops the token reaching third parties through the
+`Referer` header, and this one was sending it same-origin to our own ingest. Both are needed.
++24 −1 src / +113 test.
+
+### ✅ D14 · Proxy body-cap tests that cannot fail, and two proxy gaps — PR #404, 2026-09-05
+
+Four parts shipped; the fourth is the one that mattered.
+
+**1. The 413 branch was unfalsifiable.** `NextRequest` never sets `content-length` for a string body,
+so the declared-length early reject had no test that could fail. It is now driven by an explicit
+header and asserts `fetch` was never called.
+
+**2. `/api/client-errors` counted UTF-16 code units, not bytes,** and now uses `Buffer.byteLength`.
+The cap is `MAX_BODY_BYTES = 8 * 1024`, not the 4096 the board quoted, so the board's "4096 emoji =
+16KB" arithmetic did not match the file. The 413 branch was at `132-135`, not `131-133`.
+
+**3. The board understated this one.** It said two checks each normalized the path and duplicated the
+work. In fact only `isProxyableApiPath` normalized; the anonymous-admin check ran `startsWith` on the
+raw joined string, so the two could **disagree** about what path was being served rather than merely
+compute it twice. Both now run on one `normalized` value.
+
+**4. The real find: `;` is now rejected.** `new URL()` preserves a path parameter that Tomcat strips
+per segment, so `api/..;/actuator/env` passed the `/api/` prefix check here and resolved backend-side
+to `/actuator/env` — reached carrying the `X-Internal-Secret` the proxy injects on every hop. `%3B`
+is rejected alongside it.
+
+`forwarded` and `true-client-ip` were added to the strip list. `x-vercel-forwarded-for` and
+`x-vercel-ip-*` were left alone by design — they are host-agnostic and G7 covers the naming.
++40 −26 src / +63 −6 test.

@@ -257,84 +257,90 @@ reportToService()` seam (it does not exist — `logger.ts` is 14 lines of `conso
 
 Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra work.
 
-| Item | Scope                                                        | Repo    | Status                                                                                                                                                                                                                           |
-| ---- | ------------------------------------------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SD4  | `/explore` as a real drill-down explorer (Option C)          | FE      | ☐ BLOCKED — user, decision #10: reconcile with refactor-board H5 first                                                                                                                                                           |
-| SD6  | Clickable people chips (needs a person route + slug)         | BE+FE   | ☐ BLOCKED — user, decision #17 (URL shape); `/person/[id]` is buildable here the day it is chosen                                                                                                                                |
-| RC1  | Populate `parents` on public reads + `isFilm` backfill       | BE      | ☐ BE#301 **MERGED** 2026-09-04; no frontend half exists; closes on the `isFilm` re-measure (command in its section, needs a live backend)                                                                                        |
-| RC2  | Similar-collections v1 (metadata-graph score + Related swap) | BE+FE   | ☐ BLOCKED — user: spike decisions D1–D4                                                                                                                                                                                          |
-| RC3  | Collections_List render mode (embedded hub as card-row)      | BE+FE   | ☐ BLOCKED — the COLLECTION content block carries nothing about children (verified both sides 2026-09-02). Specced and handed off: [backend-handoff-RC3.md](2026-features/backend-handoff-RC3.md)                                 |
-| RC4  | Suggested collections (admin suggestion rows)                | BE+FE   | ☐ BLOCKED — needs CT3 engine + RC1 metadata quality                                                                                                                                                                              |
-| RC5  | CLIP/pgvector embedding tier                                 | BE+ML   | ☐ BLOCKED — user: spike decision D6 (infra commitment)                                                                                                                                                                           |
-| CT1  | Collections-as-tags spec refresh against the typeless model  | docs    | ☐ COLD — produces a current D1–D12 matrix for CT2                                                                                                                                                                                |
-| CT2  | Adjudicate the collections-as-tags decision matrix           | user    | ☐ BLOCKED — user; after CT1                                                                                                                                                                                                      |
-| CT3  | Saved-filter engine (AND-tag query, `source` column, sync)   | BE+FE   | ☐ BLOCKED — on CT2                                                                                                                                                                                                               |
-| CT4  | Blog-as-date surface (`/blog` stream, per-day entries)       | BE+FE   | ☐ BLOCKED — on CT2                                                                                                                                                                                                               |
-| CT5  | Auto-tag: `POST /collections/{id}/auto-tag` + admin button   | BE+FE   | ☐ COLD — independent of CT2; backend-first, no handoff written yet                                                                                                                                                               |
-| CT6  | Tag `type`/visibility model                                  | BE      | ☐ COLD — design confirm, then small schema work; backend-only, no handoff written yet                                                                                                                                            |
-| AU1  | Self-serve password reset                                    | BE+FE   | ☐ COLD — plan verified current; the V55 half becomes a handoff when picked up                                                                                                                                                    |
-| AU2  | Passkey list + revoke, enrollment-state UI                   | FE(+BE) | ☐ COLD for the admin UI — BE#257 shipped both admin endpoints (this row said they did not exist); the user-facing half is BLOCKED on decision #4                                                                                 |
-| EM1  | SES production checklist (verify domain, DKIM, sandbox exit) | OPS     | ☐ COLD — ops; user drives the AWS console half                                                                                                                                                                                   |
-| EM2  | New-recipient-only gallery send flow                         | BE+FE   | ☐ BLOCKED — backend: one field is both the stored list and the send list; handoff written 2026-09-05 ([backend-handoff-MA1-EM2.md](2026-features/backend-handoff-MA1-EM2.md))                                                    |
-| EM3  | Contact-owner notification + `user_invite.created_by`        | BE      | ☐ COLD — two small backend items; the notification half is either/or with MA4's (decision #14)                                                                                                                                   |
-| EM4  | Gallery-password design pass (precedes any BCrypt work)      | user    | ☐ BLOCKED — user; backend board PARKED BCrypt behind it                                                                                                                                                                          |
-| MA1  | Manage rail restructure (per-field PATCH, delete edit sheet) | FE(+BE) | ☐ BLOCKED — on refactor-board F1 landing first (ordering decided 2026-09-05). Not an absent endpoint: the existing PUT is a partial update; the one backend ask (clear a nullable field) is in the MA1/EM2 handoff (backend #22) |
-| MA2  | `staging` system collection                                  | BE+FE   | ☐ BLOCKED — user: `HIDDEN` vs `UNLISTED` seed visibility (decision #2)                                                                                                                                                           |
-| MA3  | Mobile-first admin Phase 3 remainder                         | FE      | ☐ BLOCKED — user, decision #15: §5.2's full-screen grid and bottom bar need a light-surface respec. §5.1 #386, §5.2's filter bar #392 and §5.5 (shipped 2026-06-08) are closed                                                   |
-| MA4  | Messages admin: notify channel                               | BE+FE   | ☐ BLOCKED — user, decision #14. Everything else shipped: retention BE#281, delete, read marker + server-side search BE#300 + #396                                                                                                |
-| MA5  | Admin collections list at 100× (paged/filtered/sorted)       | BE+FE   | ☐ COLD — low priority until collection count grows                                                                                                                                                                               |
-| MA6  | User change log + non-admin canonical mutation path          | BE+FE   | ☐ BLOCKED — user, decision #16: §10 of the logged-in-flow review                                                                                                                                                                 |
-| PF14 | Site-wide dark mode behind a user preference                 | FE      | ☐ COLD — spun out of MA3 by decision #5; first sitting is a scoping pass (group file)                                                                                                                                            |
-| PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)     | OPS     | ☐ COLD — infra, plan and acceptance in the group file, ~1–2 weeks lead time                                                                                                                                                      |
-| PF13 | Home page genuinely static (Cache Components / PPR)          | FE      | ☐ COLD — MR 1 merged #381; steps 2–5 are ours (group file's revised list); next is the cookie hoist out of `fetchBase`                                                                                                           |
+| Item | Scope                                                        | Repo    | Status                                                                                                                                                                                                                                     |
+| ---- | ------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| SD4  | `/explore` as a real drill-down explorer (Option C)          | FE      | ☐ BLOCKED — user, decision #10: reconcile with refactor-board H5 first                                                                                                                                                                     |
+| SD6  | Clickable people chips (needs a person route + slug)         | BE+FE   | ☐ BLOCKED — user, decision #17 (URL shape); `/person/[id]` is buildable here the day it is chosen                                                                                                                                          |
+| SD8  | Lens filtering on `/location/[slug]`                         | FE      | ☐ COLD — a new facet, not a bug: `buildLocationCriteria` emits no `lenses` key and the location toolbar has no Lens control. Split out of refactor-board C17 (#403)                                                                        |
+| RC1  | Populate `parents` on public reads + `isFilm` backfill       | BE      | ☐ BE#301 **MERGED** 2026-09-04; no frontend half exists; closes on the `isFilm` re-measure (command in its section, needs a live backend)                                                                                                  |
+| RC2  | Similar-collections v1 (metadata-graph score + Related swap) | BE+FE   | ☐ BLOCKED — user: spike decisions D1–D4                                                                                                                                                                                                    |
+| RC3  | Collections_List render mode (embedded hub as card-row)      | BE+FE   | ☐ BLOCKED — the COLLECTION content block carries nothing about children (verified both sides 2026-09-02). Specced and handed off: [backend-handoff-RC3.md](2026-features/backend-handoff-RC3.md)                                           |
+| RC4  | Suggested collections (admin suggestion rows)                | BE+FE   | ☐ BLOCKED — needs CT3 engine + RC1 metadata quality                                                                                                                                                                                        |
+| RC5  | CLIP/pgvector embedding tier                                 | BE+ML   | ☐ BLOCKED — user: spike decision D6 (infra commitment)                                                                                                                                                                                     |
+| CT1  | Collections-as-tags spec refresh against the typeless model  | docs    | ☐ COLD — produces a current D1–D12 matrix for CT2                                                                                                                                                                                          |
+| CT2  | Adjudicate the collections-as-tags decision matrix           | user    | ☐ BLOCKED — user; after CT1                                                                                                                                                                                                                |
+| CT3  | Saved-filter engine (AND-tag query, `source` column, sync)   | BE+FE   | ☐ BLOCKED — on CT2                                                                                                                                                                                                                         |
+| CT4  | Blog-as-date surface (`/blog` stream, per-day entries)       | BE+FE   | ☐ BLOCKED — on CT2                                                                                                                                                                                                                         |
+| CT5  | Auto-tag: `POST /collections/{id}/auto-tag` + admin button   | BE+FE   | ☐ COLD — independent of CT2; backend-first, no handoff written yet                                                                                                                                                                         |
+| CT6  | Tag `type`/visibility model                                  | BE      | ☐ COLD — design confirm, then small schema work; backend-only, no handoff written yet                                                                                                                                                      |
+| AU1  | Self-serve password reset                                    | BE+FE   | ☐ COLD — plan verified current; the V55 half becomes a handoff when picked up                                                                                                                                                              |
+| AU2  | Passkey list + revoke, enrollment-state UI                   | FE(+BE) | ☐ BLOCKED — backend: the pre-delete warning's two fields exist only on the DELETE response. Ask written 2026-09-05 ([backend-handoff-MA1-EM2.md](2026-features/backend-handoff-MA1-EM2.md) §4). The self-service half is still decision #4 |
+| EM1  | SES production checklist (verify domain, DKIM, sandbox exit) | OPS     | ☐ COLD — ops; user drives the AWS console half                                                                                                                                                                                             |
+| EM2  | New-recipient-only gallery send flow                         | BE+FE   | ☐ BLOCKED — backend: one field is both the stored list and the send list; handoff written 2026-09-05 ([backend-handoff-MA1-EM2.md](2026-features/backend-handoff-MA1-EM2.md))                                                              |
+| EM3  | Contact-owner notification + `user_invite.created_by`        | BE      | ☐ COLD — two small backend items; the notification half is either/or with MA4's (decision #14)                                                                                                                                             |
+| EM4  | Gallery-password design pass (precedes any BCrypt work)      | user    | ☐ BLOCKED — user; backend board PARKED BCrypt behind it                                                                                                                                                                                    |
+| MA1  | Manage rail restructure (per-field PATCH, delete edit sheet) | FE(+BE) | ☐ BLOCKED — on refactor-board F1 landing first (ordering decided 2026-09-05). Not an absent endpoint: the existing PUT is a partial update; the one backend ask (clear a nullable field) is in the MA1/EM2 handoff (backend #22)           |
+| MA2  | `staging` system collection                                  | BE+FE   | ☐ BLOCKED — user: `HIDDEN` vs `UNLISTED` seed visibility (decision #2)                                                                                                                                                                     |
+| MA3  | Mobile-first admin Phase 3 remainder                         | FE      | ☐ BLOCKED — user, decision #15: §5.2's full-screen grid and bottom bar need a light-surface respec. §5.1 #386, §5.2's filter bar #392 and §5.5 (shipped 2026-06-08) are closed                                                             |
+| MA4  | Messages admin: notify channel                               | BE+FE   | ☐ BLOCKED — user, decision #14. Everything else shipped: retention BE#281, delete, read marker + server-side search BE#300 + #396                                                                                                          |
+| MA5  | Admin collections list at 100× (paged/filtered/sorted)       | BE+FE   | ☐ COLD — low priority until collection count grows                                                                                                                                                                                         |
+| MA6  | User change log + non-admin canonical mutation path          | BE+FE   | ☐ BLOCKED — user, decision #16: §10 of the logged-in-flow review                                                                                                                                                                           |
+| PF14 | Site-wide dark mode behind a user preference                 | FE      | ☐ COLD — spun out of MA3 by decision #5; first sitting is a scoping pass (group file)                                                                                                                                                      |
+| PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)     | OPS     | ☐ COLD — infra, plan and acceptance in the group file, ~1–2 weeks lead time                                                                                                                                                                |
+| PF13 | Home page genuinely static (Cache Components / PPR)          | FE      | ☐ COLD — MR 1 merged #381; steps 2–5 are ours (group file's revised list); next is the cookie hoist out of `fetchBase`                                                                                                                     |
 
 **Not on this board, deliberately:** everything with a row on
 [2026-summer-refactor.md](2026-summer-refactor.md) (H1's `/user` merge, F4's TaxonomyPage
-consolidation, G3's `/user/selects`, F1's hook decomposition, C-group bugs); backend Bug #21
-(dimensions default `0`) — tracked there via C9 and on the backend board; property-based layout
-tests and function decomposition (debt, chapter 006); and three self-labeled unapproved ideas
-(liked images, mobile text overlay, React 19 follow-ups), listed in the group files so they are
-not rediscovered as new.
+consolidation, G3's `/user/selects`, F1's hook decomposition, D13's CSP report route, B10's test
+hygiene); backend Bug #21 (dimensions default `0`) — closed there as C9 on 2026-09-05 with zero
+frontend code; property-based layout tests and function decomposition (debt, chapter 006); and three
+self-labeled unapproved ideas (liked images, mobile text overlay, React 19 follow-ups), listed in
+the group files so they are not rediscovered as new.
 
-## NEXT RUN — set 2026-09-05 (13), from the full-board review
+## NEXT RUN — set 2026-09-05 (14)
 
 **This board is frontend-only. Do not open an MR or write a board row in `edens.zac.backend`.**
-Backend asks are specced here and handed off; three handoff documents now sit in `2026-features/`
-(RC3, MA4/RC1, MA1/EM2).
+Backend asks are specced here and handed off; three handoff documents sit in `2026-features/` (RC3,
+MA4/RC1, MA1/EM2).
 
-**Run (12) is entirely done.** MA4's frontend half merged as #396 and SD3's film stock as #397
-(both 2026-09-03), RC3 became a handoff (#398), decision #6 was answered and LY1 closed (#399), and
-BE#301 merged 2026-09-04. The review that produced this block (handoff #400, applied 2026-09-05 by
-seven read-only slices and one apply pass) found what a session following the old block would have
-got wrong: two of its three items were already merged, RC1 no longer had a frontend half, AU2's
-premise was false, and MA1 was waiting on a question addressed to this board rather than on an
-absent endpoint. Nothing in this run needs a user answer.
+**Run (13) closed twelve refactor-board items across #402, #403 and #404, and nothing on this
+board.** What it changed here is AU2: its admin half is not startable after all. The pre-delete
+warning needs `passwordLoginAvailable` and a passkey count, and both exist only on the DELETE
+response — so the message can only be shown after the credential it warns about is already gone.
+The ask is §4 of [backend-handoff-MA1-EM2.md](2026-features/backend-handoff-MA1-EM2.md).
+
+Run (13) also filed **SD8** here (the location page's Lens facet, split out of refactor-board C17)
+and **refactor-board B10** (`InfoTab.test.tsx` is 60 of the suite's 96 `act()` warnings).
+
+**`main` after those three merges: 264 suites / 4,792 tests, 0 failures; `tsc` clean; 96 `act()`
+warnings.** Any older count quoted on this board is superseded by this one.
 
 ### This run
 
-Every item is frontend and needs no other repo.
-
-1. **AU2's admin half** — a passkey list with per-row Remove on `/admin/users/[id]`, against
-   BE#257's `GET /api/admin/users/{id}/passkeys` and `DELETE …/{credentialId}`. `listPasskeys` and
-   `deregisterPasskey` in `app/lib/api/users.ts`, a section on the user detail page, the
-   last-passkey warning built from the response's `remaining` and `passwordLoginAvailable`.
-   **Guardrail:** the page cannot be opened locally without the owner's login — mount with fixture
-   props in a throwaway route, delete it before the commit. Close refactor-board H7 against it.
+1. **AU2's admin half — first item, the moment the backend GET carries the two fields.** Everything
+   else is ready: `listPasskeys` and `deregisterPasskey` in `app/lib/api/users.ts`, a section on
+   `/admin/users/[id]` with a per-row Remove, the warning built from `passwordLoginAvailable` and
+   the count. The UI must also say that a delete calls `sessionService.revokeAllForUser(id)` and so
+   drops every live session the user has. **Guardrail:** the page cannot be opened locally without
+   the owner's login — mount with fixture props in a throwaway route and delete it before the
+   commit. Close refactor-board H7 against it.
 2. **PF13 step 1** — hoist the cookie forwarding out of `fetchBase` so a public read can enter a
    `use cache` scope (the group file's revised list; MR 1 of it shipped as #381). **Guardrail:**
    `getCollectionBySlug` keeps its cookie — its response varies by `gallery_access_<slug>` and the
-   cache key is what keeps locked and unlocked payloads apart (refactor-board D11 pins that).
+   cache key is what keeps locked and unlocked payloads apart (refactor-board D11 pins that, and its
+   test now runs against Next's real `generateCacheKey`).
 3. **PF14 scoping pass** — docs only; answers the three questions in its group-file section.
 4. **CT1 spec refresh** — docs only; produces the current D1–D12 matrix so CT2 can be asked.
 
 **Ask first, batched.** Decisions #1, #2, #3, #4 (narrowed), #10, #14, #15, #16 and #17 here, plus
-the refactor board's seven (H1, F4, G3, `.srOnly`, G2b, the G8 CSS guard, and H7 — which is #4).
-One sitting, one list.
+SD8's "is a Lens filter wanted on the location page?", plus the refactor board's seven (H1, F4, G3,
+`.srOnly`, G2b, the G8 CSS guard, and H7 — which is #4). One sitting, one list.
 
-**Not startable, and why:** RC1 (one live-backend measurement, then it closes); MA1 (F1 goes
-first, and its clear-a-field ask is in the handoff); EM2 and RC3 (backend handoffs, no owner yet);
-MA3 §5.2 (#15); MA2 (#2); MA6 (#16); SD4 (#10); SD6 (#17); RC2 and RC5 (#1); RC4 (CT3 + RC1);
-CT2–CT4 (CT1, then CT2); EM4 (#3); EM1 and PF7 (ops, user-driven).
+**Not startable, and why:** AU2 until the backend answers §4 (start at item 2 if it has not);
+RC1 (one live-backend measurement, then it closes); MA1 (F1 goes first, and its clear-a-field ask is
+in the handoff); EM2 and RC3 (backend handoffs, no owner yet); MA3 §5.2 (#15); MA2 (#2); MA6 (#16);
+SD4 (#10); SD6 (#17); SD8 (ask first); RC2 and RC5 (#1); RC4 (CT3 + RC1); CT2–CT4 (CT1, then CT2);
+EM4 (#3); EM1 and PF7 (ops, user-driven).
 
 ## Verified and holding — do not re-investigate
 
@@ -349,23 +355,24 @@ through the backend's unfiltered image search, see refactor-board D15), and LY1'
 (#399: a naming check cannot answer a behaviour question). Backend commands run in
 `edens.zac.backend` after `git fetch -q origin`, against `origin/main` only.
 
-| Claim                                                                         | Command                                                                                                                                        | Result                                                                                       |
-| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| PF13: 19 segments export `dynamic`, and the flag rejects all 19               | `grep -rn 'export const dynamic' app --include='*.tsx' \| wc -l`, then `cacheComponents: true` + `next build`                                  | 19; build names exactly those 19 files                                                       |
-| PF13: `getCollectionBySlug` is cookie-forwarding AND ISR-tagged               | `sed -n '/^export async function getCollectionBySlug/,/^}/p' app/lib/api/collections.ts \| grep -c -e fetchReadApi -e 'tags:'`                 | 2 — blocker holds, hazard live                                                               |
-| MA1: no whole-collection PATCH (six `@PatchMapping`s exist, all sub-resource) | `git grep -n -e '@PatchMapping("/collections/{id}")' -e '@PatchMapping("/collections/{collectionId}")' origin/main -- src/main/java/ \| wc -l` | 0                                                                                            |
-| MA1: the existing PUT is already a partial update                             | `git grep -n '@PutMapping("/collections/{id}")' origin/main -- src/main/java/`                                                                 | `AdminController.java:112`; backend board `#22` records the null-guard semantics             |
-| CT5: no auto-tag endpoint                                                     | `git grep -n -i -e auto-tag -e autoTag -e auto_tag origin/main -- src/main/java/ \| wc -l`                                                     | 0                                                                                            |
-| AU2: the WebAuthn controller has four endpoints, all POST                     | `git show origin/main:src/main/java/edens/zac/portfolio/backend/controller/auth/WebAuthnController.java \| grep -c '@PostMapping'`             | 4 (register/login × start/finish)                                                            |
-| AU2/H7: the admin passkey list and revoke EXIST                               | `git grep -n passkeys origin/main -- '*AdminUserController.java' \| grep -c 'Mapping('`                                                        | 2 (`:419` GET, `:465` DELETE; BE#257)                                                        |
-| MA4: delete shipped                                                           | `git grep -n '@DeleteMapping' origin/main -- '*MessagesControllerAdmin.java'`                                                                  | `@DeleteMapping("/{id}")` at `:85`                                                           |
-| MA4: the read/search contract is on backend `main`                            | `git grep -n -e 'PatchMapping("/{id}/read")' -e 'Boolean unread' -e 'String q' origin/main -- '*MessagesControllerAdmin.java'`                 | `:46`, `:47`, `:70`                                                                          |
-| RC1: `parents` populated on public reads                                      | `git grep -n populateParents origin/main -- src/main/java/`                                                                                    | `CollectionProcessingUtil.java:523`; `CollectionService.java:164` (`true`), `:928` (`false`) |
-| RC1: migration head                                                           | `git ls-tree --name-only origin/main src/main/resources/db/migration/ \| sort -V \| tail -1`                                                   | `V62__backfill_content_image_is_film.sql`                                                    |
-| RC3: the COLLECTION content block says nothing about children                 | `sed -n '/^export interface ContentCollectionModel/,/^}/p' app/types/Content.ts \| grep -c -e hasChildren -e children -e contentCount`         | 0                                                                                            |
-| EM2: one writer, no notify list                                               | `git grep -n notifyEmails origin/main -- src/main/java/ \| wc -l`                                                                              | 0                                                                                            |
-| SD6: no `/person` route and no slug on a person                               | `find app -type d -name 'person*'`, then `git grep -n 'record Person(' origin/main -- '*Records.java'`                                         | route absent; `Person(Long id, String name)`                                                 |
-| No closed section survives on the live board                                  | `grep -c -e '^### ✅' -e '^### ⛔' -e '^### ☑' docs/spikes/2026-features.md`                                                                   | 0                                                                                            |
+| Claim                                                                         | Command                                                                                                                                        | Result                                                                                           |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| PF13: 19 segments export `dynamic`, and the flag rejects all 19               | `grep -rn 'export const dynamic' app --include='*.tsx' \| wc -l`, then `cacheComponents: true` + `next build`                                  | 19; build names exactly those 19 files                                                           |
+| PF13: `getCollectionBySlug` is cookie-forwarding AND ISR-tagged               | `sed -n '/^export async function getCollectionBySlug/,/^}/p' app/lib/api/collections.ts \| grep -c -e fetchReadApi -e 'tags:'`                 | 2 — blocker holds, hazard live                                                                   |
+| MA1: no whole-collection PATCH (six `@PatchMapping`s exist, all sub-resource) | `git grep -n -e '@PatchMapping("/collections/{id}")' -e '@PatchMapping("/collections/{collectionId}")' origin/main -- src/main/java/ \| wc -l` | 0                                                                                                |
+| MA1: the existing PUT is already a partial update                             | `git grep -n '@PutMapping("/collections/{id}")' origin/main -- src/main/java/`                                                                 | `AdminController.java:112`; backend board `#22` records the null-guard semantics                 |
+| CT5: no auto-tag endpoint                                                     | `git grep -n -i -e auto-tag -e autoTag -e auto_tag origin/main -- src/main/java/ \| wc -l`                                                     | 0                                                                                                |
+| AU2: the WebAuthn controller has four endpoints, all POST                     | `git show origin/main:src/main/java/edens/zac/portfolio/backend/controller/auth/WebAuthnController.java \| grep -c '@PostMapping'`             | 4 (register/login × start/finish)                                                                |
+| AU2/H7: the admin passkey list and revoke EXIST                               | `git grep -n passkeys origin/main -- '*AdminUserController.java' \| grep -c 'Mapping('`                                                        | 2 (`:419` GET, `:465` DELETE; BE#257)                                                            |
+| AU2: the pre-delete warning's two fields exist only on the DELETE response    | `git grep -n -e passwordLoginAvailable -e remainingPasskeys -e hasPassword origin/main -- src/main/java/`                                      | only `PasskeyDeregisterResult` and the delete handler; the GET returns a bare `List<PasskeyRow>` |
+| MA4: delete shipped                                                           | `git grep -n '@DeleteMapping' origin/main -- '*MessagesControllerAdmin.java'`                                                                  | `@DeleteMapping("/{id}")` at `:85`                                                               |
+| MA4: the read/search contract is on backend `main`                            | `git grep -n -e 'PatchMapping("/{id}/read")' -e 'Boolean unread' -e 'String q' origin/main -- '*MessagesControllerAdmin.java'`                 | `:46`, `:47`, `:70`                                                                              |
+| RC1: `parents` populated on public reads                                      | `git grep -n populateParents origin/main -- src/main/java/`                                                                                    | `CollectionProcessingUtil.java:523`; `CollectionService.java:164` (`true`), `:928` (`false`)     |
+| RC1: migration head                                                           | `git ls-tree --name-only origin/main src/main/resources/db/migration/ \| sort -V \| tail -1`                                                   | `V62__backfill_content_image_is_film.sql`                                                        |
+| RC3: the COLLECTION content block says nothing about children                 | `sed -n '/^export interface ContentCollectionModel/,/^}/p' app/types/Content.ts \| grep -c -e hasChildren -e children -e contentCount`         | 0                                                                                                |
+| EM2: one writer, no notify list                                               | `git grep -n notifyEmails origin/main -- src/main/java/ \| wc -l`                                                                              | 0                                                                                                |
+| SD6: no `/person` route and no slug on a person                               | `find app -type d -name 'person*'`, then `git grep -n 'record Person(' origin/main -- '*Records.java'`                                         | route absent; `Person(Long id, String name)`                                                     |
+| No closed section survives on the live board                                  | `grep -c -e '^### ✅' -e '^### ⛔' -e '^### ☑' docs/spikes/2026-features.md`                                                                   | 0                                                                                                |
 
 **`file:line` refs are not counted in this table.** The 2026-09-05 review re-resolved every ref on
 this board and its group files (63 on the feature side: 13 drifted, 5 gone, all corrected in place).
@@ -411,9 +418,10 @@ a decision that blocks a row and is not in this table is the same defect as a ro
 Context file: [2026-features/sd-search-discovery.md](2026-features/sd-search-discovery.md) —
 **5 closed** (SD1 #357, SD2 backend #277, SD7 backend
 [#293](https://github.com/themancalledzac/edens.zac.backend/pull/293), SD5 #382, SD3 2026-09-05 —
-its last dimension shipped as #397 and the lens URL gap moved to refactor-board C17); their
-write-ups are in that file's Closed section. Count re-derived 2026-09-05 with
-`grep -c -e '^### ✅' -e '^### ⛔' -e '^### ☑' 2026-features/sd-search-discovery.md` → 5.
+its last dimension shipped as #397 and the lens URL gap moved to refactor-board C17, which shipped
+as #403); their write-ups are in that file's Closed section. Count re-derived 2026-09-05 with
+`grep -c -e '^### ✅' -e '^### ⛔' -e '^### ☑' 2026-features/sd-search-discovery.md` → 5. **SD8 was
+filed 2026-09-05 (2)** — the location page's Lens facet, which C17 could not carry.
 
 ### ☐ SD4 · `/explore` as a real explorer — BLOCKED (user, decision #10)
 
@@ -442,6 +450,23 @@ Prefer the second for consistency unless the URL shape does not matter. Either w
 change is the same shape as #382's tag branch. **Pinned by a test** in
 `FullScreenModal.metadata.test.tsx` asserting people render WITHOUT a link, so whoever builds this
 will see that test fail and know it is the contract changing rather than a break.
+
+### ☐ SD8 · Lens filtering on `/location/[slug]` — COLD, a new facet
+
+Filed 2026-09-05 (2) out of refactor-board C17 (#403), which made the lens choice URL-shareable
+everywhere it is offered. C17's board row also asked for `selectedLenses` to be seeded in
+`LocationPageClient`, and that seeding was deliberately left out: the location page cannot hold the
+state. `buildLocationCriteria` emits no `lenses` key and the location toolbar has no Lens control,
+so a seeded value would be unread and then wiped by `syncToUrl` on the first filter click.
+
+Making the page lens-filterable is a facet, not a fix, and this board's own rule says to ask before
+adding one: on a bar that already carries several dimensions, "one more way to narrow a list" is a
+product call, not a defect.
+
+- [ ] **Ask first: is a Lens filter wanted on the location page?** If yes: add `lenses` to
+      `buildLocationCriteria`, a Lens dimension to that page's toolbar, and the `selectedLenses`
+      seed in `LocationPageClient`. The URL layer already carries the key — C17 shipped it. Size it
+      against SD3's dimensions, which is the same shape of work.
 
 ## Group RC — Related & similar collections
 
@@ -567,7 +592,9 @@ filter-consolidation follow-ups.
 ## Group AU — Auth & accounts
 
 Context file: [2026-features/au-auth-accounts.md](2026-features/au-auth-accounts.md) —
-**2 closed** (AU3 no-work, AU4 #383); their write-ups are in that file's Closed section.
+**2 closed** (AU3 no-work, AU4 #383); their write-ups are in that file's Closed section. **AU2 moved
+COLD → BLOCKED on 2026-09-05 (2)** once the backend's passkey records were read: the pre-delete
+warning cannot be built from the GET response.
 
 ### ☐ AU1 · Self-serve password reset — COLD, plan verified current
 
@@ -579,31 +606,37 @@ expiry behavior from `notFound()` to a `/login` redirect. Plan:
 `docs/superpowers/plans/2026-08-10-auth-password-reset.md`, re-verified 2026-08-30; essentials
 copied into the group file.
 
-### ☐ AU2 · Passkey list + revoke — admin UI COLD (backend shipped); self-service BLOCKED (decision #4)
+### ☐ AU2 · Passkey list + revoke — BLOCKED on backend: the warning's two fields only exist after the delete
 
-**The admin endpoints exist.** BE#257 merged 2026-08-31: `GET /api/admin/users/{id}/passkeys`
-(`AdminUserController.java:419`) and `DELETE /api/admin/users/{id}/passkeys/{credentialId}`
-(`:465`), on `WebAuthnCredentialRepository.deleteByIdAndUserId` (`:108`). The backend board filed
-the missing consumer as **FE-4** the same day; the refactor board's **H7** is the same finding.
-This row's "no list, no delete" came from grepping `WebAuthnController.java`, which still has
-exactly four mappings — the endpoints are on the users controller. Three records for one feature;
-this row is the one that survives, and H7 closes against it.
+**Both admin endpoints exist** — backend commit `70b5371c` (BE#257), in `AdminUserController.java`
+under `/api/admin/users`: `GET /{id}/passkeys` and `DELETE /{id}/passkeys/{credentialId}`. This
+row's older "no list, no delete" came from grepping `WebAuthnController.java`, which still has
+exactly four mappings. The refactor board's **H7** is the same finding; close it against this row.
 
-```bash
-git grep -n passkeys origin/main -- 'src/main/java/**/*Controller.java' | grep -c 'Mapping('   # 2
-grep -rln passkeys app/                                                                        # nothing — no caller
-```
+**What blocks the item is the pre-delete warning, and it is a backend shape problem.** Removing an
+account's last passkey leaves an account with no password unable to log in, so the UI has to say so
+before the delete. The two fields that message needs arrive only after the credential is destroyed:
 
-**Startable now, frontend-only:** a passkey list with a per-row Remove on `/admin/users/[id]`,
-through the BFF. Removing an account's last passkey is allowed and, when it has no password, leaves
-it unable to log in until re-invited (`AdminUserController.java:436-456`; backend S-28) — the UI
-says so before the delete. The response carries `remaining` and `passwordLoginAvailable` for
-exactly that message.
+- `GET /{id}/passkeys` returns a bare `List<PasskeyRow>` — `(Long id, String label, String
+transports, LocalDateTime createdAt, LocalDateTime lastUsedAt)`. No count, no password field.
+- `PasskeyDeregisterResult` is `(int remainingPasskeys, boolean passwordLoginAvailable)` and exists
+  **only on the DELETE response**. The field is `remainingPasskeys`, not `remaining`.
+- `passwordLoginAvailable` is computed inside the delete handler and nowhere else — grepping the
+  backend for `passwordLoginAvailable`, `hasPassword` and `passwordSet` returns no other site, and
+  `AdminUserSummary` excludes the password hash deliberately.
+
+So the warning cannot be built against today's GET. **The unblock is small: expose
+`passwordLoginAvailable` and the passkey count on the GET response.** Written up as §4 of
+[backend-handoff-MA1-EM2.md](2026-features/backend-handoff-MA1-EM2.md).
+
+**Also record, because the admin UI must say it:** the delete calls
+`sessionService.revokeAllForUser(id)`, so revoking one authenticator drops every live session that
+user has, not just the one tied to that credential.
 
 **Still a decision (#4, narrowed):** whether a signed-in user gets a self-service list-and-remove on
-`/user`. `/api/auth/webauthn/**` has register and login only, so that half is a backend handoff.
-The enrollment-state UI (009) follows whichever list exists; `AccountCard.tsx` already drives
-`registerPasskey`.
+`/user`. `/api/auth/webauthn/**` has register and login only, so that half is a second backend
+handoff. The enrollment-state UI (009) follows whichever list exists; `AccountCard.tsx` already
+drives `registerPasskey`.
 
 ## Group EM — Email & client galleries
 
@@ -918,6 +951,29 @@ _Newest first, local dates. One line per `/next` run: what shipped (PR numbers),
 what's next. Older entries move to
 [2026-features/session-log.md](2026-features/session-log.md)._
 
+- 2026-09-05 (14) — **no feature work; the refactor board's close-out, and one item here moved the
+  wrong way.** Three MRs merged there (#402, #403, #404) closing twelve items; this board's only
+  code-side change is that **AU2 is now BLOCKED, not COLD.** The last run corrected AU2's premise
+  (the admin endpoints do exist, BE#257 / commit `70b5371c`) and set it as this run's first item.
+  Reading the backend records rather than the endpoint list found the real blocker: `GET
+/{id}/passkeys` returns a bare `List<PasskeyRow>` with no count and no password field, and
+  `PasskeyDeregisterResult` — `(int remainingPasskeys, boolean passwordLoginAvailable)` — exists
+  only on the DELETE response. So the warning that must precede the delete can only be built from
+  data the delete produces. `passwordLoginAvailable` is computed in that handler and nowhere else;
+  `AdminUserSummary` excludes the password hash deliberately. **The correction generalizes: "the
+  endpoint exists" is not "the endpoint returns what the UI needs".** Two consecutive runs got AU2
+  wrong at two different depths — first by grepping the wrong controller, then by reading the
+  mappings and not the response records. The ask (expose `passwordLoginAvailable` and the passkey
+  count on the GET) is §4 of the MA1/EM2 handoff, and AU2 stays this board's first item for the
+  moment it lands. Also recorded for the UI: the delete calls `sessionService.revokeAllForUser(id)`,
+  so revoking one authenticator drops every live session. **Filed:** SD8 — Lens filtering on
+  `/location/[slug]`, split out of refactor-board C17. C17 shipped the URL key everywhere the
+  control is offered; the location page has no Lens control and `buildLocationCriteria` emits no
+  `lenses` key, so seeding it there would have written state that `syncToUrl` wipes on the first
+  click. It is a facet, so it gets asked before it gets built. **`main` after the three merges: 264
+  suites / 4,792 tests, 0 failures; `tsc` clean; 96 `act()` warnings.** Next: AU2 when the backend
+  answers, otherwise PF13 step 1, PF14 scoping, CT1 — and the decision sitting.
+
 - 2026-09-05 (13) — **no feature work; the full critical review the #400 handoff asked for, applied
   to both boards.** Seven read-only slices (feature groups ×2, refactor board, every PR merged
   since 2026-08-24, cross-repo facts on backend `origin/main`, an adversarial pass on Group D, a
@@ -943,15 +999,3 @@ what's next. Older entries move to
   handoffs written or updated (RC3 corrected `title` → `name`; MA4/RC1 marked merged; MA1/EM2 new).
   Five stale `docs/00x` lines and the README's Next/React/Node/rating claims fixed in the same PR.
   Next: AU2's admin half, PF13 step 1, PF14 scoping, CT1 — and the decision sitting.
-
-- 2026-09-02 (11) — **merged #383, #384 and #394; opened two backend MRs that are no longer ours.**
-  Auto-merge is disabled on this repo, so the stacked pair was updated, waited on and merged by
-  hand. MA3 §5.5 turned out to be **already shipped three months earlier** (`b81b6ad`, 2026-06-08)
-  and closed as a correction rather than built — the row was written the same day the migration
-  landed and had survived three planning passes on re-reading. MA4's backend half and RC1 were
-  built as BE#300/BE#301 off this board's own instructions, then **handed to the backend agent
-  after the owner ruled this board frontend-only**; BE#300 has since merged, BE#301 is still open.
-  **The squash-merge of #394 silently dropped its second commit**, taking the frontend-only rule
-  and the handoff doc with it — both recovered this pass, and the check for it hoisted into "how to
-  use this doc". Deleted the two MA4 `read_at` rows (false once V61 landed) and fixed one drifted
-  ref (`@DeleteMapping` `:55` → `:85`). Next: MA4's frontend half, RC3, SD3.

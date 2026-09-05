@@ -46,6 +46,25 @@ Either way the frontend change is the same shape as #382's tag branch. SD7 (back
 `people` on COLLECTION blocks but added no slug, so it did not unblock this. This section had no
 group-file entry until 2026-09-05; the main board carried it alone.
 
+## SD8 · Lens filtering on `/location/[slug]`
+
+Split out of refactor-board C17 (#403) on 2026-09-05 (2). C17 made `lenses` serialize to and parse
+from the URL and seeded it in `seedFilterState` and `CollectionPageClient`. The location page was
+left out on purpose.
+
+**Why it could not ride C17.** `buildLocationCriteria` emits no `lenses` key, and
+`/location/[slug]`'s toolbar has no Lens control. Seeding `selectedLenses` there would have put a
+value into state that nothing reads and that `syncToUrl` wipes on the first filter click — a
+seeded-then-discarded field, worse than not seeding it.
+
+**What building it actually costs.** Two pieces, both the same shape as SD3's dimensions: add
+`lenses` to `buildLocationCriteria`, and add a Lens dimension to the location toolbar. The URL layer
+needs nothing — C17 already carries the key on every surface.
+
+**Ask before building.** This board's rule from SD3's dropped focal-length dimension applies
+directly: a facet whose whole value is one more way to narrow a list is a product question, and the
+cheap check is asking up front rather than browser-verifying at the end.
+
 ## Not here, deliberately
 
 - Collection tags Phase 2 / auto-tag → CT5.

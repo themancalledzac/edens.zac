@@ -2,22 +2,30 @@
 
 _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
 
-C1–C8 merged: PR #264, #281, #282, #279, #283, #327, #331, #291. C10 merged 2026-08-30 (#346). C11 merged 2026-08-30 (#352) and was archived 2026-09-05, six days after it shipped. C9 and C12–C18 are open on the live board.
+C1–C8 merged: PR #264, #281, #282, #279, #283, #327, #331, #291. C10 and C11 merged 2026-08-30 (#346, #352). C12–C14 merged 2026-09-05 (#402), C15–C17 the same day (#403), C18 (#404). C9 closed 2026-09-05 at zero frontend code, on a production census. **Group C is fully closed — nothing in it is open on the live board.**
 
 ## Closed rows
 
-| MR  | Scope                                                 | Outcome                                                                                                |
-| --- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| C1  | Unsaved people/gallery-access wipe (HIGH)             | +73 −11 · #264                                                                                         |
-| C2  | About portrait aspect ratio                           | +99 −5 · #281                                                                                          |
-| C3  | `SelectsContext.toggle` purity                        | +121 −10 · #282                                                                                        |
-| C4  | Cache tags that never connect                         | +155 −62 · #279 — the `collections-location-${slug}` report became E12                                 |
-| C5  | Assorted LOW bugs                                     | +497 −101 (11 files) · #283                                                                            |
-| C6  | Password cover strip missing on the public card path  | +44 src / +73 test (est ±30) · #327 — premise was FALSE (backend never stripped); unification DECLINED |
-| C7  | `emailShareLink` POSTs to a route that does not exist | 0 src / +34 test (#331 total +185 −101) — FE was already complete, 409 included; unification DECLINED  |
-| C8  | Unfollowing leaves the chip count stale               | +418 −22 (est. +40/+80) · #291                                                                         |
-| C10 | Exiting manage mode leaves a blank public page (HIGH) | +24 −6 src / +35 test · #346 — the section's own fix sketch was right; it under-counted the symptoms   |
-| C11 | `mapError` 429 branch for the share-email limiter     | +14 src, +44 test · #352 (`8cb7a66d`)                                                                  |
+| MR  | Scope                                                 | Outcome                                                                                                                   |
+| --- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| C1  | Unsaved people/gallery-access wipe (HIGH)             | +73 −11 · #264                                                                                                            |
+| C2  | About portrait aspect ratio                           | +99 −5 · #281                                                                                                             |
+| C3  | `SelectsContext.toggle` purity                        | +121 −10 · #282                                                                                                           |
+| C4  | Cache tags that never connect                         | +155 −62 · #279 — the `collections-location-${slug}` report became E12                                                    |
+| C5  | Assorted LOW bugs                                     | +497 −101 (11 files) · #283                                                                                               |
+| C6  | Password cover strip missing on the public card path  | +44 src / +73 test (est ±30) · #327 — premise was FALSE (backend never stripped); unification DECLINED                    |
+| C7  | `emailShareLink` POSTs to a route that does not exist | 0 src / +34 test (#331 total +185 −101) — FE was already complete, 409 included; unification DECLINED                     |
+| C8  | Unfollowing leaves the chip count stale               | +418 −22 (est. +40/+80) · #291                                                                                            |
+| C10 | Exiting manage mode leaves a blank public page (HIGH) | +24 −6 src / +35 test · #346 — the section's own fix sketch was right; it under-counted the symptoms                      |
+| C11 | `mapError` 429 branch for the share-email limiter     | +14 src, +44 test · #352 (`8cb7a66d`)                                                                                     |
+| C12 | `.metadataToggle` under the 44px tap target           | +10 −18 src / +69 test · #402 — premise wrong: IconButton already supplied a 44px hit area; the defect was a 4px overhang |
+| C13 | Byline said "Zac Eden" in three literals              | +8 −4 src / +46 test · #402 — consolidated onto the exported `AUTHOR_NAME`                                                |
+| C14 | `getCollectionsByLocation` sends `page`/`size`        | +6 −2 src / +12 test · #402 — two halves: the param names, and a missing type annotation on `size`                        |
+| C15 | `LocationPage` props typed image-only                 | +18 −13 src · #403 — widened to `ViewableContent[]`, following `CollectionPageClient`                                     |
+| C16 | `imageWidth`/`imageHeight` non-nullable               | +13 −8 src · #403 — 6 `tsc` errors across 4 files, all helpers that already absorbed null                                 |
+| C17 | Lens selection is not URL-shareable                   | +10 −5 src / +52 −7 test · #403 — the location page was deliberately left out; it became feature-board SD8                |
+| C18 | `CollectionRolesSection`'s mount fetch has no guard   | +23 −3 src / +127 −7 test · #404 — the defect was the stale-response race, not unmount; it removed 0 `act()` warnings     |
+| C9  | Dimensionless cover renders no header                 | 0 code · closed 2026-09-05 on a production census — no surviving `0 x 0` rows                                             |
 
 ---
 
@@ -614,3 +622,145 @@ Filed 2026-08-29 from the cross-repo contract review: backend #233 added `ShareE
 `if (error.status === 429)` returns the rate-limit copy, docblock at `:38` describes the limiter,
 one test beside the 403/409 coverage (+14 src / +44 test). **Sat on the live board as COLD, and as
 item 1 of NEXT RUN, for six days after merging** — the 2026-09-04 handoff caught it.
+
+### ✅ C12 · `.metadataToggle` is under the 44px tap target — PR #402, 2026-09-05
+
+`.metadataToggle` (`app/styles/fullscreen-image.module.scss:208`) was 36px, stepping to 40px at
+`≥768px`. It is now 44px at every width and the width-conditional step is gone.
+
+**The board's premise was wrong about the symptom.** The control was never un-tappable. IconButton's
+`@media (pointer: coarse)` `::after` already stretched the hit area to 44px, so a touch anywhere in
+that box registered. The real defect is that the 44px hit area overhung a 36px visual box by 4px on
+each side, and IconButton's own docblock warns that an overhang steals taps from neighbouring
+controls. Sizing the visual box to 44px removes the overhang instead of adding a hit area that
+already existed.
+
+**The second doubled block is `.closeButton.closeButton`** (`:539` after this change), not the
+`≥768px` step the board pointed at. It is a sibling control that sizes nothing and needed no change.
+The board's `~:544` was the line of that block's comment, not the block.
+
+`tests/styles/metadataToggleTouchTarget.test.ts` now pins the size by resolving the compiled module,
+so a future step-down fails rather than passing silently. +10 −18 src / +69 test.
+
+### ✅ C13 · The byline said "Zac Eden" — PR #402, 2026-09-05
+
+Every collection and home meta description read "photography by Zac Eden" while `structuredData.ts`
+already carried `AUTHOR_NAME = 'Zac Edens'` for the JSON-LD author, so one page served two spellings
+of the site owner's name in its own head.
+
+Fixed by exporting `AUTHOR_NAME` and reading it at both routes rather than patching the three string
+literals. One name, one definition. `tests/app/home-page.metadata.test.tsx` and
+`slug-page.metadata.test.tsx` assert the rendered descriptions carry the exported value, so a
+divergence fails rather than needing a re-grep. +8 −4 src / +46 test.
+
+### ✅ C14 · `getCollectionsByLocation` sent params the endpoint does not read — PR #402, 2026-09-05
+
+The function built `?page=&size=` while the location controller reads `collectionPage`/`collectionSize`,
+so Spring dropped both and every call got the defaults. Renamed.
+
+**Two halves, not the one the board described.** The second is a missing type annotation: `size`
+defaulted to `PAGINATION.collectionPageSize`, and `PAGINATION` is `as const`, so the parameter had
+narrowed to the literal `35` and no caller could pass any other page size. Renaming the params
+without widening the type would have left the function still unable to paginate. The annotation is
+part of the fix, not tidying beside it.
+
+**The board's sibling-call count was wrong: there are three correct `page`/`size` call sites, not
+two** — `collections.ts:84`, `:114` and `:138`. All three were left alone; only the location route
+renamed its params backend-side. +6 −2 src / +12 test.
+
+### ✅ C15 · `LocationPage` props typed image-only — PR #403, 2026-09-05
+
+`LocationPage` and `LocationPageClient` are now typed `ViewableContent[]`, the `isImageContent`
+narrowing is kept only for the `computeFilterVisibility` call, and the `contentType === 'IMAGE'`
+filter is deleted. This is the `CollectionPageClient` precedent applied unchanged — mixed content to
+the renderer, narrowed only where a helper is image-typed.
+
+Type hygiene, as the item was re-scoped: nothing renders differently today, because `searchImages`
+still returns images only. The item's value is that the day the backend's `searchImages` starts
+returning GIFs, the props stop lying about what they hold. +18 −13 src.
+
+### ✅ C16 · `imageWidth`/`imageHeight` declared non-nullable — PR #403, 2026-09-05
+
+Both widened to `number | null` in `app/types/Content.ts`, matching what backend #249 now writes.
+
+**The fallout was 6 `tsc` errors across 4 files, all of them helpers that already absorbed null**
+through a `??` or a truthy guard — the declaration was the only thing that was wrong. One helper
+needed a real change: `clampParallaxDimensions` was passing `null` through while declaring it
+returns numbers, and now returns `undefined` instead, which is what its signature always said.
++13 −8 src.
+
+### ✅ C17 · Lens selection is not URL-shareable — PR #403, 2026-09-05
+
+`lenses` now serializes to and parses from the URL, and seeds from `initialCriteria` in
+`seedFilterState` and `CollectionPageClient`. `hasAnyActiveFilter`'s missing `selectedFilmTypes`
+rode along.
+
+**The durable guard shipped, and it is the part worth keeping.** The fixture in
+`contentFilter.filterParamKeys.test.ts` is typed `Required<ContentFilterCriteria>`, so a new
+criterion added without a fixture value is a `tsc` error rather than a silently-narrowed guard. An
+`it.each` then asserts that every non-`*MatchMode` criterion, set alone, emits at least one URL key.
+
+**Why the pre-existing test could not have caught this.** `contentFilter.filterParamKeys.test.ts`'s
+"keys match the serializer" assertion stays green when the lens fix is reverted, because reverting
+removes the key from the serializer and from `FILTER_PARAM_KEYS` at the same time — the two sides
+agree on the omission. That is exactly how it missed `year` before #376 and `lenses` here. A test
+that compares two lists cannot see a field missing from both.
+
+**Deliberately omitted: `LocationPageClient` does not seed `selectedLenses`.** The board asked for
+it and the page cannot carry it. `buildLocationCriteria` emits no `lenses` key and the location
+toolbar has no Lens control, so seeded state would be unread and wiped by `syncToUrl` on the first
+filter click. Making the location page lens-filterable is a new facet, filed as feature-board
+**SD8**. +10 −5 src / +52 −7 test.
+
+### ✅ C18 · `CollectionRolesSection`'s mount fetch has no guard — PR #404, 2026-09-05
+
+Cancellation guards added to `CollectionRolesSection` and `UserRolesSection`.
+
+**The board named the wrong defect and the wrong payoff.** The bug is the stale-response race, not
+unmount: a slow _failing_ read for one collection blanked the next collection's grant list and
+raised "Failed to load role access." on a collection that had loaded fine. That is user-visible and
+it is what the guard fixes.
+
+**The predicted "~64 fewer `act()` warnings" is wrong — the fix removes zero, and the count is still 96.** React 19 discards updates dispatched to an unmounted fiber silently, with no warning, so the
+unmount test the board specified **passed against unguarded source**. It was deleted rather than
+shipped as a test that cannot fail.
+
+The 96 warnings attribute like this, measured after the merge:
+
+| Suite                                                               | Warnings |
+| ------------------------------------------------------------------- | -------- |
+| `tests/components/ContentCollection/edit/sections/InfoTab.test.tsx` | 60       |
+| `tests/(admin)/admin/page.test.tsx`                                 | 22       |
+| `tests/components/ContentCollection/useCollectionEdit.test.tsx`     | 7        |
+| `tests/components/UserManagementPanel.test.tsx`                     | 2        |
+| `tests/components/UserForm.test.tsx`                                | 2        |
+| four suites with one each                                           | 4        |
+
+The 60 come from `InfoTab.test.tsx` not mocking `@/app/lib/api/roles`: 20 tests × 3 `setState` calls
+from the real rejecting fetch, every one fired while the component is still mounted and current. No
+source guard can remove them. Filed as **B10**. +23 −3 src / +127 −7 test.
+
+### ✅ C9 · A dimensionless cover renders no header — CLOSED 2026-09-05 with zero frontend code
+
+The item's stated closing condition was met and the census that settles it came back clean. No
+frontend change shipped, and the user's 2026-08-30 rejection of a frontend guard stands — do not add
+one and do not file one.
+
+**No backfill exists, confirmed by census rather than by the commit message.** Backend `origin/main`
+(head `afa39d6f`) carries 60 Flyway migrations V2–V62 and none touches `image_width`/`image_height`;
+those are pre-Flyway columns. PR #249 is commit `38f74d1a`, two files, "Backend sentinel only". The
+absence is real and not a naming miss — a backfill migration pattern does exist in that repo
+(`V62__backfill_content_image_is_film.sql`), so one would have been recognisable.
+
+**Production census: zero affected rows.** `GET https://zacedens.com/api/proxy/api/read/content/images/search`,
+8 pages at `size=200`, 1,424 unique ids matching the reported `totalElements`. **0 rows with
+`imageWidth === 0` or `imageHeight === 0`, 0 null, 0 missing.** Minimum width 1437, minimum height 833.
+
+**The count is the whole table, not a public subset.** `ContentControllerProd.searchImages` and
+`AdminController.getAllImages` both call `contentService.searchImages(filter.toRequest())`, and
+`SELECT_CONTENT_IMAGE` has no `WHERE` and no visibility clause at any tier. `BaseDao.getInteger`
+returns null only for SQL NULL and passes a stored `0` through as `0`, so a `0 x 0` row would have
+serialized as `"imageWidth":0` and been counted.
+
+The existing pins (`tests/utils/contentLayout.test.ts:1329`, `:1341`, `:1355-1367`) were left alone
+and stay correct.

@@ -1,9 +1,10 @@
-# Handoff to the backend agent — MA1's clear semantics, EM2's notify list, one question
+# Handoff to the backend agent — MA1's clear semantics, EM2's notify list, AU2's passkey GET, one question
 
-**Written 2026-09-05 by the frontend session. No code was written and no backend branch exists.**
+**Written 2026-09-05 by the frontend session; §4 added the same day.** No code was written and no
+backend branch exists.
 
-Two frontend items wait on small backend changes, and one backend row is waiting on a frontend
-answer. This document is all three, in the shape of [backend-handoff-RC3.md](backend-handoff-RC3.md):
+Three frontend items wait on small backend changes, and one backend row is waiting on a frontend
+answer. This document is all four, in the shape of [backend-handoff-RC3.md](backend-handoff-RC3.md):
 nothing to review, nothing to take over, just the ask.
 
 ---
@@ -61,6 +62,35 @@ work already changed it, say so and the frontend drops the line. One grep on you
 git grep -n 'applyTypeSpecificDefaults' origin/main -- src/main/java/
 ```
 
+## 4. AU2 — put `passwordLoginAvailable` and the passkey count on the passkey GET
+
+The frontend's AU2 is a passkey list with a per-row Remove on `/admin/users/[id]`, against your
+`GET /api/admin/users/{id}/passkeys` and `DELETE /{id}/passkeys/{credentialId}` (commit `70b5371c`,
+BE#257). Both endpoints are fine. The item is blocked on the GET's response shape.
+
+Removing an account's last passkey, when that account has no password, leaves it unable to log in
+until re-invited. The admin UI has to warn about that **before** the delete. The two fields the
+warning needs only exist after it:
+
+- `GET /{id}/passkeys` returns a bare `List<PasskeyRow>` — `(Long id, String label, String
+transports, LocalDateTime createdAt, LocalDateTime lastUsedAt)`. No count, no password field.
+- `PasskeyDeregisterResult` — `(int remainingPasskeys, boolean passwordLoginAvailable)` — is on the
+  DELETE response only.
+- `passwordLoginAvailable` is computed inside the delete handler and nowhere else. Grepping for
+  `passwordLoginAvailable`, `hasPassword` and `passwordSet` finds no other site, and
+  `AdminUserSummary` excludes the password hash deliberately, which we are not asking you to change.
+
+**The ask:** carry `passwordLoginAvailable` and the passkey count on the GET response — either as a
+small wrapper around the list, or as two fields beside it. Whichever shape you pick, a boolean is
+enough; the frontend does not want the hash or anything derived from it beyond "this account can
+still log in without a passkey". The delete response can keep `remainingPasskeys` as it is.
+
+One behaviour we will state in the UI, so flag it if we have it wrong: the delete calls
+`sessionService.revokeAllForUser(id)`, so revoking a single authenticator ends every live session
+that user has, not only the one tied to that credential.
+
+There is no row for this on your board yet — this section is the row until you file one.
+
 ## Two rows you can close from the frontend side
 
 - **`#30`** — the frontend half it was held open for shipped as
@@ -75,6 +105,6 @@ RC1 row.
 
 ## Board bookkeeping
 
-MA1 and EM2 keep their rows on the frontend board. The frontend does not write to
+MA1, EM2 and AU2 keep their rows on the frontend board. The frontend does not write to
 `edens.zac.backend`; cross-repo items get specced here and handed over, which is what this
 document is.

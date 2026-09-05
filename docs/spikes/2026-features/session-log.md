@@ -238,3 +238,15 @@ same close-out that adds them._
   which is exactly what SD6 waits on. Four working rules hoisted, including the CI-never-ran trap,
   "measure both sides of a change", and that `git checkout -b` fails _dirty_ under the agent
   sandbox. Next: merge #383/#384, then MA4 mark-as-read with `?q=`, MA3 §5.5, RC1.
+
+- 2026-09-02 (11) — **merged #383, #384 and #394; opened two backend MRs that are no longer ours.**
+  Auto-merge is disabled on this repo, so the stacked pair was updated, waited on and merged by
+  hand. MA3 §5.5 turned out to be **already shipped three months earlier** (`b81b6ad`, 2026-06-08)
+  and closed as a correction rather than built — the row was written the same day the migration
+  landed and had survived three planning passes on re-reading. MA4's backend half and RC1 were
+  built as BE#300/BE#301 off this board's own instructions, then **handed to the backend agent
+  after the owner ruled this board frontend-only**; BE#300 has since merged, BE#301 is still open.
+  **The squash-merge of #394 silently dropped its second commit**, taking the frontend-only rule
+  and the handoff doc with it — both recovered this pass, and the check for it hoisted into "how to
+  use this doc". Deleted the two MA4 `read_at` rows (false once V61 landed) and fixed one drifted
+  ref (`@DeleteMapping` `:55` → `:85`). Next: MA4's frontend half, RC3, SD3.
