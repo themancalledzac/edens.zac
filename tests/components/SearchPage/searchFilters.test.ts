@@ -80,6 +80,7 @@ describe('seedFilterState', () => {
       tags: ['alpine'],
       people: ['Ada'],
       cameras: ['M6'],
+      lenses: ['35mm Summicron'],
       locations: ['Dolomites'],
       dates: ['2026-07-20'],
     });
@@ -89,13 +90,18 @@ describe('seedFilterState', () => {
     expect(seeded.selectedTags).toEqual(['alpine']);
     expect(seeded.selectedPeople).toEqual(['Ada']);
     expect(seeded.selectedCameras).toEqual(['M6']);
+    expect(seeded.selectedLenses).toEqual(['35mm Summicron']);
     expect(seeded.selectedLocations).toEqual(['Dolomites']);
     expect(seeded.selectedDates).toEqual(['2026-07-20']);
   });
 
-  it('leaves lenses unseeded, because no URL key carries them', () => {
-    expect(serializeFilterToParams({ lenses: ['35mm'] }).toString()).toBe('');
-    expect(seedFilterState({ lenses: ['35mm'] }).selectedLenses).toEqual([]);
+  it('restores a lens selection off the URL, so a lens filter is shareable', () => {
+    const params = serializeFilterToParams({ lenses: ['35mm Summicron'] });
+
+    expect(params.getAll('lens')).toEqual(['35mm Summicron']);
+    expect(seedFilterState(parseFilterFromParams(params)).selectedLenses).toEqual([
+      '35mm Summicron',
+    ]);
   });
 
   it('treats a rating below 4 as the highly-rated toggle being off', () => {
@@ -111,6 +117,7 @@ describe('deep-link round trip', () => {
       selectedTags: ['alpine', 'winter'],
       selectedPeople: ['Ada'],
       selectedCameras: ['M6'],
+      selectedLenses: ['35mm Summicron'],
       selectedLocations: ['Dolomites'],
       selectedDates: ['2026-07-20'],
     });

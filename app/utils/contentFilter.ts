@@ -703,6 +703,9 @@ export function parseFilterFromParams(
   const cameras = getAll('camera');
   if (cameras.length > 0) criteria.cameras = cameras;
 
+  const lenses = getAll('lens');
+  if (lenses.length > 0) criteria.lenses = lenses;
+
   const dates = getAll('date');
   if (dates.length > 0) criteria.dates = dates;
 
@@ -751,6 +754,7 @@ export const FILTER_PARAM_KEYS = [
   'location',
   'tag',
   'camera',
+  'lens',
   'date',
   'year',
   'q',
@@ -780,6 +784,7 @@ export function serializeFilterToParams(criteria: ContentFilterCriteria): URLSea
   for (const l of criteria.locations ?? []) params.append('location', l);
   for (const t of criteria.tags ?? []) params.append('tag', t);
   for (const c of criteria.cameras ?? []) params.append('camera', c);
+  for (const l of criteria.lenses ?? []) params.append('lens', l);
   for (const d of criteria.dates ?? []) params.append('date', d);
   for (const y of criteria.years ?? []) params.append('year', y);
 
@@ -926,9 +931,7 @@ export function extractCollectionFilterOptions(
 
 /**
  * Build filter criteria from a collection page's filter state — all-AND match
- * mode. Single source of truth for both the live filter and the URL sync (the
- * `lenses` key has no URL param, so it is silently dropped by
- * {@link serializeFilterToParams}).
+ * mode. Single source of truth for both the live filter and the URL sync.
  */
 export function buildCollectionCriteria(filterState: FilterState): ContentFilterCriteria {
   return {
@@ -966,6 +969,7 @@ export function hasAnyActiveFilter(filterState: FilterState): boolean {
     filterState.selectedPeople.length > 0 ||
     filterState.selectedCameras.length > 0 ||
     filterState.selectedLenses.length > 0 ||
+    filterState.selectedFilmTypes.length > 0 ||
     filterState.selectedLocations.length > 0 ||
     filterState.selectedDates.length > 0 ||
     filterState.selectedYears.length > 0

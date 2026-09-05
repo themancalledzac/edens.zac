@@ -132,7 +132,12 @@ export function getContentDimensions(
  * `&&` semantics with a placeholder default.
  */
 export function pickImageDimensions(
-  source?: { imageWidth?: number; width?: number; imageHeight?: number; height?: number } | null
+  source?: {
+    imageWidth?: number | null;
+    width?: number;
+    imageHeight?: number | null;
+    height?: number;
+  } | null
 ): { width?: number; height?: number } {
   return {
     width: source?.imageWidth ?? source?.width,

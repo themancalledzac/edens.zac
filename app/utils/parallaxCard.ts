@@ -19,8 +19,8 @@ const SQUARE_FALLBACK_SIDE = 1000;
  * existing callers and tests are unchanged.
  */
 export function clampParallaxDimensions(
-  width?: number,
-  height?: number
+  width?: number | null,
+  height?: number | null
 ): { imageWidth?: number; imageHeight?: number } {
   if (width && height) {
     const ar = width / height;
@@ -31,7 +31,7 @@ export function clampParallaxDimensions(
       return { imageWidth: width, imageHeight: Math.round(width / IMAGE.maxParallaxAR) };
     }
   }
-  return { imageWidth: width, imageHeight: height };
+  return { imageWidth: width ?? undefined, imageHeight: height ?? undefined };
 }
 
 /**
