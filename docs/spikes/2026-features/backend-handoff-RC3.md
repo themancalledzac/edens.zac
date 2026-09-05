@@ -22,7 +22,7 @@ for a COLLECTION row. It carries `slug`, `referencedCollectionId`, `coverImage`,
 `hasChildren`, no `children`, no `contentCount`.
 
 **Backend.** `ContentModels.Collection` (`src/main/java/edens/zac/portfolio/backend/model/ContentModels.java:236`)
-is the record it maps from. Twenty components, and none of them describe children:
+is the record it maps from. Twenty-one components, and none of them describe children:
 
 ```bash
 git show origin/main:src/main/java/edens/zac/portfolio/backend/model/ContentModels.java \
