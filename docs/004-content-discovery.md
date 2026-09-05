@@ -1,6 +1,6 @@
 # 004 · Content Discovery & Filtering
 
-> Letting visitors (and admins) slice the image catalog by location, people, tags, camera, and rating · collection-tags frontend + location bar partially shipped, search backend-blocked.
+> Letting visitors (and admins) slice the image catalog by location, people, tags, camera, and rating · collection-tags frontend + location bar shipped; `/search` shipped 2026-08-31 (feature board SD1).
 
 This chapter covers the public-facing ways to find images: a future `/search` route, the live Location-page filter bar, collection-level tagging on the manage page, and the Collection IA (tag-view routing + save/follow). The throughline is a single reusable filter-bar/chip component — the location bar proved the pattern in Phase 1, and Search, Person, Tag, and Collection views should all reuse it rather than each rebuilding filters from scratch.
 
@@ -25,27 +25,27 @@ Switching it off drops **both `UNLISTED` and `HIDDEN`**, mirroring the backend's
 ## Remaining work (deduped)
 
 - Build ONE reusable filter-bar/chip component shared across Search / Location / Person / Tag / Collection — don't rebuild per page.
-- ✅ **Backend visibility on collection blocks — done** (`0243-collection-block-visibility`, backend PR #143), which activates the admin Hide-hidden chip. Still open (verified 2026-08-10): **backend never enriches `locations` on collection blocks** — `SyntheticCollectionResolver` batch-loads tags only, so the location dimension is inert on `/collections` (frontend matching via `collectionRefMatchesCriteria` is ready; needs a BE enrichment mirroring the tags batch-load). `convertCollectionContentToParallax` also hard-codes `locations: []` on the card, though filtering runs pre-conversion so that alone doesn't block it.
-- `/search` public route: `SearchPage` server component + `SearchFilters` client component + `searchImages()` API fn + `SearchParams` type + nav link + error/loading/empty states. ⛔ Blocked on backend `GET /content/images/search` (and `GET /content/locations` for the location dropdown).
-- Location filter bar Phase 2/3: tag/people/camera chip rows, dynamic option counts (`Canon R5 (47)`), removable active-filter badges + Clear-all, focal-length range.
+- ✅ **Backend visibility on collection blocks — done** (`0243-collection-block-visibility`, backend PR #143), which activates the admin Hide-hidden chip. ✅ **`locations` (and `people`) on collection blocks shipped** — backend #277 and #293, 2026-08-31 (feature board SD2/SD7); the location dimension on `/collections` is live.
+- ✅ `/search` public route **shipped** 2026-08-31 (feature board SD1, #357) — it was never backend-blocked; the endpoints were live. Still unlinked from the nav pending the `/explore` decision (SD4). Note: the search endpoint returns every image regardless of collection visibility (backend S-29, refactor board D15).
+- Location filter bar Phase 2/3: chip rows and dynamic counts shipped; removable active-filter badges + Clear-all shipped (#373); year chips (#376) and film stock (#397) shipped; **focal-length range was built and dropped by the owner (#379) — do not rebuild.**
 - Collection tags: ✅ **frontend Phase 1 merged ([PR #167](https://github.com/themancalledzac/edens.zac/pull/167), `0165`)** — a shared `TagsSelector` (extracted from the image editor's `TagsPeopleSection`, reused on the manage page) + `tagUtils` (`convertTagsToModels`/`createTagsUpdate`) + `buildUpdatePayload` wiring; backend `TagUpdate` persistence confirmed. Remaining: the auto-tag endpoint + "Auto-populate from images" button (Phase 2, backend), and optional tag-chip display on the public collection page.
 - ✅ **Unified filter-visibility gate — shipped** (`canFilter`/`computeFilterVisibility`, 35/35 plan tasks; plan archived).
 - Menu-dropdown nav & discovery: **Option A shipped** (Home/Me live in `MenuDropdown`, delivered via the Collection IA work above); **Option C** (`/explore` as a real drill-down explorer) still open.
-- **Breadcrumb mount-or-drop** — `app/components/Breadcrumb/Breadcrumb.tsx` exists but is unmounted; decide whether to wire it into `CollectionPageClient` or delete it.
-- **Verify people/location chip-click-to-filter** — confirm content-renderer chips route to `/{tagSlug}` / `/location/{slug}` as designed.
-- **A3 Spot-1** — Save-as-Collection button on the tag-view page itself (blocked on rendering tag-views through the collection editor; see `TODO(A3)` in `useCollectionEdit.tsx`).
+- ✅ **Breadcrumb** — dropped and deleted (refactor board A1); the component no longer exists.
+- ✅ **Chip-click-to-filter** — settled 2026-08-31 (feature board SD5): fullscreen tag chips now link to `/tag/{slug}` (#382); people chips wait on a person route (SD6, decision #17).
+- ✅ **A3 Spot-1** — shipped (`b66c39a`): `saveTagAsCollection` in `useCollectionEdit` through `SaveAsCollectionModal`; the `TODO(A3)` comment is gone.
 
 ## Sections
 
-| Section                                                                                                       | Role | Status                                                                                    |
-| ------------------------------------------------------------------------------------------------------------- | ---- | ----------------------------------------------------------------------------------------- |
-| [Public Search Page](superpowers/plans/004-public-search-page.md)                                             | plan | ⛔                                                                                        |
-| [Location Page Filter Bar](superpowers/plans/004-location-filter-bar.md)                                      | plan | 🟡                                                                                        |
-| [Collection Tags](superpowers/plans/004-collection-tags.md)                                                   | plan | 🟡 (FE Phase 1 shipped; auto-tag + display remain)                                        |
-| [Collection IA & user-flow (living spec)](superpowers/specs/2026-06-29-collection-ia-and-user-flow-design.md) | spec | 📘 (A1/A3 shipped; A2/Track D deferred; D7/D8 superseded → collections-as-tags)           |
-| [Collections-as-tags (design)](superpowers/specs/2026-07-06-collections-as-tags-design.md)                    | spec | 📘 (D1–D12 awaiting review)                                                               |
-| [Menu-dropdown nav & discovery](superpowers/specs/2026-06-10-menu-dropdown-nav-design.md)                     | spec | ✅ Option A shipped · Option C open                                                       |
-| [Collections page filter bar](superpowers/specs/2026-08-05-collections-page-filter-bar-design.md)             | spec | ✅ Shipped 0243 (rating sort cut) · BE visibility shipped (backend #143); chip is live    |
+| Section                                                                                                       | Role | Status                                                                                 |
+| ------------------------------------------------------------------------------------------------------------- | ---- | -------------------------------------------------------------------------------------- |
+| [Public Search Page](superpowers/plans/004-public-search-page.md)                                             | plan | ⛔                                                                                     |
+| [Location Page Filter Bar](superpowers/plans/004-location-filter-bar.md)                                      | plan | 🟡                                                                                     |
+| [Collection Tags](superpowers/plans/004-collection-tags.md)                                                   | plan | 🟡 (FE Phase 1 shipped; auto-tag + display remain)                                     |
+| [Collection IA & user-flow (living spec)](superpowers/specs/2026-06-29-collection-ia-and-user-flow-design.md) | spec | 📘 (A1/A3 shipped; A2/Track D deferred; D7/D8 superseded → collections-as-tags)        |
+| [Collections-as-tags (design)](superpowers/specs/2026-07-06-collections-as-tags-design.md)                    | spec | 📘 (D1–D12 awaiting review)                                                            |
+| [Menu-dropdown nav & discovery](superpowers/specs/2026-06-10-menu-dropdown-nav-design.md)                     | spec | ✅ Option A shipped · Option C open                                                    |
+| [Collections page filter bar](superpowers/specs/2026-08-05-collections-page-filter-bar-design.md)             | spec | ✅ Shipped 0243 (rating sort cut) · BE visibility shipped (backend #143); chip is live |
 
 ## Blocked on / open
 

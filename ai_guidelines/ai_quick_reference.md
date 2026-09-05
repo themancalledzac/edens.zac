@@ -119,6 +119,7 @@ If a literal is _mostly_ static but contains one props-derived field (e.g. an `a
 
 ## Common Mistakes to Avoid
 
+- ❌ Writing comments inside React component code (JSX `{/* ... */}` or inline `//` in component or function bodies) — documentation belongs in docblocks (JSDoc above the file/component/function) only. "Why" context is not an exception: it goes in the docblock of the function it explains. If a function's docblock would get too big because the function does too much, split the function instead of commenting inline
 - ❌ Using `'use client'` unnecessarily - prefer Server Components
 - ❌ Importing from `pages/` or legacy directories
 - ❌ Using `any` type - always use proper TypeScript types

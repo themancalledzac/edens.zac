@@ -13,14 +13,19 @@ decision from you, and it is the only part that collides with your board.
 
 ## What already exists
 
-| Item | PR                                                                    | Branch                        | State (2026-09-02)               |
-| ---- | --------------------------------------------------------------------- | ----------------------------- | -------------------------------- |
-| MA4  | [#300](https://github.com/themancalledzac/edens.zac.backend/pull/300) | `ma4-mark-as-read-and-search` | **MERGED** 2026-09-01            |
-| RC1  | [#301](https://github.com/themancalledzac/edens.zac.backend/pull/301) | `rc1-parents-public-isfilm`   | OPEN, green — awaiting your call |
+| Item | PR                                                                    | Branch                        | State (2026-09-02)    |
+| ---- | --------------------------------------------------------------------- | ----------------------------- | --------------------- |
+| MA4  | [#300](https://github.com/themancalledzac/edens.zac.backend/pull/300) | `ma4-mark-as-read-and-search` | **MERGED** 2026-09-01 |
+| RC1  | [#301](https://github.com/themancalledzac/edens.zac.backend/pull/301) | `rc1-parents-public-isfilm`   | **MERGED** 2026-09-04 |
 
-**#300 merged with its board-row commit kept rather than reverted**, so MA4 is `#30` on your board.
-Nothing further is owed on the MA4 side and its frontend half is being built in `edens.zac`. The
-next section therefore applies to #301 only.
+**Both merged (updated 2026-09-05).** #300 kept its board-row commit, so MA4 is `#30` on your board
+— and `#30` can close now: the frontend half it was held open for shipped as
+[edens.zac#396](https://github.com/themancalledzac/edens.zac/pull/396) on 2026-09-03 (`?q=`,
+`?unread=`, `PATCH /{id}/read`, `readAt` all consumed). The notify channel is MA4's remaining piece
+on the frontend board and has no backend row. #301 merged 2026-09-04, so your `#31` should read
+merged rather than "MR open"; its `isFilm` re-measure is still owed by whoever has a live backend
+first (the command is on the frontend board's RC1 row). The "Do this first" section below is
+historical.
 
 Both branched off `origin/main` at `43c6f2c6`. `./mvnw test` passes on each — 1523 and 1508.
 

@@ -32,40 +32,16 @@ Common flags:
 
 ## Formatting & Verification
 
-After editing files, run ESLint fix, then Prettier, then type check. **Order matters**: `eslint --fix`
-rewrites import blocks, so Prettier must run last or it will re-wrap them and leave the tree
-unformatted. **Scope the commands to the files you actually changed** — running them across the whole
-tree rewrites unrelated files and pollutes the diff.
-
-```bash
-# Lint fix first (matches Cursor's source.fixAll.eslint on save)
-npx eslint --fix <files>
-# Format last (matches .prettierrc.json)
-npx prettier --write <files>
-# Type check LAST of all — an ESLint autofix can break types (see below)
-npx tsc --noEmit
-```
-
-Always re-run `tsc` **after** `eslint --fix`, never only before. `unicorn/no-useless-undefined`
-strips the argument from `jest.fn().mockResolvedValue(undefined)`, and the resulting
-`mockResolvedValue()` fails to type-check for a `Promise<void>` mock. Write those as
-`jest.fn(() => Promise.resolve())`, which satisfies both tools.
-
-For SCSS files, also run Stylelint:
-
-```bash
-npx stylelint --fix <files>
-```
+After editing, run `npx eslint --fix`, then `npx prettier --write`, then `npx tsc --noEmit` — each
+scoped to the files you changed. That order is required, and `tsc` must run _after_ `eslint --fix`,
+never only before. For SCSS also run `npx stylelint --fix`. Rationale and the autofix/type-check
+gotcha: `ai_guidelines/ai_lint.md`.
 
 ## Common Mistakes to Avoid
 
-- Writing comments inside React component code (JSX `{/* ... */}` or inline `//` in component or function bodies) - documentation belongs in docblocks (JSDoc above the file/component/function) only. "Why" context is not an exception: it goes in the docblock of the function it explains. If a function's docblock would get too big because the function does too much, split the function instead of commenting inline
-- Using `'use client'` unnecessarily - prefer Server Components
-- Using `any` type - always use proper TypeScript types
-- Creating components without corresponding SCSS modules
-- Using React Context when URL state would suffice
-- Not using `next/image` for images (always use CloudFront URLs)
-- Using `import React` namespace - always use named imports from `'react'`
+New components need a matching SCSS module. Use `next/image` with CloudFront URLs. Prefer URL state
+over React Context. Import named exports from `'react'`, never the `React` namespace. Full list:
+`ai_guidelines/ai_quick_reference.md`.
 
 ## Modular Guidelines
 
@@ -82,3 +58,13 @@ For detailed guidance on specific topics, refer to the files in `ai_guidelines/`
 | **CSS/SCSS conventions (gap rule)**         | `ai_guidelines/ai_css.md`             |
 
 **Note**: These files are modular and should be referenced when working in the relevant area.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

@@ -59,14 +59,14 @@ All re-run against the backend's `origin/main`.
 
 **MR 1 is backend:** split the list to store from the list to notify — a `notifyEmails` on
 `GalleryAccessRequest`, or append semantics on `emails` with the notify set derived from what was
-new. **The backend-board row is still owed** — on 2026-08-31 that repo was mid-work in another
-session (branch `perf/mr19-21-location-endpoint-n1`, dirty tree), so nothing was written there.
-File it in the next backend session, under the cross-repo section. The frontend reshape follows the
-backend MR, unchanged from the description above.
+new. Under the frontend-only rule this repo does not file rows on the backend board, so the ask is
+written as a handoff instead: [backend-handoff-MA1-EM2.md](backend-handoff-MA1-EM2.md) (2026-09-05).
+Until the backend agent picks it up, that document is the item's only owner. The frontend reshape
+follows the backend MR, unchanged from the description above.
 
 **Collision, unchanged:** MA1 deletes `InfoTab.tsx`, so any EM2 frontend built there is thrown
-away. MA1 is itself blocked on an absent `PATCH /collections/{id}`, so both items now wait on
-backend MRs — EM2's is the smaller. The ordering question is moot until one of them lands.
+away. MA1's backend blocker turned out to be a question rather than an absent endpoint (see the MA1
+section and the same handoff), so MA1 may move first; whichever lands first settles the ordering.
 
 ## EM3 · Contact-owner notification + `user_invite.created_by`
 

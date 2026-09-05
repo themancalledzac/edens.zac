@@ -8,12 +8,12 @@ F3's four remaining bullets and F4 are on the live board.
 
 ## Closed rows
 
-| MR  | Scope                                                                      | Outcome                                                                                                  |
-| --- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| F2  | `RendererContext` for the BoxRenderer tree                                 | −47 src / +142 test (est. −100 src / +150–250 test) · #321                                                |
-| F5  | `FullScreenModal` link + resolver cleanup                                  | −25 src / +20 test net (est. −30 src, +60–120 test) · #318 — src held; test came in UNDER                 |
+| MR  | Scope                                                                      | Outcome                                                                                                                      |
+| --- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| F2  | `RendererContext` for the BoxRenderer tree                                 | −47 src / +142 test (est. −100 src / +150–250 test) · #321                                                                   |
+| F5  | `FullScreenModal` link + resolver cleanup                                  | −25 src / +20 test net (est. −30 src, +60–120 test) · #318 — src held; test came in UNDER                                    |
 | F6  | Fold `EditModeLayer` into `RendererContext` (shared set 16 → **4**, not 3) | +53 src / +218 test (est. −20 src / +40–60 test) · #326 — #325 orphaned on a retired base; src missed in the WRONG DIRECTION |
-| F7  | Delete `onImageLoadError` from the render path (dead plumbing)             | −3 src / +8 test (est. −15 src / −20 test) · #328 — completes 16 → 3; estimate missed direction on BOTH halves |
+| F7  | Delete `onImageLoadError` from the render path (dead plumbing)             | −3 src / +8 test (est. −15 src / −20 test) · #328 — completes 16 → 3; estimate missed direction on BOTH halves               |
 
 ### ✅ F2 · `RendererContext` for the BoxRenderer tree — SHIPPED
 
@@ -398,9 +398,9 @@ and still passes.
 
 ---
 
-### ◐ F3 · File moves and renames — shipped bullets and cost reports (`ReorderMove` #324, `getUserPage` #336, logger labels #343, `CollectionPageWrapper` #348, `AdminPanel/` fold #349; invite move REJECTED)
+### ✅ F3 · File moves and renames — shipped bullets and cost reports (`ReorderMove` #324, `getUserPage` #336, logger labels #343, `CollectionPageWrapper` #348, `AdminPanel/` fold #349; invite move REJECTED)
 
-_Moved from the live board 2026-08-29. The six open bullets stay there with their verified counts._
+_Moved from the live board 2026-08-29. The open bullets (four as of 2026-09-05) stay there with their verified counts._
 
 **SHIPPED 2026-08-27 — the `getUserPage` bullet, PR #336. Src `+38/−26` (net +12), test `+58/−56`
 (net +2).** Measured with `git diff --cached --numstat -- app` and `-- tests`, summed with `awk`.
@@ -526,19 +526,20 @@ vague bullet into a shippable item.
       `personal.ts` to 131 lines and `share.ts` to 161. The premise is untouched; only the
       coordinates moved.
 - [x] ~~`ReorderMove` type → `app/types/Content.ts`~~ **Done in #324.** The public tree imported it from the admin edit directory. **This bullet is the sole blocker on F6** — do it first and F6's dependency edge is one-way instead of two. As of #321 the importer is `RendererContext.tsx`, not `BoxRenderer.tsx`. **Measured, not guessed** — `grep -rln "ReorderMove" app/ tests/` against `main` at `dbc706a` returns exactly FOUR files and zero test files: `Content/RendererContext.tsx`, `Content/boxRendererUtils.ts`, `edit/collectionEditUtils.ts` (the declaration), `edit/hooks/useContentReordering.ts`. Two of the four are already on the public side, which is the whole argument for the move. A four-file, no-test-churn change.
-- [x] ~~~~Two~~ **THREE** `logger.warn('manageUtils', …)` labels in `collectionEditUtils.ts` still name
-      a module that no longer exists.~~ **SHIPPED 2026-08-28 — PR #343, MERGED, +3/−3 src, 0 test.**
-      All three (`collectionEditUtils.ts:225`, `:279`, `:305`) now read `'collectionEditUtils'`.
-      **The estimate was exactly right for once** — 1 src file, 0 test churn; suite unchanged at the
-      pre-run reading (recorded as 245 / 4454, itself stale — see the re-measure rule).
-      The bullet's own count correction (THREE, not two) also held, and the line refs had not
-      drifted since the 2026-08-25 sweep. Original filing kept for history: found by B1 (#290) and
-      deliberately left, because renaming log labels inside a test-only MR would have put a source
-      change in a diff that had none. Nothing pinned the string —
-      `git grep "'manageUtils'" -- tests/` returned nothing and `logger.warn` is a no-op under
-      `NODE_ENV === 'test'`. The one surviving `manageUtils` mention, at
-      `collectionEditUtils.test.ts:4`, is a docblock recording which file B1 merged in; that is
-      accurate history and was left alone.
+- [x] ```Two~~ **THREE** `logger.warn('manageUtils', …)` labels in `collectionEditUtils.ts` still name
+          a module that no longer exists.~~ **SHIPPED 2026-08-28 — PR #343, MERGED, +3/−3 src, 0 test.**
+          All three (`collectionEditUtils.ts:225`, `:279`, `:305`) now read `'collectionEditUtils'`.
+          **The estimate was exactly right for once** — 1 src file, 0 test churn; suite unchanged at the
+          pre-run reading (recorded as 245 / 4454, itself stale — see the re-measure rule).
+          The bullet's own count correction (THREE, not two) also held, and the line refs had not
+          drifted since the 2026-08-25 sweep. Original filing kept for history: found by B1 (#290) and
+          deliberately left, because renaming log labels inside a test-only MR would have put a source
+          change in a diff that had none. Nothing pinned the string —
+          `git grep "'manageUtils'" -- tests/` returned nothing and `logger.warn` is a no-op under
+          `NODE_ENV === 'test'`. The one surviving `manageUtils` mention, at
+          `collectionEditUtils.test.ts:4`, is a docblock recording which file B1 merged in; that is
+          accurate history and was left alone.
+      ```
 
 #### The invite-move cost report — COSTED 2026-08-27, REJECTED
 
@@ -602,7 +603,7 @@ everything else**, leaving `regenerateInvite` beside `createUser`/`upgradeUser` 
 lives. Two functions, not three, and each file ends with ONE perimeter. **Not proposed as a
 task — recorded so the next pass does not re-litigate the 3-function version from scratch.**
 
-### ☐ F1 · Decompose `useCollectionEdit.tsx` — boundary-drift history (three occurrences)
+### ✅ F1 · Decompose `useCollectionEdit.tsx` — boundary-drift history (four occurrences; the item is open on the live board)
 
 _Moved from the live board 2026-08-29. The item itself is open there with the current boundaries
 and anchors; this is the record of how the boundaries drifted and what each drift taught._

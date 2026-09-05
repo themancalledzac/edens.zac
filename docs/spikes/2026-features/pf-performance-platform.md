@@ -4,7 +4,11 @@ _Context file for board items PF1–PF9 on [2026-features.md](../2026-features.m
 the dominant issue (hero not in server HTML) closed via PR #161's server-side layout seeding; the
 rest of the 002 chapter is this group._
 
-## PF13 · Make the home page genuinely static (Cache Components / PPR) — COLD, real work
+## PF13 · Make the home page genuinely static (Cache Components / PPR) — COLD; MR 1 shipped #381, the rest is ours
+
+_Status note 2026-09-05: the board row said BLOCKED on `getCollectionBySlug` and `meServer`. Both
+are this repo's own code, so under the board's own rule this is COLD with a plan, not BLOCKED. The
+plan is the revised step list below._
 
 Created by PF4's closure. PF4 asked for a segment-config flip and there is no flip to make; the
 question it was really asking — can the hottest page stop rendering per request? — is still open,
@@ -79,7 +83,7 @@ precondition.
 
 1. **Hoist cookie forwarding out of `fetchBase`.** This is the real MR 1 and it was not on the
    list. `getServerCookieHeader()` is awaited inside `fetchBase`
-   (`app/lib/api/core.ts:269`), which every server-side backend read funnels through, so no read
+   (`app/lib/api/core.ts:281`), which every server-side backend read funnels through, so no read
    can be wrapped in `use cache` — `cookies()` in a cached scope throws
    `next-request-in-use-cache`, and per `use-cache.md:196` that failure "can pass `next build` and
    fail under `next start`". Pass the cookie header in as an argument, or give the cacheable reads
@@ -119,7 +123,7 @@ The build now attempts 22 static pages instead of 3, and **fails**:
 - `/_not-found` — the root-layout `new Date()` above.
 - `/collections` — `ApiError: During prerendering, fetch() rejects when the prerender is complete`,
   thrown at `app/lib/api/core.ts:236` via `getScopedAllCollections`
-  (`app/lib/api/collections.ts:130`), called from `app/collections/page.tsx:100`. This is the
+  (`app/lib/api/collections.ts:136`), called from `app/collections/page.tsx:98`. This is the
   build-container-cannot-reach-the-backend case the force-dynamic comments were written for.
 - `/` and `/search` — `Failed to build ... because it took more than 60 seconds`, three attempts
   each, then the export exits. `/search` fails **despite already having a Suspense boundary and
@@ -134,7 +138,7 @@ still calls the backend and still evaluates `new Date()`.
 **The behaviour change the guardrail was watching for is real and is in the fetches.** Under
 `cacheComponents` a bare `fetch` is dynamic; `next: { revalidate, tags }` applies only inside a
 `use cache` scope. Six call sites currently cache on `TIMING.revalidateCache = 3600` with tags —
-`collections-index`, `collection-{slug}`, `collections-location-{slug}` (`app/lib/api/collections.ts:84,108,151`),
+`collections-index`, `collection-{slug}`, `collections-location-{slug}` (`app/lib/api/collections.ts:85,115,158`),
 `content-tags`, `content-locations`, `search-images` (`app/lib/api/content.ts:42,58,139`). All six
 silently stop being cached, and `revalidateTag` in `app/api/revalidate/route.ts:62,69` loses its
 targets. That is a change to the hottest reads on the site, landing invisibly.
@@ -165,8 +169,42 @@ time, no code prerequisite left (Caddy already deleted in anticipation). The seq
 6. Verify the EC2 public IP no longer answers directly
 
 Related backend item that should precede any second public endpoint: generalize the rate-limit
-config (`application.properties:79-80` is contact-specific) into a per-path map — see AU1, which
+config (`application.properties:81-82` is contact-specific) into a per-path map — see AU1, which
 needs it for the forgot-password trigger.
+
+Acceptance, copied from the gitignored plan so this file is self-sufficient:
+
+- [ ] DNS proxied through CloudFlare (orange cloud) for the apex and relevant subdomains
+- [ ] `terraform/security.tf` restricts 80/443 to CloudFlare ranges; 8080 closed
+- [ ] Page Rule rate-limits `*/api/public/*`; cache bypassed there
+- [ ] `RateLimitFilter` keys off `CF-Connecting-IP`; per-IP buckets still isolate correctly
+- [ ] `route.ts` no longer injects `X-Real-IP` (the `TODO(CloudFlare Phase 2)` at `route.ts:77`)
+- [ ] A direct request to the EC2 public IP times out
+
+While here: the apex `https://zacedens.com` serves 200 without redirecting to `www`, and the
+write-origin allowlist admits exactly one origin, so whichever host `NEXT_PUBLIC_APP_URL` does not
+name gets a silent 403 on every write (refactor board D13 records it). A DNS-layer apex → www
+redirect belongs in this same CloudFlare pass.
+
+## PF14 · Site-wide dark mode behind a user preference — COLD, unscoped
+
+Spun out of MA3 by decision #5 (2026-08-31). `app/(admin)/layout.tsx` removed the admin-only dark
+wiring; its docblock (`:11-18`) records why, and the user confirmed the reasoning: a real dark mode
+belongs to the whole site behind a preference. The `[data-surface='dark']` token block in
+`app/styles/globals.css` and the `Modal` surface bridge survive as the mechanism.
+
+Not scoped. The first sitting is a scoping pass, not a build, and it answers three things:
+
+- Whether every SCSS module reads tokens rather than literals. Starting count:
+  `grep -rnE '#[0-9a-fA-F]{3,6}|rgb\(' app --include='*.module.scss' | wc -l`.
+- Where the preference persists. A cookie read server-side, so the first paint is already themed;
+  `localStorage` flashes the light theme on every SSR page. If it becomes a `data-theme` attribute
+  on `<html>` in the root layout, note that reading `cookies()` there interacts with PF13.
+- Per-account or per-browser. Per-browser is a cookie and buildable here; per-account needs a
+  column on `app_user` and is a backend handoff.
+
+**Do not build an admin-only variant** — that is what decision #5 rejected. MA3 §5.2's bottom bar
+waits on a light-surface respec (decision #15), not on this.
 
 ## Audit debt (no rows yet — re-derive before working)
 
@@ -268,7 +306,7 @@ Then a backfill over **1424 images** (`curl "localhost:8080/api/read/content/ima
 **The one genuinely cheap thing, also declined.** Next 16.3.1 accepts a raw data URI as the
 `placeholder` value with no `blurDataURL` at all — verified in the shipped runtime at
 `node_modules/next/dist/shared/lib/get-img-props.js:414`. A generic shimmer would have been one
-edit to the shared `imageProps` object at `CollectionContentRenderer.tsx:668`. Worth knowing if
+edit to the shared `imageProps` object at `CollectionContentRenderer.tsx:681`. Worth knowing if
 this ever comes back: the gallery funnels every image through that one object literal.
 
 ### ✅ PF12 · Gate the auto-deploy on CI — applied 2026-08-31 (no PR; repo + host settings)

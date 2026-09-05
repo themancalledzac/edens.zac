@@ -1,6 +1,7 @@
 # Session log — 2026 Summer Refactor
 
-_Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-refactor.md). Nothing here is open work. Sections are verbatim as they were when the item merged._
+_Archive of the [2026 Summer Refactor board](../2026-summer-refactor.md)'s session log, oldest first.
+The 2026-08-29 and 2026-08-30 entries were re-ordered 2026-09-05; they had been filed reversed._
 
 One line per `/next` run, oldest first. The newest two entries stay on the live board; everything older lives here. Three consecutive entries ending in the same `Next:` means that item is being avoided, not scheduled.
 
@@ -1124,6 +1125,45 @@ pageType="collectionsCollection">` is one line before and one line after — so 
   behavior without checking the setting that governs it.**
   Next: A9's `.claude/agents/` bullet, then F3's `CollectionPageWrapper` and `AdminPanel/` moves.
 
+- 2026-08-29 — **applied the 2026-08-28 nine-agent split review (both repos' boards) to this
+  board: corrections, five new items, and the slim-down restructure. No code MR — this is the
+  board pass the review produced.**
+  **Corrections applied, ~45 across the five review reports.** Statuses (H1 → BLOCKED-user
+  everywhere; B8's arithmetic to 5-of-6 — no enumeration ever reached "8 of 9"; F3 to six open
+  bullets, its rejected invite bullet struck rather than left as an open box). Counts (blocked
+  footnote re-derived; "92 style files" → 87; the pinned 245/4454 suite figure retired in favour
+  of re-measure). Stale refs (H1 fully re-derived — the 08-28 sweep had fixed only its three
+  premise refs; E7's close-out refs stamped pre-#337 with current equivalents; E6's micro-drifts;
+  F1's first-bullet boundary set replaced with the verified current set and its two unanchored
+  boundaries anchored). Stale prose (`.next-verify` is gone and `tsc --noEmit` exits 0 — sessions
+  should expect a CLEAN type check; C9's "pin it" bullet was already pinned by B4's own tests in
+  `tests/utils/contentLayout.test.ts`; G2's dead layoutpreview parenthetical and superseded
+  inventory blockquote removed; E6's dangling self-referencing line-number paragraph deleted and
+  the no-line-number rule added to "How to use this doc"). One review claim did not reproduce and
+  was left alone: no malformed link exists in group-h-features.md (all `(admin)` links use the
+  valid angle-bracket form and every target resolves).
+  **Five new items filed, each with a row and a section in the same edit:** **C10** (HIGH — exiting
+  manage mode leaves a blank public page; #337's memo guard keys on never-reset `editLayerMounted`
+  while exit is a soft navigation; recommended next MR, ahead of the picked run), **C11** (429
+  branch missing in ShareCard's `mapError` for backend #233's rate limiter), **E18** (four mutation
+  paths never fire `collections-location-${slug}`, plus the wired paths read the page-load prop —
+  with the backend-only-write accepted-risk note), **D10** (`getApiBaseUrl` concatenates
+  `NEXT_PUBLIC_APP_URL` raw — Group D reopens with one row), **G5** (⛔ bare-array coordination
+  with backend MR 20 — the FE counterpart row that review found missing, phased plan recorded).
+  The blocked-questions table gains G5 and the repo-wide `styles.<key>` guard call: **9 of 19 open
+  rows now wait on the user.**
+  **Restructure, per the review's move-map: 1,981 → ~980 lines.** "How to use this doc" distilled
+  to ≤3-line rules with the incident narratives moved to the new
+  `2026-summer-refactor/lessons.md`; the 55 closed MR rows became one-line ledgers under "Closed
+  rows" in each group archive; shipped-bullet history for A9/B8/E6/E7/E9/F3/H1 and F1's
+  drift sagas moved to their group files; the archive's own defects fixed (group-b's
+  header/status contradictions, three doubled-path links in the archive session log, group-h's
+  stale "two senders" line, group-c's "the thing the backend is waiting on" overstatement).
+  **Deliberately skipped: the per-item re-estimate slice**, per this board's own
+  estimate-bias note — both structural causes are known; stop recalibrating item by item.
+  Next: C10 first, then the picked three (A9's CLAUDE.md fix, F3's `CollectionPageWrapper` move,
+  F3's `AdminPanel/` fold), with the blocked questions batched in the opening message.
+
 - 2026-08-30 — **shipped the full picked run plus the HIGH bug ahead of it: #346 (C10), #347 (A9),
   #348 (F3 `CollectionPageWrapper`), #349 (F3 `AdminPanel/` fold). Four MRs, all merged.** Plus one
   cross-repo filing, [backend #244](https://github.com/themancalledzac/edens.zac.backend/pull/244).
@@ -1170,41 +1210,24 @@ pageType="collectionsCollection">` is one line before and one line after — so 
   protocol's searches did not run and the two verification sweeps were plain filesystem passes.
   Next: G6, then C11, D10, E18.
 
-- 2026-08-29 — **applied the 2026-08-28 nine-agent split review (both repos' boards) to this
-  board: corrections, five new items, and the slim-down restructure. No code MR — this is the
-  board pass the review produced.**
-  **Corrections applied, ~45 across the five review reports.** Statuses (H1 → BLOCKED-user
-  everywhere; B8's arithmetic to 5-of-6 — no enumeration ever reached "8 of 9"; F3 to six open
-  bullets, its rejected invite bullet struck rather than left as an open box). Counts (blocked
-  footnote re-derived; "92 style files" → 87; the pinned 245/4454 suite figure retired in favour
-  of re-measure). Stale refs (H1 fully re-derived — the 08-28 sweep had fixed only its three
-  premise refs; E7's close-out refs stamped pre-#337 with current equivalents; E6's micro-drifts;
-  F1's first-bullet boundary set replaced with the verified current set and its two unanchored
-  boundaries anchored). Stale prose (`.next-verify` is gone and `tsc --noEmit` exits 0 — sessions
-  should expect a CLEAN type check; C9's "pin it" bullet was already pinned by B4's own tests in
-  `tests/utils/contentLayout.test.ts`; G2's dead layoutpreview parenthetical and superseded
-  inventory blockquote removed; E6's dangling self-referencing line-number paragraph deleted and
-  the no-line-number rule added to "How to use this doc"). One review claim did not reproduce and
-  was left alone: no malformed link exists in group-h-features.md (all `(admin)` links use the
-  valid angle-bracket form and every target resolves).
-  **Five new items filed, each with a row and a section in the same edit:** **C10** (HIGH — exiting
-  manage mode leaves a blank public page; #337's memo guard keys on never-reset `editLayerMounted`
-  while exit is a soft navigation; recommended next MR, ahead of the picked run), **C11** (429
-  branch missing in ShareCard's `mapError` for backend #233's rate limiter), **E18** (four mutation
-  paths never fire `collections-location-${slug}`, plus the wired paths read the page-load prop —
-  with the backend-only-write accepted-risk note), **D10** (`getApiBaseUrl` concatenates
-  `NEXT_PUBLIC_APP_URL` raw — Group D reopens with one row), **G5** (⛔ bare-array coordination
-  with backend MR 20 — the FE counterpart row that review found missing, phased plan recorded).
-  The blocked-questions table gains G5 and the repo-wide `styles.<key>` guard call: **9 of 19 open
-  rows now wait on the user.**
-  **Restructure, per the review's move-map: 1,981 → ~980 lines.** "How to use this doc" distilled
-  to ≤3-line rules with the incident narratives moved to the new
-  `2026-summer-refactor/lessons.md`; the 55 closed MR rows became one-line ledgers under "Closed
-  rows" in each group archive; shipped-bullet history for A9/B8/E6/E7/E9/F3/H1 and F1's
-  drift sagas moved to their group files; the archive's own defects fixed (group-b's
-  header/status contradictions, three doubled-path links in the archive session log, group-h's
-  stale "two senders" line, group-c's "the thing the backend is waiting on" overstatement).
-  **Deliberately skipped: the per-item re-estimate slice**, per this board's own
-  estimate-bias note — both structural causes are known; stop recalibrating item by item.
-  Next: C10 first, then the picked three (A9's CLAUDE.md fix, F3's `CollectionPageWrapper` move,
-  F3's `AdminPanel/` fold), with the blocked questions batched in the opening message.
+- 2026-08-31 (2) — no MRs here; **three items filed from the feature board's PF9/PF11/PF8 run**
+  (#365/#366/#367), per this repo's rule that cleanup and bug fixes live on this board rather than
+  that one. **C12**: `.metadataToggle` still carries the 36 → 40px tap-target gap that #367 closed
+  on `SaveHeart`. **C13**: `app/[slug]/page.tsx` says "Zac Eden" where three other routes say "Zac
+  Edens" — user-visible, it is the fallback meta and OG description. **G7**: seven
+  `describe('Vercel BFF proxy …')` names across two test files, left over from before PF9
+  established the host; the route's own header handling is already correct and must not change.
+  Next: unchanged — C11, D10, E18.
+
+- 2026-08-31 — shipped **G6 (#351)**, the block's own "first MR". Premise re-verified against the
+  backend's `origin/main` by running the check rather than re-reading it: `SecurityConfig.java:75-77`
+  gates `/api/admin/**` on `hasRole("ADMIN")` and `/api/edit/**` on `hasRole("USER")` with no
+  profile condition, and the four surviving `app.admin.enforce-authz` references are prose in
+  docblocks describing the removal. `tests/utils/admin.test.ts` confirmed a no-op (6/6 unchanged),
+  the frontend-layer guardrail held, and the cost of changing those layers was reported (~10 src /
+  20 test) with a recommendation not to. **Board integrity fixed in the same pass:** Group G carried
+  a stale duplicate paragraph claiming "G2, G3, G4 and G5 are open" directly under the one saying
+  G5 had closed — removed. G6's row, classification row and section are archived to
+  `group-g-decisions.md`. Prose was cut roughly in half at close after the user objected to docblock
+  bloat; the rule that produced the cut now lives in `~/.claude/CLAUDE.md`, global rather than
+  repo-local, because the inline-comment ban it completes was already global. Next: C11, D10, E18.

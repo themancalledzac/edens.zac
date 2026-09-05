@@ -1,5 +1,17 @@
 # Handoff — critical review of the 2026 feature and refactor boards
 
+> **Applied 2026-09-05.** The review this document asked for ran as seven read-only slices (feature
+> board by group ×2, refactor board, merged-PR reconciliation, cross-repo backend facts, an
+> adversarial pass on Group D, and a missed-items sweep) and one apply pass; both boards, their
+> group files and archives, and the tracked `docs/00x` chapters now reflect it. This file is kept
+> as the record of what the 2026-09-04 pass knew. Four of its own claims were wrong and are
+> corrected on the boards, not here: §3.1's "E18 Half B is genuinely open" (the hook's `collection`
+> has derived from `currentState` since `86a0f192`, and `c1dd1d41` pinned the two-save case);
+> §5.1/§8.3's "MA1 has no handoff and no owner in either repo" (backend board `#22` holds it and
+> has asked this board a question since 2026-09-01); §2's migration-head command (`git ls-tree …`
+> without `sort -V` prints `V9`); and the `gh` calls in §2/§4 need the sandbox disabled here (TLS
+> fails inside it). Everything else held.
+
 **Written 2026-09-04 for the agent running the review. Baseline: `main` @ `29bd30f0`.**
 
 You are reviewing a month of frontend work tracked across two boards. This document is what the

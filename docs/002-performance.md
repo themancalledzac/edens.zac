@@ -28,7 +28,7 @@ One ordered Performance epic, roughly highest-leverage first:
 8. ~~**Verify Amplify serves AVIF/WebP**~~ — ✅ **verified 2026-08-31 against production.** The optimizer returns `content-type: image/webp`, so the `formats` config is live on Amplify.
 9. **Render micro-opts** — memoize `handleFullScreenImageClick` (`useCallback`), share an IntersectionObserver, drop the redundant `document.querySelector` DOM probe in `useFullScreenImage`, and the admin-only inline-arrow callbacks in `ReorderOverlay`.
 
-> ⛔ **Backend-blocked:** removing `force-dynamic` from `app/page.tsx` (to restore ISR `revalidate = 3600`) waits on the backend `blocks_per_page` schema fix. Until then the most-visited page blocks on a live, possibly-slow Spring fetch on every visit — an LCP floor no image work can lower.
+> **Superseded (2026-09-05):** the `blocks_per_page` fix is gone from the backend and the segment-config flip it was meant to enable does not exist (PF4 closed VOID — the collection fetch is already cached; the render is what is per-request). The live item is feature board **PF13**: the home page renders per request because `CollectionPageWrapper` reads `headers()` and `cookies()`, and making it static is a Cache Components render-path change, not a flag.
 
 ## Sections
 
@@ -41,7 +41,7 @@ One ordered Performance epic, roughly highest-leverage first:
 
 ## Blocked on / open
 
-- **Backend `blocks_per_page` schema fix** gates the cache plan (restore ISR on `app/page.tsx`). Cross-repo dependency on `edens.zac.backend`.
+- ~~Backend `blocks_per_page` schema fix gates the cache plan~~ — gone from the backend; the cache plan is feature board PF13 and it is frontend work.
 - The hero-SSR approach (review §1a vs §1b) is a deliberate decision — §1a (dedicated server hero, BoxTree owns below-the-fold) is the lower-risk path; §1b (seed `contentWidth` server-side) is higher payoff but risks a hydration reflow.
 
 ---

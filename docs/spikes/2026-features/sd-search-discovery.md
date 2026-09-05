@@ -2,11 +2,68 @@
 
 _Context file for board items SD1–SD7 on [2026-features.md](../2026-features.md)._
 
-## SD3 · Filter-bar dimension gaps
+## SD4 · `/explore` as a real explorer — blocked on a design reconcile
 
-From the 004 location-filter-bar plan's unshipped tail, verified absent from
-`app/types/GalleryFilter.ts` (state today: `selectedTags`, `selectedPeople`, `selectedCameras`,
-`selectedLenses`, `selectedLocations`, `selectedYears`, `selectedDates`):
+`app/explore/ExploreDirectory.tsx` is the flat Option-A directory — it moved out of
+`app/explore/page.tsx` in #367, which left the route a shell around a Suspense boundary, so the
+rebuild target is the new file. Never built: Option C (`/explore` as a
+cross-faceting drill-down explorer) and the in-dropdown three-level accordion (menu spec §6.2 —
+the dropdown is a flat `NavLink` list; `MenuDropdown.tsx:294` has the ungated Explore entry). All
+five §8 open questions from the menu spec remain (accordion vs panel slide, back affordance,
+typeahead, keep-or-drop `/explore`, people in `getMetadata()`).
+
+**The blocker:** refactor-board item H5 is a second, newer design review of `MenuDropdown`
+(unblocked 2026-08-24, detail in `2026-summer-refactor/group-h-features.md`). Two design passes
+over the same component must be reconciled before either is planned, or they will produce
+competing designs. This is decision #10 on the board.
+
+**SD1 added a rider (2026-08-31).** `/search` shipped with **no nav entry** — deliberately, so it
+would not pre-empt this decision. It is live and reachable only by typing the URL. Whatever `/explore`
+becomes, this decision now also has to say where Search is linked from; adding the link is one line
+in `MenuDropdown.tsx` (the Explore entry is at `:294`, re-verified 2026-08-31). Until then `/search`
+is effectively unlisted, which is a real cost the decision should weigh.
+
+## SD6 · Clickable people chips — blocked on a URL-shape decision (#17)
+
+Split out of SD5 on 2026-08-31 (7). People chips in the fullscreen viewer render inert, and
+unlike tags they cannot simply be linked: `ContentPersonModel` is `IdNameModel` — `{id, name}`,
+no slug (`app/types/Metadata.ts:29`; backend `Records.Person(Long id, String name)`) — and there is
+no `/person` route (`find app -type d -name 'person*'` → nothing). Pinned by
+`tests/components/FullScreenModal/FullScreenModal.metadata.test.tsx:197`, which asserts people
+render WITHOUT a link, so whoever builds this sees that test fail and knows the contract is
+changing rather than breaking.
+
+Two ways in; the choice is the user's (decision #17 on the board, filed 2026-09-05 after the row
+spent four days BLOCKED with the question in no table):
+
+- **Frontend-only:** a `/person/[id]` route built like `TaxonomyPage` over
+  `searchImages({ personIds })`. Buildable today; the URL carries a bare id rather than a name.
+  Note the search endpoint's visibility gap (refactor-board D15) applies to this page too.
+- **Backend first:** a `slug` column on the person entity, mirroring `ContentTagModel`, then
+  `/person/[slug]`. Matches how tags and locations already work; needs a handoff (none written).
+
+Either way the frontend change is the same shape as #382's tag branch. SD7 (backend #293) put
+`people` on COLLECTION blocks but added no slug, so it did not unblock this. This section had no
+group-file entry until 2026-09-05; the main board carried it alone.
+
+## Not here, deliberately
+
+- Collection tags Phase 2 / auto-tag → CT5.
+- The `/collections` page filter bar itself → shipped (#242/#243).
+- Breadcrumb → shipped as a deliberate DROP (component deleted, refactor board Group A1). The
+  stale lines in `docs/004` and `docs/000` were deleted 2026-09-05.
+
+## Closed
+
+### ✅ SD3 · Filter-bar dimension gaps — CLOSED 2026-09-05, last dimension shipped as #397
+
+Every dimension on the list is resolved: badges #373, year #376, focal length built and dropped
+(#379, user call), film stock #397 (merged 2026-09-03). What remains is not dimension work: the
+lens URL gap is a bug and moved to the refactor board as **C17**; two ideas with no design (merging
+short filter-bar rows, per-date labels) are parked below as unfiled. `FilterState` today:
+`selectedTags`, `selectedPeople`, `selectedCameras`, `selectedLenses`, `selectedLocations`,
+`selectedYears`, `selectedDates`, `selectedFilmTypes` (`app/types/GalleryFilter.ts`). The record of
+each slice, oldest decision first:
 
 - ⛔ **Focal-length range filters (Wide/Normal/Tele) — BUILT AND DROPPED 2026-08-31 (6). Do not
   rebuild.** Written in full as **#379**, verified, then closed unmerged on the user's call: the
@@ -57,12 +114,20 @@ From the 004 location-filter-bar plan's unshipped tail, verified absent from
   one band does not grey out the other two. Browser-verified: with Tele selected, Wide and Normal
   stay enabled.
 
-- Film-stock secondary filter, conditional on Film active with 2+ stocks — **do not start without
-  asking.** It is the last remaining dimension on this list, and the one immediately after a
-  dimension that was built and rejected. Confirm it is wanted first. If it is, note the data
-  question inverts: film collections are exactly the ones #379 found carry no EXIF, so stock is the
-  one dimension whose data lives where focal length's did not — check coverage against the live
-  backend before sizing it.
+- ~~Film-stock secondary filter, conditional on Film active with 2+ stocks~~ **SHIPPED (#397,
+  merged 2026-09-03).** Asked first, per the rule focal length produced. `selectedFilmTypes` in
+  `FilterState`, `filmTypes` on `ContentFilterCriteria`, `?filmType=`, matched on the existing
+  `filmType` display name ("Kodak Portra 400") — no model or backend change. The dropdown appears
+  only while Film is the selected side of the film/digital toggle, a deliberate exception to
+  `computeFilterVisibility`'s decide-once rule, and the toggle clears the stock selection on the
+  way out of `film` so no stranded filter narrows from behind a control that has left the bar.
+  Visibility is scored against frames that carry a stock, not the full set, so one digital frame
+  cannot fake a two-value dimension. Reaches `/search` and `/location/[slug]` only; collection
+  pages never render the film toggle. Two things it would have shipped broken and did not:
+  `filterContent`'s early-out guard did not know `filmTypes`, and `EVERY_CRITERION` gained the key
+  in the same change, which is the only reason the drift guard fired. 8 source / 6 test files,
+  +468/−7. One residue, recorded on refactor-board C17: `hasAnyActiveFilter` still omits
+  `selectedFilmTypes` — unobservable today because its consumers never render the film toggle.
 - ~~Year filter chips~~ **SHIPPED (#376).** `selectedYears` ('YYYY'), `?year=`, flat chips
   collapsing to a dropdown above eight, single-choice like days and lenses. The row filed this
   beside the other three as a peer and it is not one: year is the only dimension here that reaches
@@ -85,58 +150,24 @@ From the 004 location-filter-bar plan's unshipped tail, verified absent from
   now renders as a removable chip after the controls (`collectActiveFilterBadges`), which is the
   only place the bar says WHICH values are selected — a dropdown trigger shows active state and
   nothing more. Flat date chips are excluded, since they already show their own selection.
-- Proportional layout algorithm merging short filter-bar rows
+- Proportional layout merging short filter-bar rows — **unfiled.** No design exists and nobody has
+  asked for it. Not a slice; ask before sizing.
 
-Related smaller stragglers from the 2026-08-02 consolidation follow-ups: restore `selectedLenses`
-from the URL; optional per-date display labels ("Day 1 — Opening"). Each dimension is an
-independent MR slice.
+Restoring `selectedLenses` from the URL is a bug, not a dimension: **refactor board C17.**
+Per-date display labels ("Day 1 — Opening") are **unfiled** — nothing on `ContentImageModel` or the
+collection carries a day label, so this needs a backend field before it is a frontend item.
 
 **Re-sized down after SD1 (2026-08-31).** SD1 proved these dimensions compose from existing tested
 helpers rather than needing new machinery; each slice is well under a sitting.
 
-**The lens gap is now confirmed and specified**, not just suspected. `FILTER_PARAM_KEYS`
-(`app/utils/contentFilter.ts:689`, drifted from `:670` when #376 added the `year` key) has no lens key, so `serializeFilterToParams` never writes one
-and `parseFilterFromParams` never reads one — a lens choice is live for the session and cannot
-survive a reload **on any surface in the repo**. `/search` documents and test-pins the gap
-(`seedFilterState` leaves `selectedLenses` empty). Fixing it is a one-key change to the shared
-serializer plus a seed line in each surface. Verified 2026-08-31: `selectedLenses` is still in
-`FilterState` (`app/types/GalleryFilter.ts:36`), so the state side needs nothing.
-
-## SD4 · `/explore` as a real explorer — blocked on a design reconcile
-
-`app/explore/ExploreDirectory.tsx` is the flat Option-A directory — it moved out of
-`app/explore/page.tsx` in #367, which left the route a shell around a Suspense boundary, so the
-rebuild target is the new file. Never built: Option C (`/explore` as a
-cross-faceting drill-down explorer) and the in-dropdown three-level accordion (menu spec §6.2 —
-the dropdown is a flat `NavLink` list; `MenuDropdown.tsx:294` has the ungated Explore entry). All
-five §8 open questions from the menu spec remain (accordion vs panel slide, back affordance,
-typeahead, keep-or-drop `/explore`, people in `getMetadata()`).
-
-**The blocker:** refactor-board item H5 is a second, newer design review of `MenuDropdown`
-(unblocked 2026-08-24, detail in `2026-summer-refactor/group-h-features.md`). Two design passes
-over the same component must be reconciled before either is planned, or they will produce
-competing designs. This is decision #10 on the board.
-
-**SD1 added a rider (2026-08-31).** `/search` shipped with **no nav entry** — deliberately, so it
-would not pre-empt this decision. It is live and reachable only by typing the URL. Whatever `/explore`
-becomes, this decision now also has to say where Search is linked from; adding the link is one line
-in `MenuDropdown.tsx` (the Explore entry is at `:294`, re-verified 2026-08-31). Until then `/search`
-is effectively unlisted, which is a real cost the decision should weigh.
-
-## Not here, deliberately
-
-- Collection tags Phase 2 / auto-tag → CT5.
-- The `/collections` page filter bar itself → shipped (#242/#243).
-- Breadcrumb → shipped as a deliberate DROP (component deleted, refactor board Group A1). Still
-  listed as open in `004:34` and `000` Next-steps #2 — both stale; do not re-ticket.
-
-## Closed
+Lens choices are not URL-shareable on any surface — refactor board **C17** carries the fix, the
+failing-first test, and the drift-guard change that would have caught it.
 
 ### ✅ SD7 · `people` on collection blocks — backend #293, 2026-08-31
 
 The identical gap SD2 closed for `locations`, found while shipping it and filed rather than
 bundled. `batchConvertToBasicModels` already batch-loaded people onto the model and the frontend
-already read `ref.people` — `contentFilter.ts:946` matches on `name` — but
+already read `ref.people` — `collectionRefMatchesCriteria` (`contentFilter.ts:1010`) matches on `name` — but
 `ContentModels.Collection` had no `people` component, so the value had nowhere to ride out and the
 filter matched against nothing.
 
@@ -215,7 +246,7 @@ collection pages deliberately surface no Tags dimension. Tags being absent from 
 filter bar is a product decision from `81ca206`, not an omission — do not "restore" it without
 asking.
 
-**One thing deliberately left alone.** A `filterItems` block at `CollectionContentRenderer.tsx:381`
+**One thing deliberately left alone.** A `filterItems` block at `CollectionContentRenderer.tsx:390`
 renders `type: 'text'` items and `buildMetadataItems` never emits that type, so it looks dead. It
 was NOT deleted: `textItems` is a prop, and a backend TEXT block's `items` legitimately allows
 `type: 'text'`, so "dead" is not provable from this repo alone. Confirm against the backend's text
