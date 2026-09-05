@@ -2,13 +2,16 @@ import type { Metadata } from 'next';
 
 import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
 import { HOME_SLUG } from '@/app/utils/collectionSlugs';
+import { AUTHOR_NAME } from '@/app/utils/structuredData';
+
+const HOME_DESCRIPTION = `Photography portfolio by ${AUTHOR_NAME} — landscape, portrait, and event photography`;
 
 export const metadata: Metadata = {
   title: 'Home',
-  description: 'Photography portfolio by Zac Eden — landscape, portrait, and event photography',
+  description: HOME_DESCRIPTION,
   openGraph: {
     title: 'Edens Zac — Photography Portfolio',
-    description: 'Photography portfolio by Zac Eden — landscape, portrait, and event photography',
+    description: HOME_DESCRIPTION,
     type: 'website',
   },
 };
