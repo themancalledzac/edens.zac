@@ -13,7 +13,7 @@ import { NextRequest } from 'next/server';
 
 import { GET, POST } from '@/app/api/proxy/[...path]/route';
 
-describe('Vercel BFF proxy /api/proxy/[...path] — Set-Cookie forwarding', () => {
+describe('BFF proxy /api/proxy/[...path] — Set-Cookie forwarding', () => {
   const ORIGINAL_ENV = process.env;
 
   beforeEach(() => {
@@ -79,7 +79,7 @@ describe('Vercel BFF proxy /api/proxy/[...path] — Set-Cookie forwarding', () =
   });
 });
 
-describe('Vercel BFF proxy /api/proxy/[...path] — payload size limits', () => {
+describe('BFF proxy /api/proxy/[...path] — payload size limits', () => {
   const ORIGINAL_ENV = process.env;
 
   beforeEach(() => {
@@ -159,6 +159,29 @@ describe('Vercel BFF proxy /api/proxy/[...path] — payload size limits', () => 
     expect(res.status).toBe(413);
   });
 
+  it('rejects an over-cap declared Content-Length before forwarding', async () => {
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+
+    const req = new NextRequest('http://localhost:3000/api/proxy/api/read/messages', {
+      method: 'POST',
+      body: '{}',
+      headers: {
+        'content-type': 'application/json',
+        'content-length': '17000',
+        origin: 'http://localhost:3000',
+      },
+    });
+
+    const res = await POST(req, {
+      params: Promise.resolve({ path: ['api', 'read', 'messages'] }),
+    } as never);
+
+    expect(res.status).toBe(413);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it('enforces cap against actual buffered body size when Content-Length is missing', async () => {
     // Construct a request where the underlying body is large but the
     // Content-Length header is absent — the proxy must still reject it.
@@ -182,7 +205,7 @@ describe('Vercel BFF proxy /api/proxy/[...path] — payload size limits', () => 
   });
 });
 
-describe('Vercel BFF proxy /api/proxy/[...path] — write-method origin allowance', () => {
+describe('BFF proxy /api/proxy/[...path] — write-method origin allowance', () => {
   const ORIGINAL_ENV = process.env;
 
   beforeEach(() => {
@@ -248,7 +271,7 @@ describe('Vercel BFF proxy /api/proxy/[...path] — write-method origin allowanc
   });
 });
 
-describe('Vercel BFF proxy /api/proxy/[...path] — anonymous admin API refusal (prod)', () => {
+describe('BFF proxy /api/proxy/[...path] — anonymous admin API refusal (prod)', () => {
   const ORIGINAL_ENV = process.env;
 
   function setProd() {
@@ -405,7 +428,7 @@ describe('Vercel BFF proxy /api/proxy/[...path] — anonymous admin API refusal 
   });
 });
 
-describe('Vercel BFF proxy /api/proxy/[...path] — real-IP header sanitization', () => {
+describe('BFF proxy /api/proxy/[...path] — real-IP header sanitization', () => {
   const ORIGINAL_ENV = process.env;
 
   beforeEach(() => {
@@ -462,9 +485,19 @@ describe('Vercel BFF proxy /api/proxy/[...path] — real-IP header sanitization'
     const init = await forwardWith({ 'x-forwarded-for': 'not-an-ip' });
     expect((init.headers as Headers).get('x-real-ip')).toBeNull();
   });
+
+  it.each(['forwarded', 'true-client-ip'])('strips inbound %s', async header => {
+    const init = await forwardWith({ [header]: 'for=6.6.6.6' });
+    expect((init.headers as Headers).get(header)).toBeNull();
+  });
+
+  it('does not let a spoofed true-client-ip become X-Real-IP', async () => {
+    const init = await forwardWith({ 'true-client-ip': '6.6.6.6' });
+    expect((init.headers as Headers).get('x-real-ip')).toBeNull();
+  });
 });
 
-describe('Vercel BFF proxy /api/proxy/[...path] — non-api path reject', () => {
+describe('BFF proxy /api/proxy/[...path] — non-api path reject', () => {
   const ORIGINAL_ENV = process.env;
 
   beforeEach(() => {
@@ -527,6 +560,21 @@ describe('Vercel BFF proxy /api/proxy/[...path] — non-api path reject', () => 
     [['api', '%2e%2e', 'actuator'], 'the percent-encoded .. spelling'],
     [['api', 'a', '..', '..', 'actuator'], 'a multi-hop climb out of api/'],
     ['api\\..\\actuator'.split('/'), 'the backslash spelling'],
+  ])('rejects %j — %s', async (path, _label) => {
+    const fetchSpy = spyFetch();
+    const req = new NextRequest(`http://localhost:3000/api/proxy/${path.join('/')}`, {
+      method: 'GET',
+    });
+    const res = await GET(req, { params: Promise.resolve({ path }) } as never);
+
+    expect(res.status).toBe(404);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [['api', '..;', 'actuator', 'env'], 'a path parameter hiding a climb out of api/'],
+    [['api', '..%3B', 'actuator', 'env'], 'the percent-encoded path-parameter spelling'],
+    [['api', 'read', 'collections;jsessionid=abc'], 'a trailing path parameter'],
   ])('rejects %j — %s', async (path, _label) => {
     const fetchSpy = spyFetch();
     const req = new NextRequest(`http://localhost:3000/api/proxy/${path.join('/')}`, {

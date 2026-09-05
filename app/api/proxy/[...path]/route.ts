@@ -20,19 +20,43 @@ function buildTargetUrl(pathParts: string[], search: string): string {
 }
 
 /**
- * True when the proxied path resolves inside the backend's `api/**` surface.
+ * Resolves a proxied path the way the URL parser inside `fetch` will.
  *
- * The backend serves more than `/api` — Spring Boot's actuator among it — and this proxy
- * injects `X-Internal-Secret` on every hop, so anything it forwards arrives already
- * authenticated as the BFF. Restricting the proxy to `api/**` keeps the rest unreachable.
- *
- * The check runs against the URL-normalized path rather than the raw string, because
- * `fetch` resolves dot segments while parsing: `api/../actuator/env`, its `%2e%2e`
- * spelling, and the backslash variant would all be requested as `/actuator/env`. Asking
- * the same parser the same question means a raw-string prefix check cannot be walked past.
+ * Dot segments are resolved during parsing, so `api/../actuator/env`, its `%2e%2e` spelling
+ * and the backslash variant would all be requested as `/actuator/env`. Every path check runs
+ * on this one value, so no two checks can disagree about what the path is.
  */
-function isProxyableApiPath(resolvedPath: string): boolean {
-  return new URL(resolvedPath, 'http://proxy.invalid/').pathname.startsWith('/api/');
+function normalizePath(resolvedPath: string): string {
+  return new URL(resolvedPath, 'http://proxy.invalid/').pathname;
+}
+
+/**
+ * True when the normalized path is one the proxy may forward.
+ *
+ * The backend serves more than `/api` — Spring Boot's actuator among it — and this proxy injects
+ * `X-Internal-Secret` on every hop, so restricting forwarding to `api/**` keeps the rest
+ * unreachable. `;` is rejected with it because Tomcat strips path parameters per segment before
+ * routing: `api/..;/actuator/env` reads as an `/api/` path here but resolves to `/actuator/env`
+ * there. `%3B` goes too, being the same trick one decode later.
+ */
+function isProxyableApiPath(normalized: string): boolean {
+  return normalized.startsWith('/api/') && !/;|%3b/i.test(normalized);
+}
+
+/**
+ * True when a request is anonymous access to a privileged surface in production.
+ *
+ * Belt and suspenders only — the backend's own `hasRole('ADMIN')` and per-collection role checks
+ * stay authoritative, and `api/dev/**` is dev-only and `@Profile`-gated there. Production alone,
+ * because localhost admin has no login; the match is exact and case-sensitive because this is a
+ * cheap early reject rather than the real gate.
+ */
+function isAnonymousPrivilegedRequest(req: NextRequest, normalized: string): boolean {
+  return (
+    process.env.NODE_ENV === 'production' &&
+    (normalized.startsWith('/api/admin/') || normalized.startsWith('/api/edit/')) &&
+    !req.cookies.get('ezac_session')?.value
+  );
 }
 
 /**
@@ -51,7 +75,9 @@ function forwardHeaders(req: NextRequest): Headers {
         'accept-encoding',
         'cf-ray',
         'cf-connecting-ip',
+        'true-client-ip',
         'x-real-ip',
+        'forwarded',
         'x-forwarded-for',
         'x-forwarded-proto',
         'x-forwarded-host',
@@ -93,27 +119,15 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
   const method = req.method;
   const pathParts = params.path || [];
   const resolvedPath = pathParts.join('/').replace(/^\/+/, '');
+  const normalized = normalizePath(resolvedPath);
 
-  if (!isProxyableApiPath(resolvedPath)) {
+  if (!isProxyableApiPath(normalized)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
   const targetUrl = buildTargetUrl(pathParts, req.nextUrl.search);
 
-  // Belt & suspenders: refuse anonymous admin/edit API in production before forwarding.
-  // The backend's own authorization (`hasRole('ADMIN')`, per-collection role checks on
-  // the `edit` surface) stays authoritative; this is a cheap early reject + defense in
-  // depth for both privileged surfaces. `api/dev/**` is exempt (dev-only, @Profile-gated
-  // on the backend) and dev is unaffected (localhost admin has no login).
-  // The `startsWith(...)` match below is intentionally exact/case-sensitive (an odd-cased
-  // or bare `api/admin`/`api/edit` path is not caught here) — that's acceptable because
-  // this check is NOT the real gate; the backend's own authorization authorizes every
-  // request regardless of what this early check catches.
-  if (
-    process.env.NODE_ENV === 'production' &&
-    (resolvedPath.startsWith('api/admin/') || resolvedPath.startsWith('api/edit/')) &&
-    !req.cookies.get('ezac_session')?.value
-  ) {
+  if (isAnonymousPrivilegedRequest(req, normalized)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

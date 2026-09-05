@@ -37,6 +37,9 @@ interface CollectionRolesSectionProps {
  * Grants inherited from a parent collection (waterfall provenance on the row) render read-only:
  * removing one here would just re-sync from the parent, so they are edited at the origin
  * collection instead.
+ *
+ * The mount load is cancelled per effect run, so a slow read for a collection the user has already
+ * navigated away from cannot land its grants — or its error — in the current collection's view.
  */
 export function CollectionRolesSection({
   collectionId,
@@ -51,15 +54,26 @@ export function CollectionRolesSection({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
     listCollectionRoles(collectionId)
-      .then(setGrants)
+      .then(rows => {
+        if (active) setGrants(rows);
+      })
       .catch(() => {
+        if (!active) return;
         setGrants([]);
         setError('Failed to load role access.');
       });
     listRoles()
-      .then(setAllRoles)
-      .catch(() => setAllRoles([]));
+      .then(rows => {
+        if (active) setAllRoles(rows);
+      })
+      .catch(() => {
+        if (active) setAllRoles([]);
+      });
+    return () => {
+      active = false;
+    };
   }, [collectionId]);
 
   const grantedIds = new Set(grants.map(g => g.roleId));

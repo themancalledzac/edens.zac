@@ -5,7 +5,7 @@
  * save immediately and re-fetch the grant list.
  */
 
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import { CollectionRolesSection } from '@/app/components/ContentCollection/edit/sections/CollectionRolesSection';
 import { ApiError } from '@/app/lib/api/core';
@@ -73,16 +73,20 @@ describe('CollectionRolesSection', () => {
     await renderSection();
 
     const grantSelect = await screen.findByLabelText('Access level for pnwer');
-    expect(within(grantSelect).getByRole('option', { name: 'Collaborator (edit collection)' }))
-      .toBeInTheDocument();
+    expect(
+      within(grantSelect).getByRole('option', { name: 'Collaborator (edit collection)' })
+    ).toBeInTheDocument();
 
     await screen.findByLabelText('Add a role');
     const addLevelSelect = screen.getByLabelText('Access level for added role');
-    expect(within(addLevelSelect).getByRole('option', { name: 'Collaborator' })).toBeInTheDocument();
+    expect(
+      within(addLevelSelect).getByRole('option', { name: 'Collaborator' })
+    ).toBeInTheDocument();
 
     const createLevelSelect = screen.getByLabelText('Access level for created role');
-    expect(within(createLevelSelect).getByRole('option', { name: 'Collaborator' }))
-      .toBeInTheDocument();
+    expect(
+      within(createLevelSelect).getByRole('option', { name: 'Collaborator' })
+    ).toBeInTheDocument();
   });
 
   it('shows the empty state when no roles grant the collection', async () => {
@@ -262,6 +266,65 @@ describe('CollectionRolesSection', () => {
       const directRow = directSelect.closest('div');
       if (!directRow) throw new Error('direct-role row not found');
       expect(within(directRow).getByRole('button', { name: 'Remove' })).not.toBeDisabled();
+    });
+  });
+
+  /**
+   * The mount effect's per-run cancellation. Both cases resolve the superseded request while the
+   * component stays mounted, because that is the only one of the two that is observable: React 19
+   * silently discards an update dispatched to an unmounted fiber, so an unmount-only test would
+   * pass with or without the guard.
+   */
+  describe('mount-load cancellation', () => {
+    function deferred<T>() {
+      let resolve!: (value: T) => void;
+      let reject!: (reason: Error) => void;
+      const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      return { promise, resolve, reject };
+    }
+
+    async function settleSupersededRequest() {
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+    }
+
+    async function renderThenSwitchCollection() {
+      const slowFirstLoad = deferred<CollectionRoleRow[]>();
+      mockListCollectionRoles
+        .mockReturnValueOnce(slowFirstLoad.promise)
+        .mockResolvedValueOnce([{ roleId: 7, name: 'granted-on-21', level: 'CLIENT' }]);
+
+      const { rerender } = render(
+        <CollectionRolesSection collectionId={20} collectionTitle="Fall Wedding" />
+      );
+      rerender(<CollectionRolesSection collectionId={21} collectionTitle="Spring Wedding" />);
+      await screen.findByText('granted-on-21');
+
+      return slowFirstLoad;
+    }
+
+    it('ignores the previous collection grants when collectionId changes before they resolve', async () => {
+      const slowFirstLoad = await renderThenSwitchCollection();
+
+      slowFirstLoad.resolve([{ roleId: 1, name: 'granted-on-20', level: 'GENERAL' }]);
+      await settleSupersededRequest();
+
+      expect(screen.queryByText('granted-on-20')).not.toBeInTheDocument();
+      expect(screen.getByText('granted-on-21')).toBeInTheDocument();
+    });
+
+    it('keeps a failed previous load from blanking the current collection and raising an error', async () => {
+      const slowFirstLoad = await renderThenSwitchCollection();
+
+      slowFirstLoad.reject(new Error('collection 20 read failed'));
+      await settleSupersededRequest();
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByText('granted-on-21')).toBeInTheDocument();
     });
   });
 });

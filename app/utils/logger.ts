@@ -11,6 +11,15 @@ const CLIENT_REPORT_BUDGET = 20;
 
 let clientReportsRemaining = CLIENT_REPORT_BUDGET;
 
+/**
+ * Route prefixes whose first path segment is an access token rather than an identifier.
+ *
+ * On `/s/<token>` and `/invite/<token>` the URL *is* the credential — `app/invite/[token]/page.tsx`
+ * sets `referrer: 'no-referrer'` for exactly this reason. Both are leaf routes, so collapsing
+ * everything after the prefix discards nothing a reader would have used.
+ */
+const TOKEN_BEARING_PREFIXES = ['/s', '/invite'];
+
 type LogLevel = 'debug' | 'warn' | 'error';
 
 type SerializedError = {
@@ -86,6 +95,20 @@ function toLine(payload: LogPayload): string {
 }
 
 /**
+ * Reduce the current location to something safe to write to CloudWatch.
+ *
+ * Search and hash are dropped outright: a token can arrive as a query param just as easily as a
+ * path segment, and no query value is worth putting a live credential in a log sink. Token-bearing
+ * paths collapse to a placeholder, so `/s/abc123` reports as `/s/[token]`.
+ */
+function loggableUrl(location: Location): string {
+  const { pathname } = location;
+  const prefix = TOKEN_BEARING_PREFIXES.find(candidate => pathname.startsWith(`${candidate}/`));
+
+  return prefix ? `${prefix}/[token]` : pathname;
+}
+
+/**
  * Post an error to the same-origin ingest route.
  *
  * Browser `console.error` reaches nobody. The route is a server process whose stdout Amplify
@@ -100,7 +123,7 @@ function reportToServer(payload: LogPayload): void {
 
   const body = toLine({
     ...payload,
-    context: { ...payload.context, url: window.location.href },
+    context: { ...payload.context, url: loggableUrl(window.location) },
   });
 
   try {

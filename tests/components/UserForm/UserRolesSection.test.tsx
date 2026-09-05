@@ -10,11 +10,12 @@
  * - readOnly drops the mutating controls and skips the role-catalog read entirely.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { UserRolesSection } from '@/app/components/UserForm/UserRolesSection';
 import { ApiError } from '@/app/lib/api/core';
 import * as rolesApi from '@/app/lib/api/roles';
+import { type UserRoleRow } from '@/app/types/Role';
 
 jest.mock('@/app/lib/api/roles', () => ({
   listUserRoles: jest.fn(() => Promise.resolve([])),
@@ -227,6 +228,62 @@ describe('UserRolesSection', () => {
 
       await waitFor(() => expect(mockListUserRoles).toHaveBeenCalledWith(8));
       expect(mockListRoles).not.toHaveBeenCalled();
+    });
+  });
+  /**
+   * The mount effect's per-run cancellation. Both cases resolve the superseded read while the
+   * component stays mounted, because that is the only one of the two that is observable: React 19
+   * silently discards an update dispatched to an unmounted fiber, so an unmount-only test would
+   * pass with or without the guard.
+   */
+  describe('mount-load cancellation', () => {
+    function deferred<T>() {
+      let resolve!: (value: T) => void;
+      let reject!: (reason: Error) => void;
+      const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      return { promise, resolve, reject };
+    }
+
+    async function settleSupersededRequest() {
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+    }
+
+    async function renderThenSwitchUser() {
+      const slowFirstRead = deferred<UserRoleRow[]>();
+      mockListUserRoles
+        .mockReturnValueOnce(slowFirstRead.promise)
+        .mockResolvedValueOnce([{ roleId: 9, name: 'member-of-user-9' }]);
+
+      const { rerender } = render(<UserRolesSection userId={8} />);
+      rerender(<UserRolesSection userId={9} />);
+      await screen.findByRole('link', { name: 'member-of-user-9' });
+
+      return slowFirstRead;
+    }
+
+    it("ignores the previous user's membership when userId changes before it resolves", async () => {
+      const slowFirstRead = await renderThenSwitchUser();
+
+      slowFirstRead.resolve([{ roleId: 3, name: 'member-of-user-8' }]);
+      await settleSupersededRequest();
+
+      expect(screen.queryByRole('link', { name: 'member-of-user-8' })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'member-of-user-9' })).toBeInTheDocument();
+    });
+
+    it("keeps a failed previous read from reporting the current user's membership as unknown", async () => {
+      const slowFirstRead = await renderThenSwitchUser();
+
+      slowFirstRead.reject(new ApiError('Backend unreachable', 500));
+      await settleSupersededRequest();
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'member-of-user-9' })).toBeInTheDocument();
     });
   });
 });
