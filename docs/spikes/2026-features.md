@@ -288,7 +288,7 @@ Open rows only. FE = this repo, BE = `edens.zac.backend`, OPS = console/infra wo
 | PF14 | Site-wide dark mode behind a user preference                 | FE      | ☐ COLD — spun out of MA3 by decision #5; first sitting is a scoping pass (group file)                                                                                                                                                                                                                                                            |
 | PF7  | CloudFlare Phase 2 (origin lockdown, `CF-Connecting-IP`)     | OPS     | ☐ COLD — infra, plan and acceptance in the group file, ~1–2 weeks lead time                                                                                                                                                                                                                                                                      |
 | PF13 | Home page genuinely static (Cache Components / PPR)          | FE      | ☐ COLD — MR 1 merged #381; steps 2–5 are ours (group file's revised list); next is the cookie hoist out of `fetchBase`                                                                                                                                                                                                                           |
-| PF15 | `robots.txt`, `sitemap.xml`, and a canonical host            | FE+OPS  | ☐ COLD — production serves neither file (both 404 through `[slug]`) and no page has `rel="canonical"` or `og:url`, so apex and www are two indexable duplicates. The two files are ours; the redirect rides PF7                                                                                                                                  |
+| PF15 | `robots.txt`, `sitemap.xml`, and a canonical host            | FE+OPS  | ☐ COLD — production serves neither file (both 404 through `[slug]`) and no page has `rel="canonical"` or `og:url`, so apex and www are two indexable duplicates. **Canonical host DECIDED 2026-09-06 (decision #18): the apex, with `www` 301ing to it.** The two files and the canonical tag are ours; the redirect rides PF7                   |
 
 **Not on this board, deliberately:** everything with a row on
 [2026-summer-refactor.md](2026-summer-refactor.md) (H1's `/user` merge, F4's TaxonomyPage
@@ -314,6 +314,12 @@ fall back on" waits, because no GET response carries that flag. The ask is §4 o
 Run (13) also filed **SD8** here (the location page's Lens facet, split out of refactor-board C17)
 and **refactor-board B10** (`InfoTab.test.tsx` is 60 of the suite's 96 `act()` warnings).
 
+**2026-09-06 (2): decision #18 landed — the apex is canonical.** PF15 keeps its COLD stamp and stays
+out of this run, but two of its three bullets (`app/robots.ts`, `app/sitemap.ts`) are now fully
+specified. The third, the canonical tag, still needs `NEXT_PUBLIC_APP_URL` read from the Amplify
+console and confirmed to name the apex. Nothing else on this board moved; the three other answers
+were refactor-board items.
+
 **`main` after those three merges: 264 suites / 4,792 tests, 0 failures; `tsc` clean; 96 `act()`
 warnings.** Any older count quoted on this board is superseded by this one.
 
@@ -335,8 +341,9 @@ warnings.** Any older count quoted on this board is superseded by this one.
 4. **CT1 spec refresh** — docs only; produces the current D1–D12 matrix so CT2 can be asked.
 
 **Ask first, batched.** Decisions #1, #2, #3, #4 (narrowed), #10, #14, #15, #16 and #17 here, plus
-SD8's "is a Lens filter wanted on the location page?", plus the refactor board's seven (H1, F4, G3,
-`.srOnly`, G2b, the G8 CSS guard, and H7 — which is #4). One sitting, one list.
+SD8's "is a Lens filter wanted on the location page?", plus the refactor board's remaining three
+(H1, F4 and the G8 CSS guard). One sitting, one list. **Four came off that list on 2026-09-06** —
+#18 (the apex is canonical), and the refactor board's G3, G2b and E9 `.srOnly`.
 
 **Not startable, and why:** AU2 until the backend answers §4 (start at item 2 if it has not);
 RC1 (one live-backend measurement, then it closes); MA1 (F1 goes first, and its clear-a-field ask is
@@ -412,13 +419,15 @@ Batch these at the start of a session. Each unblocks the named item; none blocks
 | 15     | MA3 §5.2: respec the manage page's full-screen grid and morphing bottom bar on a light surface, or drop them? The 2026-06-08 spec targets a dark canvas that decision #5 removed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | MA3                        |
 | 16     | MA6: the logged-in-flow review's §10 decisions (non-admin canonical mutation, `user_change_log`, admin review surface). Settle together with refactor-board H2b                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | MA6                        |
 | 17     | SD6 route shape: `/person/[id]` now (frontend-only), or a backend `slug` column and `/person/[slug]` (matches tags and locations; needs a handoff)?                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | SD6                        |
+| ~~18~~ | ~~Which host is canonical, apex or `www`?~~ **ANSWERED 2026-09-06: the apex.** `zacedens.com` is the real address and `www.zacedens.com` 301s to it. PF15's canonical tag and `og:url` point at the apex, and its `sitemap.xml` lists apex URLs; the redirect itself stays with PF7, since `next.config.js` has no `redirects()` block and the routing config lives in the Amplify console. Filed as a numbered decision after the fact — it blocked two rows and sat in no table, which this board calls the same defect as a row with no section                                                                                                                                                      | PF15, refactor-board D13   |
 | ~~13~~ | ~~Does Amplify already ship this app's server stdout/stderr to a CloudWatch log group?~~ **ANSWERED 2026-08-31 (9): yes.** Amplify Hosting already forwards this app's server stdout to a log group, so the server half was a formatting change inside `logger.ts` — no AWS SDK, no log group to create, no credentials, no execution-role permission, and `package.json` stays at five dependencies. The rider was answered too: the user will set `NODE_OPTIONS=--enable-source-maps` in the console, so `experimental.serverSourceMaps` is now on and server traces are readable with nothing published to browsers. Shipped as PF6 ([#391](https://github.com/themancalledzac/edens.zac/pull/391)). | —                          |
 
 Collections-as-tags D1–D12 (item CT2) joins this list after CT1 rewrites the matrix in current
-terms. Seven more product calls are batched on the refactor board (H1, F4, G3, `.srOnly`, G2b,
-the G8 CSS guard, and H7 — which is decision #4 here) — put all of these to the user as one
-sitting, not two lists. Two decisions that were not in any table for days (#14, #15) are here now;
-a decision that blocks a row and is not in this table is the same defect as a row with no section.
+terms. **Three more product calls are batched on the refactor board — H1, F4 and the G8 CSS guard**
+(down from seven: Zac answered G3, G2b and E9's `.srOnly` on 2026-09-06, and H7 is decision #4 here
+rather than a separate ask). Put all of these to the user as one sitting, not two lists. Three
+decisions that were not in any table for days (#14, #15, #18) are here now; a decision that blocks a
+row and is not in this table is the same defect as a row with no section.
 
 ## Group SD — Search & discovery
 
@@ -978,24 +987,33 @@ curl -s https://www.zacedens.com/ | grep -c -e 'rel="canonical"' -e 'og:url'
 → **0**. So both hosts are fully indexable, byte-identical, and nothing tells a crawler which one is the
 real site. Duplicate-content handling then falls to the crawler's own guess, and it can pick either.
 
+**Which one is real is DECIDED 2026-09-06 by the user (decision #18): the apex.** `zacedens.com` is
+the address; `www.zacedens.com` 301s to it, not the other way round. That settles all three pieces
+below — the canonical tag and `og:url` point at the apex, and `sitemap.xml` lists apex URLs.
+
 **Three pieces, and only the third needs anyone outside this repo.**
 
 - [ ] `app/robots.ts` — Next's file convention. Disallow the admin and user routes, name the sitemap.
-      Check the existing per-page `robots` metadata first: `app/user/selects/page.tsx:17` already
-      sets `{ index: false, follow: false }`, so the file must not contradict what pages declare.
-- [ ] `app/sitemap.ts` — the public routes plus collections, locations and tags. It needs the same
-      reads the pages use, so decide its revalidation alongside PF13's caching work rather than
-      after it.
-- [ ] A `rel="canonical"` on every page, and `og:url` beside it. Both want one absolute base URL,
-      which is `NEXT_PUBLIC_APP_URL` — **and which host that names is not knowable from production
-      output.** Nothing rendered echoes it, and the only probes that would reveal it are POSTs.
-      Read it from the Amplify console before writing either, or every canonical points at the
-      wrong host.
+      Check the existing per-page `robots` metadata first: `grep -rn 'index: false' app` returns
+      exactly two, `app/user/selects/page.tsx:17` and `app/all-client-galleries/page.tsx:7`, both
+      `{ index: false, follow: false }`, and the file must not contradict what pages declare.
+      **Refactor-board G3 deletes the `/user/selects` page**, so if that lands first this bullet has
+      one example, not two.
+- [ ] `app/sitemap.ts` — the public routes plus collections, locations and tags, as apex URLs. It
+      needs the same reads the pages use, so decide its revalidation alongside PF13's caching work
+      rather than after it.
+- [ ] A `rel="canonical"` on every page, and `og:url` beside it, both pointing at the apex. Both
+      want one absolute base URL, which is `NEXT_PUBLIC_APP_URL` — **and which host that names is
+      still not knowable from production output.** Nothing rendered echoes it, and the only probes
+      that would reveal it are POSTs. Read it from the Amplify console and confirm it is the apex
+      before writing either. It is the same env var `isAllowedWriteOrigin` compares against, so a
+      mismatch does not only point canonicals at the wrong host — it 403s every write from the
+      other one, silently. Refactor-board D13 records that half.
 
-**Not in this item:** the apex → www redirect itself. `next.config.js` has no `redirects()` block at
-all and the routing config lives in the Amplify console, so that half is DNS/Amplify work and rides
-PF7. A canonical tag is worth having either way — it is what tells a crawler which duplicate wins
-while the redirect does not exist.
+**Not in this item:** the `www` → apex redirect itself. `next.config.js` has no `redirects()` block
+at all and the routing config lives in the Amplify console, so that half is DNS/Amplify work and
+rides PF7. A canonical tag is worth having either way — it is what tells a crawler which duplicate
+wins while the redirect does not exist.
 
 ## Group LY — Layout decisions
 
@@ -1009,6 +1027,26 @@ so a future layout decision has a home.
 _Newest first, local dates. One line per `/next` run: what shipped (PR numbers), what was filed,
 what's next. Older entries move to
 [2026-features/session-log.md](2026-features/session-log.md)._
+
+- 2026-09-06 (2) — **docs only: Zac answered four blocked questions across both boards, and one of
+  them was this board's.** **Decision #18 — the apex is canonical.** `zacedens.com` is the real
+  address and `www.zacedens.com` 301s to it, which is the direction PF15's canonical tag, `og:url`
+  and `sitemap.xml` all needed and refactor-board D13 was carrying as undecided. The redirect itself
+  stays with PF7: `next.config.js` has no `redirects()` block and the routing config lives in the
+  Amplify console. The question had blocked two rows while sitting in no decisions table, which this
+  board calls the same defect as a row with no section, so it is filed as #18 — answered — rather
+  than left as prose. **One unknown survives the answer and PF15 records it:** which host
+  `NEXT_PUBLIC_APP_URL` names. Nothing rendered echoes it, the only probes that would show it are
+  POSTs, and it is the same env var `isAllowedWriteOrigin` compares against — so a mismatch does not
+  only misdirect canonicals, it 403s every write from the other host silently. Read it from the
+  Amplify console before writing either half. **Also corrected here:** PF15's `app/robots.ts` bullet
+  cited `app/user/selects/page.tsx:17` as its example of existing per-page `robots` metadata, and
+  refactor-board G3 — answered the same day as "delete" — deletes that page; the bullet now names
+  both `index: false` declarations and says which one goes. **The batched ask shrank from seven
+  refactor-board calls to three** (H1, F4, the G8 CSS guard; H7 is decision #4 here). The other
+  three answers — G3, G2b's `tests/` scope, E9's `.srOnly` partial — are refactor-board items and
+  are written up there. Next: unchanged — AU2 when the backend answers, otherwise PF13 step 1, PF14
+  scoping, CT1, and the decision sitting.
 
 - 2026-09-06 (1) — **docs only, and the change here is one new row plus one ask that got smaller.**
   **Filed PF15:** production serves no `robots.txt` and no `sitemap.xml` — both fall through to
@@ -1026,52 +1064,3 @@ what's next. Older entries move to
   refactor-board D15 is no longer blocked — backend #309 shipped the visibility predicate on
   2026-09-05 — so the stale cross-reference in "Verified and holding" is corrected. Next: unchanged
   — AU2 when the backend answers, otherwise PF13 step 1, PF14 scoping, CT1, and the decision sitting.
-
-- 2026-09-05 (14) — **no feature work; the refactor board's close-out, and one item here moved the
-  wrong way.** Three MRs merged there (#402, #403, #404) closing twelve items; this board's only
-  code-side change is that **AU2 is now BLOCKED, not COLD.** The last run corrected AU2's premise
-  (the admin endpoints do exist, BE#257 / commit `70b5371c`) and set it as this run's first item.
-  Reading the backend records rather than the endpoint list found the real blocker: `GET
-/{id}/passkeys` returns a bare `List<PasskeyRow>` with no count and no password field, and
-  `PasskeyDeregisterResult` — `(int remainingPasskeys, boolean passwordLoginAvailable)` — exists
-  only on the DELETE response. So the warning that must precede the delete can only be built from
-  data the delete produces. `passwordLoginAvailable` is computed in that handler and nowhere else;
-  `AdminUserSummary` excludes the password hash deliberately. **The correction generalizes: "the
-  endpoint exists" is not "the endpoint returns what the UI needs".** Two consecutive runs got AU2
-  wrong at two different depths — first by grepping the wrong controller, then by reading the
-  mappings and not the response records. The ask (expose `passwordLoginAvailable` and the passkey
-  count on the GET) is §4 of the MA1/EM2 handoff, and AU2 stays this board's first item for the
-  moment it lands. Also recorded for the UI: the delete calls `sessionService.revokeAllForUser(id)`,
-  so revoking one authenticator drops every live session. **Filed:** SD8 — Lens filtering on
-  `/location/[slug]`, split out of refactor-board C17. C17 shipped the URL key everywhere the
-  control is offered; the location page has no Lens control and `buildLocationCriteria` emits no
-  `lenses` key, so seeding it there would have written state that `syncToUrl` wipes on the first
-  click. It is a facet, so it gets asked before it gets built. **`main` after the three merges: 264
-  suites / 4,792 tests, 0 failures; `tsc` clean; 96 `act()` warnings.** Next: AU2 when the backend
-  answers, otherwise PF13 step 1, PF14 scoping, CT1 — and the decision sitting.
-
-- 2026-09-05 (13) — **no feature work; the full critical review the #400 handoff asked for, applied
-  to both boards.** Seven read-only slices (feature groups ×2, refactor board, every PR merged
-  since 2026-08-24, cross-repo facts on backend `origin/main`, an adversarial pass on Group D, a
-  missed-items sweep) and one apply pass; #399 merged first so every slice ran against one
-  baseline. **What a session following the old boards would have got wrong:** the refactor
-  board's NEXT RUN listed three items that had merged the day before it was written (C11 #352, D10
-  #353, E18 #354 — and E18's "genuinely open" Half B was never a bug, `collection` has derived
-  from `currentState` since June); this board's NEXT RUN was wholly done (#396, #397, #398, #399,
-  BE#301); RC1 had no frontend half; **AU2's premise was false** (the admin passkey list and revoke
-  shipped as BE#257 on 2026-08-31 — the row grepped the wrong controller — and decision #4 was
-  being asked on it); **MA1 was not blocked on an absent endpoint** but on a question the backend
-  board's #22 had addressed to this board since 2026-09-01; MA4's section described #396 as
-  unbuilt. **What neither board tracked:** the backend's open HIGH S-29 — the public image search
-  has no visibility predicate, so `/search`, `/location` and `/tag` surface client-gallery-only
-  images (refactor-board D15 now carries the frontend follow-through); the lens choice is not
-  URL-shareable and the drift guard cannot see it (C17); `CollectionRolesSection`'s mount fetch has
-  no unmount guard (C18); the gallery-access save never evicts `collection-{slug}` (D11); the
-  refactor board's row table was missing seven open items. The security pass settled the cache-key
-  question from framework source: Next hashes headers into the fetch-cache key, so the gallery gate
-  holds — no cross-visitor leak, now to be pinned by a test. Counts and refs: 63 refs re-resolved
-  on this side (13 drifted, 5 gone), six "verified and holding" commands rewritten so their output
-  IS the number, four decisions filed that blocked rows without a table entry (#14–#17), three
-  handoffs written or updated (RC3 corrected `title` → `name`; MA4/RC1 marked merged; MA1/EM2 new).
-  Five stale `docs/00x` lines and the README's Next/React/Node/rating claims fixed in the same PR.
-  Next: AU2's admin half, PF13 step 1, PF14 scoping, CT1 — and the decision sitting.
