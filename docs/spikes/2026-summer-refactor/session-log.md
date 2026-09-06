@@ -1263,3 +1263,58 @@ pageType="collectionsCollection">` is one line before and one line after — so 
   **Stale count fixed in passing:** "six of the fifteen rows are blocked on the user" had been wrong
   by three rows since C12/C13/G7 were filed without updating it. Now eight of twenty-two.
   Next: C9's check, then C11 + C14 together, then D10, E18.
+
+- 2026-09-05 — no MRs; **the full critical review the #400 handoff asked for, applied.** Seven
+  read-only slices and one apply pass across both boards (the feature board's entry has the
+  cross-board summary). **On this board, four open items had already shipped:** C11 (#352), D10
+  (#353) and E18 (#354) on 2026-08-30 — items 1, 2 and 3 of the NEXT RUN block written the next
+  day — and E18's "genuinely open" Half B was never a bug (`collection` derives from `currentState`
+  since `86a0f192`; #354 pinned the two-save case). **Seven open items had a section and no row**
+  (C12–C16, G7, H7) and the CSS guard had neither; all 26 open rows are in the table now, and the
+  feature board's shell checks are adapted here. **C15 unblocked from the other side:** the backend
+  answered its question (FE-1, won't-do — the array is being dropped), so it is type hygiene, not a
+  product call. **Filed:** C17 (lens not URL-shareable, drift guard blind), C18
+  (`CollectionRolesSection` unmount guard, 60 of 96 `act()` warnings), D11–D14 from an adversarial
+  pass on the merged security work that found no HIGH and settled the cache-key question from
+  framework source, D15 (the backend's open HIGH S-29 reaches three public routes here — no
+  frontend mitigation exists), and G8 (the CSS guard as a row). **F1 re-derived from anchors** (all
+  eight had drifted; the "straddle" was a line-number artefact) and **ordered before feature-board
+  MA1**, leaving the update-form region for MA1. Counts re-measured: 60,551/38,502 suite/source
+  lines, 88 style files, 38 components, 57 closed rows (60 after this pass), G4 1,494/54, G2's
+  inventory re-taken (448/441/14). C13 is three literals, not one. "What to build next" replaced by
+  a pointer. Next: C9's `0 x 0` count, then C14, C17, C13, D11, D12, G7, C12, C18.
+
+- 2026-09-05 (2) — **twelve items closed across three MRs: #402 (C13, C12, C14), #403 (C17, C16,
+  C15), #404 (D12, D11, D14, G7, C18), plus C9 at zero code.** Group C is now fully closed and
+  Group D is down to D13 and D15. All three PRs verified MERGED with `gh pr view` before any box was
+  ticked. **Post-merge `main`: 264 suites / 4,792 tests, 0 failures; `tsc` clean; 96 `act()`
+  warnings — unchanged.** **Five board rows were wrong about their own item, and the corrections are
+  the run's real output.** C12's premise: IconButton's `pointer: coarse` `::after` already gave 44px,
+  so the control was tappable; the defect was a 4px overhang that steals neighbouring taps. C14 was
+  two halves, not one — `PAGINATION` is `as const`, so `size` had narrowed to the literal `35` and no
+  caller could pass another page size; and the row's sibling-call count was 2 when it is 3
+  (`collections.ts:84`, `:114`, `:138`). D11's function is `handleSaveAccess`, and
+  `handleClearPassword` **cannot** propagate to children, so the "evict children too" half does not
+  apply to it — if clearing a parent should clear its children, that is a backend gap. D12 does not
+  cancel the invite page's `no-referrer`; the two cover different paths and both are needed. D14's
+  cap is 8KB not 4096, and the board understated part 3: only `isProxyableApiPath` normalized while
+  the anonymous-admin check ran `startsWith` on the raw path, so the two could **disagree** rather
+  than merely duplicate work. **C18's headline number was wrong in the most useful way.** The board
+  predicted ~64 fewer `act()` warnings; the fix removes **zero**, because React 19 discards updates
+  to an unmounted fiber silently — so the unmount test the board specified **passed against
+  unguarded source** and was deleted rather than shipped as a test that cannot fail. The real defect
+  was the stale-response race (a slow failing read for one collection blanked the next one's grant
+  list), and the 60 warnings come from `InfoTab.test.tsx` not mocking `@/app/lib/api/roles`, filed as
+  **B10**. **The rule this run earns: a board row's predicted number is a hypothesis about a
+  mechanism, and the mechanism is what to check first.** Four of the five wrong rows were wrong
+  because nobody had read the code that produces the symptom — an `::after` hit area, an `as const`,
+  a missing `propagateToChildren`, React 19's silent discard. **D14's real find** is that `;` reaches
+  the backend: `new URL()` preserves a path parameter Tomcat strips per segment, so
+  `api/..;/actuator/env` passed the `/api/` prefix check and resolved to `/actuator/env`, carrying
+  the `X-Internal-Secret` the proxy injects on every hop. **C9 closed on a production census** — 8
+  pages at `size=200`, 1,424 unique ids matching `totalElements`, zero `0 x 0` rows, and the count is
+  the whole table because `SELECT_CONTENT_IMAGE` has no `WHERE` at any tier. No frontend guard was
+  added and none is filed; the user rejected that on 2026-08-30. **Filed:** B10 (test hygiene) and
+  feature-board SD8 (the location page's Lens facet, which C17 could not carry). Next: B10, then
+  feature-board AU2 — whose admin half turned out blocked on a backend change, now specced in the
+  MA1/EM2 handoff.

@@ -250,3 +250,52 @@ same close-out that adds them._
   and the handoff doc with it — both recovered this pass, and the check for it hoisted into "how to
   use this doc". Deleted the two MA4 `read_at` rows (false once V61 landed) and fixed one drifted
   ref (`@DeleteMapping` `:55` → `:85`). Next: MA4's frontend half, RC3, SD3.
+
+- 2026-09-05 (13) — **no feature work; the full critical review the #400 handoff asked for, applied
+  to both boards.** Seven read-only slices (feature groups ×2, refactor board, every PR merged
+  since 2026-08-24, cross-repo facts on backend `origin/main`, an adversarial pass on Group D, a
+  missed-items sweep) and one apply pass; #399 merged first so every slice ran against one
+  baseline. **What a session following the old boards would have got wrong:** the refactor
+  board's NEXT RUN listed three items that had merged the day before it was written (C11 #352, D10
+  #353, E18 #354 — and E18's "genuinely open" Half B was never a bug, `collection` has derived
+  from `currentState` since June); this board's NEXT RUN was wholly done (#396, #397, #398, #399,
+  BE#301); RC1 had no frontend half; **AU2's premise was false** (the admin passkey list and revoke
+  shipped as BE#257 on 2026-08-31 — the row grepped the wrong controller — and decision #4 was
+  being asked on it); **MA1 was not blocked on an absent endpoint** but on a question the backend
+  board's #22 had addressed to this board since 2026-09-01; MA4's section described #396 as
+  unbuilt. **What neither board tracked:** the backend's open HIGH S-29 — the public image search
+  has no visibility predicate, so `/search`, `/location` and `/tag` surface client-gallery-only
+  images (refactor-board D15 now carries the frontend follow-through); the lens choice is not
+  URL-shareable and the drift guard cannot see it (C17); `CollectionRolesSection`'s mount fetch has
+  no unmount guard (C18); the gallery-access save never evicts `collection-{slug}` (D11); the
+  refactor board's row table was missing seven open items. The security pass settled the cache-key
+  question from framework source: Next hashes headers into the fetch-cache key, so the gallery gate
+  holds — no cross-visitor leak, now to be pinned by a test. Counts and refs: 63 refs re-resolved
+  on this side (13 drifted, 5 gone), six "verified and holding" commands rewritten so their output
+  IS the number, four decisions filed that blocked rows without a table entry (#14–#17), three
+  handoffs written or updated (RC3 corrected `title` → `name`; MA4/RC1 marked merged; MA1/EM2 new).
+  Five stale `docs/00x` lines and the README's Next/React/Node/rating claims fixed in the same PR.
+  Next: AU2's admin half, PF13 step 1, PF14 scoping, CT1 — and the decision sitting.
+
+- 2026-09-05 (14) — **no feature work; the refactor board's close-out, and one item here moved the
+  wrong way.** Three MRs merged there (#402, #403, #404) closing twelve items; this board's only
+  code-side change is that **AU2 is now BLOCKED, not COLD.** The last run corrected AU2's premise
+  (the admin endpoints do exist, BE#257 / commit `70b5371c`) and set it as this run's first item.
+  Reading the backend records rather than the endpoint list found the real blocker: `GET
+/{id}/passkeys` returns a bare `List<PasskeyRow>` with no count and no password field, and
+  `PasskeyDeregisterResult` — `(int remainingPasskeys, boolean passwordLoginAvailable)` — exists
+  only on the DELETE response. So the warning that must precede the delete can only be built from
+  data the delete produces. `passwordLoginAvailable` is computed in that handler and nowhere else;
+  `AdminUserSummary` excludes the password hash deliberately. **The correction generalizes: "the
+  endpoint exists" is not "the endpoint returns what the UI needs".** Two consecutive runs got AU2
+  wrong at two different depths — first by grepping the wrong controller, then by reading the
+  mappings and not the response records. The ask (expose `passwordLoginAvailable` and the passkey
+  count on the GET) is §4 of the MA1/EM2 handoff, and AU2 stays this board's first item for the
+  moment it lands. Also recorded for the UI: the delete calls `sessionService.revokeAllForUser(id)`,
+  so revoking one authenticator drops every live session. **Filed:** SD8 — Lens filtering on
+  `/location/[slug]`, split out of refactor-board C17. C17 shipped the URL key everywhere the
+  control is offered; the location page has no Lens control and `buildLocationCriteria` emits no
+  `lenses` key, so seeding it there would have written state that `syncToUrl` wipes on the first
+  click. It is a facet, so it gets asked before it gets built. **`main` after the three merges: 264
+  suites / 4,792 tests, 0 failures; `tsc` clean; 96 `act()` warnings.** Next: AU2 when the backend
+  answers, otherwise PF13 step 1, PF14 scoping, CT1 — and the decision sitting.
