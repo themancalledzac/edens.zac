@@ -1,7 +1,7 @@
 # Handoff to the backend agent — MA1's clear semantics, EM2's notify list, AU2's passkey GET, one question
 
-**Written 2026-09-05 by the frontend session; §4 added the same day.** No code was written and no
-backend branch exists.
+**Written 2026-09-05 by the frontend session; §4 added the same day and narrowed 2026-09-06 from two
+fields to one.** No code was written and no backend branch exists.
 
 Three frontend items wait on small backend changes, and one backend row is waiting on a frontend
 answer. This document is all four, in the shape of [backend-handoff-RC3.md](backend-handoff-RC3.md):
@@ -62,28 +62,41 @@ work already changed it, say so and the frontend drops the line. One grep on you
 git grep -n 'applyTypeSpecificDefaults' origin/main -- src/main/java/
 ```
 
-## 4. AU2 — put `passwordLoginAvailable` and the passkey count on the passkey GET
+## 4. AU2 — put `passwordLoginAvailable` on the passkey GET
+
+**Narrowed 2026-09-06. This section previously asked for two things; it now asks for one.** The
+passkey count was the other half, and the frontend can get that itself.
 
 The frontend's AU2 is a passkey list with a per-row Remove on `/admin/users/[id]`, against your
 `GET /api/admin/users/{id}/passkeys` and `DELETE /{id}/passkeys/{credentialId}` (commit `70b5371c`,
-BE#257). Both endpoints are fine. The item is blocked on the GET's response shape.
+BE#257). Both endpoints are fine. One field on the GET's response is what the item waits on.
 
 Removing an account's last passkey, when that account has no password, leaves it unable to log in
-until re-invited. The admin UI has to warn about that **before** the delete. The two fields the
-warning needs only exist after it:
+until re-invited. The admin UI has to warn about that **before** the delete. That warning has two
+clauses, and only the second needs you:
+
+- **"This is their last passkey."** No backend change. The client fetches
+  `GET /{id}/passkeys` and takes `.length` off the list you already return. Withdrawn from this ask.
+- **"…and they have no password to fall back on."** This one needs a field. Nothing on any GET
+  response says whether an account has a password. `AdminUserSummary` is five fields carrying
+  neither a passkey count nor a password flag, and `passwordHash` is read in exactly one place
+  outside auth — inside the DELETE handler.
+
+For reference, the shapes:
 
 - `GET /{id}/passkeys` returns a bare `List<PasskeyRow>` — `(Long id, String label, String
-transports, LocalDateTime createdAt, LocalDateTime lastUsedAt)`. No count, no password field.
+transports, LocalDateTime createdAt, LocalDateTime lastUsedAt)`.
 - `PasskeyDeregisterResult` — `(int remainingPasskeys, boolean passwordLoginAvailable)` — is on the
   DELETE response only.
-- `passwordLoginAvailable` is computed inside the delete handler and nowhere else. Grepping for
-  `passwordLoginAvailable`, `hasPassword` and `passwordSet` finds no other site, and
-  `AdminUserSummary` excludes the password hash deliberately, which we are not asking you to change.
+- `passwordLoginAvailable` is computed inside the delete handler and nowhere else:
+  `git grep -n -e passwordLoginAvailable -e hasPassword -e passwordSet origin/main -- src/main/java/`
+  finds no other site. `AdminUserSummary` excludes the password hash deliberately, which we are not
+  asking you to change.
 
-**The ask:** carry `passwordLoginAvailable` and the passkey count on the GET response — either as a
-small wrapper around the list, or as two fields beside it. Whichever shape you pick, a boolean is
-enough; the frontend does not want the hash or anything derived from it beyond "this account can
-still log in without a passkey". The delete response can keep `remainingPasskeys` as it is.
+**The ask:** carry `passwordLoginAvailable` on the GET response — as a small wrapper around the
+list, or as one field beside it. A boolean is enough; the frontend does not want the hash or
+anything derived from it beyond "this account can still log in without a passkey". You do not need
+to add a count, and the delete response can keep `remainingPasskeys` as it is.
 
 One behaviour we will state in the UI, so flag it if we have it wrong: the delete calls
 `sessionService.revokeAllForUser(id)`, so revoking a single authenticator ends every live session
