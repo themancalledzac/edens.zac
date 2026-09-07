@@ -15,7 +15,7 @@ import { join } from 'node:path';
 
 import { compile } from 'sass';
 
-const SOURCE = join(process.cwd(), 'app/styles/fullscreen-image.module.scss');
+const SOURCE = join(process.cwd(), 'app/components/FullScreenModal/FullScreenModal.module.scss');
 const MIN_TOUCH_TARGET = 44;
 
 function rulesFor(css: string, selector: string): string[] {

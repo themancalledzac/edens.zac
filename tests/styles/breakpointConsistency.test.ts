@@ -1,5 +1,5 @@
 /**
- * Guards C5's fourth bullet. `fullscreen-image.module.scss` used `width > 768px` in 12 blocks while
+ * Guards C5's fourth bullet. `FullScreenModal.module.scss` used `width > 768px` in 12 blocks while
  * the rest of the repo uses `width >= 768px`. At exactly 768px the two disagree, so the fullscreen
  * wrapper took its mobile branch while the image sizing inside it took the desktop branch.
  *
