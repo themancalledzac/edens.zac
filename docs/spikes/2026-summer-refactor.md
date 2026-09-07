@@ -220,7 +220,7 @@ grep -ohE '^#{2,3} [☐◐⛔✅☑] [A-H][0-9]+[a-z]?' docs/spikes/2026-summer-
 | MR  | Scope                                                                             | Status                                                                                                                                                                                                        |
 | --- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | B8  | Fill the required-coverage gaps                                                   | ◐ 5 of 6 — #266, #267, #295, #296; only the optional bullet is open (`sharedObserver` 116 / `useParallax` 169 / `useContentReordering` 197 lines, all untested)                                               |
-| B10 | `InfoTab.test.tsx` does not mock `@/app/lib/api/roles`                            | ☐ COLD — 60 of the suite's 96 `act()` warnings, all from the real rejecting fetch. Test-only; ~+5 test                                                                                                        |
+| B10 | `InfoTab.test.tsx` does not mock `@/app/lib/api/roles`                            | ✅ PR #408 — reads left PENDING, not resolved; a resolving mock removes only 20 of the 60. Suite-wide `act()` 96 → 36                                                                                         |
 | D13 | Report-only CSP has no `report-uri`; apex host silently 403s every write          | ☐ COLD — a `POST /api/csp-report` route and the directive. Canonical host DECIDED 2026-09-06: the apex is real, `www` 301s to it; the redirect itself rides PF7 at the Amplify/DNS layer. ~+40 src / +30 test |
 | D15 | Public routes surface client-gallery images through the unfiltered backend search | ☐ COLD — backend S-29 SHIPPED (BE#309, merged 2026-09-05). The frontend owes exactly one `revalidateTag('search-images')`; `/search`'s corpus size is now a performance question                              |
 | E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook)                           | ◐ waste FIXED #337; hook REJECTED; one path open (`EditModeLayer.tsx:281` reorder branch, unsized)                                                                                                            |
@@ -254,9 +254,10 @@ than crammed in.**
    board, and it is the one with a clock on it: until it runs, a pre-fix response can be served from
    the data cache for up to 3600s. Backend #309 landed the visibility predicate on 2026-09-05, so
    this is the whole frontend half.
-2. **B10** — mock `@/app/lib/api/roles` in `tests/components/ContentCollection/edit/sections/InfoTab.test.tsx`.
-   Test-only, ~+5 test lines, and it is 60 of the suite's 96 `act()` warnings. Second because it
-   makes the remaining 36 warnings readable for everything after it.
+2. ~~**B10** — mock `@/app/lib/api/roles` in `tests/components/ContentCollection/edit/sections/InfoTab.test.tsx`.~~
+   **SHIPPED #408.** Five test lines, 0 src, suite-wide `act()` 96 → 36. The reads are left PENDING
+   rather than resolved — a resolving mock removes only 20 of the 60, and an `afterEach` `act` flush
+   removes none. See the B10 section for the measured table.
 3. **F3's `fullscreen-image.module.scss` rename** — **before item 4, and this is the one real
    dependency in the run.** `app/styles/fullscreen-image.module.scss` holds one of E9's six
    `.srOnly` copies, so the rename and the partial touch the same file; whichever ships second
@@ -303,7 +304,7 @@ is in [lessons.md](2026-summer-refactor/lessons.md).)
 | **D15** | COLD               | —— backend S-29 SHIPPED (BE#309, 2026-09-05): `ContentRepository.java:887` filters `publicOnly` reads on `cc.visible`, `col.visibility = 'LISTED'` and a null `gallery_password`. The frontend owes one `revalidateTag('search-images')` — that is the only tag the three routes carry                                                                                                              |
 | **E7**  | COLD               | —— the waste shipped as a handoff guard (#337); the hook is REJECTED with measurement. One wasted path open (`EditModeLayer.tsx:281` reorder branch)                                                                                                                                                                                                                                                |
 | **B8**  | COLD               | —— 5 of 6 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                                                                                                                                                                               |
-| **B10** | COLD               | —— `InfoTab.test.tsx` does not mock `@/app/lib/api/roles`, so 20 tests each fire three `setState`s off a real rejecting fetch. 60 of the suite's 96 `act()` warnings                                                                                                                                                                                                                                |
+| **B10** | ✅ SHIPPED #408    | —— closed 2026-09-06. The row's "~+5 test lines and all 60 go" was half right: the mock is five lines, but it only clears all 60 with the reads left PENDING. See the section for the measured table                                                                                                                                                                                                |
 | **F3**  | COLD               | —— five bullets shipped; the invite bullet is COSTED and REJECTED (do not re-open the 3-function version). **Four bullets open**                                                                                                                                                                                                                                                                    |
 | **G4**  | COLD               | —— **1,500** blocks / 54 backward-looking, re-run at HEAD 2026-09-06 with the per-term split reproducing exactly (the 1,494 elsewhere was measured at `699aa4f2`); the ~23 false positives are a classification and were NOT re-checked; 17 label docblocks + 4 label inlines must be read block-by-block, not regexed                                                                              |
 | **F1**  | COLD               | —— largest open item; no unanswered question, just size. Goes before feature-board MA1                                                                                                                                                                                                                                                                                                              |
@@ -375,7 +376,7 @@ All nine items merged (#255–#263); A9's last bullet — the `CLAUDE.md` PATH c
 
 ---
 
-## Group B — Test-suite reductions — B8's optional bullet and B10 open
+## Group B — Test-suite reductions — only B8's optional bullet is open (B10 shipped #408)
 
 B1–B7 and B9 closed — write-ups, estimate corrections and closed rows:
 [group-b-tests.md](2026-summer-refactor/group-b-tests.md). The suite is **61,171 lines against 38,600 source lines** (re-measured 2026-09-05 (2):
@@ -398,7 +399,7 @@ The project rule requires tests for these and they had none. The five shipped sl
       (**was `:28`; corrected 2026-08-25**) re-exports `toggleRelation`, and its coverage lives in
       `tests/components/ContentCollection/edit/collectionEditUtils.test.ts` since B1's merge.
 
-### ☐ B10 · `InfoTab.test.tsx` does not mock `@/app/lib/api/roles` — 60 of the suite's 96 `act()` warnings
+### ✅ B10 · `InfoTab.test.tsx` does not mock `@/app/lib/api/roles` — PR #408; suite-wide `act()` 96 → 36
 
 Filed 2026-09-05 (2) while closing C18, which was expected to remove ~64 of these warnings and
 removed none. The attribution was measured rather than assumed, and re-measured 2026-09-06 — the
@@ -424,12 +425,31 @@ npx jest 2>&1 | awk '/not wrapped in act/{print s} /^(PASS|FAIL) /{s=$2}' | sort
 `InfoTab.test.tsx` renders the real `CollectionRolesSection`, which calls the unmocked
 `@/app/lib/api/roles`. The fetch rejects, and each of the 20 tests fires three `setState` calls off
 that rejection — all while the component is still mounted and current, so no source guard can stop
-them. The fix is a `jest.mock('@/app/lib/api/roles')` in that suite, the way
-`CollectionRolesSection.test.tsx` already does it.
+them. C18 had already established that, which is why no cancellation guard was added here.
 
-- [ ] Mock `@/app/lib/api/roles` in `InfoTab.test.tsx`. ~+5 test lines, 0 src. Re-run the awk
-      command above and record the new total; the remaining 36 warnings become readable once these
-      60 are gone.
+- [x] Mock `@/app/lib/api/roles` in `InfoTab.test.tsx`. **Shipped in #408 — five test lines, 0 src,
+      and the measured suite-wide total is 96 → 36.** The remaining 36 are listed in the table
+      above minus the `InfoTab` row.
+
+**Where this row was wrong: "mock it the way `CollectionRolesSection.test.tsx` does" does not get
+you to 0.** That suite resolves its mocks and then `await waitFor`s, so its `setState`s land inside
+`act`. `InfoTab.test.tsx` asserts synchronously, so a resolving mock only removes the catch path:
+
+| Mock shape                                                    | Warnings in the suite |
+| ------------------------------------------------------------- | --------------------- |
+| none (before)                                                 | 60                    |
+| resolves `[]`                                                 | 40                    |
+| `afterEach(async () => { await act(async () => {}) })` on top | 40                    |
+| reads left PENDING (`jest.fn(() => new Promise(() => {}))`)   | **0**                 |
+
+The two success-path `setState`s (`setGrants`, `setAllRoles`) settle in microtasks after the sync
+test body returns. **An `afterEach` flush is too late** — the microtasks land between the test body
+and `afterEach`, so the warning has already fired. Leaving the reads pending holds the panel at its
+initial empty render and fires no `setState` at all, which is sound here only because none of these
+20 date/gallery-access cases assert on role access.
+
+**Generalizable:** a suite that renders a data-loading child it never asserts on wants a PENDING
+mock, not a resolving one. A resolving mock is for suites that `await` the loaded state.
 
 ---
 
