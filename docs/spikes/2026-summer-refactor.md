@@ -224,7 +224,7 @@ grep -ohE '^#{2,3} [☐◐⛔✅☑] [A-H][0-9]+[a-z]?' docs/spikes/2026-summer-
 | D13 | Report-only CSP has no `report-uri`; apex host silently 403s every write          | ☐ COLD — a `POST /api/csp-report` route and the directive. Canonical host DECIDED 2026-09-06: the apex is real, `www` 301s to it; the redirect itself rides PF7 at the Amplify/DNS layer. ~+40 src / +30 test |
 | D15 | Public routes surface client-gallery images through the unfiltered backend search | ☐ COLD — backend S-29 SHIPPED (BE#309, merged 2026-09-05). The frontend owes exactly one `revalidateTag('search-images')`; `/search`'s corpus size is now a performance question                              |
 | E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook)                           | ◐ waste FIXED #337; hook REJECTED; one path open (`EditModeLayer.tsx:281` reorder branch, unsized)                                                                                                            |
-| E9  | Download icon/hook, auth-card SCSS, `.srOnly`                                     | ◐ PR #300 — both COLD bullets shipped; `.srOnly` DECIDED 2026-09-06: build the partial, and `.skipLink` folds in. Repo's first shared partial and first `@use`; 7 copies collapse, emitted CSS unchanged      |
+| E9  | Download icon/hook, auth-card SCSS, `.srOnly`                                     | ✅ #300 + #410 — CLOSED. Repo's first shared partial and first `@use`; 7 copies collapsed. Declarations identical, but `@extend` HOISTS the rule — see the section                                            |
 | F1  | Decompose `useCollectionEdit.tsx` (1,829 lines)                                   | ☐ COLD — largest open item; anchors re-derived 2026-09-06; goes BEFORE feature-board MA1 and leaves the update-form region alone (see section)                                                                |
 | F3  | File moves and renames                                                            | ◐ six shipped (#324 #336 #343 #348 #349 #409); invite REJECTED; three bullets open                                                                                                                            |
 | F4  | `TaxonomyPage` ← `LocationPageClient`                                             | ⛔ USER DECISION                                                                                                                                                                                              |
@@ -262,10 +262,10 @@ than crammed in.**
    dependency, and it went first as planned. The file is now
    `app/components/FullScreenModal/FullScreenModal.module.scss`; **item 4 edits it at that path**,
    and its `.srOnly` copy was left in place for exactly that.
-4. **E9's `.srOnly` partial** — `app/styles/_a11y.scss` with `%visually-hidden`, seven modules
-   pointed at it via a relative `@use`, `.skipLink` included. Read the section first: this is the
-   repo's first shared partial, the `@use` mechanism was compiled and verified 2026-09-06, and a
-   bare specifier will NOT resolve. Verify by `next build` — jest and tsc cannot see it.
+4. ~~**E9's `.srOnly` partial**~~ **SHIPPED #410.** Seven copies collapsed, verified by
+   `next build`. Three corrections to the section came out of it — `@extend` hoists the rule, loud
+   comments in a partial are emitted into every consumer, and `includePaths` is ignored by Turbopack
+   rather than merely mis-pathed. The `includePaths` cost report is written up in the E9 section.
 5. **G3's delete** — the page, its SCSS module, `listAllSelectsServer`, that function's describe and
    the orphaned `SelectGroup`. ~167 lines out, nothing in. If it lands before feature-board PF15,
    re-point PF15's `app/robots.ts` bullet at `all-client-galleries`.
@@ -306,7 +306,7 @@ is in [lessons.md](2026-summer-refactor/lessons.md).)
 | **G4**  | COLD               | —— **1,500** blocks / 54 backward-looking, re-run at HEAD 2026-09-06 with the per-term split reproducing exactly (the 1,494 elsewhere was measured at `699aa4f2`); the ~23 false positives are a classification and were NOT re-checked; 17 label docblocks + 4 label inlines must be read block-by-block, not regexed                                                                              |
 | **F1**  | COLD               | —— largest open item; no unanswered question, just size. Goes before feature-board MA1                                                                                                                                                                                                                                                                                                              |
 | **G3**  | COLD               | —— DECIDED 2026-09-06: delete `/user/selects`. Scope re-resolved at HEAD: the 65-line page, its 48-line SCSS module, `listAllSelectsServer` (`selects.ts:45-63`, 19 lines), that function's describe (`selects.test.ts:118-152`, 35 lines) and the now-orphaned `SelectGroup` type. ~167 lines out                                                                                                  |
-| **E9**  | COLD               | —— DECIDED 2026-09-06: build the shared partial, and `.skipLink` folds in. First shared SCSS partial and first `@use` in the repo, so the item sets the convention: `app/styles/_a11y.scss` holding `%visually-hidden`, reached by a RELATIVE `@use`. Seven copies collapse; emitted CSS is unchanged                                                                                               |
+| **E9**  | ✅ SHIPPED #410    | —— closed 2026-09-06. Convention set: `app/styles/_a11y.scss` holding `%visually-hidden`, reached by a RELATIVE `@use`. Three corrections came out of it (rule hoisting, loud comments in partials, and `includePaths` being ignored rather than merely mis-pathed) — all in the section                                                                                                            |
 | **G2**  | COLD               | —— DECIDED 2026-09-06: `tests/` is in scope for both the migration and the lint rule. G2a's blocks widen to `app/` + `tests/`; the inventory is 2,599 lines across 219 files, so G2b splits into `app/` then `tests/`. The light/heavy cut has never been taken in `tests/` — take it before scheduling                                                                                             |
 | **H1**  | BLOCKED — **user** | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? The catalog-fetch half is now measured, not open: it is ~0.5s / ~57KB, it already runs inside the `Promise.all`, and the Following count never used it. The one alternative left to price is asking the backend to return followed collections on the user-page read |
 | **H7**  | BLOCKED — **user** | Is passkey management on `/admin/users/[id]` wanted? Backend #257 built both routes; this repo calls neither. **The backend ask is now one field, `passwordLoginAvailable`** — the passkey count comes from `.length` on the list the client already fetches. **Same feature as feature-board AU2 and its decision #4 — ask once, close this row against AU2**                                      |
@@ -596,7 +596,7 @@ while the layer is mounted.** (The #337 guard's exit-path bug was C10, merged #3
       repo-wide there are **six** — `SearchPageClient.tsx:84` (SD1), `TaxonomyPage.tsx:13`,
       `LocationPageClient.tsx:84` plus the three collection-page callers. Say which number you mean.
 
-### ◐ E9 · Download icon/hook, auth-card SCSS, `.srOnly` — PR #300; the `.srOnly` partial is DECIDED and COLD
+### ✅ E9 · Download icon/hook, auth-card SCSS, `.srOnly` — PR #300; the `.srOnly` partial SHIPPED #410
 
 Both COLD bullets shipped in #300 — write-ups in the
 [archive](2026-summer-refactor/group-e-consolidations.md).
@@ -662,11 +662,51 @@ would say so. Fixing `includePaths` is a separate call; do not fold it in.
 `tests/styles/scssImportResolution.test.ts` only walks `.scss` specifiers imported from `app/`
 TS/TSX files, so it cannot see a `@use` between two stylesheets. Verify this one by `next build`.
 
-- [ ] Add `app/styles/_a11y.scss` with `%visually-hidden`, and point the six `.srOnly` modules plus
-      `SkipLink.module.scss`'s `.skipLink` at it. Seven copies collapse; emitted CSS is unchanged,
-      because CSS modules compile independently — this is a maintenance change, not a payload one.
-      Say so in the PR body so it is not read as a size win. ~−66 source lines plus the `.skipLink`
-      nine, against a new ~8-line partial and seven `@use` lines.
+- [x] ~~Add `app/styles/_a11y.scss` with `%visually-hidden`, and point the six `.srOnly` modules
+      plus `SkipLink.module.scss`'s `.skipLink` at it.~~ **Shipped in #410.** Seven copies collapsed;
+      the estimate held. Verified by `next build`, which is the only thing that can see a broken
+      `@use`.
+
+**Three corrections came out of shipping it.**
+
+1. **"Emitted CSS is unchanged" is not quite right.** All seven were compiled with the repo's own
+   sass (1.97.3) before and after and diffed. The declarations are byte-identical, but **`@extend`
+   hoists the extending selector to the placeholder's position**, so the rule moves to the top of
+   each file. Inert here, and checked rather than assumed: all seven usages apply the class alone
+   (`className={styles.srOnly}` / `styles.skipLink`), never combined with another class from the
+   same module, so nothing can compete on order. **A `@mixin` would have preserved position
+   exactly** — the board's claim that placeholder and mixin "emit the same bytes" is true of the
+   declarations and false of the ordering. If byte-identical output ever matters more than the
+   single-mechanism argument, it is a one-line swap.
+2. **A loud `/* */` comment in a partial is emitted into every stylesheet that `@use`s it.** The
+   first draft of `_a11y.scss` put twelve lines of comment into all seven outputs. Keep partial
+   comments silent (`//`) — and note stylelint's `scss/comment-no-empty` rejects bare `//`
+   separator lines, so such a header carries no blank comment lines.
+3. **`sassOptions.includePaths` is worse than this section recorded** — see below.
+
+**The `includePaths` cost report (asked for 2026-09-06; the option was left alone).** The board said
+the path is wrong. It is wrong _and_ the key is ignored. Measured by building three ways with a bare
+`@use 'a11y'`:
+
+| `next.config.js:79-81`                      | `next build`                                 |
+| ------------------------------------------- | -------------------------------------------- |
+| `includePaths: [cwd + '/styles']` (current) | fails — `Can't find stylesheet to import`    |
+| `includePaths: [cwd + '/app/styles']`       | **still fails** — Turbopack does not read it |
+| `loadPaths: [cwd + '/app/styles']`          | passes                                       |
+
+So the fix is one line — `includePaths` → `loadPaths` **and** `styles` → `app/styles` — not the path
+correction alone. Beyond that line it costs nothing and buys nothing:
+
+- **Nothing depends on the current value.** There were zero `@use`/`@import` in the repo before
+  #410, so the broken option has never resolved anything; fixing or deleting it breaks nothing.
+- **It only pays off if bare specifiers become the convention**, which would mean rewriting #410's
+  seven relative `@use`s and giving up the greppability of a relative path.
+- **It is pinned to Turbopack behaviour, not a documented contract.** Next's own docs
+  (`node_modules/next/dist/docs/01-app/02-guides/sass.md`) document `sassOptions` but name neither
+  `includePaths` nor `loadPaths`. Worth a comment on the line if it is ever fixed.
+
+**Recommendation: fix it to `loadPaths` with the right path as a standalone one-liner** so the
+option stops being a live lie, but keep relative specifiers as the convention. Not scheduled.
 
 ---
 
