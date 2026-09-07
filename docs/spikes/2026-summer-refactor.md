@@ -229,7 +229,7 @@ grep -ohE '^#{2,3} [☐◐⛔✅☑] [A-H][0-9]+[a-z]?' docs/spikes/2026-summer-
 | F3  | File moves and renames                                                            | ◐ six shipped (#324 #336 #343 #348 #349 #409); invite REJECTED; three bullets open                                                                                                                            |
 | F4  | `TaxonomyPage` ← `LocationPageClient`                                             | ⛔ USER DECISION                                                                                                                                                                                              |
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)                   | ◐ wording #268; `tests/` scope DECIDED 2026-09-06 — in. G2a's rule widens to `app/` + `tests/`; G2b is 2,599 lines across both trees and splits into two MRs, `app/` then `tests/`; G2c rides refactors       |
-| G3  | `/user/selects` decision                                                          | ☐ COLD — DECIDED 2026-09-06: delete. 65-line page, its 48-line SCSS module, `listAllSelectsServer` (`selects.ts:45-63`) and that function's describe (`selects.test.ts:118-152`)                              |
+| G3  | `/user/selects` decision                                                          | ✅ #411 — deleted. Page, SCSS module, `listAllSelectsServer`, its describe and `SelectGroup`; PF15's `robots.ts` bullet re-pointed at `all-client-galleries`                                                  |
 | G4  | Docblock standard — length, structure, and no history                             | ◐ intersection pass #310; 1,500 blocks / 54 hits (re-run 2026-09-06); 17 label docblocks + 4 inline; read, don't regex                                                                                        |
 | G8  | Extend the panel `styles.<key>` guard repo-wide?                                  | ⛔ USER DECISION — 107 files / 411 keys; 10 import statements across 9 files bind a module to another name, so a `styles.` regex skips them                                                                   |
 | H1  | Merge `Following` into `Collections` on `/user`                                   | ☐ BLOCKED (user) — count semantics and the followed-tile marker. The catalog fetch is measured and softer than the row claimed                                                                                |
@@ -266,9 +266,9 @@ than crammed in.**
    `next build`. Three corrections to the section came out of it — `@extend` hoists the rule, loud
    comments in a partial are emitted into every consumer, and `includePaths` is ignored by Turbopack
    rather than merely mis-pathed. The `includePaths` cost report is written up in the E9 section.
-5. **G3's delete** — the page, its SCSS module, `listAllSelectsServer`, that function's describe and
-   the orphaned `SelectGroup`. ~167 lines out, nothing in. If it lands before feature-board PF15,
-   re-point PF15's `app/robots.ts` bullet at `all-client-galleries`.
+5. ~~**G3's delete**~~ **SHIPPED #411.** The page, its SCSS module, `listAllSelectsServer`, its
+   describe and `SelectGroup`. PF15's `app/robots.ts` bullet was re-pointed at
+   `all-client-galleries`, which is now the only `index: false` declaration in `app/`.
 
 **Available, not in this run:**
 
@@ -305,7 +305,7 @@ is in [lessons.md](2026-summer-refactor/lessons.md).)
 | **F3**  | COLD               | —— six bullets shipped (the SCSS rename closed 2026-09-06, #409); the invite bullet is COSTED and REJECTED (do not re-open the 3-function version). **Three bullets open**                                                                                                                                                                                                                          |
 | **G4**  | COLD               | —— **1,500** blocks / 54 backward-looking, re-run at HEAD 2026-09-06 with the per-term split reproducing exactly (the 1,494 elsewhere was measured at `699aa4f2`); the ~23 false positives are a classification and were NOT re-checked; 17 label docblocks + 4 label inlines must be read block-by-block, not regexed                                                                              |
 | **F1**  | COLD               | —— largest open item; no unanswered question, just size. Goes before feature-board MA1                                                                                                                                                                                                                                                                                                              |
-| **G3**  | COLD               | —— DECIDED 2026-09-06: delete `/user/selects`. Scope re-resolved at HEAD: the 65-line page, its 48-line SCSS module, `listAllSelectsServer` (`selects.ts:45-63`, 19 lines), that function's describe (`selects.test.ts:118-152`, 35 lines) and the now-orphaned `SelectGroup` type. ~167 lines out                                                                                                  |
+| **G3**  | ✅ SHIPPED #411    | —— closed 2026-09-06. Every ref in the row held at HEAD; the one it missed was that deleting the describe orphaned `loggerErrorMock` in the test file. PF15's `robots.ts` bullet re-pointed at `all-client-galleries`                                                                                                                                                                               |
 | **E9**  | ✅ SHIPPED #410    | —— closed 2026-09-06. Convention set: `app/styles/_a11y.scss` holding `%visually-hidden`, reached by a RELATIVE `@use`. Three corrections came out of it (rule hoisting, loud comments in partials, and `includePaths` being ignored rather than merely mis-pathed) — all in the section                                                                                                            |
 | **G2**  | COLD               | —— DECIDED 2026-09-06: `tests/` is in scope for both the migration and the lint rule. G2a's blocks widen to `app/` + `tests/`; the inventory is 2,599 lines across 219 files, so G2b splits into `app/` then `tests/`. The light/heavy cut has never been taken in `tests/` — take it before scheduling                                                                                             |
 | **H1**  | BLOCKED — **user** | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? The catalog-fetch half is now measured, not open: it is ~0.5s / ~57KB, it already runs inside the `Promise.all`, and the Following count never used it. The one alternative left to price is asking the backend to return followed collections on the user-page read |
@@ -955,7 +955,7 @@ error on that list**), `contentLayout.ts` (15), `contentFilter.ts` (**16, not 13
   (`CollectionPageClient.tsx`, 23 blocks; `CollectionPageWrapper.tsx`, 9) now ride nothing, so
   G2c is partly schedulable work, not pure ride-along.
 
-### ☐ G3 · `/user/selects` — DECIDED 2026-09-06: delete it
+### ✅ G3 · `/user/selects` — DELETED in #411
 
 **The user's call: delete `/user/selects`.** Selects already live in the gallery star flow, which is
 why the page renders raw IDs nobody follows. Scope is below and every ref was re-resolved at HEAD
@@ -996,20 +996,20 @@ and the file ends at `:152`.
 The other three exports of `selects.ts` (`addSelect`, `removeSelect`, `listSelectIdsServer`) have
 live callers and stay.
 
-- [ ] **Delete the page, its SCSS module, `listAllSelectsServer` and that function's describe block.**
-      Roughly 167 lines out, nothing in. Re-run the greps above first, since this item has been open
-      a while.
-- [ ] **`SelectGroup` (`app/types/Selects.ts:9-12`) goes with it.** `grep -rn 'SelectGroup' app tests`
-      returns five hits and all five are the type's own declaration, its import in `selects.ts:9`,
-      the two uses inside `listAllSelectsServer` and the fixture in the describe being deleted.
-      `app/types/Selects.ts` itself stays — `PINNED_SELECT` and `MaybePinned` have other callers —
-      but its module docblock says a select is "listed on their `/user` page", which is this page.
-      Correct that sentence in the same commit.
-- [ ] **Tell the feature board.** `app/user/selects/page.tsx:17` is one of only two per-page `robots`
-      declarations in `app/` (`grep -rn 'index: false' app`; the other is
-      `app/all-client-galleries/page.tsx:7`), and feature-board **PF15's `app/robots.ts` bullet cites
-      it by name**. Whichever ships second fixes the other's ref. If G3 goes first, PF15's bullet
-      must be re-pointed at `all-client-galleries`.
+- [x] ~~**Delete the page, its SCSS module, `listAllSelectsServer` and that function's describe
+      block.**~~ **Shipped in #411.** The greps were re-run at HEAD first and every claim above held:
+      no page links to `/user/selects`, `?collection=` is still unhandled, 65 / 48 lines, and the
+      page was `listAllSelectsServer`'s only app caller.
+- [x] ~~**`SelectGroup` (`app/types/Selects.ts:9-12`) goes with it.**~~ **Shipped in #411**, and the
+      module docblock's "listed on their `/user` page" sentence was corrected in the same commit.
+      `app/types/Selects.ts` stays for `PINNED_SELECT` and `MaybePinned`.
+      **One ref the row did not have:** deleting the describe left `loggerErrorMock` and the
+      `logger` import unused in `tests/lib/api/selects.test.ts` — eslint caught it. The
+      `jest.mock('@/app/utils/logger')` factory stays, because `listSelectIdsServer`'s failure path
+      still logs; only the unused handle and import went.
+- [x] ~~**Tell the feature board.**~~ **Done in #411.** G3 went first, so PF15's `app/robots.ts`
+      bullet was re-pointed: `grep -rn 'index: false' app` now returns exactly one,
+      `app/all-client-galleries/page.tsx:7`.
 - [ ] Status wording reconciled 2026-08-22: A1 is COMPLETE as shipped — the `/user/selects` deletion
       was pulled OUT of A1 (see A1's closing note in the archive). Deciding G3 performs that final
       deletion (or its rebuild); it does not reopen A1.
