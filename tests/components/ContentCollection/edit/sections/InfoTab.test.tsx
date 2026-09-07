@@ -27,6 +27,22 @@ jest.mock('@/app/components/ui/TagsSelector/TagsSelector', () => ({
   ),
 }));
 
+/**
+ * `InfoTab` renders the real `CollectionRolesSection`, which reads role grants on mount. Every case
+ * below asserts synchronously and none of them touch role access, so the reads are left pending:
+ * the panel holds its initial empty render and fires no `setState` at all. Settling them — even
+ * successfully — queues microtasks that land after the test body returns and outside `act`, which
+ * is the whole cost this mock exists to remove. Suites that do assert on grants resolve these and
+ * `await waitFor` instead; see `tests/components/CollectionRolesSection.test.tsx`.
+ */
+jest.mock('@/app/lib/api/roles', () => ({
+  listCollectionRoles: jest.fn(() => new Promise(() => {})),
+  listRoles: jest.fn(() => new Promise(() => {})),
+  createRole: jest.fn(),
+  setRoleGrant: jest.fn(),
+  removeRoleGrant: jest.fn(),
+}));
+
 function renderInfoTab(updateData: Partial<CollectionUpdateRequest>) {
   const setUpdateField = jest.fn();
   render(<InfoTab edit={makeEdit({ updateData: makeUpdateData(updateData), setUpdateField })} />);
