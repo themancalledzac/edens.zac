@@ -82,8 +82,10 @@ describe('next.config security headers', () => {
 });
 
 describe('next.config CSP — consistency with the rest of the config', () => {
-  // D4 pinned the optimizer to one distribution. If that host is ever repointed, the CSP
-  // must move with it or every image silently becomes a violation report.
+  /**
+   * D4 pinned the optimizer to one distribution. If that host is ever repointed, the CSP must
+   * move with it or every image silently becomes a violation report.
+   */
   it('names the same CloudFront host as the image optimizer allowlist', async () => {
     const config = await loadConfig('production');
     const optimizerHost = config.images?.remotePatterns?.find(p =>
@@ -97,13 +99,27 @@ describe('next.config CSP — consistency with the rest of the config', () => {
     expect(csp).toContain(`media-src 'self' blob: https://${optimizerHost}`);
   });
 
-  // X-Frame-Options is what enforces today; frame-ancestors takes over when the CSP flips
-  // to enforcing. Loosening one without the other would leave the site framable by surprise.
+  /**
+   * X-Frame-Options is what enforces today; frame-ancestors takes over when the CSP flips to
+   * enforcing. Loosening one without the other would leave the site framable by surprise.
+   */
   it('agrees with X-Frame-Options about framing', async () => {
     const xfo = await headerValue('production', 'X-Frame-Options');
     const csp = await headerValue('production', CSP_HEADER);
     expect(xfo).toBe('DENY');
     expect(csp).toContain("frame-ancestors 'none'");
+  });
+
+  /**
+   * A report-only policy with no reporting directive is unfalsifiable — violations reach the
+   * visitor's console and nobody else, so the config docblock's graduation condition can never
+   * be evaluated against production traffic.
+   */
+  it('names a reporting endpoint, in both environments', async () => {
+    for (const env of ['production', 'development'] as NodeEnv[]) {
+      const csp = await headerValue(env, CSP_HEADER);
+      expect(csp).toContain('report-uri /api/csp-report');
+    }
   });
 
   it('is still report-only, so nothing here is enforcing yet', async () => {
