@@ -1,5 +1,5 @@
 /**
- * Data layer for the "user space" page — the four-section view rendered at `/user` for the
+ * Data layer for the "user space" page — the three-section view rendered at `/user` for the
  * signed-in user and at `/admin/users/[id]` for an admin looking at someone else's space.
  *
  * Both surfaces render the SAME sections from the SAME assembler output; only the reads differ.
@@ -27,15 +27,16 @@ import { type AnyContentModel, type ContentCollectionModel } from '@/app/types/C
 import { type FailSoftRead } from '@/app/types/FailSoftRead';
 import { isContentCollection, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
 
-export const TAB_KEYS = ['collections', 'images', 'saved', 'following'] as const;
+export const TAB_KEYS = ['collections', 'images', 'saved'] as const;
 
 export type TabKey = (typeof TAB_KEYS)[number];
 
 const DEFAULT_TAB: TabKey = 'collections';
 
 /**
- * The sections a share-link recipient is offered. Saved and Following are the owner's private
- * bookmarks and are absent from the backend's recipient view by design.
+ * The sections a share-link recipient is offered. Saved is the owner's private bookmark list and
+ * is absent from the backend's recipient view by design; so is the follow state that the
+ * Collections section's `following` filter reads, which is why a recipient is never offered it.
  */
 export const SHARE_TAB_KEYS = ['collections', 'images'] as const satisfies readonly [
   TabKey,
@@ -82,10 +83,10 @@ export function splitUserContent(content: AnyContentModel[] | undefined): {
 }
 
 /**
- * Wrap followed collections as COLLECTION content blocks so the Following tab flows through the
- * same pipeline as every other collection grid: `processContentBlocks` converts these to parallax
- * cards via `convertCollectionContentToParallax`, which carries `referencedCollectionId` through as
- * the card's `collectionId` — the id the follow toggle persists against.
+ * Wrap followed collections as COLLECTION content blocks so they flow through the same pipeline as
+ * every other collection grid: `processContentBlocks` converts these to parallax cards via
+ * `convertCollectionContentToParallax`, which carries `referencedCollectionId` through as the
+ * card's `collectionId` — the id the follow toggle persists against.
  */
 export function toCollectionBlocks(collections: CollectionModel[]): ContentCollectionModel[] {
   return collections.map((collection, index) => ({
@@ -102,6 +103,63 @@ export function toCollectionBlocks(collections: CollectionModel[]): ContentColle
     orderIndex: index,
     visible: true,
   }));
+}
+
+/**
+ * Merge the collections an admin associated with this user with the ones the user followed
+ * themselves, into the single list the Collections section renders.
+ *
+ * Keyed on `referencedCollectionId`, never `id`. The two arrays come from different producers: a
+ * block from `getUserPage()` carries the content-table row id in `id`, while `toCollectionBlocks`
+ * sets `id` to the collection id. Keying on `id` therefore matches nothing across the two sides,
+ * and owning a collection you also follow would render it twice — the exact duplicate this merge
+ * exists to remove.
+ *
+ * Admin-granted blocks win a collision because they carry the page's own curated `orderIndex` and
+ * whatever enrichment the assembler attached. `orderIndex` is then reassigned across the whole
+ * result: the two sides number themselves independently from zero, so the merged list would
+ * otherwise carry duplicate positions and sort nondeterministically.
+ */
+export function unionCollectionBlocks(
+  granted: AnyContentModel[],
+  followed: ContentCollectionModel[]
+): AnyContentModel[] {
+  const byCollectionId = new Map<number, AnyContentModel>();
+  for (const block of granted) {
+    if (isContentCollection(block)) byCollectionId.set(block.referencedCollectionId, block);
+  }
+
+  const merged: AnyContentModel[] = [...granted];
+  for (const block of followed) {
+    if (byCollectionId.has(block.referencedCollectionId)) continue;
+    byCollectionId.set(block.referencedCollectionId, block);
+    merged.push(block);
+  }
+
+  return merged.map((block, index) => ({ ...block, orderIndex: index }));
+}
+
+/**
+ * How many distinct collections this user is associated with, by either route.
+ *
+ * Deliberately computed from the two ID sets rather than from {@link unionCollectionBlocks}'
+ * output, because the badge must be right on every section while the catalog that hydrates the
+ * followed half is only read on the Collections one. Both inputs are always available: the granted
+ * blocks come from the page read, and the ids from the cheap follows read.
+ *
+ * Like the Following badge it replaces, this can exceed the number of tiles drawn — a followed
+ * collection that was deleted, or that falls outside the 500-row catalog page, is still one this
+ * user follows. The id list is what the backend says, which is the honest answer to "how many".
+ */
+export function countAssociatedCollections(
+  granted: AnyContentModel[],
+  followedCollectionIds: readonly number[]
+): number {
+  const ids = new Set<number>(followedCollectionIds);
+  for (const block of granted) {
+    if (isContentCollection(block)) ids.add(block.referencedCollectionId);
+  }
+  return ids.size;
 }
 
 export interface UserSpaceSection {
@@ -128,7 +186,11 @@ export interface UserSpaceSection {
   /** Shown when the read succeeded and returned nothing. A claim about the data — must be true. */
   emptyLabel: string;
   /**
-   * Set only when this section's read FAILED, in which case it replaces {@link emptyLabel}.
+   * Set when one of this section's reads FAILED, in which case it replaces {@link emptyLabel}.
+   *
+   * Collections assembles from two reads and can fail partially — the granted half renders while
+   * the followed half is missing — so its copy says the list may be incomplete rather than
+   * claiming the whole section is unavailable. A section with one read says the flat thing.
    *
    * The two are one field apart rather than a `failed` boolean plus copy so an inconsistent state
    * is unrepresentable: there is no way to be unavailable without saying so, and no way to carry
@@ -140,10 +202,23 @@ export interface UserSpaceSection {
 export interface UserSpaceData {
   collection: CollectionModel;
   sections: Record<TabKey, UserSpaceSection>;
-  /** Ids the follow toggle seeds from. Empty in admin mode — nothing there is the admin's to follow. */
+  /**
+   * Ids the follow toggle seeds from, and the set the Collections section's `following` filter
+   * narrows to. Empty in admin mode — nothing there is the admin's to follow — and empty when the
+   * follows read failed, which is what withholds the filter rather than showing an empty one.
+   */
   followedCollectionIds: number[];
   /** Ids the save toggle seeds from. Empty in admin mode, for the same reason. */
   savedImageIds: number[];
+  /**
+   * Collection ids an ADMIN associated with this user — the half of the Collections list that an
+   * unfollow cannot remove.
+   *
+   * Sent alongside the blocks because the client has to tell the two associations apart to
+   * reconcile an unfollow, and a block does not say which route it came in by. Always populated,
+   * in every mode: it describes the page, not the viewer.
+   */
+  grantedCollectionIds: number[];
   /**
    * Which section chips to offer, in order.
    *
@@ -197,29 +272,33 @@ async function loadShareView(target: { mode: 'share'; token?: string }): Promise
  *
  * ## Why `activeKey` is a parameter
  *
- * Every section's COUNT is read on every request, so all four chips keep an accurate badge. But the
- * Following section additionally needs the full collection catalog to turn its id list into
+ * Every section's COUNT is read on every request, so all three chips keep an accurate badge. But
+ * the Collections section needs the full collection catalog to turn the followed-id list into
  * renderable blocks, and that read (`getAllCollections(0, 500)`) is ~0.5s and ~57KB against the
- * local backend — spent on all four tabs to serve one. The page is `force-dynamic`, so hydrating it
- * unconditionally spends it again on every single tab switch.
+ * local backend. It is skipped on the sections that do not render collections.
  *
- * Deferring it is only safe because the count does not come from the hydrated array: Following's
- * badge is `followedCollectionIds.length`, which the (cheap) follows read already gives us, so the
- * chip is accurate whether or not the catalog was fetched. That is the whole reason
- * {@link UserSpaceSection.count} exists as a field rather than being derived from `content.length`
- * — derive it, and a deferred section silently claims it holds nothing.
+ * Collections is the DEFAULT section, so unlike the deferral this replaces, the cost is now paid on
+ * the common path rather than avoided on it. That is the accepted price of merging Following into
+ * Collections: one list of every association cannot be assembled without the catalog that names the
+ * followed half. The read still sits inside the `Promise.all` below, so it overlaps the page read
+ * rather than adding to it.
  *
- * Collections and Images need no such guard: both come from the single `page` read that is already
- * required to render the header, so splitting them costs nothing extra.
+ * Images and Saved need no catalog: both come from reads already required to render the page.
  *
  * ## Fail-soft reads
  *
- * Saved and Following stay fail-soft, because their admin endpoints are not on the deployed backend
- * yet and a missing bookmark list should not take down the page. Both modes' reads come back as
- * {@link FailSoftRead} — the admin twins in `users.ts` and the session-bound reads in `personal.ts`
- * alike — and a failed one is threaded to its section as `unavailableLabel`, so the section says
- * the data is unavailable rather than asserting the user has none. The two modes differ only in the
- * PERSON of the copy, never in whether the truth gets told.
+ * Saved and the follows list stay fail-soft, because their admin endpoints are not on the deployed
+ * backend yet and a missing bookmark list should not take down the page. Both modes' reads come
+ * back as {@link FailSoftRead} — the admin twins in `users.ts` and the session-bound reads in
+ * `personal.ts` alike — and a failed one is threaded to its section as `unavailableLabel`, so the
+ * section says the data is unavailable rather than asserting the user has none. The two modes
+ * differ only in the PERSON of the copy, never in whether the truth gets told.
+ *
+ * A failed follows read is a PARTIAL failure of the Collections section rather than a total one:
+ * the admin-granted half still renders, so the section keeps its content and says separately that
+ * the list may be incomplete. It also leaves {@link UserSpaceData.followedCollectionIds} empty,
+ * which is what withholds the `following` filter — a filter for a set nobody could read would
+ * silently report every collection as unfollowed.
  */
 export async function loadUserSpace(
   target: UserSpaceMode,
@@ -233,9 +312,8 @@ export async function loadUserSpace(
   // mode (see `visibleKeys`); this only keeps the shape uniform for the code below.
   const noBookmarks = Promise.resolve<FailSoftRead<never>>({ ok: true, items: [] });
 
-  // The catalog read stays INSIDE the Promise.all rather than being awaited after it: on the
-  // Following tab it is needed, and awaiting it downstream would serialize it behind the page read
-  // instead of overlapping with it — trading a wasted read on three tabs for a slower fourth.
+  // The catalog read stays INSIDE the Promise.all rather than being awaited after it: awaiting it
+  // downstream would serialize it behind the page read instead of overlapping with it.
   const [pageRead, saved, followed, catalog] = await Promise.all([
     isSelf
       ? getUserPage()
@@ -254,9 +332,9 @@ export async function loadUserSpace(
         : listFollowedCollectionIdsByUserServer(
             (target as { mode: 'admin'; userId: number }).userId
           ),
-    // Never fetched in share mode: the Following section is not offered, so the catalog it exists
-    // to hydrate would be a ~0.5s read serving a tab the recipient cannot reach.
-    activeKey === 'following' && !isShare
+    // Never fetched in share mode: a recipient has no follow state, so the catalog would hydrate
+    // a half of the union that is always empty for them.
+    activeKey === 'collections' && !isShare
       ? getAllCollections(0, 500)
       : Promise.resolve<CollectionModel[]>([]),
   ]);
@@ -275,10 +353,12 @@ export async function loadUserSpace(
 
   const { collectionBlocks, imageBlocks } = splitUserContent(collection.content);
 
-  // Non-empty only on the Following tab, because `catalog` is only fetched there — see the
-  // docblock. The count below is read from `followedCollectionIds`, never from this array.
+  // Non-empty only on the Collections tab, because `catalog` is only fetched there — see the
+  // docblock.
   const followedSet = new Set(followedCollectionIds);
   const followedBlocks = toCollectionBlocks(catalog.filter(c => followedSet.has(c.id)));
+
+  const associatedCollections = unionCollectionBlocks(collectionBlocks, followedBlocks);
 
   // Second person for the owner, third for an admin looking in — an empty Saved tab saying
   // "You have not saved any images yet" on someone else's page reads as the admin's own state.
@@ -288,24 +368,27 @@ export async function loadUserSpace(
     ? {
         possessive: 'You have',
         tagged: 'You are',
-        following: 'You are',
         savedUnavailable: 'Your saved images are unavailable right now.',
-        followingUnavailable: 'Your followed collections are unavailable right now.',
+        followingUnavailable:
+          'Your followed collections are unavailable right now, so this list may be incomplete.',
       }
     : {
         possessive: 'This user has',
         tagged: 'This user is',
-        following: 'This user is',
         savedUnavailable: 'Saved images are unavailable right now.',
-        followingUnavailable: 'Followed collections are unavailable right now.',
+        followingUnavailable:
+          'Followed collections are unavailable right now, so this list may be incomplete.',
       };
 
   const sections: Record<TabKey, UserSpaceSection> = {
     collections: {
       label: 'Collections',
-      content: collectionBlocks,
-      count: collectionBlocks.length,
+      content: associatedCollections,
+      count: countAssociatedCollections(collectionBlocks, followedCollectionIds),
       emptyLabel: 'No collections yet.',
+      // A partial failure, not a total one: the granted half rendered. The copy says the list may
+      // be incomplete rather than claiming the section is unavailable, which would be false.
+      unavailableLabel: followed.ok || isShare ? undefined : subject.followingUnavailable,
     },
     images: {
       label: 'Images',
@@ -320,18 +403,6 @@ export async function loadUserSpace(
       emptyLabel: `${subject.possessive} not saved any images yet.`,
       unavailableLabel: saved.ok ? undefined : subject.savedUnavailable,
     },
-    following: {
-      label: 'Following',
-      content: followedBlocks,
-      // From the id list, NOT `followedBlocks` — which is empty on every tab but this one. A
-      // followed collection that has since been deleted (or that falls outside the 500-row catalog
-      // page) counts here without being renderable, so this can legitimately exceed the number of
-      // tiles the Following tab draws. The id list is what the backend says this user follows,
-      // which is the honest answer to "how many".
-      count: followed.ok ? followedCollectionIds.length : undefined,
-      emptyLabel: `${subject.following} not following any collections yet.`,
-      unavailableLabel: followed.ok ? undefined : subject.followingUnavailable,
-    },
   };
 
   return {
@@ -344,6 +415,9 @@ export async function loadUserSpace(
     // `/user/saves/images` already returns the full saved set, so derive the ids from it rather
     // than issuing a second `/user/saves` ids-only read (single-fetch rule).
     savedImageIds: isSelf ? savedImages.map(i => i.id) : [],
+    grantedCollectionIds: collectionBlocks
+      .filter(isContentCollection)
+      .map(block => block.referencedCollectionId),
     visibleKeys: isShare ? SHARE_TAB_KEYS : TAB_KEYS,
     ownerName: shareView?.ownerName ?? null,
   };

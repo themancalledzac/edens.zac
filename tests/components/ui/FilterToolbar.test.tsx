@@ -98,6 +98,81 @@ describe('FilterToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith({ highlyRatedOnly: true });
   });
 
+  describe('Following toggle', () => {
+    const followingChip = () => screen.getByRole('button', { name: /following/i });
+
+    it('is absent by default, so an ordinary collection page never shows it', () => {
+      renderToolbar({ showHighlyRated: true });
+      expect(screen.queryByRole('button', { name: /following/i })).toBeNull();
+    });
+
+    /**
+     * Unlit means everything is showing — the opposite default to the Hidden chip, because this
+     * one narrows when it is on rather than when it is off.
+     */
+    it('starts deselected, badged with how many the viewer follows', () => {
+      renderToolbar({ showFollowingToggle: true, counts: { following: 6 } });
+      expect(screen.getByText('6')).toBeInTheDocument();
+      expect(followingChip().className).not.toMatch(/active/);
+    });
+
+    it('selects on click, narrowing to the followed collections', () => {
+      const { onFilterChange } = renderToolbar({ showFollowingToggle: true });
+      fireEvent.click(followingChip());
+      expect(onFilterChange).toHaveBeenCalledWith({ followedOnly: true });
+    });
+
+    it('deselects from the selected state', () => {
+      const { onFilterChange } = renderToolbar({
+        showFollowingToggle: true,
+        filterState: { ...INITIAL_FILTER_STATE, followedOnly: true },
+      });
+      const chip = followingChip();
+      expect(chip.className).toMatch(/active/);
+      fireEvent.click(chip);
+      expect(onFilterChange).toHaveBeenCalledWith({ followedOnly: false });
+    });
+
+    it('counts as an active filter only once selected', () => {
+      const { unmount } = render(
+        <FilterToolbar
+          filterState={INITIAL_FILTER_STATE}
+          onFilterChange={jest.fn()}
+          dimensions={{}}
+          showFollowingToggle
+        />
+      );
+      expect(screen.getByRole('button', { name: /reset all filters/i })).toBeDisabled();
+      unmount();
+
+      renderToolbar({
+        showFollowingToggle: true,
+        filterState: { ...INITIAL_FILTER_STATE, followedOnly: true },
+      });
+      expect(screen.getByRole('button', { name: /reset all filters/i })).toBeEnabled();
+    });
+
+    /**
+     * The placement is the decision this item turned on: the filter sits with the toggles, after
+     * the separator, so it cannot read as a fifth section tab.
+     */
+    it('renders after the section chips, not among them', () => {
+      renderToolbar({
+        showFollowingToggle: true,
+        sections: [
+          { key: 'collections', label: 'Collections', count: 14, href: '/user?tab=collections' },
+          { key: 'images', label: 'Images', count: 2, href: '/user?tab=images' },
+        ],
+        activeSectionKey: 'collections',
+      });
+
+      const collections = screen.getByRole('link', { name: /collections/i });
+      const chip = followingChip();
+      expect(collections.compareDocumentPosition(chip)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(chip.tagName).not.toBe('A');
+    });
+  });
+
   describe('admin Hidden toggle', () => {
     const hiddenChip = () => screen.getByRole('button', { name: /hidden/i });
 

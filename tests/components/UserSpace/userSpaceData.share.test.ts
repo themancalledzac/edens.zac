@@ -29,7 +29,7 @@ const page = {
   slug: 'user',
   title: 'Ada',
   content: [
-    { id: 1, contentType: 'COLLECTION', title: 'Wedding' },
+    { id: 1, contentType: 'COLLECTION', referencedCollectionId: 11, title: 'Wedding' },
     { id: 2, contentType: 'IMAGE', imageUrl: 'https://cdn/2.jpg' },
   ],
 } as unknown as CollectionModel;
@@ -60,16 +60,17 @@ describe('loadUserSpace — share mode', () => {
     expect(mockGetShareView).not.toHaveBeenCalled();
   });
 
+  /**
+   * Saved is the owner's private bookmark list. Rendering it empty would assert the owner has
+   * saved nothing, which is not what the recipient view tells us.
+   */
   it('offers only Collections and Images', async () => {
     mockGetShareView.mockResolvedValue({ ownerName: 'Ada', page });
 
     const data = await loadUserSpace({ mode: 'share', token: 'tok-123' });
 
-    // Saved and Following are the owner's private bookmarks. Rendering them empty would assert
-    // the owner has none, which is not what the recipient view tells us.
     expect(data?.visibleKeys).toEqual(SHARE_TAB_KEYS);
     expect(data?.visibleKeys).not.toContain('saved');
-    expect(data?.visibleKeys).not.toContain('following');
   });
 
   it('issues none of the owner-scoped bookmark reads', async () => {
@@ -79,18 +80,36 @@ describe('loadUserSpace — share mode', () => {
 
     expect(personalApi.listSavedImagesServer).not.toHaveBeenCalled();
     expect(personalApi.listFollowedCollectionIdsServer).not.toHaveBeenCalled();
-    // Nothing here is the recipient's to have saved or followed, so the toggles seed empty.
     expect(data?.savedImageIds).toEqual([]);
     expect(data?.followedCollectionIds).toEqual([]);
   });
 
-  it('skips the collection catalog even on the following tab', async () => {
+  /**
+   * A recipient has no follow state, so the followed half of the Collections list is always empty
+   * for them and the catalog that would hydrate it is never worth its ~0.5s. Collections is the
+   * one tab that reads it in every other mode, which makes it the case worth pinning.
+   */
+  it('skips the collection catalog even on the Collections tab', async () => {
     mockGetShareView.mockResolvedValue({ ownerName: 'Ada', page });
 
-    await loadUserSpace({ mode: 'share', token: 'tok-123' }, 'following');
+    await loadUserSpace({ mode: 'share', token: 'tok-123' }, 'collections');
 
-    // A ~0.5s read serving a tab the recipient cannot reach.
     expect(mockGetAllCollections).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A recipient's Collections list is the granted half alone. There is no follows read to fail, so
+   * the section never carries the "may be incomplete" copy the other two modes can.
+   */
+  it('renders the granted half alone, with nothing said about incompleteness', async () => {
+    mockGetShareView.mockResolvedValue({ ownerName: 'Ada', page });
+
+    const data = await loadUserSpace({ mode: 'share', token: 'tok-123' }, 'collections');
+
+    expect(data?.sections.collections.content).toHaveLength(1);
+    expect(data?.sections.collections.count).toBe(1);
+    expect(data?.sections.collections.unavailableLabel).toBeUndefined();
+    expect(data?.grantedCollectionIds).toEqual([11]);
   });
 
   it('returns null for a dead link so the page can 404', async () => {

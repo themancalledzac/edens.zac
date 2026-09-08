@@ -24,6 +24,8 @@ const options = (overrides: Partial<CollectionInfoOptions> = {}): CollectionInfo
   showDateSort: false,
   showHiddenToggle: false,
   hiddenCount: 0,
+  showFollowingToggle: false,
+  followingCount: 0,
   ...overrides,
 });
 
@@ -79,6 +81,8 @@ describe('toCollectionDimensions', () => {
       showDateSort: false,
       showHiddenToggle: false,
       hiddenCount: 0,
+      showFollowingToggle: false,
+      followingCount: 0,
     });
     expect(dims.selectedDates).toEqual({
       label: 'Date',
@@ -99,6 +103,8 @@ describe('toCollectionDimensions', () => {
       showDateSort: false,
       showHiddenToggle: false,
       hiddenCount: 0,
+      showFollowingToggle: false,
+      followingCount: 0,
     });
     expect(dims.selectedDates).toBeUndefined();
   });

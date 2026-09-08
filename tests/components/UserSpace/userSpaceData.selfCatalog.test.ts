@@ -2,21 +2,24 @@
 /**
  * `loadUserSpace('self', activeKey)` — which reads run, and on which tab.
  *
- * The collection catalog (`getAllCollections(0, 500)`) is the one read that serves a single
- * section and the only expensive one, and `/user` is `force-dynamic`, so it was paid again on
- * every tab switch to render three tabs that never look at it. It is now requested only on the
- * Following tab.
+ * The collection catalog (`getAllCollections(0, 500)`) is the one expensive read, and `/user` is
+ * `force-dynamic`, so which tabs pay for it is a real cost. It hydrates the followed half of the
+ * Collections list, so it is read on the Collections tab and skipped on the two that render no
+ * collections.
  *
- * Deferring a read is only safe if nothing downstream quietly reinterprets its absence, and here
- * exactly one thing could: the Following chip's badge. It reads the follows ID LIST, not the
- * hydrated blocks — derive it from `content.length` instead and a deferred tab silently badges 0,
- * which the chip presents as "you follow nothing" on a page that simply did not fetch. That pair
- * (skipped read / intact count) is the contract, and it is asserted on both the tabs that skip and
- * the tab that does not.
+ * Collections is the DEFAULT tab, so this costs the common path rather than sparing it — the
+ * accepted price of merging Following into Collections, since one list of every association cannot
+ * be assembled without the catalog that names the followed half. The tab that used to pay for it is
+ * gone; the two that still skip it are what is pinned here.
+ *
+ * Skipping a read is only safe if nothing downstream reinterprets its absence, and here exactly one
+ * thing could: the Collections badge. It counts the UNION of the two ID sets — the granted blocks
+ * and the follows list — never the hydrated array. Derive it from `content.length` instead and a
+ * tab that skipped the catalog silently badges only the granted half. That pair (skipped read /
+ * intact count) is the contract, asserted on both the tabs that skip and the tab that does not.
  *
  * Scoped to SELF mode. The admin-mode twin lives in `userSpaceData.test.ts` alongside the rest of
- * the admin read narrowing; the deferral is shared code but the reads either side of it are not,
- * so "the owner's own page defers it too" is not implied by the admin case.
+ * the admin read narrowing; the deferral is shared code but the reads either side of it are not.
  */
 
 jest.mock('@/app/lib/api/collections', () => ({ getAllCollections: jest.fn() }));
@@ -46,8 +49,10 @@ const mockFollows = listFollowedCollectionIdsServer as jest.Mock;
 
 const userPage = { slug: 'user', title: 'Your Space', content: [] };
 
-/** Tabs that render nothing out of the catalog, so must never pay for it. */
-const DEFERRED_TABS: TabKey[] = ['collections', 'images', 'saved'];
+/** Tabs that render no collections, so must never pay for the catalog. */
+const DEFERRED_TABS: TabKey[] = ['images', 'saved'];
+
+const ALL_TABS: TabKey[] = ['collections', 'images', 'saved'];
 
 /**
  * Seeded NON-empty on purpose. A catalog that resolved to `[]` would let an un-deferred read pass
@@ -68,7 +73,7 @@ beforeEach(() => {
   mockFollows.mockResolvedValue({ ok: true, items: [] });
 });
 
-describe('loadUserSpace(self) — the catalog read is deferred to the tab that renders it', () => {
+describe('loadUserSpace(self) — the catalog read is scoped to the tab that renders collections', () => {
   it.each(DEFERRED_TABS)('skips the catalog on the %s tab', async tab => {
     mockFollows.mockResolvedValue({ ok: true, items: [7, 9] });
 
@@ -77,46 +82,45 @@ describe('loadUserSpace(self) — the catalog read is deferred to the tab that r
     expect(mockCatalog).not.toHaveBeenCalled();
   });
 
-  it('reads the catalog on the Following tab, one page of 500', async () => {
+  it('reads the catalog on the Collections tab, one page of 500', async () => {
     mockFollows.mockResolvedValue({ ok: true, items: [7] });
 
-    await loadUserSpace('self', 'following');
+    await loadUserSpace('self', 'collections');
 
     expect(mockCatalog).toHaveBeenCalledTimes(1);
     expect(mockCatalog).toHaveBeenCalledWith(0, 500);
   });
 
-  // The default matters on its own: `/user` with no `?tab=` resolves to Collections, and a default
-  // that fell through to the catalog would undo the deferral for the most-visited entry point.
-  it('skips the catalog when the caller names no tab at all', async () => {
+  /**
+   * The default resolves to Collections, so `/user` with no `?tab=` reads the catalog. This is the
+   * cost the merge accepted, pinned so it is a decision on the record rather than a regression
+   * someone later "fixes" by deferring a read the default tab needs.
+   */
+  it('reads the catalog when the caller names no tab at all', async () => {
     await loadUserSpace('self');
 
-    expect(mockCatalog).not.toHaveBeenCalled();
+    expect(mockCatalog).toHaveBeenCalledTimes(1);
   });
 
   /**
-   * The control on the other side of the ledger: only the catalog moved. The page read and both
-   * personal reads still run on every tab, because all three feed something every tab shows —
-   * the header, and the four chips' counts.
+   * The control on the other side of the ledger: only the catalog is scoped. The page read and both
+   * personal reads still run on every tab, because all three feed something every tab shows — the
+   * header, and the three chips' counts.
    */
-  it.each([...DEFERRED_TABS, 'following' as TabKey])(
-    'still runs the page, saves and follows reads on the %s tab',
-    async tab => {
-      await loadUserSpace('self', tab);
+  it.each(ALL_TABS)('still runs the page, saves and follows reads on the %s tab', async tab => {
+    await loadUserSpace('self', tab);
 
-      expect(mockGetUserPage).toHaveBeenCalledTimes(1);
-      expect(mockSaved).toHaveBeenCalledTimes(1);
-      expect(mockFollows).toHaveBeenCalledTimes(1);
-    }
-  );
+    expect(mockGetUserPage).toHaveBeenCalledTimes(1);
+    expect(mockSaved).toHaveBeenCalledTimes(1);
+    expect(mockFollows).toHaveBeenCalledTimes(1);
+  });
 });
 
 /**
- * What the deferral must not cost. Every chip keeps a true badge on every tab, because each count
- * comes from a read that still runs — never from the section's own (deliberately un-hydrated)
- * `content` array.
+ * What skipping the catalog must not cost. Every chip keeps a true badge on every tab, because each
+ * count comes from a read that still runs — never from the section's own `content` array.
  */
-describe('loadUserSpace(self) — a deferred section still reports a true count', () => {
+describe('loadUserSpace(self) — a tab that skipped the catalog still reports a true count', () => {
   it.each(DEFERRED_TABS)(
     'counts followed collections on the %s tab without fetching them',
     async tab => {
@@ -124,48 +128,82 @@ describe('loadUserSpace(self) — a deferred section still reports a true count'
 
       const data = await loadUserSpace('self', tab);
 
-      expect(data?.sections.following.count).toBe(3);
-      expect(data?.sections.following.content).toEqual([]);
+      expect(data?.sections.collections.count).toBe(3);
+      expect(data?.sections.collections.content).toEqual([]);
     }
   );
 
-  it('hydrates the same section into blocks once the tab is the active one', async () => {
-    mockFollows.mockResolvedValue({ ok: true, items: [7, 11] });
+  /**
+   * The union is what the badge counts, so an association held BOTH ways counts once. Granted
+   * collection 7 is also followed; the honest total is two, and a count that added the two sources
+   * would say three on a tab that cannot show its work.
+   */
+  it.each(DEFERRED_TABS)('counts an association held both ways once, on the %s tab', async tab => {
+    mockGetUserPage.mockResolvedValue({
+      ...userPage,
+      content: [{ id: 100, contentType: 'COLLECTION', referencedCollectionId: 7, slug: 'seven' }],
+    });
+    mockFollows.mockResolvedValue({ ok: true, items: [7, 9] });
 
-    const data = await loadUserSpace('self', 'following');
+    const data = await loadUserSpace('self', tab);
 
-    // 9 is in the catalog but not followed, so hydrating is a filter over the catalog rather than
-    // a copy of it — which is also what makes the catalog the expensive part of this tab.
-    expect(data?.sections.following.content.map(block => block.id)).toEqual([7, 11]);
+    expect(data?.sections.collections.count).toBe(2);
   });
 
   /**
-   * And the count stays the honest one even there: 11 is followed but absent from the catalog page
-   * (deleted, or past row 500), so the tab draws two tiles while the badge says three. The badge
-   * answers "how many does the backend say you follow", which the tile list cannot.
+   * Collection 9 is in the catalog but not followed, so hydrating is a filter over the catalog
+   * rather than a copy of it — which is also what makes the catalog the expensive part of this tab.
    */
-  it('reports what the backend says is followed, not how many tiles were renderable', async () => {
-    mockFollows.mockResolvedValue({ ok: true, items: [7, 9, 404] });
+  it('hydrates the followed half into blocks once Collections is the active tab', async () => {
+    mockFollows.mockResolvedValue({ ok: true, items: [7, 11] });
 
-    const data = await loadUserSpace('self', 'following');
+    const data = await loadUserSpace('self', 'collections');
 
-    expect(data?.sections.following.content).toHaveLength(2);
-    expect(data?.sections.following.count).toBe(3);
+    expect(data?.sections.collections.content.map(block => block.id)).toEqual([7, 11]);
   });
 
-  // Unknown outranks un-hydrated: a failed follows read has no number to report on any tab.
-  it.each(DEFERRED_TABS)(
-    'leaves the count unsaid on the %s tab when the follows read failed',
+  /**
+   * And the count stays the honest one even there: 404 is followed but absent from the catalog page
+   * (deleted, or past row 500), so the tab draws two tiles while the badge says three. The badge
+   * answers "how many does the backend say you are associated with", which the tile list cannot.
+   */
+  it('reports what the backend says is associated, not how many tiles were renderable', async () => {
+    mockFollows.mockResolvedValue({ ok: true, items: [7, 9, 404] });
+
+    const data = await loadUserSpace('self', 'collections');
+
+    expect(data?.sections.collections.content).toHaveLength(2);
+    expect(data?.sections.collections.count).toBe(3);
+  });
+
+  /**
+   * A failed follows read is a PARTIAL failure here, not a total one — unlike the Following section
+   * this replaced, whose count went `undefined`. The granted half still rendered and is still
+   * counted; what the section says instead is that the list may be incomplete.
+   */
+  it.each(ALL_TABS)(
+    'still counts the granted half on the %s tab when follows failed',
     async tab => {
+      mockGetUserPage.mockResolvedValue({
+        ...userPage,
+        content: [{ id: 100, contentType: 'COLLECTION', referencedCollectionId: 1, slug: 'one' }],
+      });
       mockFollows.mockResolvedValue({ ok: false, items: [] });
 
       const data = await loadUserSpace('self', tab);
 
-      expect(data?.sections.following.count).toBeUndefined();
+      expect(data?.sections.collections.count).toBe(1);
+      expect(data?.sections.collections.unavailableLabel).toContain('may be incomplete');
     }
   );
 
-  it('leaves the other three counts intact on a tab that skipped the catalog', async () => {
+  it('says nothing about incompleteness when the follows read succeeded', async () => {
+    const data = await loadUserSpace('self', 'collections');
+
+    expect(data?.sections.collections.unavailableLabel).toBeUndefined();
+  });
+
+  it('leaves the other two counts intact on a tab that skipped the catalog', async () => {
     mockGetUserPage.mockResolvedValue({
       ...userPage,
       content: [
@@ -176,7 +214,7 @@ describe('loadUserSpace(self) — a deferred section still reports a true count'
     });
     mockSaved.mockResolvedValue({ ok: true, items: [{ id: 4, contentType: 'IMAGE' }] });
 
-    const data = await loadUserSpace('self', 'collections');
+    const data = await loadUserSpace('self', 'images');
 
     expect(data?.sections.collections.count).toBe(1);
     expect(data?.sections.images.count).toBe(2);

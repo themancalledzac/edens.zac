@@ -29,6 +29,7 @@ import { clamp } from '@/app/utils/clamp';
 import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 import {
   applyCollectionFilters,
+  applyFollowedScope,
   applyVisibilityScope,
   buildCollectionCriteria,
   type CollectionFilterDimensions,
@@ -104,6 +105,15 @@ interface CollectionPageClientProps {
   /** Key of the section currently rendered. Required alongside {@link sections}. */
   activeSectionKey?: string;
   /**
+   * Collection ids the viewer follows, which arms the Following toggle and backs its narrowing.
+   *
+   * Passed only by `/user`, and only when the follow set is actually known — `undefined` withholds
+   * the chip rather than rendering one that would report every collection as unfollowed. This is a
+   * plain set rather than a `useFollows()` read because the shared collection stack should not know
+   * what follows are; `UserSpaceGrid` sits below the provider and hands the live set down.
+   */
+  followedCollectionIds?: ReadonlySet<number>;
+  /**
    * Extra content for the header rail — the TEXT block leading the first row, beside the cover.
    * Use it for what is *about* this page rather than *in* it, alongside the date, location,
    * description and filter bar that already live there. `/user` puts its Account and Admin cards
@@ -134,6 +144,7 @@ export default function CollectionPageClient({
   initialSavedImageIds = [],
   sections,
   activeSectionKey,
+  followedCollectionIds,
   railExtras = null,
   alwaysShowFilterBar = false,
 }: CollectionPageClientProps) {
@@ -316,9 +327,16 @@ export default function CollectionPageClient({
   // layout baseline and the filter dimensions too — not just which tiles survive the filter pass.
   // The raw set stays available for the chip's own gate and count, which must keep reporting how
   // many non-public collections exist even while they are being previewed away.
+  // The following-only narrowing rides alongside the hide-hidden preview, upstream for the same
+  // reason: both are view scopes over which tiles exist at all, not facets within them.
   const allContent = useMemo(
-    () => applyVisibilityScope(rawContent, filterState.showHidden),
-    [rawContent, filterState.showHidden]
+    () =>
+      applyFollowedScope(
+        applyVisibilityScope(rawContent, filterState.showHidden),
+        filterState.followedOnly,
+        followedCollectionIds
+      ),
+    [rawContent, filterState.showHidden, filterState.followedOnly, followedCollectionIds]
   );
 
   const allImages = useMemo(() => allContent.filter(isImageContent), [allContent]);
@@ -402,6 +420,23 @@ export default function CollectionPageClient({
 
   const hiddenCount = useMemo(() => countNonListedCollections(rawContent), [rawContent]);
 
+  // Armed by knowing the set, not by it being non-empty: a viewer who follows nothing here should
+  // still see the chip report zero rather than have the control vanish.
+  const showFollowingToggle = followedCollectionIds !== undefined;
+
+  // From `rawContent`, so the badge keeps saying how many followed collections the page holds even
+  // while the filter is on and the rest are scoped away — the same reason `hiddenCount` reads raw.
+  const followingCount = useMemo(
+    () =>
+      followedCollectionIds === undefined
+        ? 0
+        : rawContent.filter(
+            item =>
+              isContentCollection(item) && followedCollectionIds.has(item.referencedCollectionId)
+          ).length,
+    [rawContent, followedCollectionIds]
+  );
+
   const filteredAvailableOptions = useMemo(() => {
     if (!hasActiveFilters) return null;
     const dims = extractCollectionFilterOptions(filteredImages, allCollections);
@@ -439,8 +474,18 @@ export default function CollectionPageClient({
       showDateSort,
       showHiddenToggle,
       hiddenCount,
+      showFollowingToggle,
+      followingCount,
     }),
-    [baseCollectionOptions, showHighlyRated, showDateSort, showHiddenToggle, hiddenCount]
+    [
+      baseCollectionOptions,
+      showHighlyRated,
+      showDateSort,
+      showHiddenToggle,
+      hiddenCount,
+      showFollowingToggle,
+      followingCount,
+    ]
   );
 
   /**

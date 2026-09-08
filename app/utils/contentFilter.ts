@@ -1131,6 +1131,34 @@ export function applyVisibilityScope<T extends AnyContentModel>(
 }
 
 /**
+ * Narrow content to the collections the viewer follows themselves. With `followedOnly` off (the
+ * default) the content passes through untouched.
+ *
+ * Keyed on `referencedCollectionId`, the collection ENTITY id — a collection-ref block's own `id`
+ * is its content-table row id, so matching on that would follow nothing.
+ *
+ * Non-collection blocks are KEPT. `/user`'s Collections section holds only collection tiles, so
+ * this never fires on anything else there; passing images through means a caller that wires the
+ * chip onto a mixed page narrows the collections without silently emptying the photos, matching
+ * how {@link applyVisibilityScope} treats content it has no opinion about.
+ *
+ * Purely SUBTRACTIVE, and applied upstream of the filter pipeline for the same reason as
+ * {@link applyVisibilityScope}: it governs the layout baseline and the filter dimensions, not just
+ * which tiles survive the last pass.
+ */
+export function applyFollowedScope<T extends AnyContentModel>(
+  content: T[],
+  followedOnly: boolean,
+  followedCollectionIds: ReadonlySet<number> | undefined
+): T[] {
+  if (!followedOnly || followedCollectionIds === undefined) return content;
+  return content.filter(item => {
+    if (!isCollectionRef(item)) return true;
+    return followedCollectionIds.has(item.referencedCollectionId);
+  });
+}
+
+/**
  * A "dateable" content block participates in the chronological date sort: any image, or a GIF/MP4
  * that has been given a captureDate. Text, collections, and undated GIFs are NOT dateable and keep
  * their processed position (undated GIFs therefore stay at the end of a chronological collection).

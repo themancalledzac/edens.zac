@@ -46,11 +46,16 @@ export interface ToolbarCounts {
    * Hidden chip, whose count is what switching it OFF would remove.
    */
   hidden?: number;
+  /**
+   * How many collections on this page the viewer follows. Badges the Following chip, whose count
+   * is what switching it ON would leave.
+   */
+  following?: number;
 }
 
 /**
- * One mutually-exclusive page section (e.g. `/user`'s Collections / Images / Saved / Following),
- * rendered as a navigating chip at the head of the bar.
+ * One mutually-exclusive page section (e.g. `/user`'s Collections / Images / Saved), rendered as a
+ * navigating chip at the head of the bar.
  *
  * Sections are a SINGLE-select dimension addressed by a search param, which is why they are not
  * part of {@link FilterState} like every other dimension here: exactly one is always chosen, and
@@ -104,6 +109,19 @@ export interface FilterToolbarProps {
    * payload actually carrying visibility data, so the chip is never a no-op.
    */
   showHiddenToggle?: boolean;
+  /**
+   * Renders the Following toggle, which narrows a collection list to the ones the viewer follows
+   * themselves.
+   *
+   * It sits with the other toggles, AFTER the section separator, not among the section chips. That
+   * placement is the point: following is a property of an association, not a section of the page,
+   * and `/user`'s Collections section exists because a chip pretending to be a tab was the wrong
+   * shape for it.
+   *
+   * Callers gate this on actually knowing the viewer's follow set, so the chip is never a control
+   * that reports every collection as unfollowed.
+   */
+  showFollowingToggle?: boolean;
   showFilm?: boolean;
   /** When provided, renders the photo-size control (density min 1, max {@link densityMax}). */
   density?: number;
@@ -189,6 +207,7 @@ export function FilterToolbar({
   dateTwoState = false,
   showHighlyRated = false,
   showHiddenToggle = false,
+  showFollowingToggle = false,
   showFilm = false,
   density,
   densityMax = 10,
@@ -288,6 +307,15 @@ export function FilterToolbar({
             count={counts?.highlyRated}
             active={filterState.highlyRatedOnly}
             onToggle={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
+          />
+        )}
+
+        {showFollowingToggle && (
+          <FilterChip
+            label="Following"
+            count={counts?.following}
+            active={filterState.followedOnly}
+            onToggle={() => onFilterChange({ followedOnly: !filterState.followedOnly })}
           />
         )}
 
