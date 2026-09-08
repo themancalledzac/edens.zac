@@ -1593,10 +1593,11 @@ live while editing. Only `contentBlocks` is dead. Gating the wrong one would bre
 
 - [x] ~~`CollectionPageClient` and `EditModeLayer` both run the full filter → process → sort pipeline, so it runs twice per filter change while editing. Extract one hook.~~ **Waste fixed by the handoff guard (#337); hook extraction rejected — see above.**
 
-### ✅ E9 · Download icon/hook, auth-card SCSS — shipped bullets (#300); `.srOnly` is open on the live board
+### ✅ E9 · Download icon/hook, auth-card SCSS, `.srOnly` — PR #300; the `.srOnly` partial SHIPPED #410
 
-_Moved from the live board 2026-08-29. The `.srOnly` bullet is still open there, blocked on a user
-decision._
+_Moved from the live board 2026-08-29 with the `.srOnly` bullet still open; that bullet was decided
+2026-09-06 and shipped 2026-09-08 as #410, closing the item. The close-out write-up follows the
+2026-08-29 material below, under "The `.srOnly` close-out"._
 
 - [x] `ClientGalleryDownload` and `FullScreenDownloadButton` share an identical SVG and an identical download-navigate/reset-timer pattern → `DownloadIcon` plus a small hook.
 - [x] The login and invite `page.module.scss` files → one shared auth-card style — PR #300.
@@ -1627,10 +1628,14 @@ trigger, capped by the 3600s window.
 
 ---
 
-### ✅ E9 · Download icon/hook, auth-card SCSS, `.srOnly` — PR #300; the `.srOnly` partial SHIPPED #410
+#### The `.srOnly` close-out
 
-Both COLD bullets shipped in #300; their write-ups are in this file. The `.srOnly` partial shipped
-in #410 and closed the item.
+Both COLD bullets shipped in #300; their write-ups are above. The `.srOnly` partial shipped in #410
+and closed the item.
+
+_Demoted from a second `### ✅ E9` heading 2026-09-08 (2). Two headings for one item is what the
+board's third close-out check forbids; #412 added this one and the check was not run. Folding it
+under the first heading is the fix — the content is unchanged._
 
 **DECIDED 2026-09-06 by the user: build the shared partial, and `.skipLink` folds into the same
 change.** This is the repo's first shared SCSS partial and its first `@use`, so the item has to

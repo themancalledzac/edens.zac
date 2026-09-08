@@ -1347,3 +1347,28 @@ pageType="collectionsCollection">` is one line before and one line after — so 
   serves no `robots.txt` and no `sitemap.xml`, and no page carries a canonical or `og:url`, so apex
   and www are two indexable duplicates with nothing marking either one. Next: unchanged — B10,
   F3's rename, D15's purge, D13.
+
+- 2026-09-06 (2) — **docs only: Zac answered four of the seven questions the two boards had marked
+  BLOCKED on him, and the run was re-picked around them.** The three that were on this board's
+  blocked list: **G3 — delete `/user/selects`**, now COLD with every ref re-resolved at HEAD
+  (`selects.ts:45-63`, not `:45-62`, which was one line short of the closing brace; the describe is
+  `selects.test.ts:118-152`; `SelectGroup` is orphaned by the delete and goes too; ~167 lines out).
+  **G2b — `tests/` is in scope**, for the migration and for G2a's lint rule, so G2a widens from
+  `app/**` to both trees and the item is **2,599 lines across 219 files**, roughly triple the
+  `app/`-only sizing it carried; it splits `app/` then `tests/`, and the light/heavy cut that G2b
+  and G2c divide has never been taken in `tests/`. **E9's `.srOnly` — build the shared partial**,
+  with `.skipLink` folded in, so the item now has to establish a convention: `app/styles/_a11y.scss`
+  holding `%visually-hidden`, reached by a RELATIVE `@use`. Both the placeholder `@extend` across
+  `@use` and the namespaced-mixin alternative were compiled against the repo's own sass 1.97.3
+  before being written down, and a bare `@use 'a11y'` was checked and does NOT resolve —
+  `next.config.js:79` points `includePaths` at a `styles/` directory that does not exist. The
+  fourth answer was the **canonical host: the apex, with `www` 301ing to it.** D13 was already COLD,
+  so that changes no state here — it fixes the direction D13 and feature-board PF15 both write
+  down, and leaves one unknown on the board: whether `NEXT_PUBLIC_APP_URL` names the apex, which is
+  what makes writes 403 silently if it does not. **Blocked-on-user: seven → four (H1, F4, G8, H7),
+  and H7 is feature-board decision #4.** Backend-blocked stays empty. **NEXT RUN re-picked** —
+  nothing had merged against the old block, so it is a re-order plus two additions: D15, B10, F3's
+  `fullscreen-image.module.scss` rename, E9's partial, G3's delete. The rename goes before the
+  partial because they share `app/styles/fullscreen-image.module.scss` and the rename is the smaller
+  diff. D13 moves out of the run and is named first among available, since it is startable now and
+  wants its own sitting. Next: D15, B10, F3's rename, E9, G3.

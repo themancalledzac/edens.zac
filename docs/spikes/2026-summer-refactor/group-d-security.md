@@ -5,8 +5,9 @@ _Archive of shipped work from the [2026 Summer Refactor board](../2026-summer-re
 All nine items merged: PR #265, #266, #274, #272, #273, #270, #253 (D7), #276, #277. The original
 Group D closed 2026-08-24; D10 (a `getApiBaseUrl` normalization gap of the same class as D8) was
 filed 2026-08-29 and merged 2026-08-30 (#353). D11, D12 and D14 were filed 2026-09-05 from an
-adversarial re-review of everything here and merged the same day (#404). D13 and D15 are open on the
-live board.
+adversarial re-review of everything here and merged the same day (#404). **D15 closed by arithmetic
+2026-09-08 (no MR); D13 merged 2026-09-08 as #414. Group D is now fully closed** — nothing in it is
+open on the live board.
 
 ## Closed rows
 
@@ -614,3 +615,83 @@ for up to 3600s after the backend deploy.
    2026-09-05 with a 3600s fuse and picked into a run on 2026-09-06 without anyone noting that the
    fuse would burn out before most sessions got to it. **A time-boxed item needs its expiry date in
    the row**, or it gets carried as live work past the point where it is real.
+
+---
+
+### ✅ D13 · Report-only CSP has no `report-uri`; the apex host silently 403s every write
+
+`next.config.js:38-49`'s `Content-Security-Policy-Report-Only` ends at `connect-src 'self'` with no
+reporting directive (verified live on `https://www.zacedens.com/`). Violations go to visitors'
+devtools consoles and nowhere else, so production traffic can never satisfy the docblock's
+graduation condition ("rename once a pass over the real pages leaves it quiet").
+
+**Re-measured against production 2026-09-06, and the apex problem is bigger than "one host 403s".**
+Both `zacedens.com` and `www.zacedens.com` return 200, with byte-identical security headers and no
+redirect in either direction. The `Content-Security-Policy-Report-Only` header ends at
+`connect-src 'self'` on both, so the missing reporting directive is live on both hosts too.
+
+```bash
+for h in zacedens.com www.zacedens.com; do curl -sI "https://$h/" | grep -iE '^(HTTP|content-security-policy|strict-transport|x-)'; done
+curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://zacedens.com/
+```
+
+`isAllowedWriteOrigin` admits exactly the one origin `NEXT_PUBLIC_APP_URL` names, so the other host
+gets a silent 403 on every write (`/api/proxy` writes, `/api/revalidate`, `/api/client-errors`).
+That fails closed and costs availability only.
+
+**The SEO half is the new part, and it is filed separately as feature-board PF15.** Production
+serves no `robots.txt` and no `sitemap.xml` — both fall through to `[slug]` and render the 404 page
+— and no page carries a `rel="canonical"` or an `og:url`. So apex and www are two fully indexable
+duplicates with nothing marking either one canonical.
+
+```bash
+for u in robots.txt sitemap.xml; do curl -s -o /dev/null -w "$u %{http_code}\n" "https://www.zacedens.com/$u"; done
+curl -s https://www.zacedens.com/ | grep -c -e 'rel="canonical"' -e 'og:url'
+```
+
+**Direction DECIDED 2026-09-06 by the user: the apex is the canonical host.** `zacedens.com` is the
+real address and `www.zacedens.com` 301s to it — not the other way round. That settles PF15's
+canonical tag and `og:url` (both point at the apex) and PF15's `sitemap.xml` (apex URLs).
+
+The redirect still cannot be written here: `next.config.js` has no `redirects()` block at all, and
+the build and routing config lives in the Amplify console. `www` → apex belongs at the Amplify/DNS
+layer and rides feature-board PF7 (the CloudFlare pass).
+
+**One thing production cannot reveal: which host `NEXT_PUBLIC_APP_URL` names.** Nothing in the
+rendered output echoes it, and the only probes that would show it are POSTs, which were not issued.
+Read it from the Amplify console and confirm it names the apex before writing the redirect. A
+mismatch is exactly what makes `isAllowedWriteOrigin` 403 every write silently.
+
+- [ ] A `POST /api/csp-report` route writing one clipped JSON line (CSP reports are
+      `application/csp-report` and carry no usable `Origin`, so `/api/client-errors`' origin gate
+      cannot be reused as-is), and `report-uri /api/csp-report` on the policy;
+      `tests/next.config.test.ts` gains the assertion. Same cost model as PF6. Est ~+40 src / +30 test.
+
+**SHIPPED 2026-09-08 as #414**, bundled with G2a and F3's log label after the user ruled that small
+items should share an MR rather than each taking a review cycle.
+
+`POST /api/csp-report` plus `report-uri` on the policy. The route is shaped like
+`/api/client-errors` — size caps, clipping, one JSON line to stdout, 204 — with one deliberate
+difference, and it is the interesting part of the item: **the shared `Origin` gate could not be
+reused, exactly as the row predicted.** Browsers post `report-uri` violations without a usable
+`Origin`, so `isAllowedWriteOrigin` would have rejected every real report. `Content-Type` is the
+gate instead (`application/csp-report` or `application/reports+json`), which bounds accidents rather
+than abuse; volume control stays an edge concern with PF7.
+
+`original-policy` is dropped rather than logged — it is our own header echoed back on every single
+report, so logging it multiplies volume by a constant and says nothing the config does not.
+
+`report-uri` and not `report-to`: Firefox and Safari implement only the former, and `report-to`
+additionally needs a `Reporting-Endpoints` header.
+
+**Estimate: +40 src / +30 test. Actual: +104 src / +196 test.** Both roughly 2.6× and 6.5× over, and
+the cause is Group E bias 1b showing up outside Group E — a new route is a new required suite, and
+the estimate counted the handler rather than the handler plus the cases that prove each gate. Nobody
+had priced the content-type gate's six cases or the malformed-input five, because the row described
+the gate in one clause.
+
+**The `www`→apex redirect was deliberately left out**, and the reason is worth keeping: writing a
+`redirects()` block here would put the canonical host in two places that can disagree, since the
+routing config lives in the Amplify console and can override it without warning. It stays a PF7 line
+at the Amplify/DNS layer. **`NEXT_PUBLIC_APP_URL` was NOT resolved** — it still cannot be read from
+outside, and confirming it names the apex is still the precondition for that redirect.
