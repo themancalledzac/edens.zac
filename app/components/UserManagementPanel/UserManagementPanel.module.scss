@@ -1,3 +1,5 @@
+@use '../../styles/a11y';
+
 /* UserManagementPanel — the content inside this panel's ListPanel slots. The shell, the list
    surface and the row grid are ListPanel's; nothing here may re-declare them. */
 
@@ -59,15 +61,7 @@
 }
 
 .srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
+  @extend %visually-hidden;
 }
 
 .email {
