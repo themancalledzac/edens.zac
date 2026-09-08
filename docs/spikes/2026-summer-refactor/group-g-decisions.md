@@ -348,3 +348,58 @@ live callers and stay.
 - [ ] Status wording reconciled 2026-08-22: A1 is COMPLETE as shipped — the `/user/selects` deletion
       was pulled OUT of A1 (see A1's closing note in the archive). Deciding G3 performs that final
       deletion (or its rebuild); it does not reopen A1.
+
+---
+
+### ✅ G8 · Extend the panel `styles.<key>` guard repo-wide? — USER DECISION
+
+Filed as a row 2026-09-05; it had sat in the state table alone as "CSS guard" with no id, the only
+blocked question the shell checks could not see. `tests/components/panelStyleReferences.test.ts`
+proves every `styles.<key>` in six panel directories resolves to a class in the module it imports;
+nothing checks the rest of `app/components/`. Sizing, re-run 2026-09-05 with the commands in the
+CSS rule: **107** files import a CSS module and **411** distinct `styles.<key>` names — both
+re-verified 2026-09-06. The third figure was wrong: it is **10 import statements across 9 files**,
+not 10 files. `CollectionContentRenderer.tsx` carries two of them (`cbStyles` at `:43` and
+`variantStyles` at `:45`), so counting statements double-counts that file.
+
+```bash
+grep -rnE "^import [A-Za-z]+ from '.*\.module\.scss'" app --include='*.tsx' --include='*.ts' \
+  | grep -v ':import styles from' | wc -l
+```
+
+→ **10**. Pipe the same output through `cut -d: -f1 | sort -u | wc -l` for the file count → **9**.
+The bindings are `cbStyles` ×5, `modalStyles` ×4 and `variantStyles` ×1. A guard sized off a
+`styles.` regex skips all of them silently.
+
+- [x] ~~**BLOCKED — user:** extend the guard, or keep it panels-only.~~ **DECIDED 2026-09-08:
+      extend. SHIPPED the same day as #415.**
+
+**SHIPPED 2026-09-08 as #415**, and it paid on the first run.
+
+`tests/components/panelStyleReferences.test.ts` became
+`tests/components/styleClassReferences.test.ts`, covering all 106 files under `app/` that import a
+`.module.scss` (108 import statements).
+
+**It found a live regression, which is the whole reason to keep this write-up.** `ff3a3e9c`
+(2026-08-04, the cover-picker move) took 95 lines out of `InfoTab.module.scss` and swept
+`.checkboxRow` and `.checkboxLabel` along with them. `InfoTab.tsx:101-109` still used both, so the
+Kind checkboxes rendered with no flex row, no gap and no pointer cursor **for a month**. Both classes
+were restored byte-identical to what that commit removed. **This is the second instance of the same
+bug class** — the first was `.loadError` leaving `RoleDetailView.tsx` dangling, which is what got the
+panels-only guard filed. Two instances from two unrelated SCSS deletions is the argument the
+panels-only scoping could not make for itself.
+
+**The specifier-vs-binding warning in the row was correct and load-bearing.** Ten import statements
+across nine files bind to `cbStyles`, `modalStyles` or `variantStyles`. A test asserts those ten stay
+covered and that the alternate-binding set is exactly those three.
+
+**Two figures on the row were stale at HEAD: 107 files → 106** (#411 deleted one) **and 411 distinct
+keys → 451.** The key count was low for the same reason the guard had to be rewritten — the board's
+`styles.` regex could not see the keys behind the renamed bindings.
+
+**Two guards on the collection itself**, because a collector that silently returns nothing is worse
+than no test: a floor on the file count (a floor, not an exact number, or it reddens on every new
+component) and the alternate-binding assertion.
+
+**The blind spot is unchanged and is now written into the test's docblock:** a dynamic `styles[key]`
+lookup is invisible, because the key is not in the source.
