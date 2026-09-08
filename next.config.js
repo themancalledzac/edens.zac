@@ -30,6 +30,11 @@ const isDev = process.env.NODE_ENV !== 'production';
  *
  * Dev widens three directives. React Refresh needs `'unsafe-eval'`, HMR needs a websocket,
  * and the local backend on `:8080` serves images that production takes from CloudFront.
+ *
+ * `report-uri` rather than `report-to`: Firefox and Safari implement only the former, and
+ * `report-to` additionally needs a `Reporting-Endpoints` header. Without a reporting directive
+ * the report-only policy is unfalsifiable, since violations reach only the visitor's console.
+ * The endpoint is `app/api/csp-report/route.ts`.
  */
 const csp = [
   "default-src 'self'",
@@ -43,6 +48,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   `connect-src 'self'${isDev ? ' ws: wss: http://localhost:*' : ''}`,
+  'report-uri /api/csp-report',
 ].join('; ');
 
 /**
@@ -72,9 +78,11 @@ const nextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
-  // Allow the dev server's internal endpoints (HMR, client-side navigation / RSC) to be
-  // requested from these LAN origins, so the site is testable from a phone over Wi-Fi.
-  // Dev-only; ignored in production. Update with your machine's LAN IP(s) if they change.
+  /**
+   * LAN origins allowed to reach the dev server's internal endpoints (HMR, client-side
+   * navigation / RSC), so the site is testable from a phone over Wi-Fi. Dev-only; ignored in
+   * production. Update with your machine's LAN IP(s) if they change.
+   */
   allowedDevOrigins: ['192.168.68.55', '192.168.68.59', '192.168.68.60'],
   sassOptions: {
     includePaths: [path.join(process.cwd(), 'styles')],
@@ -90,16 +98,23 @@ const nextConfig = {
         hostname: CLOUDFRONT_HOST,
       },
     ],
-    formats: ['image/webp'], // Don't attempt AVIF — backend already serves optimized WebP
-    minimumCacheTTL: 86400, // Cache optimized images for 24 hours
-    // Sources are 2500px on the long edge, so 2560/3200/3840 returned the same bytes as 2048;
-    // capping at 2048 halves the largest request. Intermediates stay — browsers round up to the
-    // next candidate, so removing one costs bytes.
-    // Measurements: docs/spikes/2026-features/pf-performance-platform.md
+    /** WebP only — the backend already serves optimized WebP, so AVIF buys nothing. */
+    formats: ['image/webp'],
+    /** 24 hours. */
+    minimumCacheTTL: 86400,
+    /**
+     * Sources are 2500px on the long edge, so 2560/3200/3840 returned the same bytes as 2048;
+     * capping at 2048 halves the largest request. Intermediates stay — browsers round up to the
+     * next candidate, so removing one costs bytes. Measurements:
+     * `docs/spikes/2026-features/pf-performance-platform.md`.
+     */
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
     imageSizes: [128, 256, 384],
-    // An allowlist, not a default — anything outside it is a 400. Must match IMAGE.quality, which
-    // every optimized next/image passes; both pinned by tests/config/imageQuality.test.ts.
+    /**
+     * An allowlist, not a default — anything outside it is a 400. Must match `IMAGE.quality`,
+     * which every optimized `next/image` passes; both pinned by
+     * `tests/config/imageQuality.test.ts`.
+     */
     qualities: [65],
   },
   turbopack: {
