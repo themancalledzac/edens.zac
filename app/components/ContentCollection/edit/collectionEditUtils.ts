@@ -435,7 +435,7 @@ export function replayMoves(originalOrder: number[], moves: ReorderMove[]): numb
     const fromIndex = order.indexOf(move.imageId);
     if (fromIndex === -1) {
       logger.warn(
-        'replayMoves',
+        'collectionEditUtils',
         `imageId ${move.imageId} not found in current order — move skipped`
       );
       continue;
