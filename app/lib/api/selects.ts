@@ -6,7 +6,6 @@
  * — these calls persist a user's favorites.
  */
 import { ApiError, clientFetch, fetchReadApi } from '@/app/lib/api/core';
-import { type SelectGroup } from '@/app/types/Selects';
 import { logger } from '@/app/utils/logger';
 
 const BASE = '/api/proxy/api/read/user/selects';
@@ -37,26 +36,6 @@ export async function listSelectIdsServer(collectionId: number): Promise<number[
     if (!(error instanceof ApiError) || error.status !== 401) {
       const status = error instanceof ApiError ? error.status : 'unknown';
       logger.warn('selects', `seed read failed (status ${status}); rendering empty`, { error });
-    }
-    return [];
-  }
-}
-
-/**
- * Server-side read of every select the viewer holds, grouped by collection. Mirrors
- * `listSelectIdsServer` (cookie-forwarding via `fetchReadApi`). Returns `[]` for anonymous viewers
- * or on any read failure — the `/user/selects` page handles the anonymous case via `meServer()`
- * first.
- */
-export async function listAllSelectsServer(): Promise<SelectGroup[]> {
-  try {
-    const groups = await fetchReadApi<SelectGroup[]>('/user/selects');
-    return groups ?? [];
-  } catch (error) {
-    // Same contract as `listSelectIdsServer`: 401 is the expected anonymous case, so it stays
-    // quiet. Anything else is real breakage and must not vanish into an indistinguishable `[]`.
-    if (!(error instanceof ApiError) || error.status !== 401) {
-      logger.error('selects', 'Failed to fetch all selects; rendering empty', error);
     }
     return [];
   }

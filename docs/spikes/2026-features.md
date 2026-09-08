@@ -994,11 +994,10 @@ below — the canonical tag and `og:url` point at the apex, and `sitemap.xml` li
 **Three pieces, and only the third needs anyone outside this repo.**
 
 - [ ] `app/robots.ts` — Next's file convention. Disallow the admin and user routes, name the sitemap.
-      Check the existing per-page `robots` metadata first: `grep -rn 'index: false' app` returns
-      exactly two, `app/user/selects/page.tsx:17` and `app/all-client-galleries/page.tsx:7`, both
-      `{ index: false, follow: false }`, and the file must not contradict what pages declare.
-      **Refactor-board G3 deletes the `/user/selects` page**, so if that lands first this bullet has
-      one example, not two.
+      Check the existing per-page `robots` metadata first: `grep -rn 'index: false' app` now returns
+      exactly ONE, `app/all-client-galleries/page.tsx:7`, `{ index: false, follow: false }`, and the
+      file must not contradict what that page declares. **Re-pointed 2026-09-06: refactor-board G3
+      landed first (#411) and deleted `/user/selects`**, which used to be the second example.
 - [ ] `app/sitemap.ts` — the public routes plus collections, locations and tags, as apex URLs. It
       needs the same reads the pages use, so decide its revalidation alongside PF13's caching work
       rather than after it.
