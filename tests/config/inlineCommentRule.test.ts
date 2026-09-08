@@ -56,6 +56,42 @@ ruleTester.run('no-inline-comments-in-functions', noInlineCommentsInFunctions as
       name: 'a comment in a module-scope object literal',
       code: 'const o = {\n  // not in a function\n  a: 1,\n};',
     },
+    {
+      name: 'a docblock above an it()',
+      code: 'describe("x", () => {\n  /** Why this case. */\n  it("y", () => {\n    expect(1).toBe(1);\n  });\n});',
+    },
+    {
+      name: 'a docblock above a test()',
+      code: 'describe("x", () => {\n  /** Why this case. */\n  test("y", () => {\n    expect(1).toBe(1);\n  });\n});',
+    },
+    {
+      name: 'a docblock above a nested describe()',
+      code: 'describe("x", () => {\n  /** Why this group. */\n  describe("y", () => {\n    it("z", () => {\n      expect(1).toBe(1);\n    });\n  });\n});',
+    },
+    {
+      name: 'a docblock above it.only()',
+      code: 'describe("x", () => {\n  /** Why this case. */\n  it.only("y", () => {\n    expect(1).toBe(1);\n  });\n});',
+    },
+    {
+      name: 'a docblock above it.skip()',
+      code: 'describe("x", () => {\n  /** Why this case. */\n  it.skip("y", () => {\n    expect(1).toBe(1);\n  });\n});',
+    },
+    {
+      name: 'a docblock above it.failing()',
+      code: 'describe("x", () => {\n  /** Why this case. */\n  it.failing("y", () => {\n    expect(1).toBe(1);\n  });\n});',
+    },
+    {
+      name: 'a docblock above it.each() with an array table',
+      code: 'describe("x", () => {\n  /** Why this table. */\n  it.each([1, 2])("y %s", n => {\n    expect(n).toBeGreaterThan(0);\n  });\n});',
+    },
+    {
+      name: 'a docblock above it.each with a template table',
+      code: 'describe("x", () => {\n  /** Why this table. */\n  it.each`\n    n\n    ${1}\n  `("y $n", ({ n }) => {\n    expect(n).toBe(1);\n  });\n});',
+    },
+    {
+      name: 'a docblock above it.each().only()',
+      code: 'describe("x", () => {\n  /** Why this table. */\n  it.only.each([1])("y %s", n => {\n    expect(n).toBe(1);\n  });\n});',
+    },
   ],
   invalid: [
     {
@@ -97,6 +133,21 @@ ruleTester.run('no-inline-comments-in-functions', noInlineCommentsInFunctions as
       name: 'each line of a multi-line comment block',
       code: 'function f() {\n  // one\n  // two\n  return 1;\n}',
       errors: [{ messageId: 'inline' }, { messageId: 'inline' }],
+    },
+    {
+      name: 'a docblock above a call statement that is not a test case',
+      code: 'function f() {\n  /** why */\n  g();\n  return 1;\n}',
+      errors: [{ messageId: 'inline' }],
+    },
+    {
+      name: 'a docblock above a bare return inside a test case',
+      code: 'it("y", () => {\n  /** why */\n  return expect(1).toBe(1);\n});',
+      errors: [{ messageId: 'inline' }],
+    },
+    {
+      name: 'a docblock above an expect() inside a test case',
+      code: 'it("y", () => {\n  /** why */\n  expect(1).toBe(1);\n});',
+      errors: [{ messageId: 'inline' }],
     },
   ],
 });
