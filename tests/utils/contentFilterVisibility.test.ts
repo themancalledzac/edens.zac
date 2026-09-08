@@ -117,7 +117,7 @@ describe('applyFollowedScope', () => {
    */
   it('passes content through when the follow set is unknown', () => {
     const content = [listed, unlisted];
-    expect(applyFollowedScope(content, true, undefined)).toBe(content);
+    expect(applyFollowedScope(content, true)).toBe(content);
   });
 
   it('returns nothing when the viewer follows none of them', () => {

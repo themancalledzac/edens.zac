@@ -1149,7 +1149,7 @@ export function applyVisibilityScope<T extends AnyContentModel>(
 export function applyFollowedScope<T extends AnyContentModel>(
   content: T[],
   followedOnly: boolean,
-  followedCollectionIds: ReadonlySet<number> | undefined
+  followedCollectionIds?: ReadonlySet<number>
 ): T[] {
   if (!followedOnly || followedCollectionIds === undefined) return content;
   return content.filter(item => {
