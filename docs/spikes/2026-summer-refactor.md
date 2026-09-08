@@ -208,6 +208,20 @@ are repo-root-relative by convention — they are checked against the repo root,
   per merge and run it before the user sees the PR; or keep per-item status edits out of the code
   MRs and close the whole run's rows in one docs MR.
 
+**A lint rule shipped alongside its own remediation must be run against that remediation before the
+PR opens.** #414 shipped the inline-comment rule and, in the same diff, converted inline comments in
+two test files into docblocks above `it()` — which that rule reports. CI was green, because the rule
+lands as `warn`. A `warn`-level rule buys a safe rollout and costs you the signal that would have
+caught this at review; run the rule over your own diff by hand when it is new.
+
+**A crude re-run of a recorded sweep is not a re-verification of it.** The third principle says
+re-run recorded commands, and it is right, but a _reimplementation_ of a prose method is a different
+command. This close-out re-ran G4's board-label sweep with a naive `\b[A-H][0-9]{1,2}\b`, got 18
+against the recorded 17, and started correcting the board — the 18th was `H5★`, a five-star
+horizontal rating, which the section had already flagged as the false positive to watch. **Read the
+section's caveats before trusting your own re-run, and prefer the recorded command to a rewrite of
+it. Where only prose exists, write the runnable form down** so the next pass runs the same thing.
+
 ## MR board
 
 Open rows only. The 72 closed rows live as one-line ledgers under a "Closed rows" heading in each
@@ -229,17 +243,18 @@ grep -ohE '^#{2,3} [☐◐⛔✅☑] [A-H][0-9]+[a-z]?' docs/spikes/2026-summer-
   | grep -oE '[A-H][0-9]+[a-z]?' | sort | uniq -d                  # must be empty
 ```
 
-| MR  | Scope                                                   | Status                                                                                                                                                                                                |
-| --- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| B8  | Fill the required-coverage gaps                         | ◐ 5 of 6 — #266, #267, #295, #296; only the optional bullet is open (`sharedObserver` 116 / `useParallax` 169 / `useContentReordering` 197 lines, all untested)                                       |
-| E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook) | ◐ waste FIXED #337; hook REJECTED; one path open (`EditModeLayer.tsx:281` reorder branch, unsized)                                                                                                    |
-| F1  | Decompose `useCollectionEdit.tsx` (1,829 lines)         | ☐ COLD — largest open item; anchors re-derived 2026-09-06; goes BEFORE feature-board MA1 and leaves the update-form region alone (see section)                                                        |
-| F3  | File moves and renames                                  | ◐ seven shipped (#324 #336 #343 #348 #349 #409 #414); invite REJECTED; two bullets open                                                                                                               |
-| F4  | `TaxonomyPage` ← `LocationPageClient`                   | ☐ DECIDED 2026-09-08 **merge them** — tag pages take filters, the collections strip, the header cover and follow seeding, and become a client page. COLD and UNSIZED; do not schedule beside F1       |
-| G2  | Inline-comment enforcement + migration                  | ◐ wording #268; **G2a SHIPPED #414** as `warn`. G2b is **2,892 comments across 247 files** (the rule's count, which supersedes the grep's 2,596) and splits `app/` then `tests/`; G2c rides refactors |
-| G4  | Docblock standard — length, structure, and no history   | ◐ intersection pass #310; 1,497 blocks / 54 hits (re-run 2026-09-08); 17 label docblocks + 4 inline; read, don't regex                                                                                |
-| H1  | Merge `Following` into `Collections` on `/user`         | ☐ DECIDED 2026-09-08 — **one list of all associations plus a `following` filter**, no tile marker, count is the union. COLD; the filter's home in the toolbar is the open design question             |
-| H7  | Passkey management on `/admin/users/[id]`               | ☐ DECIDED 2026-09-08 **yes** — builds as feature-board AU2's admin half, not as a row here. Closes against AU2                                                                                        |
+| MR  | Scope                                                   | Status                                                                                                                                                                                                                                     |
+| --- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| B8  | Fill the required-coverage gaps                         | ◐ 5 of 6 — #266, #267, #295, #296; only the optional bullet is open (`sharedObserver` 116 / `useParallax` 169 / `useContentReordering` 197 lines, all untested)                                                                            |
+| E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook) | ◐ waste FIXED #337; hook REJECTED; one path open (`EditModeLayer.tsx:281` reorder branch, unsized)                                                                                                                                         |
+| F1  | Decompose `useCollectionEdit.tsx` (1,829 lines)         | ☐ COLD — largest open item; anchors re-derived 2026-09-06; goes BEFORE feature-board MA1 and leaves the update-form region alone (see section)                                                                                             |
+| F3  | File moves and renames                                  | ◐ seven shipped (#324 #336 #343 #348 #349 #409 #414); invite REJECTED; two bullets open                                                                                                                                                    |
+| F4  | `TaxonomyPage` ← `LocationPageClient`                   | ☐ DECIDED 2026-09-08 **merge them** — tag pages take filters, the collections strip, the header cover and follow seeding, and become a client page. COLD and UNSIZED; do not schedule beside F1                                            |
+| G2  | Inline-comment enforcement + migration                  | ◐ wording #268; **G2a SHIPPED #414** as `warn`. G2b is **2,893 across 248 files** re-run on `main` at `5537c4aa` — **less the 4 false positives G2d fixes, so 2,889 is the real target**; splits `app/` then `tests/`; G2c rides refactors |
+| G2d | G2a's rule flags docblocks above `it()`                 | ☐ COLD, cheap, fully specified. **Blocks G2b-tests** — the prescribed `tests/` migration hoists into a `describe`/`it` docblock, which the rule reports. ~10 src / ~4 test                                                                 |
+| G4  | Docblock standard — length, structure, and no history   | ◐ intersection pass #310; **1,500** blocks / 54 hits (re-run on `main` at `5537c4aa` 2026-09-08 (2)); 17 label docblocks + 4 inline, re-verified; read, don't regex                                                                        |
+| H1  | Merge `Following` into `Collections` on `/user`         | ☐ DECIDED 2026-09-08 — **one list of all associations plus a `following` filter**, no tile marker, count is the union. COLD; the filter's home in the toolbar is the open design question                                                  |
+| H7  | Passkey management on `/admin/users/[id]`               | ☐ DECIDED 2026-09-08 **yes** — builds as feature-board AU2's admin half, not as a row here. Closes against AU2                                                                                                                             |
 
 ### NEXT RUN — picked 2026-09-08 (2)
 
@@ -256,21 +271,30 @@ warnings** (all from G2a's new rule, and `lint:js` sets no `--max-warnings`, so 
 route deletion — an artifact, not a regression; all three directories are gitignored and regenerate.
 
 **Nothing on this board is blocked on anyone.** The blocked list is empty for the first time since
-it was created. Every remaining item is COLD, and three of the five are large enough to want their
+it was created. Every remaining item is COLD, and three of the six are large enough to want their
 own sitting.
+
+**One item was filed by the close-out's own verification pass: G2d.** Re-running G2a's count on
+`main` after #414 merged returned 2,893 across 248 files instead of the 2,892 / 247 measured
+pre-merge, and the extra file was `tests/config/inlineCommentRule.test.ts` — the rule's own test
+suite, reported by the rule. Chasing the one-file discrepancy is what found it. **A count that moves
+by one is worth explaining, not rounding.**
 
 **Feature-board AU2 is the next run's first item overall**, ahead of this board — H7 closes against
 it. After that, this board's order:
 
-1. **F4** — newly decided, and it must be SIZED before it is scheduled. Sizing prices three things
+1. **G2d** — the cheapest fully-specified item on the board and a genuine dependency: it blocks
+   G2b-tests, and four instances of the bug are already on `main` from #414. ~10 src / ~4 test.
+2. **F4** — newly decided, and it must be SIZED before it is scheduled. Sizing prices three things
    the decision does not settle: what a tag page passes for a header cover it does not have, what
    `LocationCollections` renders when the subject is a tag, and what the 32-line server page was
    getting for free by being a server page. **The third is the risk**, not the component merge.
-2. **H1** — also newly decided and re-shaped. Its remaining unknown is design, not data: where the
+3. **H1** — also newly decided and re-shaped. Its remaining unknown is design, not data: where the
    `following` filter lives in a toolbar row that already carries the section chips. The filter
    itself costs no new read.
-3. **G2b-app** — 842 comments, the smaller half, and the tree G2a was designed against. **Take the
-   light/heavy cut in `tests/` before scheduling G2b-tests**; it has still never been taken.
+4. **G2b-app** — 842 comments, the smaller half, and the tree G2a was designed against. **Take the
+   light/heavy cut in `tests/` before scheduling G2b-tests**; it has still never been taken, and
+   G2d must land before it is.
 
 **Available, not in this run:**
 
@@ -301,17 +325,18 @@ An item blocked on an unwritten question reads as available and then eats a sess
 useful state: use it rather than guessing, then actually sweep it.** The shipped-but-unticked
 history behind that is in [lessons.md](2026-summer-refactor/lessons.md).)
 
-| Item   | State | Note                                                                                                                                                                                                                                                                                    |
-| ------ | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **E7** | COLD  | The waste shipped as a handoff guard (#337); the hook is REJECTED with measurement. One wasted path open (`EditModeLayer.tsx:281` reorder branch), still unsized                                                                                                                        |
-| **B8** | COLD  | 5 of 6 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                                                                      |
-| **F3** | COLD  | Seven bullets shipped (the log label closed 2026-09-08, #414); the invite bullet is COSTED and REJECTED (do not re-open the 3-function version). **Two bullets open**                                                                                                                   |
-| **G4** | COLD  | **1,497** blocks / 54 backward-looking, re-run at `fcc6ebd3` 2026-09-08 with the per-term split reproducing exactly; the ~23 false positives are a classification and were NOT re-checked; 17 label docblocks + 4 label inlines must be read block-by-block, not regexed                |
-| **F1** | COLD  | Largest open item; no unanswered question, just size. Goes before feature-board MA1, and **not in the same run as F4**                                                                                                                                                                  |
-| **G2** | COLD  | **G2a SHIPPED #414** as `warn`. G2b is **2,892 comments across 247 files** — `app/` 842, `tests/` 2,050 — measured by the rule itself, which supersedes the grep's 2,596. Splits `app/` then `tests/`; the light/heavy cut has never been taken in `tests/` — take it before scheduling |
-| **F4** | COLD  | **DECIDED 2026-09-08: merge them.** UNSIZED — size it before scheduling; the risk is what the 32-line server page was getting for free, not the component merge                                                                                                                         |
-| **H1** | COLD  | **DECIDED 2026-09-08: one list of all associations plus a `following` filter**, no tile marker, count is the union. The remaining unknown is design — where the filter lives in the toolbar                                                                                             |
-| **H7** | COLD  | **DECIDED 2026-09-08: yes.** Builds as feature-board AU2's admin half; this row closes against AU2 rather than taking its own MR                                                                                                                                                        |
+| Item    | State | Note                                                                                                                                                                                                                                                                                                                               |
+| ------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **E7**  | COLD  | The waste shipped as a handoff guard (#337); the hook is REJECTED with measurement. One wasted path open (`EditModeLayer.tsx:281` reorder branch), still unsized                                                                                                                                                                   |
+| **B8**  | COLD  | 5 of 6 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                                                                                                                 |
+| **F3**  | COLD  | Seven bullets shipped (the log label closed 2026-09-08, #414); the invite bullet is COSTED and REJECTED (do not re-open the 3-function version). **Two bullets open**                                                                                                                                                              |
+| **G4**  | COLD  | **1,500** blocks / 54 backward-looking, re-run on `main` at `5537c4aa` 2026-09-08 (2), per-term split reproducing exactly; the ~23 false positives are a classification and were NOT re-checked; **17** label docblocks + 4 label inlines (re-verified; a naive regex says 18 — see the section), read block-by-block, not regexed |
+| **F1**  | COLD  | Largest open item; no unanswered question, just size. Goes before feature-board MA1, and **not in the same run as F4**                                                                                                                                                                                                             |
+| **G2**  | COLD  | **G2a SHIPPED #414** as `warn`. G2b is **2,893 across 248 files** — `app/` 842, `tests/` 2,051 — re-run on `main` at `5537c4aa`, and **4 are G2d's false positives**, so the real target is 2,889. Splits `app/` then `tests/`; the light/heavy cut has never been taken in `tests/`. **G2d goes first**                           |
+| **G2d** | COLD  | Cheap and fully specified. **It blocks G2b-tests**, so its position is a dependency, not a preference                                                                                                                                                                                                                              |
+| **F4**  | COLD  | **DECIDED 2026-09-08: merge them.** UNSIZED — size it before scheduling; the risk is what the 32-line server page was getting for free, not the component merge                                                                                                                                                                    |
+| **H1**  | COLD  | **DECIDED 2026-09-08: one list of all associations plus a `following` filter**, no tile marker, count is the union. The remaining unknown is design — where the filter lives in the toolbar                                                                                                                                        |
+| **H7**  | COLD  | **DECIDED 2026-09-08: yes.** Builds as feature-board AU2's admin half; this row closes against AU2 rather than taking its own MR                                                                                                                                                                                                   |
 
 **The blocked list is empty — user and backend both** (re-counted 2026-09-08 (2), after D13 and G8
 left the table). Four rows were blocked on the user that morning; all four were answered in the
@@ -734,6 +759,42 @@ error on that list**), `contentLayout.ts` (15), `contentFilter.ts` (**16, not 13
   (`CollectionPageClient.tsx`, 23 blocks; `CollectionPageWrapper.tsx`, 9) now ride nothing, so
   G2c is partly schedulable work, not pure ride-along.
 
+### ☐ G2d · G2a's rule reports docblocks above `it()` — fix before G2b-tests
+
+Filed 2026-09-08 (2) from the close-out's own re-measurement. **Not cosmetic: it blocks G2b-tests.**
+
+G2a's rule (`eslint-rules/no-inline-comments-in-functions.js`, #414) exempts a JSDoc block that
+immediately precedes a **declaration** — `documentsDeclaration()` checks the next token's node
+against `FunctionDeclaration`, `VariableDeclaration`, `ClassDeclaration` and three TS declaration
+types. A test-case docblock does not precede a declaration. It precedes `it('…', () => {…})`, which
+is an `ExpressionStatement` wrapping a `CallExpression`, so the rule reports it.
+
+**Why that stops G2b-tests rather than merely annoying it.** G2b's own bullet prescribes the
+`tests/` migration as: "a `tests/` comment usually explains a case and hoists into the
+`describe`/`it` docblock". That is 2,051 comments whose prescribed destination the rule reports.
+Run as written, G2b-tests would _raise_ the warning count and G2a could never flip to `error` —
+the flip is the only thing G2a is still waiting on.
+
+**Four instances already exist, and they are #414's own**, which is the cheapest possible
+demonstration: `tests/next.config.test.ts:85`, `:102`, `:113` and
+`tests/config/inlineCommentRule.test.ts:125`. All four are inline comments that #414 converted to
+docblocks above an `it()` — the correct remediation, reported by the rule shipped in the same PR.
+
+```bash
+npx eslint app tests -f json | node -e "…"   # 2,893 across 248 files; these 4 are the false positives
+```
+
+- [ ] Widen the exemption to a JSDoc block preceding a call-expression statement whose callee is
+      `describe`/`it`/`test`, including the `.each` / `.only` / `.skip` / `.failing` member forms.
+      **Scope it to those callees, not to every call.** A blanket "docblock above any statement"
+      exemption would also excuse `/** why */` above a bare `return`, which the rule's own test
+      suite pins as invalid at `tests/config/inlineCommentRule.test.ts` — keep that case red.
+- [ ] Add the valid cases to that suite and re-run the count. Expect **2,893 → 2,889**.
+
+**Lesson, hoisted to "How to use this doc":** a lint rule shipped alongside its own remediation must
+be run against that remediation before the PR opens. #414 did both in one diff and the contradiction
+survived a green CI, because the rule is `warn`.
+
 ### ◐ G4 · Docblock standard — length, structure, and no history — ~31 real history blocks + 21 label blocks
 
 Raised by the user 2026-08-24 off PR #301's 30-line `revalidateLocationCaches` docblock. The
@@ -755,9 +816,13 @@ docblocks against the standard before opening the PR.
 **Current history inventory (re-run 2026-09-05; method recorded).** Scan every `.ts`/`.tsx` under
 `app/`, extract `/\*\*.*?\*/` non-greedy across newlines, test each block case-insensitively
 against `\bused to\b`, `\bno longer\b`, `\bpreviously\b`, `\bthe old\b`, `PR #\d+`,
-`\b20\d\d-\d\d-\d\d\b`: **1,497 blocks total, 54 backward-looking** (used-to 22, no-longer 14,
-previously 7, bare date 8, the-old 4, PR-number 1). **Re-run at HEAD `fcc6ebd3` 2026-09-08: the
-total fell 1,500 → 1,497, and the 54 plus the per-term split reproduce exactly.** The three lost
+`\b20\d\d-\d\d-\d\d\b`: **1,500 blocks total, 54 backward-looking** (used-to 22, no-longer 14,
+previously 7, bare date 8, the-old 4, PR-number 1). **Re-run on `main` at `5537c4aa`
+2026-09-08 (2): the total went 1,497 → 1,500 and the 54 plus the per-term split reproduce exactly
+for the third consecutive measurement.** The three gained blocks are #414's, all in
+`app/api/csp-report/route.ts`, and none is backward-looking. **The runnable form of the method
+above is in the archive** — a prose method gets re-implemented differently each time, which is how
+this number was disputed across three passes. The three lost
 blocks are G3's (#411) — `listAllSelectsServer`'s docblock, `SelectGroup`'s, and the deleted page's
 — and none was backward-looking, which is why only the denominator moved. **The denominator moves
 on any deletion; the numerator only moves when someone writes history into a docblock.** The 1,494 this board carried elsewhere was measured at
@@ -770,8 +835,9 @@ it was before"), so 26 is a floor. **Every hit needs reading; this item cannot b
 running the regex.\*\*
 
 **The board-label sweep has never been run and is the actual unswept work — and it grew while
-"all re-verified 2026-08-29" sat on it: 21 blocks, re-taken 2026-09-05** (labels `A1`–`H7` inside
-`/** */` blocks and `//` lines under `app/`). **17 docblocks** carry board labels —
+"all re-verified 2026-08-29" sat on it: 21 blocks, re-verified on `main` at `5537c4aa`
+2026-09-08 (2)** (labels `A1`–`H7` inside `/** */` blocks and `//` lines under `app/`). **17 + 4
+still holds; #414 added no board label.** **17 docblocks** carry board labels —
 `originAllowlist.ts:14` (D10 — **added by D10's own commit `68fbb59b`**, this item's "the
 refactor's own MR is where the rot enters" demonstrated) and `:47` (D9), `contentFilter.ts:979`
 (D7), `contentLayout.ts:589` (E14/E15), `contentTypeGuards.ts:178` (D3), `Badge.tsx:27` (D6),
@@ -782,7 +848,10 @@ refactor's own MR is where the rot enters" demonstrated) and `:47` (D9), `conten
 and `:388` (D7), `useCoverImageSelection.ts:51` (D3), `EditModeLayer.tsx:250` (D3). The `TODO(A3)`
 and D4 inlines at `useCollectionEdit.tsx:1571`/`:1586` are gone (#354's comment sweep).
 Watch one false positive: `contentRatingUtils.ts:35`'s `H5★` is a five-star horizontal rating, not
-item H5. The worst single offender is `collectionEditUtils.ts:284-293` — board label, PR number,
+item H5. **A naive `\b[A-H][0-9]{1,2}\b` sweep returns 18, not 17, and that one block is the whole
+difference — it is the false positive, not a miss.** Verified the hard way 2026-09-08 (2): the crude
+regex was run, the board was assumed stale, and the board was right. **Do not "correct" 17 upward
+without reading the block.** The worst single offender is `collectionEditUtils.ts:284-293` — board label, PR number,
 and history in one block. One caveat on "every #327/#328 file is clean of anchor terms":
 `useCollectionEdit.tsx:667`'s docblock (`isUpdateDirty`) matches `previously` (a #327-touched
 file); the others are clean. The one `contentLayout.ts` hit (block start `:85`, "used to hold
@@ -1017,8 +1086,18 @@ numbering, so that day's numbered entries start at "(2)"._
   One docs MR for the board with code MRs touching none of it: three branches all cut from `main`,
   zero conflicts, against last run's four. And a NEW one from the user mid-run — **small items share
   an MR.** F3's log label was opened as a one-line PR (#413), closed unmerged, and folded into #414;
-  bundle small items with independent commits and a section per item in the body. Next: feature-board
-  AU2 first overall, then F4 (size it), H1 (design the filter's home), G2b-app.
+  bundle small items with independent commits and a section per item in the body. **#414 merged;
+  #415 and #416 were BEHIND after it and were rebased and force-pushed by this session, not left for
+  the user — both CLEAN, no conflict.** **The close-out's own verification pass filed G2d and
+  corrected one figure in each direction:** G4's docblock total 1,497 → **1,500** (#414's three
+  `csp-report` docblocks; the 54 backward-looking and the full per-term split reproduced exactly for
+  the third measurement running, and the runnable form of that method is now recorded in the
+  archive), and G2b 2,892/247 → **2,893/248** — chasing that single extra file is what found G2d.
+  **One attempted correction was wrong and is recorded as a rule:** a naive `\b[A-H][0-9]{1,2}\b`
+  re-run of G4's board-label sweep returned 18 against the recorded 17, and the board was right —
+  the 18th is `H5★`, a five-star horizontal rating the section already flagged as the false positive
+  to watch. Next: feature-board AU2 first overall, then G2d, F4 (size it), H1 (design the filter's
+  home), G2b-app.
 
 - 2026-09-08 — **the 2026-09-06 (2) run emptied: four MRs merged and the fifth item turned out not
   to be one.** Shipped **B10 (#408)**, **F3's SCSS rename (#409)**, **E9's `.srOnly` partial

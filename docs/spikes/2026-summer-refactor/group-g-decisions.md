@@ -403,3 +403,64 @@ component) and the alternate-binding assertion.
 
 **The blind spot is unchanged and is now written into the test's docblock:** a dynamic `styles[key]`
 lookup is invisible, because the key is not in the source.
+
+---
+
+## G4's history sweep — the runnable form
+
+_Recorded 2026-09-08 (2). The live board describes this method in prose, which is how the count got
+disputed across three passes: each pass reimplemented it slightly differently. Run **this**, not a
+rewrite of it, and record the HEAD you ran it at._
+
+```js
+// node this from the repo root
+import { readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+const root = path.join(process.cwd(), 'app');
+const files = readdirSync(root, { recursive: true, encoding: 'utf8' })
+  .filter(f => f.endsWith('.ts') || f.endsWith('.tsx'))
+  .map(f => path.join(root, f));
+const TERMS = {
+  'used to': /\bused to\b/i,
+  'no longer': /\bno longer\b/i,
+  previously: /\bpreviously\b/i,
+  'the old': /\bthe old\b/i,
+  'PR #n': /PR #\d+/i,
+  'bare date': /\b20\d\d-\d\d-\d\d\b/,
+};
+let total = 0;
+const hits = new Set();
+const per = {};
+for (const k of Object.keys(TERMS)) per[k] = 0;
+for (const f of files) {
+  for (const m of readFileSync(f, 'utf8').matchAll(/\/\*\*[\S\s]*?\*\//g)) {
+    total++;
+    let hit = false;
+    for (const [k, re] of Object.entries(TERMS))
+      if (re.test(m[0])) {
+        per[k]++;
+        hit = true;
+      }
+    if (hit) hits.add(`${f}:${m.index}`);
+  }
+}
+console.log(total, hits.size, per);
+```
+
+Results, so that a future run can tell drift from a different command:
+
+| HEAD       | Date           | Blocks | Backward-looking | Split                                        |
+| ---------- | -------------- | ------ | ---------------- | -------------------------------------------- |
+| `699aa4f2` | 2026-09-05     | 1,494  | 54               | —                                            |
+| `fcc6ebd3` | 2026-09-08     | 1,497  | 54               | 22 / 14 / 7 / 8 / 4 / 1                      |
+| `5537c4aa` | 2026-09-08 (2) | 1,500  | 54               | 22 / 14 / 7 / 8 / 4 / 1 — reproduced exactly |
+
+**The numerator has not moved in three measurements taken across two weeks.** Only the denominator
+does, on any addition or deletion under `app/`. Treat a change in the 54 as a real event and a
+change in the total as noise.
+
+**The board-label sweep is a different sweep and must NOT be run with a bare
+`\b[A-H][0-9]{1,2}\b`.** That returns 18; the recorded figure is 17 and the recorded figure is
+right. `contentRatingUtils.ts:35` contains `H5★` — a five-star horizontal rating — and the live
+section flags it as the false positive to watch. Verified 2026-09-08 (2) by running the crude
+version, disbelieving the board, and being wrong.
