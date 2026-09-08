@@ -17,13 +17,13 @@ import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
 import { IconButton } from '@/app/components/ui/IconButton/IconButton';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { IMAGE } from '@/app/constants';
-import styles from '@/app/styles/fullscreen-image.module.scss';
 import { type CollectionModel } from '@/app/types/Collection';
 import type { ViewableContent } from '@/app/types/Content';
 import { humanLabel } from '@/app/utils/contentRendererUtils';
 import { formatLongDate } from '@/app/utils/formatDateRange';
 import { canDownloadCollection } from '@/app/utils/galleryAccess';
 
+import styles from './FullScreenModal.module.scss';
 import {
   isGifBlock,
   resolveDisplayDate,
@@ -66,7 +66,7 @@ interface FullScreenModalProps {
  * Controls: close and the metadata toggle are `IconButton`s so they share the design system's
  * focus ring and coarse-pointer hit area. Both carry a viewer-local `className` that keeps this
  * surface's lighter scrim (50% black brightening on hover) instead of the `overlay` variant's
- * token fill — see the doubled-class rules in fullscreen-image.module.scss. The prev/next
+ * token fill — see the doubled-class rules in FullScreenModal.module.scss. The prev/next
  * chevrons stay hand-rolled: they are non-square rails (40×56 / 56×80) that IconButton's
  * square-footprint size scale cannot express.
  *

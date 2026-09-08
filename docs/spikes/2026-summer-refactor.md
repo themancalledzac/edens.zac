@@ -226,7 +226,7 @@ grep -ohE '^#{2,3} [☐◐⛔✅☑] [A-H][0-9]+[a-z]?' docs/spikes/2026-summer-
 | E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook)                           | ◐ waste FIXED #337; hook REJECTED; one path open (`EditModeLayer.tsx:281` reorder branch, unsized)                                                                                                            |
 | E9  | Download icon/hook, auth-card SCSS, `.srOnly`                                     | ◐ PR #300 — both COLD bullets shipped; `.srOnly` DECIDED 2026-09-06: build the partial, and `.skipLink` folds in. Repo's first shared partial and first `@use`; 7 copies collapse, emitted CSS unchanged      |
 | F1  | Decompose `useCollectionEdit.tsx` (1,829 lines)                                   | ☐ COLD — largest open item; anchors re-derived 2026-09-06; goes BEFORE feature-board MA1 and leaves the update-form region alone (see section)                                                                |
-| F3  | File moves and renames                                                            | ◐ five shipped (#324 #336 #343 #348 #349); invite REJECTED; four bullets open                                                                                                                                 |
+| F3  | File moves and renames                                                            | ◐ six shipped (#324 #336 #343 #348 #349 #409); invite REJECTED; three bullets open                                                                                                                            |
 | F4  | `TaxonomyPage` ← `LocationPageClient`                                             | ⛔ USER DECISION                                                                                                                                                                                              |
 | G2  | Inline-comment enforcement + migration (decided: keep the rule)                   | ◐ wording #268; `tests/` scope DECIDED 2026-09-06 — in. G2a's rule widens to `app/` + `tests/`; G2b is 2,599 lines across both trees and splits into two MRs, `app/` then `tests/`; G2c rides refactors       |
 | G3  | `/user/selects` decision                                                          | ☐ COLD — DECIDED 2026-09-06: delete. 65-line page, its 48-line SCSS module, `listAllSelectsServer` (`selects.ts:45-63`) and that function's describe (`selects.test.ts:118-152`)                              |
@@ -258,13 +258,10 @@ than crammed in.**
    **SHIPPED #408.** Five test lines, 0 src, suite-wide `act()` 96 → 36. The reads are left PENDING
    rather than resolved — a resolving mock removes only 20 of the 60, and an `afterEach` `act` flush
    removes none. See the B10 section for the measured table.
-3. **F3's `fullscreen-image.module.scss` rename** — **before item 4, and this is the one real
-   dependency in the run.** `app/styles/fullscreen-image.module.scss` holds one of E9's six
-   `.srOnly` copies, so the rename and the partial touch the same file; whichever ships second
-   inherits the other's churn. The rename is the smaller diff, so it goes first — F3's own bullet has
-   said this since 2026-08-30. #402 already touched this file and left
-   `tests/styles/metadataToggleTouchTarget.test.ts:18` hardcoding the path, so that test moves with
-   the rename.
+3. ~~**F3's `fullscreen-image.module.scss` rename**~~ **SHIPPED #409.** The run's one real
+   dependency, and it went first as planned. The file is now
+   `app/components/FullScreenModal/FullScreenModal.module.scss`; **item 4 edits it at that path**,
+   and its `.srOnly` copy was left in place for exactly that.
 4. **E9's `.srOnly` partial** — `app/styles/_a11y.scss` with `%visually-hidden`, seven modules
    pointed at it via a relative `@use`, `.skipLink` included. Read the section first: this is the
    repo's first shared partial, the `@use` mechanism was compiled and verified 2026-09-06, and a
@@ -305,7 +302,7 @@ is in [lessons.md](2026-summer-refactor/lessons.md).)
 | **E7**  | COLD               | —— the waste shipped as a handoff guard (#337); the hook is REJECTED with measurement. One wasted path open (`EditModeLayer.tsx:281` reorder branch)                                                                                                                                                                                                                                                |
 | **B8**  | COLD               | —— 5 of 6 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                                                                                                                                                                               |
 | **B10** | ✅ SHIPPED #408    | —— closed 2026-09-06. The row's "~+5 test lines and all 60 go" was half right: the mock is five lines, but it only clears all 60 with the reads left PENDING. See the section for the measured table                                                                                                                                                                                                |
-| **F3**  | COLD               | —— five bullets shipped; the invite bullet is COSTED and REJECTED (do not re-open the 3-function version). **Four bullets open**                                                                                                                                                                                                                                                                    |
+| **F3**  | COLD               | —— six bullets shipped (the SCSS rename closed 2026-09-06, #409); the invite bullet is COSTED and REJECTED (do not re-open the 3-function version). **Three bullets open**                                                                                                                                                                                                                          |
 | **G4**  | COLD               | —— **1,500** blocks / 54 backward-looking, re-run at HEAD 2026-09-06 with the per-term split reproducing exactly (the 1,494 elsewhere was measured at `699aa4f2`); the ~23 false positives are a classification and were NOT re-checked; 17 label docblocks + 4 label inlines must be read block-by-block, not regexed                                                                              |
 | **F1**  | COLD               | —— largest open item; no unanswered question, just size. Goes before feature-board MA1                                                                                                                                                                                                                                                                                                              |
 | **G3**  | COLD               | —— DECIDED 2026-09-06: delete `/user/selects`. Scope re-resolved at HEAD: the 65-line page, its 48-line SCSS module, `listAllSelectsServer` (`selects.ts:45-63`, 19 lines), that function's describe (`selects.test.ts:118-152`, 35 lines) and the now-orphaned `SelectGroup` type. ~167 lines out                                                                                                  |
@@ -742,7 +739,7 @@ re-verified 2026-08-30:
   `handleTextBlockSubmit:970` at `:982`) skip server-cache revalidation the same way; only
   `useCaptureDateSelection.ts:70` follows up. (E18 closed the location-tag half of this class.)
 
-### ◐ F3 · File moves and renames — `ReorderMove` (#324), `getUserPage` (#336), logger labels (#343), `CollectionPageWrapper` (#348) and the `AdminPanel/` fold (#349) SHIPPED; invite move REJECTED; four bullets open
+### ◐ F3 · File moves and renames — `ReorderMove` (#324), `getUserPage` (#336), logger labels (#343), `CollectionPageWrapper` (#348), the `AdminPanel/` fold (#349) and the `FullScreenModal` SCSS rename (#409) SHIPPED; invite move REJECTED; three bullets open
 
 Shipped close-outs, the mock-declaration lesson and the full invite cost report:
 [group-f-structural.md](2026-summer-refactor/group-f-structural.md). Each open bullet below carries
@@ -758,21 +755,19 @@ rename sweep nobody reviews carefully.
       `deleteAdminMessage`, `markMessageRead` since #396); `submitContactMessage` posts to the public
       `/api/proxy/api/public/messages`, so it belongs in that file rather than a new one. 1 src / 3
       test.
-- [ ] `fullscreen-image.module.scss` → `FullScreenModal.module.scss`. **PARTLY ACCURATE — the move
-      is fine, the original justification was wrong.** `app/styles/` holds THREE files:
-      `auth-card.module.scss`, `fullscreen-image.module.scss`, `globals.css`; after the move it
-      holds two, not one. `auth-card.module.scss` has a reason to stay — shared by
-      `app/login/page.tsx` and `app/invite/[token]/page.tsx`, documented in
-      `tests/styles/scssImportResolution.test.ts:3`. **Do the rename; drop the "only `globals.css`"
-      clause.** 2 src / 1 test — importers are `FullScreenModal.tsx` and `useFullScreenImage.tsx`
-      (re-verified 2026-08-29). **#402 added a test that hardcodes the path: re-verified 2026-09-06,
-      `tests/styles/metadataToggleTouchTarget.test.ts:18` builds
-      `join(process.cwd(), 'app/styles/fullscreen-image.module.scss')` and compiles it with `sass`,
-      so it breaks on the rename and must move with it.**
-      `tests/styles/breakpointConsistency.test.ts` walks `app/` recursively (`:18` — **was
-      quoted `:17`; corrected 2026-08-29**) so it needs no update, but its docblock (`:2`) names
-      the file in prose and goes stale on rename — no code edit.
-      **Collision found 2026-08-30: one of E9's six `.srOnly` copies lives in this very file.**
+- [x] ~~`fullscreen-image.module.scss` → `FullScreenModal.module.scss`.~~ **Shipped in #409** as
+      `app/components/FullScreenModal/FullScreenModal.module.scss`, beside its component. The
+      estimate held: 2 src / 2 test, plus two prose docblocks. `app/styles/` now holds
+      `auth-card.module.scss` and `globals.css`; the original "leaves only `globals.css`"
+      justification was dropped, and the move stands on the two-importer count.
+      `FullScreenModal.tsx` took the relative `./FullScreenModal.module.scss` specifier every other
+      component module uses; `useFullScreenImage.tsx` took the `@/` path.
+      `tests/styles/metadataToggleTouchTarget.test.ts` kept its home in `tests/styles/` — it
+      compiles a stylesheet, which is what that directory is for — and only its path constant moved.
+      **`tests/styles/scssImportResolution.test.ts` is the guard that made this safe to do
+      mechanically:** jest's `moduleNameMapper` and TS's wildcard `declare module` both stay green
+      against a stylesheet that does not exist, and that test asserts every SCSS specifier under
+      `app/` resolves on disk. The `.srOnly` copy in the file was left for E9.
       Whichever of the two ships second inherits the other's churn. Not a blocker; do the rename
       first if both are ever scheduled, since it is the smaller diff.
 - [ ] Rename the lowercase `auth/` and `messages/` component directories. **PARTLY ACCURATE — both

@@ -11,8 +11,8 @@ import {
   useState,
 } from 'react';
 
+import styles from '@/app/components/FullScreenModal/FullScreenModal.module.scss';
 import { INTERACTION } from '@/app/constants';
-import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { ViewableContent } from '@/app/types/Content';
 import {
   exitFullscreen,
