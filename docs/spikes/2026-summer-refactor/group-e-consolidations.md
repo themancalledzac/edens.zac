@@ -1624,3 +1624,117 @@ premise was false: `useCollectionEdit.tsx:384` is `const collection = currentSta
 days after merging; the 2026-09-04 handoff caught Half A and still called Half B "genuinely open".**
 The accepted risk it recorded stands: a backend-only write (`from-disk`) reaches no frontend
 trigger, capped by the 3600s window.
+
+---
+
+### ✅ E9 · Download icon/hook, auth-card SCSS, `.srOnly` — PR #300; the `.srOnly` partial SHIPPED #410
+
+Both COLD bullets shipped in #300; their write-ups are in this file. The `.srOnly` partial shipped
+in #410 and closed the item.
+
+**DECIDED 2026-09-06 by the user: build the shared partial, and `.skipLink` folds into the same
+change.** This is the repo's first shared SCSS partial and its first `@use`, so the item has to
+establish the convention, not just apply one. The mechanics are below.
+
+**The premise this bullet carried was false, and the question was bigger than it looked
+(re-checked 2026-09-06).** There is no `%placeholder` anywhere in the repo, no `@use`, no `@import`
+and no shared SCSS partial:
+
+```bash
+grep -rn '^[[:space:]]*%\|@use\|@import' app --include='*.scss' | wc -l
+```
+
+→ **0**. All six `@extend`s live in one file (`ContentComponent.module.scss`) and both `@mixin` definitions
+are file-local (`Button.module.scss:19`, `IconButton.module.scss:6`). The six `.srOnly` copies are
+in six different modules, so a placeholder for them cannot be file-local — it would be **the repo's
+first shared SCSS partial and its first `@use`**. That is a new mechanism to introduce, not an
+existing one to apply.
+
+**What it actually saves.** The six blocks are byte-identical and 11 lines each — 66 source lines:
+
+```bash
+for f in $(grep -rl '\.srOnly' app --include='*.module.scss' | sort); do \
+  awk '/^\.srOnly \{/{f=1} f{print} f&&/^\}/{exit}' "$f" > "$TMPDIR/blk"; \
+  echo "$(md5 -q "$TMPDIR/blk")  $(wc -l < "$TMPDIR/blk")  $f"; done
+```
+
+→ six rows, all `2b71eae090531a2813e73fe8d63d378b`, all 11 lines. Because CSS modules compile
+independently, a shared placeholder shrinks the source and emits exactly the same CSS. The win is
+maintenance only.
+
+**A seventh copy exists under a different name, and a `.srOnly` grep cannot see it.**
+`app/components/ui/SkipLink/SkipLink.module.scss`'s `.skipLink` (`:5-14`) opens with the same nine
+visually-hidden declarations before its `:focus` block (`:16`) overrides them. It is in scope: the
+decision folds it into the same change.
+
+**Where the partial goes and how a module reaches it — verified against the repo's own sass
+(1.97.3) 2026-09-06, because this is a new mechanism and the board's rule is to verify one before
+prescribing it.** Put it at `app/styles/_a11y.scss` beside `auth-card.module.scss`, holding
+`%visually-hidden`. A consuming module writes a relative `@use` and extends the placeholder:
+
+```scss
+@use '../styles/a11y';
+
+.srOnly {
+  @extend %visually-hidden;
+}
+```
+
+Both halves were compiled and checked. Placeholders are not namespaced, so `@extend %visually-hidden`
+works across `@use`; a namespaced `@include a11y.visually-hidden` mixin also works and emits the
+same bytes. Prefer the placeholder — one mechanism, and `@extend` is what the repo already uses
+inside `ContentComponent.module.scss`.
+
+**Use a relative specifier, not a bare one.** `next.config.js:79` sets
+`sassOptions.includePaths: [path.join(process.cwd(), 'styles')]` and that directory does not exist —
+the stylesheets are under `app/styles/`. So `@use 'a11y'` resolves nowhere and only `next build`
+would say so. Fixing `includePaths` is a separate call; do not fold it in.
+
+`tests/styles/scssImportResolution.test.ts` only walks `.scss` specifiers imported from `app/`
+TS/TSX files, so it cannot see a `@use` between two stylesheets. Verify this one by `next build`.
+
+- [x] ~~Add `app/styles/_a11y.scss` with `%visually-hidden`, and point the six `.srOnly` modules
+      plus `SkipLink.module.scss`'s `.skipLink` at it.~~ **Shipped in #410.** Seven copies collapsed;
+      the estimate held. Verified by `next build`, which is the only thing that can see a broken
+      `@use`.
+
+**Three corrections came out of shipping it.**
+
+1. **"Emitted CSS is unchanged" is not quite right.** All seven were compiled with the repo's own
+   sass (1.97.3) before and after and diffed. The declarations are byte-identical, but **`@extend`
+   hoists the extending selector to the placeholder's position**, so the rule moves to the top of
+   each file. Inert here, and checked rather than assumed: all seven usages apply the class alone
+   (`className={styles.srOnly}` / `styles.skipLink`), never combined with another class from the
+   same module, so nothing can compete on order. **A `@mixin` would have preserved position
+   exactly** — the board's claim that placeholder and mixin "emit the same bytes" is true of the
+   declarations and false of the ordering. If byte-identical output ever matters more than the
+   single-mechanism argument, it is a one-line swap.
+2. **A loud `/* */` comment in a partial is emitted into every stylesheet that `@use`s it.** The
+   first draft of `_a11y.scss` put twelve lines of comment into all seven outputs. Keep partial
+   comments silent (`//`) — and note stylelint's `scss/comment-no-empty` rejects bare `//`
+   separator lines, so such a header carries no blank comment lines.
+3. **`sassOptions.includePaths` is worse than this section recorded** — see below.
+
+**The `includePaths` cost report (asked for 2026-09-06; the option was left alone).** The board said
+the path is wrong. It is wrong _and_ the key is ignored. Measured by building three ways with a bare
+`@use 'a11y'`:
+
+| `next.config.js:79-81`                      | `next build`                                 |
+| ------------------------------------------- | -------------------------------------------- |
+| `includePaths: [cwd + '/styles']` (current) | fails — `Can't find stylesheet to import`    |
+| `includePaths: [cwd + '/app/styles']`       | **still fails** — Turbopack does not read it |
+| `loadPaths: [cwd + '/app/styles']`          | passes                                       |
+
+So the fix is one line — `includePaths` → `loadPaths` **and** `styles` → `app/styles` — not the path
+correction alone. Beyond that line it costs nothing and buys nothing:
+
+- **Nothing depends on the current value.** There were zero `@use`/`@import` in the repo before
+  #410, so the broken option has never resolved anything; fixing or deleting it breaks nothing.
+- **It only pays off if bare specifiers become the convention**, which would mean rewriting #410's
+  seven relative `@use`s and giving up the greppability of a relative path.
+- **It is pinned to Turbopack behaviour, not a documented contract.** Next's own docs
+  (`node_modules/next/dist/docs/01-app/02-guides/sass.md`) document `sassOptions` but name neither
+  `includePaths` nor `loadPaths`. Worth a comment on the line if it is ever fixed.
+
+**Recommendation: fix it to `loadPaths` with the right path as a standalone one-liner** so the
+option stops being a live lie, but keep relative specifiers as the convention. Not scheduled.

@@ -195,6 +195,18 @@ are repo-root-relative by convention — they are checked against the repo root,
 - **A line count cannot see a narrowed type, a moved file, or a reversed dependency edge.** If an
   item's win is not diff-measurable, say so in the estimate column instead of writing a number that
   will later read as a miss (E17: sized −15, shipped +3, nothing went wrong).
+- **An item whose deliverable is an action rather than a diff must say so in its row.** D15's
+  frontend half was one `revalidateTag` — a runtime purge, not a commit — and it was picked as a
+  run's first item on the strength of being "fully specified". It was; it just had no MR in it.
+- **A time-boxed item needs its expiry in the row.** D15 was filed with a 3600s cache fuse and
+  carried as live work for three days after the window shut. Nobody re-checked the clock, because
+  a checkbox does not look like it expires.
+- **Un-stacking MRs is necessary but not sufficient to avoid a tracker conflict, because a run's
+  items are adjacent lines.** Git merges two hunks only when an unchanged line separates them, and
+  the run list numbers items consecutively while the state table lists them as neighbouring rows.
+  #410 and #411 conflicted on exactly that as independent branches off `main`. Budget one rebase
+  per merge and run it before the user sees the PR; or keep per-item status edits out of the code
+  MRs and close the whole run's rows in one docs MR.
 
 ## MR board
 
@@ -217,77 +229,72 @@ grep -ohE '^#{2,3} [☐◐⛔✅☑] [A-H][0-9]+[a-z]?' docs/spikes/2026-summer-
   | grep -oE '[A-H][0-9]+[a-z]?' | sort | uniq -d                  # must be empty
 ```
 
-| MR  | Scope                                                                             | Status                                                                                                                                                                                                        |
-| --- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| B8  | Fill the required-coverage gaps                                                   | ◐ 5 of 6 — #266, #267, #295, #296; only the optional bullet is open (`sharedObserver` 116 / `useParallax` 169 / `useContentReordering` 197 lines, all untested)                                               |
-| B10 | `InfoTab.test.tsx` does not mock `@/app/lib/api/roles`                            | ✅ PR #408 — reads left PENDING, not resolved; a resolving mock removes only 20 of the 60. Suite-wide `act()` 96 → 36                                                                                         |
-| D13 | Report-only CSP has no `report-uri`; apex host silently 403s every write          | ☐ COLD — a `POST /api/csp-report` route and the directive. Canonical host DECIDED 2026-09-06: the apex is real, `www` 301s to it; the redirect itself rides PF7 at the Amplify/DNS layer. ~+40 src / +30 test |
-| D15 | Public routes surface client-gallery images through the unfiltered backend search | ☐ COLD — backend S-29 SHIPPED (BE#309, merged 2026-09-05). The frontend owes exactly one `revalidateTag('search-images')`; `/search`'s corpus size is now a performance question                              |
-| E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook)                           | ◐ waste FIXED #337; hook REJECTED; one path open (`EditModeLayer.tsx:281` reorder branch, unsized)                                                                                                            |
-| E9  | Download icon/hook, auth-card SCSS, `.srOnly`                                     | ✅ #300 + #410 — CLOSED. Repo's first shared partial and first `@use`; 7 copies collapsed. Declarations identical, but `@extend` HOISTS the rule — see the section                                            |
-| F1  | Decompose `useCollectionEdit.tsx` (1,829 lines)                                   | ☐ COLD — largest open item; anchors re-derived 2026-09-06; goes BEFORE feature-board MA1 and leaves the update-form region alone (see section)                                                                |
-| F3  | File moves and renames                                                            | ◐ six shipped (#324 #336 #343 #348 #349 #409); invite REJECTED; three bullets open                                                                                                                            |
-| F4  | `TaxonomyPage` ← `LocationPageClient`                                             | ⛔ USER DECISION                                                                                                                                                                                              |
-| G2  | Inline-comment enforcement + migration (decided: keep the rule)                   | ◐ wording #268; `tests/` scope DECIDED 2026-09-06 — in. G2a's rule widens to `app/` + `tests/`; G2b is 2,599 lines across both trees and splits into two MRs, `app/` then `tests/`; G2c rides refactors       |
-| G3  | `/user/selects` decision                                                          | ✅ #411 — deleted. Page, SCSS module, `listAllSelectsServer`, its describe and `SelectGroup`; PF15's `robots.ts` bullet re-pointed at `all-client-galleries`                                                  |
-| G4  | Docblock standard — length, structure, and no history                             | ◐ intersection pass #310; 1,500 blocks / 54 hits (re-run 2026-09-06); 17 label docblocks + 4 inline; read, don't regex                                                                                        |
-| G8  | Extend the panel `styles.<key>` guard repo-wide?                                  | ⛔ USER DECISION — 107 files / 411 keys; 10 import statements across 9 files bind a module to another name, so a `styles.` regex skips them                                                                   |
-| H1  | Merge `Following` into `Collections` on `/user`                                   | ☐ BLOCKED (user) — count semantics and the followed-tile marker. The catalog fetch is measured and softer than the row claimed                                                                                |
-| H7  | Passkey management on `/admin/users/[id]`                                         | ⛔ USER DECISION — the same feature as feature-board AU2 / decision #4; ask together, close this row against AU2. The backend ask is now one field, `passwordLoginAvailable`                                  |
+| MR  | Scope                                                                    | Status                                                                                                                                                                                                        |
+| --- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B8  | Fill the required-coverage gaps                                          | ◐ 5 of 6 — #266, #267, #295, #296; only the optional bullet is open (`sharedObserver` 116 / `useParallax` 169 / `useContentReordering` 197 lines, all untested)                                               |
+| D13 | Report-only CSP has no `report-uri`; apex host silently 403s every write | ☐ COLD — a `POST /api/csp-report` route and the directive. Canonical host DECIDED 2026-09-06: the apex is real, `www` 301s to it; the redirect itself rides PF7 at the Amplify/DNS layer. ~+40 src / +30 test |
+| E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook)                  | ◐ waste FIXED #337; hook REJECTED; one path open (`EditModeLayer.tsx:281` reorder branch, unsized)                                                                                                            |
+| F1  | Decompose `useCollectionEdit.tsx` (1,829 lines)                          | ☐ COLD — largest open item; anchors re-derived 2026-09-06; goes BEFORE feature-board MA1 and leaves the update-form region alone (see section)                                                                |
+| F3  | File moves and renames                                                   | ◐ six shipped (#324 #336 #343 #348 #349 #409); invite REJECTED; three bullets open                                                                                                                            |
+| F4  | `TaxonomyPage` ← `LocationPageClient`                                    | ⛔ USER DECISION                                                                                                                                                                                              |
+| G2  | Inline-comment enforcement + migration (decided: keep the rule)          | ◐ wording #268; `tests/` scope DECIDED 2026-09-06 — in. G2a's rule widens to `app/` + `tests/`; G2b is 2,596 lines across both trees and splits into two MRs, `app/` then `tests/`; G2c rides refactors       |
+| G4  | Docblock standard — length, structure, and no history                    | ◐ intersection pass #310; 1,497 blocks / 54 hits (re-run 2026-09-08); 17 label docblocks + 4 inline; read, don't regex                                                                                        |
+| G8  | Extend the panel `styles.<key>` guard repo-wide?                         | ⛔ USER DECISION — 107 files / 411 keys; 10 import statements across 9 files bind a module to another name, so a `styles.` regex skips them                                                                   |
+| H1  | Merge `Following` into `Collections` on `/user`                          | ☐ BLOCKED (user) — count semantics and the followed-tile marker. The catalog fetch is measured and softer than the row claimed                                                                                |
+| H7  | Passkey management on `/admin/users/[id]`                                | ⛔ USER DECISION — the same feature as feature-board AU2 / decision #4; ask together, close this row against AU2. The backend ask is now one field, `passwordLoginAvailable`                                  |
 
-### NEXT RUN — re-picked 2026-09-06 (2)
+### NEXT RUN — picked 2026-09-08
 
-**Re-picked because Zac answered three blocked questions and the run's candidate pool grew.** G3,
-G2b and E9's `.srOnly` are now COLD with scope written in, and the canonical-host answer removes
-D13's "decide the apex first" caveat. The previous block (B10, F3's rename, D15, D13) had nothing
-merged against it, so this is a re-order and an extension, not a replacement.
+**The 2026-09-06 (2) run emptied: all five items resolved.** B10 (#408), F3's SCSS rename (#409),
+E9's partial (#410) and G3's delete (#411) merged; **D15 produced no MR and needed none** — see its
+archived section. Four of the five were code; the fifth was an item that should never have been in a
+run.
 
-**Post-merge state of `main`, measured after #402/#403/#404:** 264 suites / 4,792 tests, 0
-failures; `tsc --noEmit` clean; **96 React `act()` warnings, unchanged by C18** (re-measured
-2026-09-06; B10's attribution table had them summing to 97 and is corrected). Any older count quoted
-elsewhere on this board is superseded by this one. Nothing in this run needs a user answer.
+**State of `main` at `fcc6ebd3`, measured 2026-09-08:** 264 suites / 4,788 tests, 0 failures;
+`npm run lint` clean; **36 React `act()` warnings**, down from 96. `tsc --noEmit` passes in CI on a
+fresh checkout — **it fails locally against stale `.next*/types/validator.ts` files whenever a route
+is deleted**, which is an artifact, not a regression (all three directories are gitignored and
+regenerate).
 
-**In order, one MR each. Five items — enough for a sitting, and the rest are listed below rather
-than crammed in.**
+**Ask the four user questions FIRST, batched, in the opening message.** They are F4, G8, H7 (which
+is feature-board AU2's decision #4 — ask once, close H7 against AU2) and H1. Their answers can
+become MRs in this run; asked at the end they roll to the next one for nothing.
 
-1. **D15's purge** — one `revalidateTag('search-images')`. Cheapest fully-specified item on the
-   board, and it is the one with a clock on it: until it runs, a pre-fix response can be served from
-   the data cache for up to 3600s. Backend #309 landed the visibility predicate on 2026-09-05, so
-   this is the whole frontend half.
-2. ~~**B10** — mock `@/app/lib/api/roles` in `tests/components/ContentCollection/edit/sections/InfoTab.test.tsx`.~~
-   **SHIPPED #408.** Five test lines, 0 src, suite-wide `act()` 96 → 36. The reads are left PENDING
-   rather than resolved — a resolving mock removes only 20 of the 60, and an `afterEach` `act` flush
-   removes none. See the B10 section for the measured table.
-3. ~~**F3's `fullscreen-image.module.scss` rename**~~ **SHIPPED #409.** The run's one real
-   dependency, and it went first as planned. The file is now
-   `app/components/FullScreenModal/FullScreenModal.module.scss`; **item 4 edits it at that path**,
-   and its `.srOnly` copy was left in place for exactly that.
-4. ~~**E9's `.srOnly` partial**~~ **SHIPPED #410.** Seven copies collapsed, verified by
-   `next build`. Three corrections to the section came out of it — `@extend` hoists the rule, loud
-   comments in a partial are emitted into every consumer, and `includePaths` is ignored by Turbopack
-   rather than merely mis-pathed. The `includePaths` cost report is written up in the E9 section.
-5. ~~**G3's delete**~~ **SHIPPED #411.** The page, its SCSS module, `listAllSelectsServer`, its
-   describe and `SelectGroup`. PF15's `app/robots.ts` bullet was re-pointed at
-   `all-client-galleries`, which is now the only `index: false` declaration in `app/`.
+**Then three items, in order, one MR each.**
+
+1. **F3's log-label bullet** — `collectionEditUtils.ts:438` logs under `'replayMoves'`, the FUNCTION
+   name, where `:225`/`:279`/`:305` use the MODULE name. Re-verified at `fcc6ebd3`: `replayMoves` is
+   still at `:432`, the `logger.warn(` call at `:437`, the label string at `:438`. One line. It goes
+   first because it banks an MR inside the first few minutes.
+2. **D13** — a `POST /api/csp-report` route plus the `report-uri` directive, ~+40 src / +30 test.
+   Fully startable: the canonical host was decided 2026-09-06 (apex, `www` 301s to it).
+3. **G2a** — the ESLint rule, scoped `app/**` + `tests/**`, ~+60–70 lines of flat config. **No
+   dependency on G2b**: it lands as `warn` and only flips to `error` once both migration halves
+   merge, so it cannot break CI on the 2,596 lines still carrying inline comments.
+
+**Branching, and it is not optional this time.** Every item branches off `main`. **The code MRs must
+not touch this board at all** — close all three rows in ONE docs MR at the end of the run. The
+2026-09-06 run put each item's board edits in its own code MR and paid for it twice: the stack
+conflicted on #409 after #408 squash-merged, and then #410 and #411 conflicted _again_ as
+independent branches, because consecutive run items edit adjacent lines and git needs an unchanged
+line between two hunks. One MR touching the tracker is the only arrangement where nothing can
+collide.
 
 **Available, not in this run:**
 
-- **D13** — a `POST /api/csp-report` route plus the `report-uri` directive, ~+40 src / +30 test. It
-  is fully startable now that the canonical host is decided; it is out only because it is the one
-  item here that wants its own sitting. First thing to pick up when the run empties.
-- **G2a** — the lint rule, now scoped `app/**` + `tests/**`, ~+60–70 lines of flat config. Wants a
-  session with `eslint` in the loop.
-- **G2b** — 2,599 lines across 219 files, split `app/` then `tests/`. Its light/heavy cut has never
-  been taken in `tests/`; take that first.
+- **G2b** — 2,596 lines across 218 files (re-run 2026-09-08), split `app/` then `tests/`. Its
+  light/heavy cut has never been taken in `tests/`; take that first.
 - **F1** — its own session, and it goes BEFORE feature-board MA1 (see the F1 section).
+- **F3's other two bullets** — `contactApi.ts` → `lib/api/messages.ts` (61 lines, still accurate at
+  `fcc6ebd3`), and the lowercase `auth/` + `messages/` directories (38 entries in `app/components`,
+  three lowercase — `ui/` STAYS lowercase, it is a namespace).
 - **E7's reorder path** (unsized; size it first) and **B8's optional bullet** (+400–600 test).
 
 **Feature-board AU2 is the next run's first item overall**, ahead of this board. Its admin half
-waits on one backend field, `passwordLoginAvailable` — the passkey count needs no backend change,
-since the client takes `.length` off the list it already fetches. The ask is §4 of
+waits on one backend field, `passwordLoginAvailable`. The ask is §4 of
 [backend-handoff-MA1-EM2.md](2026-features/backend-handoff-MA1-EM2.md). H7 here closes against it.
 
-### State of the open items (re-stamped 2026-09-06 (2))
+### State of the open items (re-stamped 2026-09-08)
 
 Every open item is COLD or BLOCKED, and every BLOCKED one names its question and who answers it. An
 item blocked on an unwritten question reads as available and then eats a session. (The 2026-08-26
@@ -298,31 +305,29 @@ is in [lessons.md](2026-summer-refactor/lessons.md).)
 | Item    | State              | If blocked: the question, and who answers it                                                                                                                                                                                                                                                                                                                                                        |
 | ------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **D13** | COLD               | —— a report route plus the directive. The canonical host is DECIDED 2026-09-06: apex, with `www` 301ing to it. The redirect itself is still a PF7 line at the Amplify/DNS layer                                                                                                                                                                                                                     |
-| **D15** | COLD               | —— backend S-29 SHIPPED (BE#309, 2026-09-05): `ContentRepository.java:887` filters `publicOnly` reads on `cc.visible`, `col.visibility = 'LISTED'` and a null `gallery_password`. The frontend owes one `revalidateTag('search-images')` — that is the only tag the three routes carry                                                                                                              |
 | **E7**  | COLD               | —— the waste shipped as a handoff guard (#337); the hook is REJECTED with measurement. One wasted path open (`EditModeLayer.tsx:281` reorder branch)                                                                                                                                                                                                                                                |
 | **B8**  | COLD               | —— 5 of 6 shipped; the one open bullet (`sharedObserver`/`useParallax`/`useContentReordering`) is explicitly optional                                                                                                                                                                                                                                                                               |
-| **B10** | ✅ SHIPPED #408    | —— closed 2026-09-06. The row's "~+5 test lines and all 60 go" was half right: the mock is five lines, but it only clears all 60 with the reads left PENDING. See the section for the measured table                                                                                                                                                                                                |
-| **F3**  | COLD               | —— six bullets shipped (the SCSS rename closed 2026-09-06, #409); the invite bullet is COSTED and REJECTED (do not re-open the 3-function version). **Three bullets open**                                                                                                                                                                                                                          |
-| **G4**  | COLD               | —— **1,500** blocks / 54 backward-looking, re-run at HEAD 2026-09-06 with the per-term split reproducing exactly (the 1,494 elsewhere was measured at `699aa4f2`); the ~23 false positives are a classification and were NOT re-checked; 17 label docblocks + 4 label inlines must be read block-by-block, not regexed                                                                              |
+| **F3**  | COLD               | —— six bullets shipped (the SCSS rename closed 2026-09-08, #409); the invite bullet is COSTED and REJECTED (do not re-open the 3-function version). **Three bullets open**                                                                                                                                                                                                                          |
+| **G4**  | COLD               | —— **1,497** blocks / 54 backward-looking, re-run at HEAD `fcc6ebd3` 2026-09-08 with the per-term split reproducing exactly (the 1,494 elsewhere was measured at `699aa4f2`); the ~23 false positives are a classification and were NOT re-checked; 17 label docblocks + 4 label inlines must be read block-by-block, not regexed                                                                   |
 | **F1**  | COLD               | —— largest open item; no unanswered question, just size. Goes before feature-board MA1                                                                                                                                                                                                                                                                                                              |
-| **G3**  | ✅ SHIPPED #411    | —— closed 2026-09-06. Every ref in the row held at HEAD; the one it missed was that deleting the describe orphaned `loggerErrorMock` in the test file. PF15's `robots.ts` bullet re-pointed at `all-client-galleries`                                                                                                                                                                               |
-| **E9**  | ✅ SHIPPED #410    | —— closed 2026-09-06. Convention set: `app/styles/_a11y.scss` holding `%visually-hidden`, reached by a RELATIVE `@use`. Three corrections came out of it (rule hoisting, loud comments in partials, and `includePaths` being ignored rather than merely mis-pathed) — all in the section                                                                                                            |
-| **G2**  | COLD               | —— DECIDED 2026-09-06: `tests/` is in scope for both the migration and the lint rule. G2a's blocks widen to `app/` + `tests/`; the inventory is 2,599 lines across 219 files, so G2b splits into `app/` then `tests/`. The light/heavy cut has never been taken in `tests/` — take it before scheduling                                                                                             |
+| **G2**  | COLD               | —— DECIDED 2026-09-06: `tests/` is in scope for both the migration and the lint rule. G2a's blocks widen to `app/` + `tests/`; the inventory is 2,596 lines across 218 files (re-run 2026-09-08), so G2b splits into `app/` then `tests/`. The light/heavy cut has never been taken in `tests/` — take it before scheduling                                                                         |
 | **H1**  | BLOCKED — **user** | Does the merged `Collections` count include follows (12 + 2 = 14), and does a followed-but-not-owned tile get a visual marker? The catalog-fetch half is now measured, not open: it is ~0.5s / ~57KB, it already runs inside the `Promise.all`, and the Following count never used it. The one alternative left to price is asking the backend to return followed collections on the user-page read |
 | **H7**  | BLOCKED — **user** | Is passkey management on `/admin/users/[id]` wanted? Backend #257 built both routes; this repo calls neither. **The backend ask is now one field, `passwordLoginAvailable`** — the passkey count comes from `.length` on the list the client already fetches. **Same feature as feature-board AU2 and its decision #4 — ask once, close this row against AU2**                                      |
 | **F4**  | BLOCKED — **user** | Stated in the item                                                                                                                                                                                                                                                                                                                                                                                  |
 | **G8**  | BLOCKED — **user** | Extend the panel `styles.<key>` guard repo-wide? **107 files / 411 distinct keys, both re-verified 2026-09-06.** The third figure was wrong: **10 import statements across 9 files** bind a CSS module to another name (`CollectionContentRenderer.tsx` has two), so a `styles.<key>` regex silently skips them                                                                                     |
 
-**Four of the fifteen rows are blocked on the user, down from seven, and none on the backend**
-(re-counted 2026-09-06 (2)). **Zac answered three of the seven** — G3 (delete `/user/selects`), G2b
-(`tests/` is in scope) and E9's `.srOnly` (build the partial) — and all three are now COLD with
-scope written in. He also settled the canonical host, which D13 and feature-board PF15 both needed;
-D13 was already COLD, so that answer changes no state here, only the direction the redirect points.
+**Four of the eleven rows are blocked on the user, and none on the backend** (re-counted
+2026-09-08, after B10, D15, E9 and G3 left the table). The three Zac answered on 2026-09-06 — G3,
+G2b's `tests/` scope and E9's `.srOnly` — have all now shipped or been scoped in.
 
-The 2026-09-05 session's own note still holds: **D15 left the blocked list** because backend #309
-shipped the visibility predicate on 2026-09-05, four days after this board filed the row, and
-nothing here noticed until a production check went looking. The backend-blocked line is empty for
-the first time since it existed. Two rows shrank without unblocking: H7's backend ask is now one
+**D15 closed itself, and that is the row worth learning from.** It left the blocked list on
+2026-09-06 when backend #309 shipped the visibility predicate, and was picked as the next run's
+first item on the strength of being the cheapest fully-specified thing on the board. It was neither
+cheap nor an MR: the frontend owed a runtime `revalidateTag`, not a diff, and by the time anyone
+reached it the 3600s cache window it was racing had been shut for three days. **Two rules came out
+of it and are in "How to use this doc": an item whose deliverable is an action rather than a diff
+must say so in its row, and a time-boxed item needs its expiry date in the row.** The
+backend-blocked line remains empty. Two rows shrank without unblocking: H7's backend ask is now one
 field instead of two, and H1's catalog-fetch objection is measured rather than open.
 
 The 2026-08-30 session cleared three blocked rows by asking two questions and reading one other
@@ -375,12 +380,15 @@ All nine items merged (#255–#263); A9's last bullet — the `CLAUDE.md` PATH c
 
 ## Group B — Test-suite reductions — only B8's optional bullet is open (B10 shipped #408)
 
-B1–B7 and B9 closed — write-ups, estimate corrections and closed rows:
-[group-b-tests.md](2026-summer-refactor/group-b-tests.md). The suite is **61,171 lines against 38,600 source lines** (re-measured 2026-09-05 (2):
+B1–B7, B9 and **B10 (#408, archived 2026-09-08)** closed — write-ups, estimate corrections and
+closed rows: [group-b-tests.md](2026-summer-refactor/group-b-tests.md). The suite is **61,143 lines
+against 38,508 source lines** (re-measured 2026-09-08 at `fcc6ebd3`; **stale a THIRD time** — it
+read 61,171/38,600, which was measured before #408–#411):
 `find tests -type f \( -name '*.ts' -o -name '*.tsx' \) -exec cat {} + | wc -l`, same for `app`).
-This figure has now been stale twice — it read 51,446/37,211 while the truth was 57,306/36,685, and
-57,306/36,685 while the truth was this. **Do not quote it without re-running the command beside
-it.** Hygiene is otherwise excellent: zero skips, zero `.only`, zero snapshots, zero stale
+This figure has now been stale three times running — 51,446/37,211, then 57,306/36,685, then
+61,171/38,600, each wrong when quoted. **Do not quote it without re-running the command beside
+it.** Three misses is the pattern, not bad luck: it moves on every merge, so it is only ever
+correct on the day it is written. Hygiene is otherwise excellent: zero skips, zero `.only`, zero snapshots, zero stale
 TODOs.
 
 ### ◐ B8 · Fill the required-coverage gaps — 5 of 6 shipped (#266, #267, #295, #296); only the optional bullet is open
@@ -396,60 +404,6 @@ The project rule requires tests for these and they had none. The five shipped sl
       (**was `:28`; corrected 2026-08-25**) re-exports `toggleRelation`, and its coverage lives in
       `tests/components/ContentCollection/edit/collectionEditUtils.test.ts` since B1's merge.
 
-### ✅ B10 · `InfoTab.test.tsx` does not mock `@/app/lib/api/roles` — PR #408; suite-wide `act()` 96 → 36
-
-Filed 2026-09-05 (2) while closing C18, which was expected to remove ~64 of these warnings and
-removed none. The attribution was measured rather than assumed, and re-measured 2026-09-06 — the
-table below said "four suites with one each" and summed to 97, one more than the 96 warnings the
-suite actually emits. The three one-warning suites are `tests/explore/page.test.tsx`,
-`tests/components/SiteHeader.test.tsx` and
-`tests/components/ContentCollection/CollectionPageClient.editMode.test.tsx`.
-
-```bash
-npx jest 2>&1 | awk '/not wrapped in act/{print s} /^(PASS|FAIL) /{s=$2}' | sort | uniq -c | sort -rn
-```
-
-| Suite                                                               | Warnings |
-| ------------------------------------------------------------------- | -------- |
-| `tests/components/ContentCollection/edit/sections/InfoTab.test.tsx` | 60       |
-| `tests/(admin)/admin/page.test.tsx`                                 | 22       |
-| `tests/components/ContentCollection/useCollectionEdit.test.tsx`     | 7        |
-| `tests/components/UserManagementPanel.test.tsx`                     | 2        |
-| `tests/components/UserForm.test.tsx`                                | 2        |
-| three suites with one each                                          | 3        |
-| **total**                                                           | **96**   |
-
-`InfoTab.test.tsx` renders the real `CollectionRolesSection`, which calls the unmocked
-`@/app/lib/api/roles`. The fetch rejects, and each of the 20 tests fires three `setState` calls off
-that rejection — all while the component is still mounted and current, so no source guard can stop
-them. C18 had already established that, which is why no cancellation guard was added here.
-
-- [x] Mock `@/app/lib/api/roles` in `InfoTab.test.tsx`. **Shipped in #408 — five test lines, 0 src,
-      and the measured suite-wide total is 96 → 36.** The remaining 36 are listed in the table
-      above minus the `InfoTab` row.
-
-**Where this row was wrong: "mock it the way `CollectionRolesSection.test.tsx` does" does not get
-you to 0.** That suite resolves its mocks and then `await waitFor`s, so its `setState`s land inside
-`act`. `InfoTab.test.tsx` asserts synchronously, so a resolving mock only removes the catch path:
-
-| Mock shape                                                    | Warnings in the suite |
-| ------------------------------------------------------------- | --------------------- |
-| none (before)                                                 | 60                    |
-| resolves `[]`                                                 | 40                    |
-| `afterEach(async () => { await act(async () => {}) })` on top | 40                    |
-| reads left PENDING (`jest.fn(() => new Promise(() => {}))`)   | **0**                 |
-
-The two success-path `setState`s (`setGrants`, `setAllRoles`) settle in microtasks after the sync
-test body returns. **An `afterEach` flush is too late** — the microtasks land between the test body
-and `afterEach`, so the warning has already fired. Leaving the reads pending holds the panel at its
-initial empty render and fires no `setState` at all, which is sound here only because none of these
-20 date/gallery-access cases assert on role access.
-
-**Generalizable:** a suite that renders a data-loading child it never asserts on wants a PENDING
-mock, not a resolving one. A resolving mock is for suites that `await` the loaded state.
-
----
-
 ## Group C — Bug fixes — ✅ FULLY CLOSED
 
 All eighteen items closed. C1–C8 (#264, #281, #282, #279, #283, #327, #331, #291), C10 and C11
@@ -461,10 +415,12 @@ became E12; C17's location-page half became feature-board SD8; C18's `act()` war
 
 ---
 
-## Group D — Security — D1–D12 and D14 CLOSED; D13 and D15 open
+## Group D — Security — D1–D12, D14 and D15 CLOSED; only D13 is open
 
 D1–D9 merged 2026-08-24 and **D10 merged 2026-08-30 (#353)** while this board still called it COLD
-— full write-ups and closed rows: [group-d-security.md](2026-summer-refactor/group-d-security.md).
+— full write-ups and closed rows: [group-d-security.md](2026-summer-refactor/group-d-security.md),
+which now also holds **D15 (closed 2026-09-08: its purge expired on its own; the `/search` corpus
+half moved to feature-board PF16)**.
 D7's one residual bullet moved to E10. The 2026-09-05 adversarial pass attacked the whole merged set
 (18 traversal spellings, 17 malformed origins, header injection, the live headers on both hosts,
 the admin gate including `?manage=1`, secrets) and found **no HIGH**; what held is recorded under
@@ -523,49 +479,6 @@ mismatch is exactly what makes `isAllowedWriteOrigin` 403 every write silently.
       cannot be reused as-is), and `report-uri /api/csp-report` on the policy;
       `tests/next.config.test.ts` gains the assertion. Same cost model as PF6. Est ~+40 src / +30 test.
 
-### ☐ D15 · Public routes surface client-gallery images through the unfiltered backend search — the backend fix SHIPPED; one cache purge is owed
-
-**Backend S-29 is fixed and the frontend never noticed.** Backend PR
-[#309](https://github.com/themancalledzac/edens.zac.backend/pull/309) merged 2026-09-05 (tip of
-`edens.zac.backend` `main` at `b2ec6968`); the backend board has S-29 ticked.
-`ContentRepository.java:887` adds a `PUBLIC_COLLECTION_MEMBERSHIP` predicate — an `EXISTS` over
-`collection_content` requiring `cc.visible = true`, `col.visibility = 'LISTED'` and
-`col.gallery_password IS NULL` — applied whenever `request.publicOnly()` is set. The public route
-sets that flag and the query string cannot influence it.
-
-`SecurityConfig` was deliberately left alone. The fix is at the query level so that a
-viewer-dependent filter cannot poison the shared CloudFront cache. `/api/read/**` still falls
-through to `permitAll()`, and that is the intended shape.
-
-**The frontend half is one line, not three.** All three public routes get their images from
-`searchImages` (`app/lib/api/content.ts:128`), and that call carries exactly one cache tag:
-
-```bash
-sed -n '/^export async function searchImages/,/^}/p' app/lib/api/content.ts | grep -n 'tags:'
-```
-
-→ `tags: ['search-images']`. The `content-tags` and `content-locations` tags cover the taxonomy
-lists, which S-29 did not change. So the purge is `revalidateTag('search-images')` and nothing else.
-
-| Route              | Call (`searchImages`, `app/lib/api/content.ts:128`)                 | Cached under    |
-| ------------------ | ------------------------------------------------------------------- | --------------- |
-| `/search`          | `app/search/SearchResults.tsx:12` — `{ size: SEARCH_RESULT_LIMIT }` | `search-images` |
-| `/location/[slug]` | `app/location/[slug]/page.tsx:82` — `{ locationId }`                | `search-images` |
-| `/tag/[slug]`      | `app/tag/[slug]/page.tsx:48` — `{ tagIds }`                         | `search-images` |
-
-All three go through `fetchPublicRead` with `next: { revalidate: 3600, tags: ['search-images'] }`,
-so a pre-#309 response can live in the Next data cache and be served through Amplify's CloudFront
-for up to 3600s after the backend deploy.
-
-- [ ] **Purge the stale corpus: one `revalidateTag('search-images')`.** A deploy that clears the
-      data cache does the same job. Do not also purge `content-tags` or `content-locations` — they
-      tag the taxonomy lists and S-29 did not touch them.
-- [ ] Decide whether `/search` should keep requesting a 200-image corpus with no criteria.
-      **This is now an ordinary performance question, not a privacy one** — #309 filters the corpus,
-      so a smaller default only saves bytes and backend time.
-
----
-
 ## Group E — Consolidations
 
 Behavior-preserving refactors. E1–E5, E8 and E10–E17 shipped, **E6 closed 2026-08-30** (its last
@@ -573,8 +486,8 @@ bullet folded into F1), and **E18 shipped 2026-08-30 as #354** — both halves a
 one commit, while this board called it COLD for six days and the 2026-09-04 handoff still called
 Half B "genuinely open" (the hook's `collection` derives from `currentState`, so the premise was
 false). Full write-ups and closed rows:
-[group-e-consolidations.md](2026-summer-refactor/group-e-consolidations.md). E7 and E9 are open
-below.
+[group-e-consolidations.md](2026-summer-refactor/group-e-consolidations.md), which now also holds
+**E9 (closed 2026-09-08, `.srOnly` partial shipped #410)**. **Only E7 is open below.**
 
 ### ◐ E7 · Edit-grid handoff — the waste is FIXED (#337); the hook is REJECTED; one path open
 
@@ -595,120 +508,6 @@ while the layer is mounted.** (The #337 guard's exit-path bug was C10, merged #3
       (`processedContent`) is a third `processContentBlocks` caller in the collection-page path, and
       repo-wide there are **six** — `SearchPageClient.tsx:84` (SD1), `TaxonomyPage.tsx:13`,
       `LocationPageClient.tsx:84` plus the three collection-page callers. Say which number you mean.
-
-### ✅ E9 · Download icon/hook, auth-card SCSS, `.srOnly` — PR #300; the `.srOnly` partial SHIPPED #410
-
-Both COLD bullets shipped in #300 — write-ups in the
-[archive](2026-summer-refactor/group-e-consolidations.md).
-
-**DECIDED 2026-09-06 by the user: build the shared partial, and `.skipLink` folds into the same
-change.** This is the repo's first shared SCSS partial and its first `@use`, so the item has to
-establish the convention, not just apply one. The mechanics are below.
-
-**The premise this bullet carried was false, and the question was bigger than it looked
-(re-checked 2026-09-06).** There is no `%placeholder` anywhere in the repo, no `@use`, no `@import`
-and no shared SCSS partial:
-
-```bash
-grep -rn '^[[:space:]]*%\|@use\|@import' app --include='*.scss' | wc -l
-```
-
-→ **0**. All six `@extend`s live in one file (`ContentComponent.module.scss`) and both `@mixin` definitions
-are file-local (`Button.module.scss:19`, `IconButton.module.scss:6`). The six `.srOnly` copies are
-in six different modules, so a placeholder for them cannot be file-local — it would be **the repo's
-first shared SCSS partial and its first `@use`**. That is a new mechanism to introduce, not an
-existing one to apply.
-
-**What it actually saves.** The six blocks are byte-identical and 11 lines each — 66 source lines:
-
-```bash
-for f in $(grep -rl '\.srOnly' app --include='*.module.scss' | sort); do \
-  awk '/^\.srOnly \{/{f=1} f{print} f&&/^\}/{exit}' "$f" > "$TMPDIR/blk"; \
-  echo "$(md5 -q "$TMPDIR/blk")  $(wc -l < "$TMPDIR/blk")  $f"; done
-```
-
-→ six rows, all `2b71eae090531a2813e73fe8d63d378b`, all 11 lines. Because CSS modules compile
-independently, a shared placeholder shrinks the source and emits exactly the same CSS. The win is
-maintenance only.
-
-**A seventh copy exists under a different name, and a `.srOnly` grep cannot see it.**
-`app/components/ui/SkipLink/SkipLink.module.scss`'s `.skipLink` (`:5-14`) opens with the same nine
-visually-hidden declarations before its `:focus` block (`:16`) overrides them. It is in scope: the
-decision folds it into the same change.
-
-**Where the partial goes and how a module reaches it — verified against the repo's own sass
-(1.97.3) 2026-09-06, because this is a new mechanism and the board's rule is to verify one before
-prescribing it.** Put it at `app/styles/_a11y.scss` beside `auth-card.module.scss`, holding
-`%visually-hidden`. A consuming module writes a relative `@use` and extends the placeholder:
-
-```scss
-@use '../styles/a11y';
-
-.srOnly {
-  @extend %visually-hidden;
-}
-```
-
-Both halves were compiled and checked. Placeholders are not namespaced, so `@extend %visually-hidden`
-works across `@use`; a namespaced `@include a11y.visually-hidden` mixin also works and emits the
-same bytes. Prefer the placeholder — one mechanism, and `@extend` is what the repo already uses
-inside `ContentComponent.module.scss`.
-
-**Use a relative specifier, not a bare one.** `next.config.js:79` sets
-`sassOptions.includePaths: [path.join(process.cwd(), 'styles')]` and that directory does not exist —
-the stylesheets are under `app/styles/`. So `@use 'a11y'` resolves nowhere and only `next build`
-would say so. Fixing `includePaths` is a separate call; do not fold it in.
-
-`tests/styles/scssImportResolution.test.ts` only walks `.scss` specifiers imported from `app/`
-TS/TSX files, so it cannot see a `@use` between two stylesheets. Verify this one by `next build`.
-
-- [x] ~~Add `app/styles/_a11y.scss` with `%visually-hidden`, and point the six `.srOnly` modules
-      plus `SkipLink.module.scss`'s `.skipLink` at it.~~ **Shipped in #410.** Seven copies collapsed;
-      the estimate held. Verified by `next build`, which is the only thing that can see a broken
-      `@use`.
-
-**Three corrections came out of shipping it.**
-
-1. **"Emitted CSS is unchanged" is not quite right.** All seven were compiled with the repo's own
-   sass (1.97.3) before and after and diffed. The declarations are byte-identical, but **`@extend`
-   hoists the extending selector to the placeholder's position**, so the rule moves to the top of
-   each file. Inert here, and checked rather than assumed: all seven usages apply the class alone
-   (`className={styles.srOnly}` / `styles.skipLink`), never combined with another class from the
-   same module, so nothing can compete on order. **A `@mixin` would have preserved position
-   exactly** — the board's claim that placeholder and mixin "emit the same bytes" is true of the
-   declarations and false of the ordering. If byte-identical output ever matters more than the
-   single-mechanism argument, it is a one-line swap.
-2. **A loud `/* */` comment in a partial is emitted into every stylesheet that `@use`s it.** The
-   first draft of `_a11y.scss` put twelve lines of comment into all seven outputs. Keep partial
-   comments silent (`//`) — and note stylelint's `scss/comment-no-empty` rejects bare `//`
-   separator lines, so such a header carries no blank comment lines.
-3. **`sassOptions.includePaths` is worse than this section recorded** — see below.
-
-**The `includePaths` cost report (asked for 2026-09-06; the option was left alone).** The board said
-the path is wrong. It is wrong _and_ the key is ignored. Measured by building three ways with a bare
-`@use 'a11y'`:
-
-| `next.config.js:79-81`                      | `next build`                                 |
-| ------------------------------------------- | -------------------------------------------- |
-| `includePaths: [cwd + '/styles']` (current) | fails — `Can't find stylesheet to import`    |
-| `includePaths: [cwd + '/app/styles']`       | **still fails** — Turbopack does not read it |
-| `loadPaths: [cwd + '/app/styles']`          | passes                                       |
-
-So the fix is one line — `includePaths` → `loadPaths` **and** `styles` → `app/styles` — not the path
-correction alone. Beyond that line it costs nothing and buys nothing:
-
-- **Nothing depends on the current value.** There were zero `@use`/`@import` in the repo before
-  #410, so the broken option has never resolved anything; fixing or deleting it breaks nothing.
-- **It only pays off if bare specifiers become the convention**, which would mean rewriting #410's
-  seven relative `@use`s and giving up the greppability of a relative path.
-- **It is pinned to Turbopack behaviour, not a documented contract.** Next's own docs
-  (`node_modules/next/dist/docs/01-app/02-guides/sass.md`) document `sassOptions` but name neither
-  `includePaths` nor `loadPaths`. Worth a comment on the line if it is ever fixed.
-
-**Recommendation: fix it to `loadPaths` with the right path as a standalone one-liner** so the
-option stops being a live lie, but keep relative specifiers as the convention. Not scheduled.
-
----
 
 ## Group F — Structural
 
@@ -854,8 +653,9 @@ rename sweep nobody reviews carefully.
 G1 shipped (#303) and **G5 closed 2026-08-30 with zero frontend code** — the backend blessed bare
 arrays in its own `CLAUDE.md` (#243), which was the decision G5 was waiting on. Write-ups and closed
 rows: [group-g-decisions.md](2026-summer-refactor/group-g-decisions.md), which also holds G2's
-superseded per-file inventory and G4's measurement history. **G6 shipped 2026-08-31 as PR #351;
-G7 shipped 2026-09-05 as PR #404.** G2, G3, G4 and G8 are open below.
+superseded per-file inventory and G4's measurement history, and now **G3 (deleted `/user/selects`,
+#411, archived 2026-09-08)**. **G6 shipped 2026-08-31 as PR #351; G7 shipped 2026-09-05 as PR
+#404.** G2, G4 and G8 are open below.
 
 ### ◐ G2 · Inline-comment rule — DECIDED 2026-08-22 keep and enforce, 2026-09-06 `tests/` is in scope; G2a and G2b both COLD
 
@@ -877,14 +677,22 @@ Neither leaves `.ts` out. This was a confirm, not a design question, and it no l
 | Scope             | Lines     | Files  | Command                                                                                                  |
 | ----------------- | --------- | ------ | -------------------------------------------------------------------------------------------------------- |
 | `app/**` `.tsx`   | **445**   | **47** | `grep -rhE '^[[:space:]]{2,}//' app --include='*.tsx' \| grep -Ev 'eslint-\|@ts-\|prettier-' \| wc -l`   |
-| `app/**` `.ts`    | **432**   | **36** | same with `--include='*.ts'`; files with `-rlE … \| wc -l`                                               |
+| `app/**` `.ts`    | **430**   | **36** | same with `--include='*.ts'`; files with `-rlE … \| wc -l`                                               |
 | `app/**` JSX      | **14**    | —      | `grep -rho '{/\*' app --include='*.tsx' \| wc -l`                                                        |
 | `tests/**` `.tsx` | **603**   | **80** | `grep -rhE '^[[:space:]]{2,}//' tests --include='*.tsx' \| grep -Ev 'eslint-\|@ts-\|prettier-' \| wc -l` |
-| `tests/**` `.ts`  | **1,119** | **56** | same with `--include='*.ts'`; files with `-rlE … \| wc -l`                                               |
+| `tests/**` `.ts`  | **1,118** | **55** | same with `--include='*.ts'`; files with `-rlE … \| wc -l`                                               |
 | `tests/**` JSX    | **2**     | —      | `grep -rho '{/\*' tests --include='*.tsx' \| wc -l`                                                      |
 
-**Total in scope after the 2026-09-06 decision: 2,599 lines across 219 files** — `app/` 877 in 83
-files, `tests/` 1,722 in 136 files. Every figure above was re-run at HEAD `056b2f50` on 2026-09-06.
+**Total in scope: 2,596 lines across 218 files** — `app/` 875 in 83 files, `tests/` 1,721 in 135
+files. **Re-run at HEAD `fcc6ebd3` on 2026-09-08**, and the table above carries the new figures.
+
+**It drifted by −3 lines and −1 file in one run, and the cause is the third principle exactly.**
+The 2026-09-06 figures were 2,599 across 219. G3's deletion (#411) took two indented `//` comments
+out of `listAllSelectsServer` (`app/` `.ts` 432 → 430) and one out of the describe block in
+`tests/lib/api/selects.test.ts` (`tests/` `.ts` 1,119 → 1,118). That test file dropped out of the
+file count entirely (56 → 55) because its one surviving `//` comment sits at column 0 and the
+inventory counts only `^[[:space:]]{2,}//`. **A deletion elsewhere on the board moves this
+inventory**, so re-run it rather than quoting it.
 
 Older `//` figures on this item are superseded. The 2026-08-30 note recorded that three filter
 variants bracketed neither the original AST sweep's `.tsx` nor its `.ts` number, in opposite
@@ -955,65 +763,6 @@ error on that list**), `contentLayout.ts` (15), `contentFilter.ts` (**16, not 13
   (`CollectionPageClient.tsx`, 23 blocks; `CollectionPageWrapper.tsx`, 9) now ride nothing, so
   G2c is partly schedulable work, not pure ride-along.
 
-### ✅ G3 · `/user/selects` — DELETED in #411
-
-**The user's call: delete `/user/selects`.** Selects already live in the gallery star flow, which is
-why the page renders raw IDs nobody follows. Scope is below and every ref was re-resolved at HEAD
-`056b2f50` on 2026-09-06.
-
-**Unreachable, re-confirmed 2026-09-06.** `app/user/selects/page.tsx` is 65 lines.
-It renders literal `Collection 42` and `Image 117` headings linking to `/?collection=42`, and
-nothing in the app handles that param:
-
-```bash
-grep -rn "collection'" app --include='*.ts' --include='*.tsx' | grep -E "searchParams|\.get\("
-grep -rn '/user/selects' app tests
-```
-
-The first returns nothing. The second is the trap this item has always warned about: every hit is inside
-`app/lib/api/selects.ts`, which names `/api/proxy/api/read/user/selects` — the backend route, not a
-link to the page. No page in `app/` links to `/user/selects`, and there is no test for the page.
-
-**The delete is bigger than 65 lines.** It also orphans two things:
-
-| Also deleted                                | Size     | Why it goes                                                                                                      |
-| ------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
-| `app/user/selects/page.module.scss`         | 48 lines | imported only by the page                                                                                        |
-| `listAllSelectsServer` (`selects.ts:45-63`) | 19 lines | the page is its only app caller; its describe at `tests/lib/api/selects.test.ts:118-152` (35 lines) goes with it |
-
-Four refs, all re-resolved 2026-09-06 — the old `selects.ts:45-62` was one line short of the
-function's closing brace:
-
-```bash
-wc -l app/user/selects/page.tsx app/user/selects/page.module.scss
-grep -n 'listAllSelectsServer' app/lib/api/selects.ts
-grep -n 'describe(' tests/lib/api/selects.test.ts
-```
-
-→ 65 / 48; the docblock opens at `:45` and the function runs `:51-63`; the describe opens at `:118`
-and the file ends at `:152`.
-
-The other three exports of `selects.ts` (`addSelect`, `removeSelect`, `listSelectIdsServer`) have
-live callers and stay.
-
-- [x] ~~**Delete the page, its SCSS module, `listAllSelectsServer` and that function's describe
-      block.**~~ **Shipped in #411.** The greps were re-run at HEAD first and every claim above held:
-      no page links to `/user/selects`, `?collection=` is still unhandled, 65 / 48 lines, and the
-      page was `listAllSelectsServer`'s only app caller.
-- [x] ~~**`SelectGroup` (`app/types/Selects.ts:9-12`) goes with it.**~~ **Shipped in #411**, and the
-      module docblock's "listed on their `/user` page" sentence was corrected in the same commit.
-      `app/types/Selects.ts` stays for `PINNED_SELECT` and `MaybePinned`.
-      **One ref the row did not have:** deleting the describe left `loggerErrorMock` and the
-      `logger` import unused in `tests/lib/api/selects.test.ts` — eslint caught it. The
-      `jest.mock('@/app/utils/logger')` factory stays, because `listSelectIdsServer`'s failure path
-      still logs; only the unused handle and import went.
-- [x] ~~**Tell the feature board.**~~ **Done in #411.** G3 went first, so PF15's `app/robots.ts`
-      bullet was re-pointed: `grep -rn 'index: false' app` now returns exactly one,
-      `app/all-client-galleries/page.tsx:7`.
-- [ ] Status wording reconciled 2026-08-22: A1 is COMPLETE as shipped — the `/user/selects` deletion
-      was pulled OUT of A1 (see A1's closing note in the archive). Deciding G3 performs that final
-      deletion (or its rebuild); it does not reopen A1.
-
 ### ◐ G4 · Docblock standard — length, structure, and no history — ~31 real history blocks + 21 label blocks
 
 Raised by the user 2026-08-24 off PR #301's 30-line `revalidateLocationCaches` docblock. The
@@ -1035,9 +784,12 @@ docblocks against the standard before opening the PR.
 **Current history inventory (re-run 2026-09-05; method recorded).** Scan every `.ts`/`.tsx` under
 `app/`, extract `/\*\*.*?\*/` non-greedy across newlines, test each block case-insensitively
 against `\bused to\b`, `\bno longer\b`, `\bpreviously\b`, `\bthe old\b`, `PR #\d+`,
-`\b20\d\d-\d\d-\d\d\b`: **1,500 blocks total, 54 backward-looking** (used-to 22, no-longer 14,
-previously 7, bare date 8, the-old 4, PR-number 1). **Re-run at HEAD 2026-09-06: total and the
-per-term split both reproduce exactly.** The 1,494 this board carried elsewhere was measured at
+`\b20\d\d-\d\d-\d\d\b`: **1,497 blocks total, 54 backward-looking** (used-to 22, no-longer 14,
+previously 7, bare date 8, the-old 4, PR-number 1). **Re-run at HEAD `fcc6ebd3` 2026-09-08: the
+total fell 1,500 → 1,497, and the 54 plus the per-term split reproduce exactly.** The three lost
+blocks are G3's (#411) — `listAllSelectsServer`'s docblock, `SelectGroup`'s, and the deleted page's
+— and none was backward-looking, which is why only the denominator moved. **The denominator moves
+on any deletion; the numerator only moves when someone writes history into a docblock.** The 1,494 this board carried elsewhere was measured at
 `699aa4f2`, before #402/#403/#404 added six docblocks and no backward-looking one. **The "~23 false
 positives" is a classification, not a count, and was NOT re-run** — it is a 2026-09-05 reading of
 the 54 hits (the employed-to sense of "Used to categorize images", `@throws … no longer exists`
@@ -1266,6 +1018,30 @@ against real merge timestamps on 2026-08-24; only the labels were inconsistent. 
 Same-day runs are numbered "(1)", "(2)", … in run order; 2026-08-28's first two runs predate the
 numbering, so that day's numbered entries start at "(2)"._
 
+- 2026-09-08 — **the 2026-09-06 (2) run emptied: four MRs merged and the fifth item turned out not
+  to be one.** Shipped **B10 (#408)**, **F3's SCSS rename (#409)**, **E9's `.srOnly` partial
+  (#410)** and **G3's delete (#411)**. **D15 produced no MR and needed none** — its "one
+  `revalidateTag('search-images')`" is a runtime purge, not a diff (the tag is already registered at
+  `content.ts:139` and already purged by `revalidateMetadataCache` at `collectionEditUtils.ts:300`),
+  and the 3600s window it was racing shut on 2026-09-05, three days before anyone reached it. D15
+  CLOSED by arithmetic; its `/search` corpus half moved to **feature-board PF16**, filed with a
+  production measurement (234 KB warm, 5.9× the home page). **Three board rows were wrong in ways
+  worth keeping:** B10's prescribed mock shape removes 20 of 60 warnings, not 60 — only PENDING
+  reads reach 0, and an `afterEach` `act` flush removes none; E9's "emitted CSS unchanged" is true
+  of the declarations and false of the ordering, because `@extend` hoists; and
+  `sassOptions.includePaths` is not merely mis-pathed but **ignored by Turbopack**, which reads
+  `loadPaths` (measured three ways). Suite-wide `act()` **96 → 36**. **Counts re-run at `fcc6ebd3`,
+  three drifted:** G2b 2,599/219 → **2,596/218** (G3's deletion took three indented comments and
+  dropped a file below the threshold), G4 1,500 → **1,497** blocks with the 54 backward-looking and
+  the per-term split reproducing exactly, and the suite-size figure stale a **third** time
+  (61,171/38,600 → 61,143/38,508). Zero ref drift in open items — every neighbourhood ref belonged
+  to an item that closed. **Archived B10, D15, E9 and G3** (tracker 1,404 → ~1,160 lines) after
+  hoisting their lessons. **Process failure, twice, and the fix is in the run block:** the five MRs
+  were stacked, so #409 conflicted after #408 squash-merged; un-stacking then let #410 and #411
+  conflict _again_, because consecutive run items edit adjacent lines and git needs an unchanged
+  line between hunks. Next run's code MRs must not touch this board — one docs MR closes all rows.
+  Next: ask F4/G8/H7/H1, then F3's log label, D13, G2a.
+
 - 2026-09-06 (2) — **docs only: Zac answered four of the seven questions the two boards had marked
   BLOCKED on him, and the run was re-picked around them.** The three that were on this board's
   blocked list: **G3 — delete `/user/selects`**, now COLD with every ref re-resolved at HEAD
@@ -1290,35 +1066,6 @@ numbering, so that day's numbered entries start at "(2)"._
   partial because they share `app/styles/fullscreen-image.module.scss` and the rename is the smaller
   diff. D13 moves out of the run and is named first among available, since it is startable now and
   wants its own sitting. Next: D15, B10, F3's rename, E9, G3.
-
-- 2026-09-06 (1) — **docs only: a read-only investigation pass settled five items the board had
-  recorded wrongly, and one of them was not blocked at all.** **D15 UNBLOCKED and closed to a single
-  line of work:** backend #309 merged 2026-09-05 with a `PUBLIC_COLLECTION_MEMBERSHIP` predicate
-  (`ContentRepository.java:887`) filtering `publicOnly` reads on `cc.visible`, `col.visibility =
-'LISTED'` and a null `gallery_password`; the backend board has S-29 ticked. This board carried it
-  as ⛔ BLOCKED for four days after the fix landed, which is the second time in a week that reading
-  the other repo's board would have changed a row. The frontend half also shrank: all three public
-  routes go through `searchImages` and carry ONE tag, so it is one `revalidateTag('search-images')`,
-  not three. **G2b SETTLED** — `.ts` is in scope (the global rule covers every language; #268 covers
-  plain function bodies), and the genuinely open question turned out to be one no board had asked:
-  `tests/` is 1,722 inline `//` lines against `app/`'s 877, and G2a's rule is scoped `app/**`.
-  **E9's premise was false** — there is no `%placeholder`, no `@use` and no shared partial anywhere,
-  so the `.srOnly` proposal would introduce the repo's first shared SCSS partial rather than apply
-  an existing mechanism; the six copies are byte-identical at 11 lines (66 total), a placeholder
-  emits the same CSS, and a seventh copy (`.skipLink`) hides under a different class name.
-  **G3 sized** — the delete is 65 lines of page plus a 48-line SCSS module plus `listAllSelectsServer`
-  (~20 lines), not 65 lines. **H1's catalog-fetch objection is measured, not open** — the cost is
-  recorded in the file the item edits, the read already runs inside the `Promise.all`, and the
-  Following count never used it. **H7's backend ask halved** to `passwordLoginAvailable`.
-  **Numbers corrected:** B10's attribution table said "four suites with one each" and summed to 97
-  against 96 actual warnings (it is three); G2's inventory 448/441 → **445 `.tsx` / 432 `.ts`**;
-  G4's total 1,494 → **1,500** at HEAD, with the 54 backward-looking hits and their per-term split
-  reproducing exactly, and the "~23 false positives" marked unchecked because it is a classification
-  nobody re-ran; G8's "10 files" → **10 import statements across 9 files**
-  (`CollectionContentRenderer.tsx` has two). **Filed on the feature board:** PF15 — production
-  serves no `robots.txt` and no `sitemap.xml`, and no page carries a canonical or `og:url`, so apex
-  and www are two indexable duplicates with nothing marking either one. Next: unchanged — B10,
-  F3's rename, D15's purge, D13.
 
 ## Verified fine — do not re-investigate
 

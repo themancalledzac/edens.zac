@@ -215,6 +215,42 @@ unlinked labels, `window.confirm`) is untriaged AND its file paths are stale
 (`ManageClient.tsx` deleted, `ImageMetadataModal` renamed). If picked up, re-derive the inventory
 against current paths first — the findings may be live, the line numbers are not.
 
+### ☐ PF16 · `/search` fetches a 200-image corpus with no criteria
+
+**Spun out of refactor-board D15 on 2026-09-08.** D15 was a privacy item — the public search could
+surface client-gallery images — and backend #309 closed that half by filtering the corpus at the
+query level. What survives is purely a performance question, which is why it moved here rather than
+staying on the security board.
+
+`SEARCH_RESULT_LIMIT = 200` (`app/components/SearchPage/searchFilters.ts:13`) is passed
+unconditionally at `app/search/SearchResults.tsx:12` — `searchImages({ size: SEARCH_RESULT_LIMIT })`,
+no criteria, on every render of `/search`.
+
+**Measured on production 2026-09-08, and the first number was wrong:**
+
+```bash
+for i in 1 2 3; do curl -s -o /dev/null -w "/search %{http_code} %{size_download}B ttfb=%{time_starttransfer}s\n" https://zacedens.com/search; done
+curl -s -o /dev/null -w "/ %{http_code} %{size_download}B ttfb=%{time_starttransfer}s\n" https://zacedens.com/
+```
+
+| Page      | Bytes       | TTFB (warm) |
+| --------- | ----------- | ----------- |
+| `/search` | **234,056** | ~0.30–0.40s |
+| `/`       | 39,727      | ~0.61s      |
+
+`/search` ships **5.9× the home page's bytes**. **The cold-start number is the trap**: the first
+request measured 235,666 B at **5.28s** TTFB, and three warm requests immediately after came back at
+~0.35s. A single `curl` here reports the Lambda cold start, not the steady state — take three and
+report the warm figure, or this item gets sized against a number that is off by 15×.
+
+- [ ] Decide the right default. The options are a smaller `size`, requiring at least one criterion
+      before fetching, or paginating. **Size the win off the 234 KB, not off the cold TTFB.**
+- [ ] Whatever is chosen, `search-images` is the cache tag on this read
+      (`app/lib/api/content.ts:139`) and `/location/[slug]` + `/tag/[slug]` share it. A change to
+      the default must not assume `/search` owns the tag.
+
+---
+
 ## Closed
 
 ### ✅ PF6 · External error tracking — PR #391, 2026-08-31

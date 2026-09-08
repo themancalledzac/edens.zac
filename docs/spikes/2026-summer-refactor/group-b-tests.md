@@ -321,3 +321,57 @@ stays on the live board. The five shipped slices, moved here 2026-08-29:
       four times. **Corrected 2026-08-27: the file is 274 lines, not 286** — E3 (#306) cut it after
       this bullet was written.
 - [x] `lib/actions/clearCache.ts` — shipped with D2, PR #266. `tests/lib/actions/clearCache.test.ts`.
+
+---
+
+### ✅ B10 · `InfoTab.test.tsx` does not mock `@/app/lib/api/roles` — PR #408; suite-wide `act()` 96 → 36
+
+Filed 2026-09-05 (2) while closing C18, which was expected to remove ~64 of these warnings and
+removed none. The attribution was measured rather than assumed, and re-measured 2026-09-06 — the
+table below said "four suites with one each" and summed to 97, one more than the 96 warnings the
+suite actually emits. The three one-warning suites are `tests/explore/page.test.tsx`,
+`tests/components/SiteHeader.test.tsx` and
+`tests/components/ContentCollection/CollectionPageClient.editMode.test.tsx`.
+
+```bash
+npx jest 2>&1 | awk '/not wrapped in act/{print s} /^(PASS|FAIL) /{s=$2}' | sort | uniq -c | sort -rn
+```
+
+| Suite                                                               | Warnings |
+| ------------------------------------------------------------------- | -------- |
+| `tests/components/ContentCollection/edit/sections/InfoTab.test.tsx` | 60       |
+| `tests/(admin)/admin/page.test.tsx`                                 | 22       |
+| `tests/components/ContentCollection/useCollectionEdit.test.tsx`     | 7        |
+| `tests/components/UserManagementPanel.test.tsx`                     | 2        |
+| `tests/components/UserForm.test.tsx`                                | 2        |
+| three suites with one each                                          | 3        |
+| **total**                                                           | **96**   |
+
+`InfoTab.test.tsx` renders the real `CollectionRolesSection`, which calls the unmocked
+`@/app/lib/api/roles`. The fetch rejects, and each of the 20 tests fires three `setState` calls off
+that rejection — all while the component is still mounted and current, so no source guard can stop
+them. C18 had already established that, which is why no cancellation guard was added here.
+
+- [x] Mock `@/app/lib/api/roles` in `InfoTab.test.tsx`. **Shipped in #408 — five test lines, 0 src,
+      and the measured suite-wide total is 96 → 36.** The remaining 36 are listed in the table
+      above minus the `InfoTab` row.
+
+**Where this row was wrong: "mock it the way `CollectionRolesSection.test.tsx` does" does not get
+you to 0.** That suite resolves its mocks and then `await waitFor`s, so its `setState`s land inside
+`act`. `InfoTab.test.tsx` asserts synchronously, so a resolving mock only removes the catch path:
+
+| Mock shape                                                    | Warnings in the suite |
+| ------------------------------------------------------------- | --------------------- |
+| none (before)                                                 | 60                    |
+| resolves `[]`                                                 | 40                    |
+| `afterEach(async () => { await act(async () => {}) })` on top | 40                    |
+| reads left PENDING (`jest.fn(() => new Promise(() => {}))`)   | **0**                 |
+
+The two success-path `setState`s (`setGrants`, `setAllRoles`) settle in microtasks after the sync
+test body returns. **An `afterEach` flush is too late** — the microtasks land between the test body
+and `afterEach`, so the warning has already fired. Leaving the reads pending holds the panel at its
+initial empty render and fires no `setState` at all, which is sound here only because none of these
+20 date/gallery-access cases assert on role access.
+
+**Generalizable:** a suite that renders a data-loading child it never asserts on wants a PENDING
+mock, not a resolving one. A resolving mock is for suites that `await` the loaded state.

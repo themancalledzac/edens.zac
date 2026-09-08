@@ -1318,3 +1318,32 @@ pageType="collectionsCollection">` is one line before and one line after — so 
   feature-board SD8 (the location page's Lens facet, which C17 could not carry). Next: B10, then
   feature-board AU2 — whose admin half turned out blocked on a backend change, now specced in the
   MA1/EM2 handoff.
+
+- 2026-09-06 (1) — **docs only: a read-only investigation pass settled five items the board had
+  recorded wrongly, and one of them was not blocked at all.** **D15 UNBLOCKED and closed to a single
+  line of work:** backend #309 merged 2026-09-05 with a `PUBLIC_COLLECTION_MEMBERSHIP` predicate
+  (`ContentRepository.java:887`) filtering `publicOnly` reads on `cc.visible`, `col.visibility =
+'LISTED'` and a null `gallery_password`; the backend board has S-29 ticked. This board carried it
+  as ⛔ BLOCKED for four days after the fix landed, which is the second time in a week that reading
+  the other repo's board would have changed a row. The frontend half also shrank: all three public
+  routes go through `searchImages` and carry ONE tag, so it is one `revalidateTag('search-images')`,
+  not three. **G2b SETTLED** — `.ts` is in scope (the global rule covers every language; #268 covers
+  plain function bodies), and the genuinely open question turned out to be one no board had asked:
+  `tests/` is 1,722 inline `//` lines against `app/`'s 877, and G2a's rule is scoped `app/**`.
+  **E9's premise was false** — there is no `%placeholder`, no `@use` and no shared partial anywhere,
+  so the `.srOnly` proposal would introduce the repo's first shared SCSS partial rather than apply
+  an existing mechanism; the six copies are byte-identical at 11 lines (66 total), a placeholder
+  emits the same CSS, and a seventh copy (`.skipLink`) hides under a different class name.
+  **G3 sized** — the delete is 65 lines of page plus a 48-line SCSS module plus `listAllSelectsServer`
+  (~20 lines), not 65 lines. **H1's catalog-fetch objection is measured, not open** — the cost is
+  recorded in the file the item edits, the read already runs inside the `Promise.all`, and the
+  Following count never used it. **H7's backend ask halved** to `passwordLoginAvailable`.
+  **Numbers corrected:** B10's attribution table said "four suites with one each" and summed to 97
+  against 96 actual warnings (it is three); G2's inventory 448/441 → **445 `.tsx` / 432 `.ts`**;
+  G4's total 1,494 → **1,500** at HEAD, with the 54 backward-looking hits and their per-term split
+  reproducing exactly, and the "~23 false positives" marked unchecked because it is a classification
+  nobody re-ran; G8's "10 files" → **10 import statements across 9 files**
+  (`CollectionContentRenderer.tsx` has two). **Filed on the feature board:** PF15 — production
+  serves no `robots.txt` and no `sitemap.xml`, and no page carries a canonical or `og:url`, so apex
+  and www are two indexable duplicates with nothing marking either one. Next: unchanged — B10,
+  F3's rename, D15's purge, D13.

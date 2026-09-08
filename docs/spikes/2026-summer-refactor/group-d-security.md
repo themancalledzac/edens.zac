@@ -552,3 +552,65 @@ is rejected alongside it.
 `forwarded` and `true-client-ip` were added to the strip list. `x-vercel-forwarded-for` and
 `x-vercel-ip-*` were left alone by design — they are host-agnostic and G7 covers the naming.
 +40 −26 src / +63 −6 test.
+
+---
+
+### ✅ D15 · Public routes surface client-gallery images through the unfiltered backend search — CLOSED 2026-09-08; the purge expired on its own
+
+**Backend S-29 is fixed and the frontend never noticed.** Backend PR
+[#309](https://github.com/themancalledzac/edens.zac.backend/pull/309) merged 2026-09-05 (tip of
+`edens.zac.backend` `main` at `b2ec6968`); the backend board has S-29 ticked.
+`ContentRepository.java:887` adds a `PUBLIC_COLLECTION_MEMBERSHIP` predicate — an `EXISTS` over
+`collection_content` requiring `cc.visible = true`, `col.visibility = 'LISTED'` and
+`col.gallery_password IS NULL` — applied whenever `request.publicOnly()` is set. The public route
+sets that flag and the query string cannot influence it.
+
+`SecurityConfig` was deliberately left alone. The fix is at the query level so that a
+viewer-dependent filter cannot poison the shared CloudFront cache. `/api/read/**` still falls
+through to `permitAll()`, and that is the intended shape.
+
+**The frontend half is one line, not three.** All three public routes get their images from
+`searchImages` (`app/lib/api/content.ts:128`), and that call carries exactly one cache tag:
+
+```bash
+sed -n '/^export async function searchImages/,/^}/p' app/lib/api/content.ts | grep -n 'tags:'
+```
+
+→ `tags: ['search-images']`. The `content-tags` and `content-locations` tags cover the taxonomy
+lists, which S-29 did not change. So the purge is `revalidateTag('search-images')` and nothing else.
+
+| Route              | Call (`searchImages`, `app/lib/api/content.ts:128`)                 | Cached under    |
+| ------------------ | ------------------------------------------------------------------- | --------------- |
+| `/search`          | `app/search/SearchResults.tsx:12` — `{ size: SEARCH_RESULT_LIMIT }` | `search-images` |
+| `/location/[slug]` | `app/location/[slug]/page.tsx:82` — `{ locationId }`                | `search-images` |
+| `/tag/[slug]`      | `app/tag/[slug]/page.tsx:48` — `{ tagIds }`                         | `search-images` |
+
+All three go through `fetchPublicRead` with `next: { revalidate: 3600, tags: ['search-images'] }`,
+so a pre-#309 response can live in the Next data cache and be served through Amplify's CloudFront
+for up to 3600s after the backend deploy.
+
+- [x] ~~**Purge the stale corpus: one `revalidateTag('search-images')`.**~~ **MOOT, closed
+      2026-09-08 by arithmetic — no purge was ever run and none is owed.** The cached entries this
+      bullet was chasing expired on their own. `TIMING.revalidateCache` is 3600s
+      (`app/constants/index.ts:134`, re-read 2026-09-08), backend #309 merged 2026-09-05, and the
+      close-out ran 2026-09-08 — three days, against a one-hour TTL. Any pre-#309 response aged out
+      within an hour of the backend deploy, so the exposure window shut on 2026-09-05 regardless of
+      what the frontend did. The three #408–#411 deploys are irrelevant to it either way.
+- [x] ~~Decide whether `/search` should keep requesting a 200-image corpus with no criteria.~~
+      **MOVED to feature-board PF16, 2026-09-08.** It is a performance question and this is the
+      security board; it does not belong here now that the privacy half is closed. Filed with the
+      measurement, not as prose — see PF16.
+
+**Two things this item got wrong, both worth carrying forward.**
+
+1. **"The frontend owes one `revalidateTag`" was never an MR, and the board listed it as one.** It
+   is a runtime action, not a code change: `search-images` is already registered on `searchImages`
+   (`app/lib/api/content.ts:139`) and already purged by `revalidateMetadataCache`
+   (`collectionEditUtils.ts:300`), so there was no drift to commit. The item sat at the top of a run
+   as "the cheapest fully-specified item on the board" and had no diff in it. **When an item's
+   deliverable is an action rather than a diff, say so in the row** — a run that picks it up loses
+   the slot.
+2. **An expiring exposure window closes itself, and nobody re-checked the clock.** This was filed
+   2026-09-05 with a 3600s fuse and picked into a run on 2026-09-06 without anyone noting that the
+   fuse would burn out before most sessions got to it. **A time-boxed item needs its expiry date in
+   the row**, or it gets carried as live work past the point where it is real.

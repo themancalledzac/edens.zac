@@ -159,7 +159,7 @@ version of this table were off by one on every `revalidateMetadataCache` row.
 | `content-lenses`               | —                                                                | —                            | **deleted by this MR**               |
 | `content-film-metadata`        | —                                                                | —                            | **deleted by this MR**               |
 
-**The `collections-location-${slug}` report moved to E12** on the live board when this section was archived — it was open, sized work with no board row of its own. See [E12](../2026-summer-refactor.md#-e12--wire-up-collections-location-slug).
+**The `collections-location-${slug}` report moved to E12** on the live board when this section was archived — it was open, sized work with no board row of its own. See [E12](group-e-consolidations.md#-e12--wire-up-collections-location-slug---pr-301-image-path-trigger-split-out-as-e13), which shipped as #301 and is archived alongside this file.
 
 ### ✅ C5 · Assorted LOW bugs — PR #283
 
