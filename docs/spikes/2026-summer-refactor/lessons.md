@@ -503,3 +503,51 @@ score ~0 on this board's metric and is not thereby a failed item. F3 was the liv
 F6. When sizing an item, first ask whether its win is even the kind of thing a diff can measure,
 and if not, say so in the estimate column instead of writing a number that will later read as a
 miss.
+
+## A resolving mock and a pending mock are different tools, and the wrong one removes a third of the warnings
+
+B10 (#408). The row prescribed "mock `@/app/lib/api/roles` the way `CollectionRolesSection.test.tsx`
+already does it" and expected all 60 of the suite's `act()` warnings to go. Measured, that removes 20.
+
+The difference is whether the test awaits the loaded state. `CollectionRolesSection.test.tsx`
+resolves its mocks and then `await waitFor`s, so its `setState`s land inside `act`.
+`InfoTab.test.tsx` asserts synchronously and never awaits, so a resolving mock only kills the catch
+path's `setError`; the two success-path `setState`s still settle in microtasks after the test body
+returns.
+
+| Mock shape                                                  | Warnings |
+| ----------------------------------------------------------- | -------- |
+| none                                                        | 60       |
+| resolves `[]`                                               | 40       |
+| plus `afterEach(async () => { await act(async () => {}) })` | 40       |
+| reads left PENDING (`jest.fn(() => new Promise(() => {}))`) | **0**    |
+
+**The `afterEach` flush is the interesting failure**: it looks like the textbook fix and does
+nothing, because the microtasks settle between the test body returning and `afterEach` running, so
+the warning has already fired.
+
+**The rule: a suite that renders a data-loading child it never asserts on wants a PENDING mock.** A
+resolving mock is for suites that await the loaded state. Copying a mock shape from a suite with
+different awaiting behaviour is how the wrong one gets chosen.
+
+## Three SCSS partial traps, all found on the repo's first `@use` (E9, #410)
+
+1. **A loud `/* */` comment in a partial is emitted into every stylesheet that `@use`s it.** The
+   first draft of `_a11y.scss` put twelve lines of comment into all seven consumers. Partial
+   comments must be silent (`//`) — and stylelint's `scss/comment-no-empty` rejects bare `//`
+   separator lines, so such a header carries no blank comment lines.
+2. **`@extend` hoists the extending selector to the placeholder's position.** Declarations stay
+   byte-identical; rule order does not. That was inert for `.srOnly` only because all seven usages
+   apply the class alone, never combined with another class from the same module — which was
+   checked, not assumed. **A `@mixin` preserves position exactly**; prefer it when byte-identical
+   output is the stated requirement, which is what E9's row claimed and `@extend` does not deliver.
+3. **Turbopack ignores `sassOptions.includePaths` and reads `loadPaths`.** The board had this as a
+   wrong path. It is a wrong path _and_ an ignored key: building with `includePaths` corrected to
+   the right directory **still fails**, and only `loadPaths` resolves a bare specifier. Next's own
+   docs name neither key, so this is pinned to Turbopack behaviour rather than a contract.
+
+**Also: `grep -rl '.srOnly'` still returns 6 after the collapse**, because the six modules still
+declare `.srOnly { @extend %visually-hidden; }`. A session re-running E9's original detection
+command would conclude nothing shipped. Detection commands written against duplicated _bodies_ stop
+working once the bodies are shared — the count that moved is the repo's `@use`/`%placeholder` total,
+0 → 11.

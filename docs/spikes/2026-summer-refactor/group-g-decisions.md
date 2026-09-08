@@ -287,3 +287,64 @@ Seven `describe` strings renamed from `Vercel BFF proxy …` to `BFF proxy …` 
 
 Naming only. The `x-vercel-forwarded-for` read order and the `x-vercel-ip-*` strip list were left
 untouched, as the item instructed: they are host-agnostic and correct on both hosts.
+
+---
+
+### ✅ G3 · `/user/selects` — DELETED in #411
+
+**The user's call: delete `/user/selects`.** Selects already live in the gallery star flow, which is
+why the page renders raw IDs nobody follows. Scope is below and every ref was re-resolved at HEAD
+`056b2f50` on 2026-09-06.
+
+**Unreachable, re-confirmed 2026-09-06.** `app/user/selects/page.tsx` is 65 lines.
+It renders literal `Collection 42` and `Image 117` headings linking to `/?collection=42`, and
+nothing in the app handles that param:
+
+```bash
+grep -rn "collection'" app --include='*.ts' --include='*.tsx' | grep -E "searchParams|\.get\("
+grep -rn '/user/selects' app tests
+```
+
+The first returns nothing. The second is the trap this item has always warned about: every hit is inside
+`app/lib/api/selects.ts`, which names `/api/proxy/api/read/user/selects` — the backend route, not a
+link to the page. No page in `app/` links to `/user/selects`, and there is no test for the page.
+
+**The delete is bigger than 65 lines.** It also orphans two things:
+
+| Also deleted                                | Size     | Why it goes                                                                                                      |
+| ------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `app/user/selects/page.module.scss`         | 48 lines | imported only by the page                                                                                        |
+| `listAllSelectsServer` (`selects.ts:45-63`) | 19 lines | the page is its only app caller; its describe at `tests/lib/api/selects.test.ts:118-152` (35 lines) goes with it |
+
+Four refs, all re-resolved 2026-09-06 — the old `selects.ts:45-62` was one line short of the
+function's closing brace:
+
+```bash
+wc -l app/user/selects/page.tsx app/user/selects/page.module.scss
+grep -n 'listAllSelectsServer' app/lib/api/selects.ts
+grep -n 'describe(' tests/lib/api/selects.test.ts
+```
+
+→ 65 / 48; the docblock opens at `:45` and the function runs `:51-63`; the describe opens at `:118`
+and the file ends at `:152`.
+
+The other three exports of `selects.ts` (`addSelect`, `removeSelect`, `listSelectIdsServer`) have
+live callers and stay.
+
+- [x] ~~**Delete the page, its SCSS module, `listAllSelectsServer` and that function's describe
+      block.**~~ **Shipped in #411.** The greps were re-run at HEAD first and every claim above held:
+      no page links to `/user/selects`, `?collection=` is still unhandled, 65 / 48 lines, and the
+      page was `listAllSelectsServer`'s only app caller.
+- [x] ~~**`SelectGroup` (`app/types/Selects.ts:9-12`) goes with it.**~~ **Shipped in #411**, and the
+      module docblock's "listed on their `/user` page" sentence was corrected in the same commit.
+      `app/types/Selects.ts` stays for `PINNED_SELECT` and `MaybePinned`.
+      **One ref the row did not have:** deleting the describe left `loggerErrorMock` and the
+      `logger` import unused in `tests/lib/api/selects.test.ts` — eslint caught it. The
+      `jest.mock('@/app/utils/logger')` factory stays, because `listSelectIdsServer`'s failure path
+      still logs; only the unused handle and import went.
+- [x] ~~**Tell the feature board.**~~ **Done in #411.** G3 went first, so PF15's `app/robots.ts`
+      bullet was re-pointed: `grep -rn 'index: false' app` now returns exactly one,
+      `app/all-client-galleries/page.tsx:7`.
+- [ ] Status wording reconciled 2026-08-22: A1 is COMPLETE as shipped — the `/user/selects` deletion
+      was pulled OUT of A1 (see A1's closing note in the archive). Deciding G3 performs that final
+      deletion (or its rebuild); it does not reopen A1.
