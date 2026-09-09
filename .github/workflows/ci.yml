@@ -1,11 +1,17 @@
 # Frontend verification on every pull request and every push to main.
 #
 # Runs the same four checks CLAUDE.md prescribes locally — type check, ESLint,
-# Stylelint, Jest — so a claim that they pass stops being local-only.
+# Stylelint, Jest — so a claim that they pass stops being local-only, plus an
+# `npm audit` gate at high severity and above.
+#
+# The audit step lives in this job rather than its own because this job's name is
+# the required status check on main. A separate job would need adding to branch
+# protection by hand to block anything, and until someone did that it would be a
+# security gate that gates nothing.
 #
 # One job, not four: `npm ci` dominates the wall clock, and splitting the checks
 # would pay for it once per job. Every check step is `if: always()` so a single
-# run reports all four verdicts instead of stopping at the first failure.
+# run reports all five verdicts instead of stopping at the first failure.
 #
 # The Node version comes from `.nvmrc`, which is the one place it is written down.
 # `engines.node` in package.json is a floor, not a second pin; `tests/ci/ciWorkflow.test.ts`
@@ -58,3 +64,7 @@ jobs:
       - name: Jest
         if: always()
         run: npm test -- --ci
+
+      - name: Audit dependencies
+        if: always()
+        run: npm run audit

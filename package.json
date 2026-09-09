@@ -19,6 +19,7 @@
     "lint:css:fix": "stylelint '**/*.{css,scss}' --fix",
     "format": "prettier --write '**/*.{js,jsx,ts,tsx,json,css,scss,md}'",
     "type-check": "tsc --noEmit",
+    "audit": "npm audit --audit-level=high",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage",
@@ -32,7 +33,7 @@
     "sass": "^1.77.8"
   },
   "overrides": {
-    "fast-uri": "^3.1.2",
+    "fast-uri": "^3.1.6",
     "postcss": "^8.5.10"
   },
   "devDependencies": {
