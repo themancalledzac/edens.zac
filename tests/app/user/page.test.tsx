@@ -24,9 +24,6 @@ jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
   __esModule: true,
   default: () => 'SiteHeader',
 }));
-// SendMessageButton is deliberately NOT mocked: the real one has to run for the lockedEmail
-// assertion below to mean anything. Its modal is stubbed open and its form reduced to a probe that
-// echoes the lockedEmail it was handed.
 jest.mock('@/app/components/ui/Modal/Modal', () => ({
   Modal: ({ children }: { children: unknown }) => children,
 }));
@@ -67,7 +64,7 @@ import {
 import UserPage from '@/app/user/page';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
-const authedPrincipal = { email: 'c@x.com', isAdmin: false, mfaSatisfied: true, galleries: [] };
+const authedPrincipal = { email: 'c@x.com', isAdmin: false, mfaSatisfied: true, passkeyCount: 0, galleries: [] };
 
 /**
  * `id` is the content-table row id and `referencedCollectionId` the collection it points at, which

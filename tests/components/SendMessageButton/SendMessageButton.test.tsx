@@ -15,6 +15,7 @@ const me: MeResponse = {
   email: 'user@example.com',
   isAdmin: false,
   mfaSatisfied: true,
+  passkeyCount: 0,
   galleries: [],
 };
 
@@ -42,8 +43,6 @@ describe('SendMessageButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /contact the photographer/i }));
 
     expect(screen.getByRole('heading', { name: 'Contact the photographer' })).toBeInTheDocument();
-    // "Send a message" named an action, not a destination, on a page full of the viewer's own
-    // things — the one place the recipient most needed saying.
     expect(screen.queryByText('Send a message')).not.toBeInTheDocument();
   });
 

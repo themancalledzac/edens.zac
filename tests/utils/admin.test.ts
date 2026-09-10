@@ -25,6 +25,7 @@ function principal(overrides: Partial<MeResponse> = {}): MeResponse {
     email: 'user@example.com',
     isAdmin: false,
     mfaSatisfied: true,
+    passkeyCount: 0,
     galleries: [],
     ...overrides,
   };

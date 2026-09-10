@@ -25,9 +25,6 @@ jest.mock('@/app/lib/api/collections', () => ({
   getCollectionBySlug: jest.fn(),
 }));
 
-// The wrapper resolves the principal (meServer) and server-seeds Selects (listSelectIdsServer);
-// isolate both so these routing tests don't hit the network (either would otherwise throw `fetch is
-// not defined` under jsdom). Anonymous principal is the routing default.
 jest.mock('@/app/lib/api/auth', () => ({
   meServer: jest.fn(async () => null),
 }));
@@ -224,6 +221,7 @@ describe('CollectionPageWrapper — password-protection routing', () => {
       email: 'client@example.com',
       isAdmin: false,
       mfaSatisfied: true,
+      passkeyCount: 0,
       galleries: [{ collectionId: 1, role: 'CLIENT' }],
     });
     mockGetCollectionBySlug.mockResolvedValue(
@@ -256,6 +254,7 @@ describe('CollectionPageWrapper — password-protection routing', () => {
       email: 'viewer@example.com',
       isAdmin: false,
       mfaSatisfied: true,
+      passkeyCount: 0,
       galleries: [],
     });
     listSavedImageIdsServer.mockResolvedValueOnce([7, 9]);

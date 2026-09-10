@@ -23,5 +23,10 @@ export interface MeResponse {
    */
   isAdmin: boolean;
   mfaSatisfied: boolean;
+  /**
+   * How many passkeys the account has enrolled. Backend `webauthn_credential` rows for the user.
+   * Zero offers the Face / Touch ID chip; anything else hides it.
+   */
+  passkeyCount: number;
   galleries: GalleryMembership[];
 }

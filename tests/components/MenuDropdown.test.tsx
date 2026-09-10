@@ -9,16 +9,12 @@ import { type MeResponse } from '@/app/types/Auth';
 const mockPush = jest.fn();
 const mockRefresh = jest.fn();
 let mockPathname = '/some-collection';
-// Read on every render, so a test can flip the menu into its local-only shape and back.
 let mockIsLocal = false;
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
   usePathname: () => mockPathname,
 }));
-// The real useFetchMe runs in these tests — only the api layer is mocked, so the
-// menu's auth buttons reflect genuine hook behavior. The real AUTH_CHANGED_EVENT
-// constant is passed through (also pinned in tests/lib/api/auth.test.ts).
 jest.mock('@/app/lib/api/auth', () => ({
   AUTH_CHANGED_EVENT: (jest.requireActual('@/app/lib/api/auth') as { AUTH_CHANGED_EVENT: string })
     .AUTH_CHANGED_EVENT,
@@ -38,6 +34,7 @@ const principal: MeResponse = {
   email: 'a@b.com',
   isAdmin: false,
   mfaSatisfied: true,
+  passkeyCount: 0,
   galleries: [],
 };
 
@@ -45,6 +42,7 @@ const adminPrincipal: MeResponse = {
   email: 'admin@b.com',
   isAdmin: true,
   mfaSatisfied: true,
+  passkeyCount: 0,
   galleries: [],
 };
 

@@ -17,6 +17,7 @@ const clientMe: MeResponse = {
   email: 'client@example.com',
   isAdmin: false,
   mfaSatisfied: false,
+  passkeyCount: 0,
   galleries: [clientMembership],
 };
 
@@ -24,6 +25,7 @@ const generalMe: MeResponse = {
   email: 'general@example.com',
   isAdmin: false,
   mfaSatisfied: false,
+  passkeyCount: 0,
   galleries: [{ collectionId: 7, role: 'GENERAL' }],
 };
 
@@ -31,6 +33,7 @@ const collaboratorMe: MeResponse = {
   email: 'collaborator@example.com',
   isAdmin: false,
   mfaSatisfied: false,
+  passkeyCount: 0,
   galleries: [{ collectionId: 7, role: 'COLLABORATOR' }],
 };
 

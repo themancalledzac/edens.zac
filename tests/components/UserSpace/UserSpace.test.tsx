@@ -34,6 +34,7 @@ const principal: MeResponse = {
   email: 'c@x.com',
   isAdmin: true,
   mfaSatisfied: true,
+  passkeyCount: 0,
   galleries: [],
 };
 

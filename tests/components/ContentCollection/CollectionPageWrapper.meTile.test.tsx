@@ -68,6 +68,7 @@ describe('CollectionPageWrapper — Me tile injection', () => {
       email: 'a@b.com',
       isAdmin: false,
       mfaSatisfied: true,
+      passkeyCount: 0,
       galleries: [],
     });
     mockGetUserPage.mockResolvedValue({
@@ -99,6 +100,7 @@ describe('CollectionPageWrapper — Me tile injection', () => {
       email: 'a@b.com',
       isAdmin: false,
       mfaSatisfied: true,
+      passkeyCount: 0,
       galleries: [],
     });
     mockGetUserPage.mockResolvedValue(null);
@@ -130,6 +132,7 @@ describe('CollectionPageWrapper — Me tile injection', () => {
       email: 'a@b.com',
       isAdmin: false,
       mfaSatisfied: true,
+      passkeyCount: 0,
       galleries: [],
     });
     mockGetCollectionBySlug.mockResolvedValue(homeCollection({ slug: 'portfolio' }));

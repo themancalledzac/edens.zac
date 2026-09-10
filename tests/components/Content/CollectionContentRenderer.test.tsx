@@ -42,6 +42,7 @@ const adminPrincipal: MeResponse = {
   email: 'admin@b.com',
   isAdmin: true,
   mfaSatisfied: true,
+  passkeyCount: 0,
   galleries: [],
 };
 
@@ -386,6 +387,7 @@ describe('CollectionContentRenderer — cover "Update" shortcut (isAdmin-gated)'
       email: 'user@b.com',
       isAdmin: false,
       mfaSatisfied: true,
+      passkeyCount: 0,
       galleries: [],
     });
     render(<CollectionContentRenderer {...coverProps} />);
