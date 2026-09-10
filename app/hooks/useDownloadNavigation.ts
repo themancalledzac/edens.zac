@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { type DownloadFormat } from '@/app/lib/api/downloads';
+import { navigateTo } from '@/app/utils/navigateTo';
 
 /** How long the in-flight "…" label stays up before the control resets itself. */
 const RESET_DELAY_MS = 4000;
@@ -16,7 +17,7 @@ interface DownloadNavigation {
  * Drives the "navigate to a download URL, then reset the control" flow shared by
  * `ClientGalleryDownload` and `FullScreenDownloadButton`.
  *
- * Downloads start by assigning `window.location.href` rather than `fetch`+blob: the backend
+ * Downloads start by navigating to the URL ({@link navigateTo}) rather than `fetch`+blob: the backend
  * 302-redirects to a presigned S3 URL to bypass the Amplify response-size cap, and a cross-origin
  * `fetch` following that redirect would be blocked by S3 CORS. The response carries
  * `Content-Disposition: attachment`, so the browser downloads without leaving the page. That also
@@ -51,7 +52,7 @@ export function useDownloadNavigation(onReset: () => void): DownloadNavigation {
 
   const startDownload = useCallback((url: string, format: DownloadFormat) => {
     setPreparing(format);
-    window.location.href = url;
+    navigateTo(url);
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
     resetTimerRef.current = setTimeout(() => {
       setPreparing(null);
