@@ -377,21 +377,17 @@ export function FilterToolbar({
           const isOpen = openDropdown === key;
           return (
             <div key={key} className={styles.dropdown}>
-              <button
+              <FilterChip
                 ref={node => {
                   triggerRefs.current[key] = node;
                 }}
-                type="button"
-                aria-haspopup="true"
-                aria-expanded={isOpen}
-                className={`${styles.dropdownTrigger} ${selected.length > 0 ? styles.dropdownTriggerActive : ''}`}
-                onClick={() => toggleOpen(key)}
-              >
-                {dim.label}
-                <span className={styles.chevron} aria-hidden="true">
-                  {isOpen ? '▴' : '▾'}
-                </span>
-              </button>
+                label={dim.label}
+                trailing={isOpen ? '▴' : '▾'}
+                active={isOpen}
+                ariaExpanded={isOpen}
+                ariaHasPopup="true"
+                onToggle={() => toggleOpen(key)}
+              />
               {isOpen && (
                 <div className={styles.panel}>
                   {dim.options.map(option => {

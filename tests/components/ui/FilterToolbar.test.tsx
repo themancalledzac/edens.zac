@@ -243,7 +243,7 @@ describe('FilterToolbar', () => {
     const { onFilterChange } = renderToolbar({
       dimensions: { selectedTags: { label: 'Tags', options: ['sunset', 'forest'] } },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Tags' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Tags/ }));
     fireEvent.click(screen.getByRole('button', { name: 'sunset' }));
     expect(onFilterChange).toHaveBeenCalledWith({ selectedTags: ['sunset'] });
   });
@@ -253,7 +253,7 @@ describe('FilterToolbar', () => {
       dimensions: { selectedTags: { label: 'Tags', options: ['sunset', 'forest'] } },
       filteredAvailable: { selectedTags: ['sunset'] },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Tags' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Tags/ }));
     expect(screen.getByRole('button', { name: 'forest' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'sunset' })).not.toBeDisabled();
   });
@@ -677,6 +677,24 @@ describe('FilterToolbar', () => {
       expect(current[0]).toHaveTextContent('Saved');
     });
   });
+
+  it('renders a dimension trigger as a chip with a chevron and popup aria', () => {
+    render(
+      <FilterToolbar
+        filterState={INITIAL_FILTER_STATE}
+        onFilterChange={() => {}}
+        dimensions={{ selectedPeople: { label: 'People', options: ['Ada', 'Grace'] } }}
+      />
+    );
+    const trigger = screen.getByRole('button', { name: /^People/ });
+    expect(trigger).toHaveAttribute('aria-haspopup', 'true');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger.className).toMatch(/chip/);
+    expect(trigger.querySelector('span')?.textContent).toBe('▾');
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(trigger.querySelector('span')?.textContent).toBe('▴');
+  });
 });
 
 describe('FilterToolbar active-filter summary', () => {
@@ -855,7 +873,7 @@ describe('FilterToolbar — film stock', () => {
         },
       },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Film stock' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Film stock/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Kodak Portra 400' }));
     expect(onFilterChange).toHaveBeenCalledWith({ selectedFilmTypes: ['Kodak Portra 400'] });
   });
@@ -871,7 +889,7 @@ describe('FilterToolbar — film stock', () => {
         },
       },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Film stock' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Film stock/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Cinestill 800T' }));
     expect(onFilterChange).toHaveBeenCalledWith({ selectedFilmTypes: ['Cinestill 800T'] });
   });

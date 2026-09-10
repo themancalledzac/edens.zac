@@ -20,7 +20,7 @@ jest.mock('@/app/hooks/useFilterUrlState', () => ({
   }),
 }));
 
-// jsdom cannot measure the layout engine; stub to a count.
+/** jsdom cannot measure the layout engine; stub it to a count instead. */
 jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
   __esModule: true,
   default: ({ content }: { content: unknown[] }) => (
@@ -112,7 +112,7 @@ describe('SearchPageClient — film stock dropdown', () => {
   it('offers the dropdown once Film is the selected side of the toggle', () => {
     mockInitialCriteria = { isFilm: true };
     render(<SearchPageClient images={twoStocks()} />);
-    expect(screen.getByRole('button', { name: 'Film stock' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Film stock/ })).toBeInTheDocument();
   });
 
   it('withholds it while the toggle is off, even though two stocks are present', () => {
