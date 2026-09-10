@@ -15,6 +15,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-1);
   cursor: pointer;
+  touch-action: manipulation;
   opacity: 0.7;
   transition:
     background-color var(--duration-fast) var(--ease-standard),

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { type Ref } from 'react';
 
 import styles from './FilterChip.module.scss';
 
@@ -36,6 +37,11 @@ interface FilterChipButtonProps extends FilterChipBaseProps {
   onToggle: () => void;
   href?: never;
   scroll?: never;
+  /** The underlying button, for a caller that must restore focus to it (a dropdown trigger). */
+  ref?: Ref<HTMLButtonElement>;
+  /** Set on a chip that opens a popup: the open state, and the kind of popup. */
+  ariaExpanded?: boolean;
+  ariaHasPopup?: 'true' | 'dialog';
 }
 
 interface FilterChipLinkProps extends FilterChipBaseProps {
@@ -49,6 +55,9 @@ interface FilterChipLinkProps extends FilterChipBaseProps {
    * keeping the old scroll offset lands the reader partway down a page they have never seen.
    */
   scroll?: boolean;
+  ref?: never;
+  ariaExpanded?: never;
+  ariaHasPopup?: never;
 }
 
 /**
@@ -80,6 +89,9 @@ export function FilterChip({
   href,
   scroll = false,
   onToggle,
+  ref,
+  ariaExpanded,
+  ariaHasPopup,
 }: FilterChipProps) {
   const unavailable = state === 'unavailable';
   const classes = [
@@ -122,10 +134,13 @@ export function FilterChip({
 
   return (
     <button
+      ref={ref}
       type="button"
       className={classes}
       aria-label={ariaLabel}
-      aria-pressed={active}
+      aria-pressed={ariaHasPopup === undefined ? active : undefined}
+      aria-expanded={ariaExpanded}
+      aria-haspopup={ariaHasPopup}
       disabled={unavailable}
       onClick={onToggle}
     >
