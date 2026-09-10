@@ -46,8 +46,6 @@ jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => {
   }) => {
     useEffect(() => {
       mockGridMounts.push(activeSectionKey ?? 'unsectioned');
-      // The mount-time key is captured deliberately: a remount would push the NEW section's key,
-      // which is what makes the recorded list, not just its length, worth asserting on.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -62,8 +60,12 @@ jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => {
   return { __esModule: true, default: MockGrid };
 });
 
-// `useFollows` is stubbed to null because `UserSpaceGrid` calls it on every render; null is the
-// no-provider answer, which leaves the section counts exactly as the server built them.
+/**
+ * `useFollows` returns null, the no-provider answer, because `UserSpaceGrid` calls it on every
+ * render. That leaves the section counts as the server built them and the Collections list
+ * unpruned, so nothing here depends on client follow state — which is what
+ * `UserSpace.followCount.test.tsx` covers.
+ */
 jest.mock('@/app/components/Personal/FollowsContext', () => ({
   FollowsProvider: ({ children }: { children: unknown }) => children,
   useFollows: () => null,
@@ -83,6 +85,15 @@ const imageBlock = (id: number) =>
     imageUrl: `https://cdn/${id}.jpg`,
   }) as unknown as UserSpaceSection['content'][number];
 
+const collectionBlock = (id: number) =>
+  ({
+    id,
+    contentType: 'COLLECTION',
+    referencedCollectionId: id,
+    slug: `collection-${id}`,
+    title: `Collection ${id}`,
+  }) as unknown as UserSpaceSection['content'][number];
+
 function makeData(): UserSpaceData {
   return {
     collection: {
@@ -93,7 +104,7 @@ function makeData(): UserSpaceData {
     sections: {
       collections: {
         label: 'Collections',
-        content: [imageBlock(1)],
+        content: [collectionBlock(1)],
         count: 1,
         emptyLabel: 'No collections yet.',
       },
@@ -104,10 +115,10 @@ function makeData(): UserSpaceData {
         emptyLabel: 'You are not tagged in any images yet.',
       },
       saved: { label: 'Saved', content: [], count: 0, emptyLabel: 'nothing saved' },
-      following: { label: 'Following', content: [], count: 0, emptyLabel: 'nothing followed' },
     },
     followedCollectionIds: [7],
     savedImageIds: [3],
+    grantedCollectionIds: [1],
     visibleKeys: TAB_KEYS,
     ownerName: null,
   };
@@ -127,6 +138,15 @@ beforeEach(() => {
   mockGridMounts.length = 0;
 });
 
+/**
+ * The two controls are the second and fourth cases: a deliberate fresh mount proves the counter is
+ * not inert, and a genuinely-changed section body proves the surviving node is not a stale one.
+ *
+ * The whole-tour case walks `TAB_KEYS` rather than a literal list, so a section added or removed is
+ * covered without editing the test, and repeats the first key as the return trip. The last case
+ * asserts the empty state DOES swap, which keeps "nothing remounts" from being read as "nothing
+ * changes" — the grid is the one thing that must survive, not the whole subtree.
+ */
 describe('UserSpace — switching sections does not remount the grid', () => {
   it('mounts the grid once across a section change', () => {
     const { rerender } = render(view('collections'));
@@ -135,8 +155,6 @@ describe('UserSpace — switching sections does not remount the grid', () => {
     expect(mockGridMounts).toEqual(['collections']);
   });
 
-  // The control for the counter: a genuine mount does register, so the single entry above is the
-  // key removal working rather than the effect never running.
   it('counts a genuine fresh mount, so the counter is not simply inert', () => {
     const first = render(view('collections'));
     first.unmount();
@@ -154,8 +172,6 @@ describe('UserSpace — switching sections does not remount the grid', () => {
     expect(screen.getByTestId('grid')).toBe(before);
   });
 
-  // The control for the node identity: the node survived, but it is not a stale one — the section
-  // it renders really did change, so the switch happened rather than being a no-op.
   it('swaps what that node renders, in place', () => {
     const { rerender } = render(view('collections'));
     expect(screen.getByText('Blocks: 1')).toBeInTheDocument();
@@ -168,18 +184,13 @@ describe('UserSpace — switching sections does not remount the grid', () => {
 
   it('stays mounted across every section in turn, including a return trip', () => {
     const { rerender } = render(view('collections'));
-    for (const key of ['images', 'saved', 'following', 'collections'] as const) {
+    for (const key of [...TAB_KEYS, 'collections' as TabKey]) {
       rerender(view(key));
     }
 
     expect(mockGridMounts).toEqual(['collections']);
   });
 
-  /**
-   * The empty state below the grid is a different element that legitimately comes and goes with
-   * the section. Asserting it does swap keeps "nothing remounts" from being read as "nothing
-   * changes" — the grid is the one thing that must survive, not the whole subtree.
-   */
   it('still swaps the empty state, which is not part of the grid', () => {
     const { rerender } = render(view('collections'));
     expect(screen.queryByText('nothing saved')).not.toBeInTheDocument();

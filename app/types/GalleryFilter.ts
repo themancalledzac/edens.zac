@@ -28,6 +28,18 @@ export interface FilterState {
    * backend's anonymous scope is `LISTED` alone.
    */
   showHidden: boolean;
+  /**
+   * Narrow a collection list to the ones the viewer follows themselves.
+   *
+   * `/user` only: its Collections section is one list of every collection the viewer is associated
+   * with, and the two routes in are an admin granting the association or the viewer following it.
+   * This is how the self-granted half is picked out — a property of the association, expressed once
+   * above the list rather than as a marker on every tile.
+   *
+   * Defaults to `false` (show everything), which makes it a no-op on every page that never renders
+   * the chip.
+   */
+  followedOnly: boolean;
   highlyRatedOnly: boolean;
   filmFilter: FilmFilter;
   readonly selectedTags: readonly string[];
@@ -53,6 +65,7 @@ export interface FilterState {
 export const INITIAL_FILTER_STATE: FilterState = Object.freeze({
   dateSortDirection: 'off' as const,
   showHidden: true,
+  followedOnly: false,
   highlyRatedOnly: false,
   filmFilter: 'off' as const,
   selectedTags: Object.freeze([] as readonly string[]),

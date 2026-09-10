@@ -6,10 +6,14 @@
  * that rule starved the chips instead: `.trailing` never shrinks, so at 375px `.controls` was left
  * 126.3px — narrower than one "Highly Rated" chip — and all six chips took a row each.
  *
- * Wrapping fixes that only while `.controls` also carries `flex-basis: 100%`. That is what forces
- * `.trailing` onto a line of its own; drop it and the wrap reintroduces the exact arbitrary-line
- * bug the nowrap rule exists to prevent — silently, and only on a phone. jsdom computes no layout,
- * so the pairing is pinned at the source.
+ * Wrapping fixes that only while `.controls` also carries `flex: 1 0 240px`. The threshold decides
+ * per width whether `.trailing` shares the anchored bottom row or takes a line of its own, and the
+ * `0` is the half that carries the weight: with shrink enabled, flex squeezes `.controls` under the
+ * threshold and shares anyway, which put the slider variant at one chip per line. jsdom computes no
+ * layout, so the pairing is pinned at the source.
+ *
+ * The value it replaced, `flex-basis: 100%`, gave `.trailing` its own line unconditionally — the
+ * bottom row held only the photo-size control while every chip stacked above it.
  */
 
 import { readFileSync } from 'node:fs';
@@ -44,11 +48,27 @@ describe('FilterToolbar mobile wrap', () => {
     expect(mobileBranch(scss)).toContain('flex-wrap: wrap');
   });
 
-  it('should give .controls a full-width basis in the same branch, so the wrap is deterministic', () => {
+  it('should give .controls a shrink-proof basis in the same branch, so the wrap is deterministic', () => {
     const branch = mobileBranch(scss);
 
     expect(branch).toContain('.controls');
-    expect(branch).toContain('flex-basis: 100%');
+    expect(branch).toContain('flex: 1 0 240px');
+  });
+
+  /**
+   * The regression this branch now exists to prevent. `flex-basis: 100%` hands `.trailing` a row of
+   * its own at every width, which is what stranded the chips above an almost-empty bottom row.
+   */
+  it('should not force the trailing group onto its own line unconditionally', () => {
+    expect(mobileBranch(scss)).not.toContain('flex-basis: 100%');
+  });
+
+  /**
+   * Shrink must stay at 0. With it enabled flex squeezes `.controls` below the threshold and shares
+   * the row anyway, which is the one-chip-per-line layout the threshold is meant to rule out.
+   */
+  it('should keep flex-shrink at 0 so the threshold forces a wrap rather than a squeeze', () => {
+    expect(mobileBranch(scss)).toMatch(/flex:\s*1\s+0\s+240px/);
   });
 
   it('should keep the trailing group right-pinned rather than pinning it per-branch', () => {

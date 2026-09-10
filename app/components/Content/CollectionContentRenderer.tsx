@@ -486,7 +486,11 @@ export default function CollectionContentRenderer({
                 dateTwoState={collectionFilter.dateTwoState}
                 showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
                 showHiddenToggle={collectionFilter.filterOptions.showHiddenToggle}
-                counts={{ hidden: collectionFilter.filterOptions.hiddenCount }}
+                showFollowingToggle={collectionFilter.filterOptions.showFollowingToggle}
+                counts={{
+                  hidden: collectionFilter.filterOptions.hiddenCount,
+                  following: collectionFilter.filterOptions.followingCount,
+                }}
                 density={collectionFilter.density}
                 densityMax={collectionFilter.densityMax}
                 onDensityChange={collectionFilter.onDensityChange}

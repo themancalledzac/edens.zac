@@ -54,6 +54,11 @@ describe('computeHasActiveFilters', () => {
     expect(computeHasActiveFilters(state, ARRAY_FILTER_KEYS)).toBe(true);
   });
 
+  it('returns true when the following filter is toggled on', () => {
+    const state: FilterState = { ...INITIAL_FILTER_STATE, followedOnly: true };
+    expect(computeHasActiveFilters(state, ARRAY_FILTER_KEYS)).toBe(true);
+  });
+
   it('returns true when the film filter is set', () => {
     const state: FilterState = { ...INITIAL_FILTER_STATE, filmFilter: 'digital' };
     expect(computeHasActiveFilters(state, ARRAY_FILTER_KEYS)).toBe(true);
