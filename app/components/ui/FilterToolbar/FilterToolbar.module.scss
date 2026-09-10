@@ -20,10 +20,31 @@
      narrower than the single "Highly Rated" chip (131px), so all six chips took a row each and the
      bar stood 230.6px tall — over a quarter of an 812px screen, above the grid it filters.
 
-     Wrapping gives the chips the width back, and `flex-basis: 100%` on `.controls` is what makes
-     the wrap deterministic: it forces `.trailing` onto a line of its own rather than letting it
-     land beside whichever chips happen to fit, which is the failure the nowrap rule above was
-     written to prevent. `.trailing` keeps its `margin-left: auto` and stays right-pinned.
+     Wrapping gives the chips the width back. `flex: 1 0 240px` on `.controls` is what decides,
+     per width, whether `.trailing` shares the anchored bottom row or takes a line of its own: 240px
+     is the width below which sharing stops paying, roughly room for two chips. `flex-shrink: 0` is
+     the load-bearing half — with shrink enabled flex squeezes `.controls` under the threshold and
+     shares anyway, which is how the slider variant ended up one chip per line.
+
+     This replaces `flex-basis: 100%`, which forced the own-line case unconditionally and left the
+     bottom row holding nothing but the photo-size control with every chip stranded above it — the
+     opposite of the bottom-up fill `.controls` is built for, and wrong at every width where the two
+     fit together.
+
+     Bar height and row sharing, measured at both density variants (visitor TIERS ~90px trailing,
+     manage SLIDER ~221px). "own" = `.trailing` on its own line, the old behaviour:
+
+                 visitor            manage
+       360   108 share (was 107)   107 own  (was 107)
+       375    73 share (was 107)   107 own  (was 107)
+       414    73 share (was 107)   107 own  (was 107)
+       480    73 share (was 107)   107 own  (was 107)
+       540    73 share (was  73)    73 share (was 73)
+       740    42 share (was  73)    42 share (was 73)
+
+     The slider keeps its own line at every width where sharing would starve the chips, so the
+     starvation case this branch was written for is unchanged. 200px regressed the manage view at
+     480 (108 shared vs 107 own); 280px failed to fix 375 visitor, the reported case.
 
      Bar height, nowrap -> wrap, measured across the range this rule covers. Handing `.trailing`
      its own row costs a row, so the question was whether that ever costs more than it saves. It
@@ -42,7 +63,7 @@
     flex-wrap: wrap;
 
     .controls {
-      flex-basis: 100%;
+      flex: 1 0 240px;
     }
   }
 
