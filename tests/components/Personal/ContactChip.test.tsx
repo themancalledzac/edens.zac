@@ -40,7 +40,9 @@ describe('ContactChip', () => {
     );
     const trigger = screen.getByRole('button', { name: 'Contact' });
     expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('heading', { name: 'Contact the Photographer' })).toBeInTheDocument();
   });
 

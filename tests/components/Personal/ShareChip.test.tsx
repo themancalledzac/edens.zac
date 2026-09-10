@@ -60,10 +60,44 @@ describe('ShareChip', () => {
     render(<ShareChip read={{ ok: true, settings: null }} />);
     const trigger = screen.getByRole('button', { name: 'Share' });
     expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByRole('heading', { name: 'Share' })).not.toBeInTheDocument();
     openShare();
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('heading', { name: 'Share' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Create link' })).toBeInTheDocument();
+  });
+
+  it('closes the dialog when the close button is clicked', () => {
+    render(<ShareChip read={{ ok: true, settings: settings() }} />);
+    openShare();
+    expect(screen.getByRole('heading', { name: 'Share' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    expect(screen.queryByRole('heading', { name: 'Share' })).not.toBeInTheDocument();
+  });
+
+  /**
+   * Regression test: closing the dialog left `error` and `recipient` on `ShareChip` itself, since
+   * only the dialog body unmounts on close. Reopening after fixing the underlying problem (e.g.
+   * signing back in) still showed the stale error and the half-typed recipient address.
+   */
+  it('clears the error and recipient once the dialog is closed and reopened', async () => {
+    mockEmail.mockRejectedValue(new ApiError('nope', 401));
+    render(<ShareChip read={{ ok: true, settings: settings() }} />);
+    openShare();
+
+    fireEvent.change(screen.getByLabelText(/send the link to this email/i), {
+      target: { value: 'mum@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^send$/i }));
+    expect(await screen.findByText(/session has expired/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    openShare();
+
+    expect(screen.queryByText(/session has expired/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/send the link to this email/i)).toHaveValue('');
   });
 
   it('labels the recipient field for autofill', () => {
@@ -188,6 +222,11 @@ describe('ShareChip', () => {
     expect(await screen.findByText(/session has expired/i)).toBeInTheDocument();
   });
 
+  /**
+   * Asserts on "re-shown" rather than the shared closing sentence ("Reset it to get one you can
+   * copy."), because the token-null hint ends in that same sentence and a looser regex would pass
+   * without telling the two states apart.
+   */
   it('names the pre-V58 link problem on a 409 rather than offering a retry', async () => {
     mockEmail.mockRejectedValue(new ApiError('conflict', 409));
     render(<ShareChip read={{ ok: true, settings: settings() }} />);

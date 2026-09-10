@@ -141,6 +141,14 @@ export function ShareChip({ read }: ShareChipProps) {
       );
     }, 'Could not update what your link shows. Please try again.');
 
+  const openDialog = () => {
+    setError(null);
+    setEmailNote(null);
+    setRecipient('');
+    setCopied(false);
+    setOpen(true);
+  };
+
   const busy = phase === 'pending';
 
   const body = !read.ok ? (
@@ -239,7 +247,7 @@ export function ShareChip({ read }: ShareChipProps) {
 
   return (
     <>
-      <FilterChip label="Share" onToggle={() => setOpen(true)} ariaHasPopup="dialog" />
+      <FilterChip label="Share" onToggle={openDialog} ariaHasPopup="dialog" ariaExpanded={open} />
       <Modal open={open} onClose={() => setOpen(false)} variant="overlay" labelledBy="share-title">
         <div className={styles.content}>
           <div className={styles.header}>

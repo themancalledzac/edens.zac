@@ -22,7 +22,12 @@ export function ContactChip() {
 
   return (
     <>
-      <FilterChip label="Contact" onToggle={() => setOpen(true)} ariaHasPopup="dialog" />
+      <FilterChip
+        label="Contact"
+        onToggle={() => setOpen(true)}
+        ariaHasPopup="dialog"
+        ariaExpanded={open}
+      />
       <Modal open={open} onClose={close} variant="overlay" labelledBy="contact-title">
         <div className={styles.content}>
           <div className={styles.header}>

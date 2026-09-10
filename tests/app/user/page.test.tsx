@@ -19,6 +19,9 @@ jest.mock('@/app/lib/api/personal', () => ({
 jest.mock('@/app/utils/ssrViewport', () => ({
   resolveSsrViewport: jest.fn(),
 }));
+jest.mock('@/app/lib/api/share', () => ({
+  readShareSettings: jest.fn(),
+}));
 jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => ({
   __esModule: true,
   default: () => 'CollectionPageClient',
@@ -55,6 +58,7 @@ import {
   listFollowedCollectionIdsServer,
   listSavedImagesServer,
 } from '@/app/lib/api/personal';
+import { readShareSettings } from '@/app/lib/api/share';
 import UserPage from '@/app/user/page';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
@@ -142,6 +146,7 @@ function seedApis() {
     viewportHeight: 900,
     isMobile: false,
   });
+  (readShareSettings as jest.Mock).mockResolvedValue({ ok: true, settings: null });
 }
 
 /** Render the page for a given `?tab=` value. */
