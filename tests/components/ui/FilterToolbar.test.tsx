@@ -53,7 +53,6 @@ describe('FilterToolbar', () => {
         showDateSort
       />
     );
-    // Exact-string names, not regex: '^' and 'v' are regex-significant.
     expect(screen.getByRole('button', { name: 'Order ^' })).toBeInTheDocument();
     unmount();
 
@@ -182,8 +181,6 @@ describe('FilterToolbar', () => {
       expect(screen.queryByRole('button', { name: /hidden/i })).toBeNull();
     });
 
-    // Lit means the non-public collections ARE on screen — an admin's default. The chip reads as
-    // a statement about what is showing, not as an action.
     it('starts selected, because an admin sees everything by default', () => {
       renderToolbar({ showHiddenToggle: true, counts: { hidden: 3 } });
       expect(screen.getByText('3')).toBeInTheDocument();
@@ -300,7 +297,6 @@ describe('FilterToolbar', () => {
     it('renders a radiogroup of tiers instead of the raw slider by default', () => {
       renderTiers();
       expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
-      // The raw density number is meaningless to a visitor and runs backwards from photo size.
       expect(screen.queryByLabelText('Row density')).toBeNull();
     });
 
@@ -333,8 +329,6 @@ describe('FilterToolbar', () => {
   });
 
   it('renders the reset button always, disabled until a filter is active', () => {
-    // Always present in the DOM (so it never pops in/out and reflows the bar); only its
-    // disabled state -- and CSS visibility, which jsdom cannot assert -- change.
     const { rerender } = render(
       <FilterToolbar
         filterState={INITIAL_FILTER_STATE}
@@ -356,7 +350,6 @@ describe('FilterToolbar', () => {
   });
 
   it('disables the reset button for a two-state date sort with no other filters', () => {
-    // The always-on chronological Date sort must not surface an active reset button on load.
     renderToolbar({
       showDateSort: true,
       dateTwoState: true,
@@ -399,7 +392,6 @@ describe('FilterToolbar', () => {
     expect(screen.getByRole('button', { name: /jul 20/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /jul 21/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /jul 22/i })).toBeInTheDocument();
-    // Flat mode means no dropdown trigger for the dimension.
     expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
   });
 
@@ -493,13 +485,7 @@ describe('FilterToolbar', () => {
   });
 
   describe('layout stability (selection must never change which nodes are present)', () => {
-    // These assertions pin STRUCTURAL invariants only -- jsdom has no layout engine, so none of
-    // this measures real pixel widths. They exist to catch a regression of any of the three
-    // known reflow causes: a weight class swapping in on .active, the Order chip's trailing
-    // slot disappearing, or the reset button being conditionally unmounted.
-
     it('keeps the reset button mounted in the DOM across every active-filter state', () => {
-      // No filters at all.
       const { unmount: unmount1 } = render(
         <FilterToolbar
           filterState={INITIAL_FILTER_STATE}
@@ -511,7 +497,6 @@ describe('FilterToolbar', () => {
       expect(screen.getByRole('button', { name: /reset all filters/i })).toBeInTheDocument();
       unmount1();
 
-      // One filter active.
       const { unmount: unmount2 } = render(
         <FilterToolbar
           filterState={{ ...INITIAL_FILTER_STATE, highlyRatedOnly: true }}
@@ -523,7 +508,6 @@ describe('FilterToolbar', () => {
       expect(screen.getByRole('button', { name: /reset all filters/i })).toBeInTheDocument();
       unmount2();
 
-      // Several filters active at once.
       render(
         <FilterToolbar
           filterState={{
@@ -554,18 +538,13 @@ describe('FilterToolbar', () => {
           />
         );
         const chip = screen.getByRole('button', { name: /^order/i });
-        // The label text is always the fixed string "Order" ...
         expect(chip.firstChild?.textContent).toBe('Order');
-        // ... and the trailing glyph slot is always present as its own element, even when empty.
         expect(chip.querySelector('span')).not.toBeNull();
         unmount();
       }
     });
 
     it('never applies a font-weight-only active class to the Order chip or a dropdown trigger', () => {
-      // Regression guard for cause 1: .active and .dropdownTriggerActive must not carry a
-      // bold-weight-only signal back in -- distinguishing an active chip must rely on the
-      // foreground/background inversion (or opacity/background), not on width-changing weight.
       renderToolbar({
         showDateSort: true,
         dimensions: { selectedTags: { label: 'Tags', options: ['sunset'] } },
@@ -611,8 +590,6 @@ describe('FilterToolbar', () => {
     });
 
     it('renders the bar with sections alone, no facet dimensions needed', () => {
-      // This is what lets /user — which has no tags/people/cameras of its own — still show the
-      // shared bar, and with it the photo-size control.
       renderToolbar({
         sections: SECTIONS,
         activeSectionKey: 'collections',
@@ -683,8 +660,6 @@ describe('FilterToolbar', () => {
     });
 
     it('keeps sections independent of the reset button', () => {
-      // Reset clears FilterState. Sections are not in FilterState, so a reset must never
-      // deselect the current section or navigate away from it.
       const { onFilterChange } = renderToolbar({
         sections: SECTIONS,
         activeSectionKey: 'saved',
