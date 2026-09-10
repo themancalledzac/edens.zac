@@ -37,7 +37,7 @@ export interface UserSpaceProps {
 }
 
 /**
- * The four-section "user space" view, shared by `/user` (own space) and `/admin/users/[id]`
+ * The three-section "user space" view, shared by `/user` (own space) and `/admin/users/[id]`
  * (an admin looking at someone else's).
  *
  * Each section renders through `CollectionPageClient` — the same component every collection page
@@ -45,7 +45,7 @@ export interface UserSpaceProps {
  * content. The collection header, filter toolbar, density control, save hearts and grid therefore
  * come from the shared stack rather than a bespoke variant of it.
  *
- * The section switcher is not a component of its own: the four sections are passed to that same
+ * The section switcher is not a component of its own: the three sections are passed to that same
  * stack as `sections`, and render as navigating chips at the head of the shared filter bar. They
  * stay `?tab=` links rather than joining `FilterState` because each section's blocks come from a
  * different server read, and because the choice should stay shareable and back-button-walkable.

@@ -72,9 +72,6 @@ export type FilterChipProps = FilterChipButtonProps | FilterChipLinkProps;
  * by a search param, which are semantically links, not pressed toggles. Both variants share one
  * set of styles so a sectioned page's bar is visually indistinguishable from any other.
  *
- * The link variant also carries plain cross-page navigation — `AdminCard`'s four destinations on
- * `/user`. Those pass `scroll` so the jump behaves like a normal link; see the prop's docblock.
- *
  * 'unavailable' disables the button variant; the link variant degrades to an inert span, since a
  * disabled anchor is not a thing the platform provides.
  */

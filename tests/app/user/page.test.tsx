@@ -1,9 +1,12 @@
 /** @jest-environment node */
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 jest.mock('next/navigation', () => ({
   notFound: jest.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
+  }),
+  redirect: jest.fn(() => {
+    throw new Error('NEXT_REDIRECT');
   }),
 }));
 jest.mock('@/app/lib/api/auth', () => ({ meServer: jest.fn() }));
@@ -32,23 +35,14 @@ jest.mock('@/app/components/ContactForm/ContactForm', () => ({
     <span data-locked-email={lockedEmail} />
   ),
 }));
-// `useFollows` is stubbed to null because `UserSpaceGrid` calls it on every render; null is the
-// no-provider answer, which leaves the section counts exactly as the server built them.
 jest.mock('@/app/components/Personal/FollowsContext', () => ({
   FollowsProvider: ({ children }: { children: unknown }) => children,
   useFollows: () => null,
-}));
-jest.mock('@/app/components/Personal/AccountCard', () => ({
-  AccountCard: () => 'AccountCard',
 }));
 
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
-import { AccountCard } from '@/app/components/Personal/AccountCard';
-import { AdminCard } from '@/app/components/Personal/AdminCard';
-import { ShareCard } from '@/app/components/Personal/ShareCard';
-import { SendMessageButton } from '@/app/components/SendMessageButton/SendMessageButton';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
@@ -64,7 +58,13 @@ import {
 import UserPage from '@/app/user/page';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
-const authedPrincipal = { email: 'c@x.com', isAdmin: false, mfaSatisfied: true, passkeyCount: 0, galleries: [] };
+const authedPrincipal = {
+  email: 'c@x.com',
+  isAdmin: false,
+  mfaSatisfied: true,
+  passkeyCount: 0,
+  galleries: [],
+};
 
 /**
  * `id` is the content-table row id and `referencedCollectionId` the collection it points at, which
@@ -77,7 +77,6 @@ const collectionBlock = (id: number) => ({
   contentType: 'COLLECTION',
   referencedCollectionId: id * 100,
 });
-// isContentImage requires an `imageUrl` field, so the fixture supplies one.
 const imageBlock = (id: number) => ({
   id,
   contentType: 'IMAGE',
@@ -128,8 +127,6 @@ const sectionProps = (result: unknown): any => {
 };
 
 function seedApis() {
-  // Mirrors the real payload: `UserPageAssembler` builds this collection with no `id`, `isClient`
-  // or `isPasswordProtected` — it is assembled, not a `collection` row. See the no-id test below.
   (getUserPage as jest.Mock).mockResolvedValue({
     slug: 'user',
     title: 'Your Space',
@@ -165,24 +162,36 @@ describe('UserPage', () => {
     expect(getUserPage).not.toHaveBeenCalled();
   });
 
+  it('redirects an admin to /admin', async () => {
+    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
+    await expect(renderTab()).rejects.toThrow('NEXT_REDIRECT');
+    expect(redirect).toHaveBeenCalledWith('/admin');
+    expect(getUserPage).not.toHaveBeenCalled();
+  });
+
+  it('keeps the requested section on the admin redirect', async () => {
+    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
+    await expect(renderTab('images')).rejects.toThrow('NEXT_REDIRECT');
+    expect(redirect).toHaveBeenCalledWith('/admin?tab=images');
+  });
+
+  it('hands the shared bar the Share, Contact and Face / Touch ID chips', async () => {
+    const extras = gridProps(await renderTab()).toolbarExtras;
+    expect(extras.map((e: { key: string }) => e.key)).toEqual(['share', 'contact', 'passkey']);
+  });
+
   it('renders every section through the shared CollectionPageClient', async () => {
     const grid = gridProps(await renderTab());
     expect(grid).not.toBeNull();
     expect(grid.me).toBe(authedPrincipal);
   });
 
-  it('still hands SendMessageButton a lockedEmail now that it rides the rail', async () => {
-    // The button used to be a SIBLING of CollectionPageClient, which is the only reason this page
-    // wrapped itself in a MeProvider. It rides `railExtras` now, so the provider CollectionPageClient
-    // mounts from the `me` asserted here is the one that reaches it. Without a principal on that
-    // path the signed-in user gets a blank, editable email field instead of their own address.
-    const result = await renderTab();
-    expect(gridProps(result).me).toBe(authedPrincipal);
-
-    const markup = renderToStaticMarkup(
-      <MeProvider me={authedPrincipal}>{railExtras(result)}</MeProvider>
+  it('still hands the Contact chip a lockedEmail', async () => {
+    const contact = gridProps(await renderTab()).toolbarExtras.find(
+      (e: { key: string }) => e.key === 'contact'
     );
-    expect(markup).toContain('data-locked-email="c@x.com"');
+    const html = renderToStaticMarkup(<MeProvider me={authedPrincipal}>{contact.node}</MeProvider>);
+    expect(html).toContain('data-locked-email="c@x.com"');
   });
 
   it('mounts no MeProvider of its own — the collection stack already owns one', async () => {
@@ -242,8 +251,6 @@ describe('UserPage', () => {
   });
 
   it('keeps the collection header (cover + description) across sections', async () => {
-    // The header row is rendered by CollectionPageClient from `collectionData`, so every section
-    // hands it the same collection and swaps only `content` — no /user-only header render.
     for (const tab of [undefined, 'images', 'saved']) {
       const grid = gridProps(await renderTab(tab));
       expect(grid.collection.description).toBe('Photos I have been tagged in.');
@@ -253,9 +260,6 @@ describe('UserPage', () => {
   });
 
   it('opens every section at the shared default density', async () => {
-    // No /user-only density constants: each section inherits LAYOUT.defaultChunkSize, the density
-    // an ordinary collection page opens at, and the shared slider re-tunes it from there. The old
-    // bespoke value (14) could not even be represented on a slider whose maximum is 10.
     for (const tab of [undefined, 'images', 'saved']) {
       const { chunkSize } = gridProps(await renderTab(tab));
       expect(chunkSize).toBeUndefined();
@@ -283,8 +287,6 @@ describe('UserPage', () => {
   });
 
   it('gives every section a ?tab= link so the choice stays shareable', async () => {
-    // Sections are links rather than a FilterState dimension: each one's blocks come from a
-    // different server read, and the choice has to survive a copied URL and the back button.
     const { sections } = sectionProps(await renderTab('images'));
     expect(sections.map((s: { key: string; href: string }) => [s.key, s.href])).toEqual([
       ['collections', '/user?tab=collections'],
@@ -308,8 +310,6 @@ describe('UserPage', () => {
   });
 
   it('seeds the saves provider from the saved-images read (no separate ids fetch)', async () => {
-    // The full saved images read is the single source for both the Saved section and the seeded
-    // SavesProvider ids — there is no separate `/user/saves` ids-only read to duplicate it.
     (listSavedImagesServer as jest.Mock).mockResolvedValue({
       ok: true,
       items: [imageBlock(7), imageBlock(8)],
@@ -328,10 +328,6 @@ describe('UserPage', () => {
   });
 
   it('never synthesizes an id or client-gallery flags onto the user collection', async () => {
-    // Load-bearing: `canDownloadCollection` short-circuits on the missing id and `selectsEnabled`
-    // on the missing `isClient`, which is what keeps the download and Selects affordances inside
-    // CollectionPageClient switched off on /user. Adding an id to satisfy the CollectionModel type
-    // would arm both on a page that has no gallery to grant.
     for (const tab of [undefined, 'images', 'saved']) {
       const { collection } = gridProps(await renderTab(tab));
       expect(collection.id).toBeUndefined();
@@ -425,79 +421,5 @@ describe('UserPage — a failed personal read never claims the owner has nothing
     failSaved();
     (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: false, items: [] });
     expect(gridProps(await renderTab('saved'))).not.toBeNull();
-  });
-});
-
-/**
- * The Account and Admin cards ride in the collection header rail — the TEXT block leading the
- * first row, beside the cover — not in a slab below the grid. That rail is where this app already
- * puts what is *about* a collection (date, location, description, filter bar), so these assert on
- * the `railExtras` node handed to UserSpace rather than on the page's own children.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const railExtras = (result: unknown): any => findProps(result, UserSpace)?.railExtras ?? null;
-
-/**
- * The rail's occupants in render order, with the `{cond && <X />}` falses dropped.
- *
- * Order is the whole point of the contact button's placement: it leads for a client or follower,
- * for whom messaging the photographer is plausibly the most-used thing on the page, and trails for
- * the owner, for whom it is close to useless. A test on presence alone would not see that swap.
- */
-const railOrder = (result: unknown): unknown[] =>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ((railExtras(result)?.props?.children ?? []) as any[])
-    .filter(Boolean)
-    .map((node: { type: unknown }) => node.type);
-
-describe('UserPage — header rail cards', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    seedApis();
-  });
-
-  it('puts the Account card in the rail, not below the grid', async () => {
-    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
-    const result = await renderTab();
-
-    expect(findProps(railExtras(result), AccountCard)).not.toBeNull();
-    // Nothing account-shaped is left loose in the page body.
-    expect(findProps(result.props?.children, AccountCard)).toBeNull();
-  });
-
-  /**
-   * This card is one of the site's two navigations into /admin, alongside MenuDropdown's admin
-   * link: the hub used to be reachable because localhost redirected `/` to it, and that redirect
-   * is gone. It must gate on the real `isAdmin` principal — never an environment check — because
-   * it is meant to render in production too.
-   */
-  it('omits the Admin card for an ordinary signed-in user', async () => {
-    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
-    expect(findProps(railExtras(await renderTab()), AdminCard)).toBeNull();
-  });
-
-  it('puts the Admin card in the rail for an admin principal', async () => {
-    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
-    expect(findProps(railExtras(await renderTab()), AdminCard)).not.toBeNull();
-  });
-
-  it('links to the admin hub', async () => {
-    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
-    expect(renderToStaticMarkup(railExtras(await renderTab()))).toContain('href="/admin"');
-  });
-
-  it('leads the rail with the contact button for an ordinary signed-in user', async () => {
-    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
-    expect(railOrder(await renderTab())).toEqual([SendMessageButton, AccountCard, ShareCard]);
-  });
-
-  it('puts the contact button last for an admin, after the card they read messages through', async () => {
-    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
-    expect(railOrder(await renderTab())).toEqual([
-      AccountCard,
-      ShareCard,
-      AdminCard,
-      SendMessageButton,
-    ]);
   });
 });
