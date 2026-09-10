@@ -169,17 +169,11 @@ export default function CollectionPageClient({
    */
   const editLayerActive = editMode && editLayerMounted;
 
-  /**
-   * Clears the mounted flag on exit so a later re-entry paints the public fallback grid again while
-   * the edit chunk streams, exactly as the first entry does.
-   */
-  const clearMountedFlagOnExit = () => {
+  useEffect(() => {
     if (!editMode) {
       setEditLayerMounted(false);
     }
-  };
-
-  useEffect(clearMountedFlagOnExit, [editMode]);
+  }, [editMode]);
 
   const { initialCriteria, syncToUrl } = useFilterUrlState();
 
@@ -264,8 +258,9 @@ export default function CollectionPageClient({
    * stale payload in flight (pre-#132 cache entry, or a deploy-order slip): the grant proves the
    * collection is a client gallery, so Selects are being withheld from someone entitled to them.
    */
-  const hasStaleClientPayload =
-    collection.isClient === undefined && findMembership(me, collection.id);
+  const hasStaleClientPayload = Boolean(
+    collection.isClient === undefined && findMembership(me, collection.id)
+  );
 
   if (hasStaleClientPayload) {
     logger.warn('CollectionPageClient', 'Membership held on a payload missing isClient', {
@@ -587,7 +582,7 @@ export default function CollectionPageClient({
    * hides the photo-size control on an empty section (an empty Saved tab, the empty Admin section)
    * rather than offering a control with nothing to resize.
    */
-  const hasRenderableContent = (collection.content?.length ?? 0) > 0;
+  const hasRenderableContent = rawContent.length > 0;
 
   const filterContextValue = useMemo(
     () => ({

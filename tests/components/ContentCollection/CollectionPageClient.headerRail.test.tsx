@@ -14,6 +14,7 @@
 import '@testing-library/jest-dom';
 
 import { render, screen } from '@testing-library/react';
+import type { useEffect as useEffectType } from 'react';
 
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
@@ -43,13 +44,44 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-jest.mock('next/dynamic', () => ({
-  __esModule: true,
-  default: () =>
-    function DynamicStub() {
-      return null;
+/**
+ * Mirrors `EditModeLayer`'s one behavior this suite cares about: content it discovers flows back
+ * through `onLiveContentChange`. It passes the seed straight through when the collection already has
+ * content, and manufactures one item when the seed is empty, modeling an upload landing in a
+ * collection that started with nothing.
+ */
+jest.mock('next/dynamic', () => {
+  const { useEffect } = jest.requireActual('react') as { useEffect: typeof useEffectType };
+  const DISCOVERED_CONTENT: unknown[] = [
+    {
+      id: 900,
+      contentType: 'IMAGE',
+      orderIndex: 0,
+      imageUrl: 'https://cdn.example/live-upload.jpg',
+      imageWidth: 1600,
+      imageHeight: 1067,
+      visible: true,
+      locations: [],
     },
-}));
+  ];
+  return {
+    __esModule: true,
+    default: () =>
+      function DynamicStub({
+        collection,
+        onLiveContentChange,
+      }: {
+        collection?: { content?: unknown[] };
+        onLiveContentChange?: (content: unknown[]) => void;
+      }) {
+        useEffect(() => {
+          const seeded = collection?.content ?? [];
+          onLiveContentChange?.(seeded.length > 0 ? seeded : DISCOVERED_CONTENT);
+        }, [collection, onLiveContentChange]);
+        return null;
+      },
+  };
+});
 
 const SECTIONS: ToolbarSection[] = [
   { key: 'collections', label: 'Collections', count: 12, href: '/user?tab=collections' },
@@ -203,6 +235,7 @@ describe('CollectionPageClient — header rail', () => {
         activeSectionKey="a"
       />
     );
+    expect(screen.getByRole('link', { name: 'A' })).toBeInTheDocument();
     expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
   });
 });
@@ -307,6 +340,26 @@ describe('CollectionPageClient — the landing page keeps the filter bar while c
         {...ssr}
         editMode
         alwaysShowFilterBar
+      />
+    );
+    expect(screen.getByLabelText('Row density')).toBeInTheDocument();
+  });
+});
+
+/**
+ * `rawContent` — the seed merged with EditModeLayer's live content — is what the density gate must
+ * read, not the initial server seed. A collection that started empty and picked up its first upload
+ * mid-session should offer the density control immediately, not after a reload.
+ */
+describe('CollectionPageClient — density control follows live content, not the server seed', () => {
+  it('shows the density control once live content fills a section that started empty', () => {
+    render(
+      <CollectionPageClient
+        collection={bareCollection([])}
+        {...ssr}
+        sections={SECTIONS}
+        activeSectionKey="collections"
+        editMode
       />
     );
     expect(screen.getByLabelText('Row density')).toBeInTheDocument();

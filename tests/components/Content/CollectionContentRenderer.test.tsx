@@ -20,12 +20,12 @@ const pushMock = jest.fn();
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: pushMock }) }));
 jest.mock('@/app/hooks/useParallax', () => ({ useParallax: () => ({ current: null }) }));
 
-// Collection filter context is not exercised by these tests (no test switches it on), so it
-// always resolves to null (public, non-filter-bar rendering).
+/** No test here switches on the collection filter context, so it always resolves to null (public, non-filter-bar rendering). */
 jest.mock('@/app/components/ContentCollection/CollectionFilterContext', () => ({
   useCollectionFilter: () => null,
 }));
-// The FilterToolbar pulls in a deep dependency tree irrelevant to these tests; stub it.
+
+/** The FilterToolbar pulls in a deep dependency tree irrelevant to these tests; stub it. */
 jest.mock('@/app/components/ui/FilterToolbar/FilterToolbar', () => ({
   FilterToolbar: () => null,
 }));
