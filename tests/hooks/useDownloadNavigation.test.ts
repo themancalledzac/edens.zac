@@ -15,29 +15,27 @@
 import { act, renderHook } from '@testing-library/react';
 
 import { useDownloadNavigation } from '@/app/hooks/useDownloadNavigation';
+import { navigateTo } from '@/app/utils/navigateTo';
+
+jest.mock('@/app/utils/navigateTo', () => ({ navigateTo: jest.fn() }));
 
 const RESET_DELAY_MS = 4000;
 
 describe('useDownloadNavigation', () => {
-  const originalLocation = window.location;
-
   beforeEach(() => {
     jest.useFakeTimers();
-    // jsdom's location.href is not assignable; swap in a plain object we can read back.
-    delete (window as unknown as { location?: Location }).location;
-    (window as unknown as { location: { href: string } }).location = { href: '' };
+    (navigateTo as jest.Mock).mockClear();
   });
 
   afterEach(() => {
     jest.useRealTimers();
-    (window as unknown as { location: Location }).location = originalLocation;
   });
 
   it('is idle before anything is downloaded', () => {
     const { result } = renderHook(() => useDownloadNavigation(jest.fn()));
 
     expect(result.current.preparing).toBeNull();
-    expect(window.location.href).toBe('');
+    expect(navigateTo).not.toHaveBeenCalled();
   });
 
   it('navigates to the URL and marks the format in flight', () => {
@@ -45,7 +43,7 @@ describe('useDownloadNavigation', () => {
 
     act(() => result.current.startDownload('/api/download/42?format=web', 'web'));
 
-    expect(window.location.href).toBe('/api/download/42?format=web');
+    expect(navigateTo).toHaveBeenLastCalledWith('/api/download/42?format=web');
     expect(result.current.preparing).toBe('web');
   });
 

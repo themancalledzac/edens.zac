@@ -1,6 +1,12 @@
 /**
- * Unit tests for core.ts
- * Tests API utilities including error handling and fetch functions
+ * @jest-environment node
+ *
+ * Unit tests for core.ts — API utilities, error handling and the fetch wrappers.
+ *
+ * Runs in the NODE environment because several cases drive `getApiBaseUrl`'s server branch by
+ * making `window` undefined, and jsdom 26 makes `globalThis.window` non-configurable — the
+ * `Object.defineProperty` calls below throw there. Nothing in this file touches the DOM, so the
+ * node environment is also the honest one: it is where the server branch actually runs.
  */
 
 import {
