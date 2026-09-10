@@ -170,6 +170,7 @@ describe('FilterChip button passthroughs', () => {
     const button = screen.getByRole('button', { name: 'Year' });
     expect(button).toHaveAttribute('aria-expanded', 'false');
     expect(button).toHaveAttribute('aria-haspopup', 'true');
+    expect(button).not.toHaveAttribute('aria-pressed');
   });
 
   it('exposes the button element through ref', () => {
