@@ -49,8 +49,8 @@ export interface UserSpaceProps {
  * Their presence is also what makes the bar render here at all — a user space has no facet
  * dimensions of its own — which is how it picks up the photo-size control and the rest of the bar.
  *
- * No section passes a `chunkSize`, so each starts at `LAYOUT.defaultChunkSize` — the density an
- * ordinary collection page opens at, and the value the bar's Medium photo-size tier selects.
+ * No section passes a `chunkSize`, so each starts at `LAYOUT.defaultChunkSize`, the density an
+ * ordinary collection page opens at.
  *
  * ## Why admin mode passes `me={null}`
  *

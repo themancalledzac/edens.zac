@@ -6,6 +6,7 @@ import {
   MAX_FLAT_DATE_CHIPS,
   MAX_FLAT_YEAR_CHIPS,
 } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { DENSITY_TIERS } from '@/app/constants';
 import { INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import { dayLabels } from '@/app/utils/collectionDates';
 
@@ -277,11 +278,11 @@ describe('FilterToolbar', () => {
   });
 
   describe('photo-size tiers (default visitor variant)', () => {
-    const TIERS = [
-      { key: 'large', label: 'Large photos', value: 2 },
-      { key: 'medium', label: 'Medium photos', value: 4 },
-      { key: 'small', label: 'Small photos', value: 7 },
-    ];
+    const TIERS = DENSITY_TIERS.map(tier => ({
+      key: tier.key,
+      label: tier.label,
+      value: tier.desktop,
+    }));
 
     function renderTiers(overrides: Partial<Props> = {}) {
       const onDensityTierSelect = jest.fn();
@@ -321,7 +322,7 @@ describe('FilterToolbar', () => {
     it('emits the tier value verbatim, bypassing the viewport-scaling handler', () => {
       const { onDensityTierSelect } = renderTiers();
       fireEvent.click(screen.getByRole('radio', { name: 'Small photos' }));
-      expect(onDensityTierSelect).toHaveBeenCalledWith(7);
+      expect(onDensityTierSelect).toHaveBeenCalledWith(DENSITY_TIERS[2].desktop);
     });
 
     it('highlights the nearest tier for an off-tier stored density without snapping it', () => {

@@ -23,9 +23,6 @@ export const LAYOUT = {
   desktopPadding: 25.6, // 0.8rem each side at ≥768px (0.8 * 16px * 2 = 25.6px)
   mobilePadding: 0, // mobile full-bleed, edge-to-edge
 
-  // Content grid
-  // Default density, matching the 'medium' DENSITY_TIERS preset. Feeds
-  // rowWidth = round(chunkSize * DENSITY_ROW_WIDTH_MULTIPLIER).
   defaultChunkSize: 4,
 
   minDensity: 1,
@@ -78,13 +75,13 @@ export const DENSITY_ROW_WIDTH_MULTIPLIER = 2.1;
  * photo size ≈ constant ÷ density. Density 2 yields large photos, density 7 small ones — which is
  * why this control must never be labelled with the raw number or the word "Density".
  *
- * The values land at roughly 2 / 4 / 7 photos across (rowWidth ÷ ~2.108, the width-cost of a normal
- * 3★ landscape). Medium reproduces the historical default exactly. `desktop` and `mobile` are
- * values on their respective density scales — see {@link toMobileDensity}.
+ * The values land at roughly 2 / 5 / 7 photos across (rowWidth ÷ ~2.108, the width-cost of a normal
+ * 3★ landscape). `desktop` and `mobile` are values on their respective density scales — see
+ * {@link toMobileDensity}.
  */
 export const DENSITY_TIERS = [
   { key: 'large', label: 'Large photos', desktop: 2, mobile: 1 },
-  { key: 'medium', label: 'Medium photos', desktop: 4, mobile: 2 },
+  { key: 'medium', label: 'Medium photos', desktop: 5, mobile: 2 },
   { key: 'small', label: 'Small photos', desktop: 7, mobile: 4 },
 ] as const;
 
