@@ -5,23 +5,23 @@
  * When updating layout values, change BOTH locations.
  */
 
-// =============================================================================
-// LAYOUT & DIMENSIONS
-// =============================================================================
-
 export const BREAKPOINTS = {
   mobile: 768,
   tablet: 1024,
   desktop: 1280,
 } as const;
 
+/**
+ * Layout dimensions shared by desktop and mobile. `pageMaxWidth` feeds the CSS custom property
+ * `--page-max-width`. `desktopPadding` (0.8rem per side, ≥768px) and `gridGap`/`mobileGridGap`
+ * (0.8rem/0.4rem) mirror `--gap-box-desktop`/`--gap-box-mobile` in globals.css — keep both files
+ * in sync when either changes.
+ */
 export const LAYOUT = {
-  // Maximum widths
-  pageMaxWidth: 1300, // CSS: --page-max-width
+  pageMaxWidth: 1300,
 
-  // Padding values (in pixels)
-  desktopPadding: 25.6, // 0.8rem each side at ≥768px (0.8 * 16px * 2 = 25.6px)
-  mobilePadding: 0, // mobile full-bleed, edge-to-edge
+  desktopPadding: 25.6,
+  mobilePadding: 0,
 
   defaultChunkSize: 4,
 
@@ -29,42 +29,47 @@ export const LAYOUT = {
   maxDensityDesktop: 10,
   maxDensityMobile: 5,
 
-  // Grid gap between items (CSS: 0.4rem from each adjacent item = 0.8rem total)
-  // This is the visual gap between adjacent items in a row or stacked column
-  gridGap: 12.8, // 0.8rem = 12.8px (0.4rem padding on each side)
-  mobileGridGap: 6.4, // 0.4rem = 6.4px (half of desktop gap)
+  gridGap: 12.8,
+  mobileGridGap: 6.4,
 
-  // Slot-based layout system
-  // Slot width determines how many abstract "slots" fit in a row
-  // Desktop: 8 slots for prominence-based layout (finer-grained weight distribution)
-  // Mobile: 3 slots for prominence-based layout (coarser but rating-aware)
+  /**
+   * Abstract row "slots" for the prominence-based layout. Desktop uses 8 for finer-grained
+   * weight distribution; mobile uses 3 for a coarser but still rating-aware split.
+   */
   desktopSlotWidth: 8,
   mobileSlotWidth: 3,
 
-  // Header row constraints (cover image + description block)
-  headerRowHeightRatio: 0.38, // Max row height as ratio of componentWidth (e.g., 0.38 = 38%)
-  headerCoverMinRatio: 0.3, // Minimum cover image width as ratio of row width
-  headerCoverMaxRatio: 0.5, // Maximum cover image width as ratio of row width
+  /**
+   * Header row (cover image + description block) constraints. `headerRowHeightRatio` caps row
+   * height as a share of `componentWidth`. `headerCoverMinRatio`/`headerCoverMaxRatio` bound the
+   * cover image's width as a share of row width.
+   */
+  headerRowHeightRatio: 0.38,
+  headerCoverMinRatio: 0.3,
+  headerCoverMaxRatio: 0.5,
 
-  // SSR fallback viewport, picked by UA detection in resolveSsrViewport().
-  // Desktop width is picked above pageMaxWidth so getContentWidth() returns
-  // the capped value any viewport ≥ pageMaxWidth would measure.
+  /**
+   * SSR fallback viewport used by `resolveSsrViewport()`. Desktop width is set above
+   * `pageMaxWidth` so `getContentWidth()` returns the same capped value any viewport at or
+   * beyond `pageMaxWidth` would measure.
+   */
   ssrDefaultViewportWidthDesktop: 1440,
   ssrDefaultViewportWidthMobile: 390,
   ssrDefaultViewportHeightDesktop: 900,
   ssrDefaultViewportHeightMobile: 844,
-  // Component keeps the server-side layout as long as the measured
-  // contentWidth is within this many px of the server fallback. Beyond it,
-  // the client recomputes once against the real viewport.
+  /**
+   * Keeps the server-rendered layout as long as measured `contentWidth` is within this many px
+   * of the server fallback; beyond it, the client recomputes once against the real viewport.
+   */
   ssrRecomputeToleranceWidth: 64,
 } as const;
 
-// Density → row-width multiplier: rowWidth = round(chunkSize × this). The packing
-// cost is the width-cost Hv = √(P·AR) (orientation-agnostic), so K is calibrated
-// against Hv, not cv. At K below, a default 4-chunk collection of normal 3★
-// landscapes (Hv ≈ 2.108) packs the same 4-per-row it did under the old cv scale
-// (cv 2.5, rowWidth 10). Used by contentLayout.ts (desktop + mobile) and referenced
-// by the calibration test so code and test never drift.
+/**
+ * Row-width multiplier: `rowWidth = round(chunkSize × this)`. Calibrated against the width-cost
+ * `Hv = √(P·AR)` so a default 4-chunk collection of normal 3★ landscapes (`Hv ≈ 2.108`) packs
+ * 4-per-row, matching the old `cv`-based scale. Used by `contentLayout.ts` and pinned by a
+ * calibration test so code and test can't drift apart.
+ */
 export const DENSITY_ROW_WIDTH_MULTIPLIER = 2.1;
 
 /**
@@ -102,8 +107,10 @@ export const nearestDensityTier = (density: number, isMobile: boolean): DensityT
     return Math.abs(scale(tier) - density) < Math.abs(scale(closest) - density) ? tier : closest;
   }).key;
 
-// Per-rating base weight feeding the prominence value P = BASE_WEIGHT[rating] ×
-// prominenceFactor(extremeness). Higher-rated images get more visual weight.
+/**
+ * Per-rating base weight feeding the prominence value `P = BASE_WEIGHT[rating] ×
+ * prominenceFactor(extremeness)`. Higher-rated images get more visual weight.
+ */
 export const BASE_WEIGHT: Record<number, number> = {
   5: 5.0,
   4: 3.5,
@@ -113,22 +120,21 @@ export const BASE_WEIGHT: Record<number, number> = {
   0: 1.0,
 };
 
-// Prominence extremeness ramp: above EXTREMENESS_RAMP_START the prominence factor climbs
-// linearly so very wide OR very tall images get extra weight. Keyed on EXTREMENESS = max(AR, 1/AR).
+/**
+ * Prominence extremeness ramp: above `EXTREMENESS_RAMP_START` the prominence factor climbs
+ * linearly so very wide or very tall images get extra weight, keyed on `EXTREMENESS = max(AR, 1/AR)`.
+ */
 export const EXTREMENESS_RAMP_START = 2.0;
 export const EXTREMENESS_RAMP_BASE = 1.4;
 export const EXTREMENESS_RAMP_SLOPE = 0.6;
 
-// =============================================================================
-// INTERACTION & TIMING
-// =============================================================================
-
 export const INTERACTION = {
-  swipeThreshold: 50, // Minimum px to trigger swipe gesture
+  swipeThreshold: 50,
 } as const;
 
+/** `revalidateCache` is in seconds (3600 = 1 hour) for Next.js's fetch/cache revalidation. */
 export const TIMING = {
-  revalidateCache: 3600, // seconds (1 hour) for Next.js cache
+  revalidateCache: 3600,
 } as const;
 
 /**
@@ -140,10 +146,6 @@ export const TIMING = {
  * changed distribution and a `preconnect` pointing at a host nothing then requests.
  */
 export const CDN_ORIGIN = 'https://d2qp8h5pbkohe6.cloudfront.net';
-
-// =============================================================================
-// IMAGE DEFAULTS
-// =============================================================================
 
 /**
  * Image render defaults. `defaultWidth`/`defaultHeight` are the fallback dimensions when an image
@@ -163,19 +165,15 @@ export const IMAGE = {
   quality: 65,
 } as const;
 
-// =============================================================================
-// PAGINATION
-// =============================================================================
-
+/**
+ * Page sizes per surface: `defaultPageSize` mirrors the API's own default, `collectionPageSize` is
+ * the initial load for collection pages, and `homePageSize` caps cards shown on the home page.
+ */
 export const PAGINATION = {
-  defaultPageSize: 50, // Most common - API default
-  collectionPageSize: 35, // Initial load for collection pages
-  homePageSize: 12, // Home page card limit
+  defaultPageSize: 50,
+  collectionPageSize: 35,
+  homePageSize: 12,
 } as const;
-
-// =============================================================================
-// HELPER FUNCTIONS
-// =============================================================================
 
 /**
  * Calculate content width based on viewport width and mobile state

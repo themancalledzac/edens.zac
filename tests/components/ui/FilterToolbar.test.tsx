@@ -326,7 +326,6 @@ describe('FilterToolbar', () => {
     });
 
     it('highlights the nearest tier for an off-tier stored density without snapping it', () => {
-      // A collection stored at 6 keeps laying out at 6; the bar only highlights Small.
       const { onDensityTierSelect } = renderTiers({ density: 6, activeDensityTier: 'small' });
       expect(screen.getByRole('radio', { name: 'Small photos' })).toBeChecked();
       expect(onDensityTierSelect).not.toHaveBeenCalled();
