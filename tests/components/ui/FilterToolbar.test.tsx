@@ -763,6 +763,10 @@ describe('FilterToolbar active-filter summary', () => {
 describe('FilterToolbar year chips', () => {
   const threeYears = { selectedYears: { label: 'Year', options: ['2019', '2024', '2026'] } };
 
+  it('collapses four years into the Year dropdown and keeps three flat', () => {
+    expect(MAX_FLAT_YEAR_CHIPS).toBe(3);
+  });
+
   it('renders each year as its own flat chip', () => {
     renderToolbar({ dimensions: threeYears });
     for (const year of ['2019', '2024', '2026']) {

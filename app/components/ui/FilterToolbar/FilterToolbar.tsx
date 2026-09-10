@@ -168,10 +168,10 @@ const ORDER_GLYPHS: Record<FilterState['dateSortDirection'], string> = {
 export const MAX_FLAT_DATE_CHIPS = 5;
 
 /**
- * The same collapse threshold for the Year dimension, set higher because a year chip is four
- * characters where a day chip is a formatted label several times as wide.
+ * The Year dimension's collapse threshold: three or fewer years stay flat chips, four or more
+ * become the single-select "Year" dropdown, which closes on select.
  */
-export const MAX_FLAT_YEAR_CHIPS = 8;
+export const MAX_FLAT_YEAR_CHIPS = 3;
 
 /**
  * A dimension that should render as flat chips rather than a dropdown: present, non-empty, and
