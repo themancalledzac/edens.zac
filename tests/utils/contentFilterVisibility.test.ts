@@ -1,5 +1,6 @@
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import {
+  applyFollowedScope,
   applyVisibilityScope,
   countNonListedCollections,
   hasVisibilityData,
@@ -75,5 +76,51 @@ describe('countNonListedCollections', () => {
     const page = [listed, unlisted, hidden, unknown];
     const kept = applyVisibilityScope(page, false);
     expect(page.length - kept.length).toBe(countNonListedCollections(page));
+  });
+});
+
+/**
+ * The follow scope, the second of the two view scopes applied upstream of the filter pipeline.
+ *
+ * `createCollectionContent(n)` sets `referencedCollectionId` to `n * 100`, deliberately unequal to
+ * `id` — which is what makes these assertions able to catch a scope keyed on the wrong field.
+ */
+describe('applyFollowedScope', () => {
+  const followed = new Set([100, 300]);
+
+  it('passes content straight through while followedOnly is off', () => {
+    const content = [listed, unlisted, hidden];
+    expect(applyFollowedScope(content, false, followed)).toBe(content);
+  });
+
+  it('narrows to the followed collections when switched on', () => {
+    expect(idsOf(applyFollowedScope([listed, unlisted, hidden], true, followed))).toEqual([1, 3]);
+  });
+
+  /**
+   * Keyed on the collection entity, not the block. Collection 1's block `id` is 1 while the id it
+   * references is 100; a scope reading `id` would match neither and empty the list.
+   */
+  it('matches on referencedCollectionId rather than the block id', () => {
+    expect(idsOf(applyFollowedScope([listed], true, new Set([100])))).toEqual([1]);
+    expect(idsOf(applyFollowedScope([listed], true, new Set([1])))).toEqual([]);
+  });
+
+  it('never drops non-collection blocks', () => {
+    const image = createImageContent(10);
+    expect(idsOf(applyFollowedScope([image, unlisted], true, followed))).toEqual([10]);
+  });
+
+  /**
+   * An unknown follow set withholds the narrowing rather than treating it as empty. The chip is
+   * gated on the same condition, so this is the belt to that braces.
+   */
+  it('passes content through when the follow set is unknown', () => {
+    const content = [listed, unlisted];
+    expect(applyFollowedScope(content, true)).toBe(content);
+  });
+
+  it('returns nothing when the viewer follows none of them', () => {
+    expect(idsOf(applyFollowedScope([listed, unlisted], true, new Set([999])))).toEqual([]);
   });
 });

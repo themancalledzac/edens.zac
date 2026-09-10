@@ -87,12 +87,13 @@ export interface UserSpaceProps {
  *
  * ## Why the grid goes through UserSpaceGrid
  *
- * The Following chip's count is server-rendered from the followed-id list, while unfollowing is a
- * client-only optimistic update in `FollowsProvider`. This is a Server Component and cannot watch
- * that change, so the grid renders through {@link UserSpaceGrid}, a thin client component below the
- * provider that adds the difference between the ids this render was built from and the provider's
- * live set. Without it the chip keeps the pre-unfollow number until the next server render. The
- * count still comes from the id list; nothing recounts the rendered tiles.
+ * Collections is one list of every collection the viewer is associated with — the ones an admin
+ * granted and the ones the viewer followed — assembled server-side. Following is a client-only
+ * optimistic update in `FollowsProvider`, and this is a Server Component that cannot watch it, so
+ * the grid renders through {@link UserSpaceGrid}, a thin client component below the provider. It
+ * reconciles the badge and drops tiles the viewer has just unfollowed, and it supplies the follow
+ * set that arms the toolbar's Following filter. Without it, an unfollow would leave both the count
+ * and the tile in place until the next server render.
  *
  * Invariant: the backend's `UserPageAssembler` builds this collection with no `id`,
  * `isClient` or `isPasswordProtected` (it is assembled, not a `collection` row). That absence is
@@ -109,7 +110,14 @@ export function UserSpace({
   ssrViewport,
   railExtras = null,
 }: UserSpaceProps) {
-  const { collection, sections, followedCollectionIds, savedImageIds, visibleKeys } = data;
+  const {
+    collection,
+    sections,
+    followedCollectionIds,
+    savedImageIds,
+    grantedCollectionIds,
+    visibleKeys,
+  } = data;
   const active = sections[activeKey];
 
   // From the data, not TAB_KEYS: a share recipient is offered Collections and Images only, since
@@ -143,7 +151,7 @@ export function UserSpace({
       sections={toolbarSections}
       activeSectionKey={activeKey}
       railExtras={railExtras}
-      serverFollowedIds={followedCollectionIds}
+      grantedCollectionIds={grantedCollectionIds}
     />
   );
 

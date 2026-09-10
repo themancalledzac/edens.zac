@@ -27,6 +27,10 @@ export interface CollectionInfoOptions {
   showHiddenToggle: boolean;
   /** How many collections are non-public; badges the Hidden chip. */
   hiddenCount: number;
+  /** Whether to render the Following toggle — true only when the viewer's follow set is known. */
+  showFollowingToggle: boolean;
+  /** How many collections on this page the viewer follows; badges the Following chip. */
+  followingCount: number;
 }
 
 /** Subset of options available after current filters are applied (for grey-out logic). null = no active filters. */

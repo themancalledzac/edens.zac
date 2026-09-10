@@ -69,7 +69,17 @@ import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 const authedPrincipal = { email: 'c@x.com', isAdmin: false, mfaSatisfied: true, galleries: [] };
 
-const collectionBlock = (id: number) => ({ id, contentType: 'COLLECTION' });
+/**
+ * `id` is the content-table row id and `referencedCollectionId` the collection it points at, which
+ * a real granted block always carries. They are deliberately different numbers here: anything
+ * keyed on the collection entity must read the second, and a fixture that set them equal would let
+ * a lookup on the wrong field pass.
+ */
+const collectionBlock = (id: number) => ({
+  id,
+  contentType: 'COLLECTION',
+  referencedCollectionId: id * 100,
+});
 // isContentImage requires an `imageUrl` field, so the fixture supplies one.
 const imageBlock = (id: number) => ({
   id,
@@ -86,10 +96,10 @@ const gifBlock = (id: number) => ({ id, contentType: 'GIF' });
  * component with no hooks, so calling it here is safe, and it keeps these assertions end-to-end:
  * they still check the props the shared stack actually receives, not just what the page forwards.
  *
- * The walk stops at `UserSpaceGrid`, the client boundary that re-derives the Following chip's
- * count from live follow state and forwards the rest to `CollectionPageClient` verbatim. It uses
- * hooks, so it cannot be invoked the way `UserSpace` is; `UserSpace.followCount.test.tsx` renders
- * it for real and covers what comes out the other side.
+ * The walk stops at `UserSpaceGrid`, the client boundary that re-derives the Collections count
+ * from live follow state, prunes unfollowed tiles, and forwards the rest to `CollectionPageClient`
+ * verbatim. It uses hooks, so it cannot be invoked the way `UserSpace` is;
+ * `UserSpace.followCount.test.tsx` renders it for real and covers what comes out the other side.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function findProps(node: any, type: unknown): any {
@@ -201,21 +211,26 @@ describe('UserPage', () => {
     expect(grid.collection.content.map((b: { id: number }) => b.id)).toEqual([9]);
   });
 
-  it('wraps followed collections as COLLECTION blocks keyed by referencedCollectionId', async () => {
+  /**
+   * `referencedCollectionId` is what `convertCollectionContentToParallax` carries through as the
+   * card's `collectionId` — the id the follow toggle persists against. Collection 8 is in the
+   * catalog but unfollowed, so hydration is a filter over the catalog rather than a copy of it.
+   */
+  it('merges followed collections into Collections as COLLECTION blocks', async () => {
     (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: true, items: [7] });
     (getAllCollections as jest.Mock).mockResolvedValue([
       { id: 7, slug: 'seven', title: 'Seven' },
       { id: 8, slug: 'eight', title: 'Eight' },
     ]);
-    const grid = gridProps(await renderTab('following'));
-    expect(grid.collection.content).toHaveLength(1);
-    // `referencedCollectionId` is what convertCollectionContentToParallax carries through as the
-    // card's `collectionId` — the id the follow toggle persists against.
-    expect(grid.collection.content[0]).toMatchObject({
+    const grid = gridProps(await renderTab('collections'));
+    const followed = grid.collection.content.filter((b: { slug?: string }) => b.slug === 'seven');
+    expect(followed).toHaveLength(1);
+    expect(followed[0]).toMatchObject({
       contentType: 'COLLECTION',
       referencedCollectionId: 7,
       slug: 'seven',
     });
+    expect(grid.collection.content.some((b: { slug?: string }) => b.slug === 'eight')).toBe(false);
   });
 
   it('falls back to Collections for an unknown ?tab=', async () => {
@@ -232,7 +247,7 @@ describe('UserPage', () => {
   it('keeps the collection header (cover + description) across sections', async () => {
     // The header row is rendered by CollectionPageClient from `collectionData`, so every section
     // hands it the same collection and swaps only `content` — no /user-only header render.
-    for (const tab of [undefined, 'images', 'saved', 'following']) {
+    for (const tab of [undefined, 'images', 'saved']) {
       const grid = gridProps(await renderTab(tab));
       expect(grid.collection.description).toBe('Photos I have been tagged in.');
       expect(grid.collection.coverImage.imageUrl).toBe('https://cdn/cover.jpg');
@@ -244,7 +259,7 @@ describe('UserPage', () => {
     // No /user-only density constants: each section inherits LAYOUT.defaultChunkSize, the density
     // an ordinary collection page opens at, and the shared slider re-tunes it from there. The old
     // bespoke value (14) could not even be represented on a slider whose maximum is 10.
-    for (const tab of [undefined, 'images', 'saved', 'following']) {
+    for (const tab of [undefined, 'images', 'saved']) {
       const { chunkSize } = gridProps(await renderTab(tab));
       expect(chunkSize).toBeUndefined();
     }
@@ -252,16 +267,20 @@ describe('UserPage', () => {
     expect(LAYOUT.defaultChunkSize).toBeLessThanOrEqual(LAYOUT.maxDensityDesktop);
   });
 
-  it('labels all four sections with their counts regardless of the active section', async () => {
+  /**
+   * Collections badges 3 from the Saved tab, which never read the catalog: two granted blocks plus
+   * followed collection 7. The count is a union of the two id sets, so it is right on a tab that
+   * could not hydrate the followed half.
+   */
+  it('labels all three sections with their counts regardless of the active section', async () => {
     (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: true, items: [imageBlock(9)] });
     (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: true, items: [7] });
     (getAllCollections as jest.Mock).mockResolvedValue([{ id: 7, slug: 'seven' }, { id: 8 }]);
     const { sections, activeKey } = sectionProps(await renderTab('saved'));
     expect(sections.map((s: { label: string; count: number }) => [s.label, s.count])).toEqual([
-      ['Collections', 2],
+      ['Collections', 3],
       ['Images', 2],
       ['Saved', 1],
-      ['Following', 1],
     ]);
     expect(activeKey).toBe('saved');
   });
@@ -274,7 +293,6 @@ describe('UserPage', () => {
       ['collections', '/user?tab=collections'],
       ['images', '/user?tab=images'],
       ['saved', '/user?tab=saved'],
-      ['following', '/user?tab=following'],
     ]);
   });
 
@@ -283,7 +301,7 @@ describe('UserPage', () => {
       [undefined, 'collections'],
       ['images', 'images'],
       ['saved', 'saved'],
-      ['following', 'following'],
+      ['following', 'collections'],
       ['nope', 'collections'],
     ] as const) {
       const { sections, activeKey } = sectionProps(await renderTab(tab));
@@ -317,7 +335,7 @@ describe('UserPage', () => {
     // on the missing `isClient`, which is what keeps the download and Selects affordances inside
     // CollectionPageClient switched off on /user. Adding an id to satisfy the CollectionModel type
     // would arm both on a page that has no gallery to grant.
-    for (const tab of [undefined, 'images', 'saved', 'following']) {
+    for (const tab of [undefined, 'images', 'saved']) {
       const { collection } = gridProps(await renderTab(tab));
       expect(collection.id).toBeUndefined();
       expect(collection.isClient).toBeUndefined();
@@ -326,7 +344,8 @@ describe('UserPage', () => {
   });
 
   it('still renders a section whose content is empty', async () => {
-    const grid = gridProps(await renderTab('following'));
+    (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: true, items: [] });
+    const grid = gridProps(await renderTab('saved'));
     expect(grid.collection.content).toEqual([]);
     expect(grid.collection.description).toBe('Photos I have been tagged in.');
   });
@@ -376,14 +395,21 @@ describe('UserPage — a failed personal read never claims the owner has nothing
     ).toEqual([
       ['collections', 2],
       ['images', 2],
-      ['following', 0],
     ]);
   });
 
-  it('reports the followed collections unavailable when that read fails', async () => {
+  /**
+   * A failed follows read is a partial failure of Collections, not a total one. The granted half
+   * still rendered, so the copy says the list may be incomplete instead of claiming the section is
+   * unavailable — and the count survives rather than going unsaid.
+   */
+  it('reports the Collections list incomplete when the follows read fails', async () => {
     (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: false, items: [] });
-    const props = findProps(await renderTab('following'), FormError);
-    expect(props.children).toBe('Your followed collections are unavailable right now.');
+    const rendered = await renderTab('collections');
+    expect(findProps(rendered, FormError).children).toBe(
+      'Your followed collections are unavailable right now, so this list may be incomplete.'
+    );
+    expect(gridProps(rendered).collection.content).toHaveLength(2);
   });
 
   it('still renders the genuine empty copy when the read succeeded with nothing', async () => {

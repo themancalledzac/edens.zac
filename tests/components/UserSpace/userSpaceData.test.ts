@@ -15,6 +15,9 @@
  * should never take down `/user`) but report the failure as `unavailableLabel`, in the second
  * person for the owner and the third for an admin looking in.
  *
+ * A failed follows read is a PARTIAL failure of the merged Collections section: the admin-granted
+ * half still renders and is still counted, and the copy says the list may be incomplete.
+ *
  * `@/app/lib/api/core` is deliberately NOT mocked — the narrowing is an `instanceof ApiError`
  * check, so the real class has to be the one being thrown.
  */
@@ -70,17 +73,19 @@ const loadAdmin = () => loadUserSpace({ mode: 'admin', userId: 5 });
 
 /**
  * The collection catalog is the one read that serves a single section, and it is the expensive one
- * (~0.5s / ~57KB against the local backend). Since the page is `force-dynamic`, it was paid again
- * on every tab switch to render three tabs that never look at it.
+ * (~0.5s / ~57KB against the local backend). It hydrates the followed half of the merged
+ * Collections list, so it is read on Collections and skipped on the two sections that render no
+ * collections.
  *
- * The pair below is what makes deferring it safe: the Following chip's count must survive the
- * deferral, because it is read from the follows id list rather than from the hydrated blocks. Get
- * that wrong and the tab silently badges 0 — "this user follows nothing" — on a page that simply
- * did not fetch.
+ * The pair below is what makes skipping it safe: the Collections badge counts the union of the
+ * granted blocks and the follows id list, never the hydrated array. Derive it from `content`
+ * instead and a section that skipped the catalog silently badges only the granted half.
+ *
+ * Admin mode. The self-mode twin is `userSpaceData.selfCatalog.test.ts`.
  */
-describe('loadUserSpace — the catalog read is deferred to the section that needs it', () => {
-  it('skips the catalog entirely on the sections that do not render it', async () => {
-    for (const tab of ['collections', 'images', 'saved'] as const) {
+describe('loadUserSpace — the catalog read is scoped to the section that renders collections', () => {
+  it('skips the catalog entirely on the sections that render no collections', async () => {
+    for (const tab of ['images', 'saved'] as const) {
       jest.clearAllMocks();
       mockGetAllCollections.mockResolvedValue([]);
       mockGetUserPageById.mockResolvedValue(userPage);
@@ -93,33 +98,42 @@ describe('loadUserSpace — the catalog read is deferred to the section that nee
     }
   });
 
-  it('reads the catalog on the Following section', async () => {
+  it('reads the catalog on the Collections section and hydrates the followed half into it', async () => {
     mockListFollowsByUser.mockResolvedValue({ ok: true, items: [7] });
     mockGetAllCollections.mockResolvedValue([{ id: 7, slug: 'seven', title: 'Seven' }]);
 
-    const data = await loadUserSpace({ mode: 'admin', userId: 5 }, 'following');
+    const data = await loadUserSpace({ mode: 'admin', userId: 5 }, 'collections');
 
     expect(mockGetAllCollections).toHaveBeenCalled();
-    expect(data?.sections.following.content).toHaveLength(1);
+    expect(data?.sections.collections.content).toHaveLength(1);
   });
 
-  // The claim the deferral could quietly break.
+  /** The claim skipping the catalog could quietly break. */
   it('still counts followed collections on a section that never fetched them', async () => {
     mockListFollowsByUser.mockResolvedValue({ ok: true, items: [7, 9, 11] });
 
-    const data = await loadUserSpace({ mode: 'admin', userId: 5 }, 'collections');
+    const data = await loadUserSpace({ mode: 'admin', userId: 5 }, 'images');
 
-    expect(data?.sections.following.content).toHaveLength(0);
-    expect(data?.sections.following.count).toBe(3);
+    expect(data?.sections.collections.content).toHaveLength(0);
+    expect(data?.sections.collections.count).toBe(3);
   });
 
-  // A failed follows read means the number is unknown, which outranks "we did not hydrate it".
-  it('leaves the count unsaid when the follows read itself failed', async () => {
+  /**
+   * A failed follows read no longer blanks the badge. The granted half was read and is still
+   * counted; the section says separately that the list may be incomplete. The Following section
+   * this replaced went to an undefined count, because it had nothing else left to report.
+   */
+  it('keeps counting the granted half when the follows read itself failed', async () => {
+    mockGetUserPageById.mockResolvedValue({
+      ...userPage,
+      content: [{ id: 100, contentType: 'COLLECTION', referencedCollectionId: 1, slug: 'one' }],
+    });
     mockListFollowsByUser.mockResolvedValue({ ok: false });
 
     const data = await loadUserSpace({ mode: 'admin', userId: 5 }, 'collections');
 
-    expect(data?.sections.following.count).toBeUndefined();
+    expect(data?.sections.collections.count).toBe(1);
+    expect(data?.sections.collections.unavailableLabel).toContain('may be incomplete');
   });
 });
 
@@ -136,8 +150,10 @@ describe('loadUserSpace — the galleries read tells 404 apart from failure', ()
     await expect(loadAdmin()).resolves.toBeNull();
   });
 
-  // The regression. A 500 used to arrive at the page as `null`, and the page said the user had no
-  // galleries — a confident claim about data nobody managed to read.
+  /**
+   * The regression. A 500 used to arrive at the page as `null`, and the page said the user had no
+   * galleries — a confident claim about data nobody managed to read.
+   */
   it('rethrows a 500 to the error boundary instead of claiming the user has no galleries', async () => {
     mockGetUserPageById.mockRejectedValue(new ApiError('Server Error', 500));
 
@@ -166,14 +182,24 @@ describe('loadUserSpace — a failed saves/follows read says unavailable, never 
     expect(data?.sections.saved.unavailableLabel).toBe('Saved images are unavailable right now.');
   });
 
-  it('marks Following unavailable and drops the "is not following" claim', async () => {
+  /**
+   * A failed follows read is a partial failure of Collections, not a total one. The granted half
+   * still renders, so the copy says the list may be incomplete instead of claiming the whole
+   * section is unavailable — which would be false about content the reader can see.
+   */
+  it('marks Collections incomplete and keeps the granted half it did read', async () => {
+    mockGetUserPageById.mockResolvedValue({
+      ...userPage,
+      content: [{ id: 100, contentType: 'COLLECTION', referencedCollectionId: 1, slug: 'one' }],
+    });
     mockListFollowsByUser.mockResolvedValue({ ok: false });
 
     const data = await loadAdmin();
 
-    expect(data?.sections.following.unavailableLabel).toBe(
-      'Followed collections are unavailable right now.'
+    expect(data?.sections.collections.unavailableLabel).toBe(
+      'Followed collections are unavailable right now, so this list may be incomplete.'
     );
+    expect(data?.sections.collections.content).toHaveLength(1);
   });
 
   it('does not take the page down when both reads fail — the space still loads', async () => {
@@ -183,7 +209,7 @@ describe('loadUserSpace — a failed saves/follows read says unavailable, never 
     const data = await loadAdmin();
 
     expect(data).not.toBeNull();
-    expect(data?.sections.collections.unavailableLabel).toBeUndefined();
+    expect(data?.sections.images.unavailableLabel).toBeUndefined();
   });
 
   it('leaves a section that loaded alone when only its neighbour failed', async () => {
@@ -191,14 +217,14 @@ describe('loadUserSpace — a failed saves/follows read says unavailable, never 
 
     const data = await loadAdmin();
 
-    expect(data?.sections.following.unavailableLabel).toBeUndefined();
+    expect(data?.sections.collections.unavailableLabel).toBeUndefined();
   });
 
   /**
    * The two modes differ in the PERSON of the copy and in nothing else — same nouns, same verb,
-   * same tense. Following used to say "Following information is unavailable", which named a
-   * different thing from its own self twin's "Your followed collections"; the drift is what this
-   * pins down. Deriving one label from the other keeps the pair from drifting apart again.
+   * same tense. The follows-failure copy used to say "Following information is unavailable", which
+   * named a different thing from its own self twin's "Your followed collections"; the drift is what
+   * this pins down. Deriving one label from the other keeps the pair from drifting apart again.
    */
   it('names the same things its self-side twin names, differing only in the possessive', async () => {
     mockListSavedByUser.mockResolvedValue({ ok: false });
@@ -211,11 +237,13 @@ describe('loadUserSpace — a failed saves/follows read says unavailable, never 
     const inSecondPerson = (label: string | undefined) =>
       label && `Your ${label.charAt(0).toLowerCase()}${label.slice(1)}`;
 
+    expect(admin?.sections.saved.unavailableLabel).toEqual(expect.any(String));
+    expect(admin?.sections.collections.unavailableLabel).toEqual(expect.any(String));
     expect(inSecondPerson(admin?.sections.saved.unavailableLabel)).toBe(
       self?.sections.saved.unavailableLabel
     );
-    expect(inSecondPerson(admin?.sections.following.unavailableLabel)).toBe(
-      self?.sections.following.unavailableLabel
+    expect(inSecondPerson(admin?.sections.collections.unavailableLabel)).toBe(
+      self?.sections.collections.unavailableLabel
     );
   });
 });
@@ -237,13 +265,13 @@ describe('loadUserSpace — a failed SELF read says unavailable, in the second p
     );
   });
 
-  it('marks Following unavailable with owner-facing copy', async () => {
+  it('marks Collections incomplete with owner-facing copy', async () => {
     mockListFollowsSelf.mockResolvedValue({ ok: false });
 
     const data = await loadUserSpace('self');
 
-    expect(data?.sections.following.unavailableLabel).toBe(
-      'Your followed collections are unavailable right now.'
+    expect(data?.sections.collections.unavailableLabel).toBe(
+      'Your followed collections are unavailable right now, so this list may be incomplete.'
     );
   });
 
@@ -254,7 +282,7 @@ describe('loadUserSpace — a failed SELF read says unavailable, in the second p
     const data = await loadUserSpace('self');
 
     expect(data?.sections.saved.unavailableLabel).not.toMatch(/this user/i);
-    expect(data?.sections.following.unavailableLabel).not.toMatch(/this user/i);
+    expect(data?.sections.collections.unavailableLabel).not.toMatch(/this user/i);
   });
 
   it('does not take /user down when both personal reads fail', async () => {
@@ -264,7 +292,7 @@ describe('loadUserSpace — a failed SELF read says unavailable, in the second p
     const data = await loadUserSpace('self');
 
     expect(data).not.toBeNull();
-    expect(data?.sections.collections.unavailableLabel).toBeUndefined();
+    expect(data?.sections.images.unavailableLabel).toBeUndefined();
   });
 
   it('leaves the section that loaded alone when only its neighbour failed', async () => {
@@ -294,11 +322,15 @@ describe('loadUserSpace — a genuine empty keeps its existing copy', () => {
     expect(data?.sections.saved.emptyLabel).toBe('You have not saved any images yet.');
   });
 
-  it('leaves the owner’s Following with the second-person empty claim', async () => {
+  /**
+   * The merged Collections section describes the list rather than the viewer, so its empty copy no
+   * longer varies by person the way the Following section's did.
+   */
+  it('leaves the owner’s Collections with the empty claim, not the failure copy', async () => {
     const data = await loadUserSpace('self');
 
-    expect(data?.sections.following.unavailableLabel).toBeUndefined();
-    expect(data?.sections.following.emptyLabel).toBe('You are not following any collections yet.');
+    expect(data?.sections.collections.unavailableLabel).toBeUndefined();
+    expect(data?.sections.collections.emptyLabel).toBe('No collections yet.');
   });
 
   it('still surfaces the owner’s saved images when the read returned some', async () => {
@@ -317,13 +349,13 @@ describe('loadUserSpace — a genuine empty keeps its existing copy', () => {
     expect(data?.sections.saved.emptyLabel).toBe('This user has not saved any images yet.');
   });
 
-  it('leaves Following with the third-person empty claim and no unavailable label', async () => {
-    const data = await loadAdmin();
+  it('gives Collections the same empty claim in admin mode as on the owner’s own page', async () => {
+    const admin = await loadAdmin();
+    const self = await loadUserSpace('self');
 
-    expect(data?.sections.following.unavailableLabel).toBeUndefined();
-    expect(data?.sections.following.emptyLabel).toBe(
-      'This user is not following any collections yet.'
-    );
+    expect(admin?.sections.collections.unavailableLabel).toBeUndefined();
+    expect(admin?.sections.collections.emptyLabel).toBe('No collections yet.');
+    expect(admin?.sections.collections.emptyLabel).toBe(self?.sections.collections.emptyLabel);
   });
 
   it('still surfaces the images the read returned', async () => {
@@ -352,14 +384,14 @@ describe('loadUserSpace — self mode uses the session-bound reads', () => {
     const data = await loadUserSpace('self');
 
     expect(data?.sections.saved.unavailableLabel).toBeUndefined();
-    expect(data?.sections.following.unavailableLabel).toBeUndefined();
+    expect(data?.sections.collections.unavailableLabel).toBeUndefined();
   });
 
   it('keeps the second-person empty copy', async () => {
     const data = await loadUserSpace('self');
 
     expect(data?.sections.saved.emptyLabel).toBe('You have not saved any images yet.');
-    expect(data?.sections.following.emptyLabel).toBe('You are not following any collections yet.');
+    expect(data?.sections.images.emptyLabel).toBe('You are not tagged in any images yet.');
   });
 
   it('seeds the toggles from the viewer’s own ids', async () => {
@@ -380,5 +412,22 @@ describe('loadUserSpace — self mode uses the session-bound reads', () => {
 
     expect(data?.savedImageIds).toEqual([]);
     expect(data?.followedCollectionIds).toEqual([]);
+  });
+
+  /**
+   * `grantedCollectionIds` describes the page, not the viewer, so unlike the toggle seeds it is
+   * populated in every mode. The client needs it to tell an admin-granted association apart from a
+   * followed one when reconciling an unfollow.
+   */
+  it('reports the granted collection ids in both modes, unlike the toggle seeds', async () => {
+    const withGrant = {
+      ...userPage,
+      content: [{ id: 100, contentType: 'COLLECTION', referencedCollectionId: 1, slug: 'one' }],
+    };
+    mockGetUserPage.mockResolvedValue(withGrant);
+    mockGetUserPageById.mockResolvedValue(withGrant);
+
+    expect((await loadUserSpace('self'))?.grantedCollectionIds).toEqual([1]);
+    expect((await loadAdmin())?.grantedCollectionIds).toEqual([1]);
   });
 });
