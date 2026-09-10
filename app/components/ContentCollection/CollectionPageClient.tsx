@@ -6,6 +6,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { SavesProvider } from '@/app/components/Personal/SavesContext';
+import { type ToolbarExtra } from '@/app/components/ui/FilterToolbar/chipWeights';
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import {
@@ -58,8 +59,8 @@ import {
   type ClientGalleryDownloadContextValue,
   ClientGalleryDownloadProvider,
 } from './ClientGalleryDownloadContext';
+import { CollectionExtrasProvider } from './CollectionExtrasContext';
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
-import { CollectionRailProvider } from './CollectionRailContext';
 import { SelectsProvider } from './SelectsContext';
 
 /**
@@ -75,6 +76,9 @@ const EditModeLayer = dynamic(() => import('./edit/EditModeLayer'), { ssr: false
  * rather than a fresh `[]` so the memo keeps returning one reference across filter changes.
  */
 const NO_BLOCKS: readonly AnyContentModel[] = Object.freeze([]);
+
+/** Stable empty array so the extras memo below keeps returning one reference when no page passes any. */
+const NO_EXTRAS: readonly ToolbarExtra[] = [];
 
 interface CollectionPageClientProps {
   collection: CollectionModel;
@@ -117,9 +121,13 @@ interface CollectionPageClientProps {
    * Extra content for the header rail — the TEXT block leading the first row, beside the cover.
    * Use it for what is *about* this page rather than *in* it, alongside the date, location,
    * description and filter bar that already live there. `/user` puts its Account and Admin cards
-   * here. See {@link CollectionRailProvider}.
+   * here. See {@link CollectionExtrasProvider}.
    */
   railExtras?: ReactNode;
+  /**
+   * Chips for the bar's upper tier, in any order; the bar sorts them by weight.
+   */
+  toolbarExtras?: readonly ToolbarExtra[];
   /**
    * Render the shared filter bar even when this collection surfaces no facet dimensions.
    *
@@ -146,6 +154,7 @@ export default function CollectionPageClient({
   activeSectionKey,
   followedCollectionIds,
   railExtras = null,
+  toolbarExtras = NO_EXTRAS,
   alwaysShowFilterBar = false,
 }: CollectionPageClientProps) {
   const [editLayerMounted, setEditLayerMounted] = useState(false);
@@ -164,23 +173,29 @@ export default function CollectionPageClient({
    * Clears the mounted flag on exit so a later re-entry paints the public fallback grid again while
    * the edit chunk streams, exactly as the first entry does.
    */
-  useEffect(() => {
+  const clearMountedFlagOnExit = () => {
     if (!editMode) {
       setEditLayerMounted(false);
     }
-  }, [editMode]);
+  };
+
+  useEffect(clearMountedFlagOnExit, [editMode]);
 
   const { initialCriteria, syncToUrl } = useFilterUrlState();
 
-  // CHRONOLOGICAL collections are inherently date-ordered, so on the PUBLIC view their Date
-  // filter defaults ON (oldest-first) and toggles only between directions. Edit mode is excluded:
-  // an admin manages order against the LIVE displayMode (which may have been converted away from
-  // CHRONOLOGICAL), so auto-engaging date sort there would revert saved manual reorders.
+  /**
+   * CHRONOLOGICAL collections are inherently date-ordered, so on the PUBLIC view their Date filter
+   * defaults ON (oldest-first) and toggles only between directions. Edit mode is excluded: an admin
+   * manages order against the LIVE displayMode, so auto-engaging date sort there would revert saved
+   * manual reorders.
+   */
   const isChronological = !editMode && collection.displayMode === 'CHRONOLOGICAL';
 
-  // Named rather than inlined into the initializer below because a sectioned page resets back to
-  // it on every section switch — see `renderedSectionKey`. One definition keeps "the state a fresh
-  // view starts in" identical whether that view came from a mount or from a section change.
+  /**
+   * Named rather than inlined into the initializer below because a sectioned page resets back to it
+   * on every section switch — see `renderedSectionKey`. One definition keeps "the state a fresh view
+   * starts in" identical whether that view came from a mount or from a section change.
+   */
   const initialFilterState: FilterState = {
     ...INITIAL_FILTER_STATE,
     dateSortDirection: editMode ? 'off' : initialDateSortDirection(collection.displayMode),
@@ -195,10 +210,12 @@ export default function CollectionPageClient({
 
   const [filterState, setFilterState] = useState<FilterState>(initialFilterState);
 
-  // Clamped to the slider's own range: `density` is both the layout budget AND the slider's value,
-  // so a seed outside 1..maxDensityDesktop leaves the control pinned at an end stop reporting a
-  // number the page is not using. `/user` seeded 14 against a max of 10 while its bar was
-  // suppressed, and the mismatch only became visible once the bar rendered.
+  /**
+   * Clamped to the slider's own range: `density` is both the layout budget AND the slider's value,
+   * so a seed outside 1..maxDensityDesktop leaves the control pinned at an end stop reporting a
+   * number the page is not using. `/user` seeded 14 against a max of 10 while its bar was
+   * suppressed, and the mismatch only became visible once the bar rendered.
+   */
   const [density, setDensity] = useState(
     clamp(chunkSize ?? LAYOUT.defaultChunkSize, LAYOUT.minDensity, LAYOUT.maxDensityDesktop)
   );
@@ -242,28 +259,38 @@ export default function CollectionPageClient({
 
   const isClientGallery = collection.isClient === true;
 
-  // A CLIENT grant on a collection whose payload carries no kind booleans is the signature of a
-  // stale payload in flight (pre-#132 cache entry, or a deploy-order slip): the grant proves the
-  // collection is a client gallery, so Selects are being withheld from someone entitled to them.
-  if (collection.isClient === undefined && findMembership(me, collection.id)) {
+  /**
+   * A CLIENT grant on a collection whose payload carries no kind booleans is the signature of a
+   * stale payload in flight (pre-#132 cache entry, or a deploy-order slip): the grant proves the
+   * collection is a client gallery, so Selects are being withheld from someone entitled to them.
+   */
+  const hasStaleClientPayload =
+    collection.isClient === undefined && findMembership(me, collection.id);
+
+  if (hasStaleClientPayload) {
     logger.warn('CollectionPageClient', 'Membership held on a payload missing isClient', {
       collectionId: collection.id,
     });
   }
 
-  // Selects (favorites) are a client-gallery feature, available only to a viewer who is a CLIENT
-  // of this collection (or admin via editMode). Distinct from the download "select mode" below.
+  /**
+   * Selects (favorites) are a client-gallery feature, available only to a viewer who is a CLIENT of
+   * this collection (or admin via editMode). Distinct from the download "select mode" below.
+   */
   const selectsEnabled =
     isClientGallery && !editMode && isClientOfCollection(me, collection.id, editMode);
 
-  // Download UI (and its select-to-download mode) follows the backend's authorization: a logged-in
-  // CLIENT of this collection (via /api/auth/me), or an anonymous viewer whose gallery password
-  // cookie validated. Distinct from `isClientGallery` (the collection flag), which still governs
-  // Selects/favorites above.
+  /**
+   * Download UI (and its select-to-download mode) follows the backend's authorization: a logged-in
+   * CLIENT of this collection (via `/api/auth/me`), or an anonymous viewer whose gallery password
+   * cookie validated. Distinct from `isClientGallery`, which still governs Selects/favorites above.
+   */
   const canDownload = canDownloadCollection(me, collection);
 
-  // Mirror of the viewer's selected ids, owned here so the pinned "Your Selects" prepend can react
-  // to toggles. SelectsProvider is seeded from the same initial list and notifies us via onChange.
+  /**
+   * Mirror of the viewer's selected ids, owned here so the pinned "Your Selects" prepend can react
+   * to toggles. SelectsProvider is seeded from the same initial list and notifies us via onChange.
+   */
   const [pinnedSelectedIds, setPinnedSelectedIds] = useState<number[]>(initialSelectedIds);
 
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -313,22 +340,26 @@ export default function CollectionPageClient({
     [isSelectMode, selectedIds, enterSelectMode, exitSelectMode]
   );
 
-  // Live content from EditModeLayer — filter options must match what the edit grid renders
-  // so in-session uploads and tag edits surface in the filter UI.
+  /**
+   * Live content from EditModeLayer — filter options must match what the edit grid renders so
+   * in-session uploads and tag edits surface in the filter UI.
+   */
   const [liveEditContent, setLiveEditContent] = useState<AnyContentModel[] | null>(null);
 
-  // Public render works off the server seed; edit mode tracks the layer's live content.
+  /** Public render works off the server seed; edit mode tracks the layer's live content. */
   const rawContent = useMemo(
     () => (editMode && liveEditContent ? liveEditContent : (collection.content ?? [])),
     [editMode, liveEditContent, collection.content]
   );
 
-  // The hide-hidden preview is applied here, upstream of every derived set, so it governs the
-  // layout baseline and the filter dimensions too — not just which tiles survive the filter pass.
-  // The raw set stays available for the chip's own gate and count, which must keep reporting how
-  // many non-public collections exist even while they are being previewed away.
-  // The following-only narrowing rides alongside the hide-hidden preview, upstream for the same
-  // reason: both are view scopes over which tiles exist at all, not facets within them.
+  /**
+   * The hide-hidden preview is applied here, upstream of every derived set, so it governs the
+   * layout baseline and the filter dimensions too — not just which tiles survive the filter pass.
+   * The raw set stays available for the chip's own gate and count, which must keep reporting how
+   * many non-public collections exist even while they are being previewed away. The following-only
+   * narrowing rides alongside it for the same reason: both are view scopes over which tiles exist
+   * at all, not facets within them.
+   */
   const allContent = useMemo(
     () =>
       applyFollowedScope(
@@ -343,10 +374,11 @@ export default function CollectionPageClient({
 
   const allCollections = useMemo(() => allContent.filter(isContentCollection), [allContent]);
 
-  // GIFs/MP4s with a captureDate contribute their day to the `dates` dimension only -- see
-  // extractCollectionFilterOptions. A GIF carries no camera or lens, and the tag/people/location/
-  // rating dimensions have always been sourced from images alone, so it must never feed any
-  // dimension other than `dates`.
+  /**
+   * GIFs/MP4s with a captureDate contribute their day to the `dates` dimension only — see
+   * {@link extractCollectionFilterOptions}. A GIF carries no camera or lens, and the tag/people/
+   * location/rating dimensions have always been sourced from images alone.
+   */
   const datedGifs = useMemo(
     () =>
       allContent.filter(
@@ -357,13 +389,12 @@ export default function CollectionPageClient({
 
   const visibility = useMemo(() => computeFilterVisibility(allImages), [allImages]);
 
-  // D7: image-derived dimensions are shown whenever the page has ANY image, and no explicit
-  // suppression is needed to hide them otherwise — `extractCollectionFilterOptions` sources
-  // cameras/lenses from `allImages` alone, so a page with no images already yields
-  // empty values, and every consumer gates on `values.length`. The former
-  // `allCollections.length > allImages.length` comparison was constant per collection under the
-  // typed model; under mixed content it flips with a single content edit, so a sixth photo would
-  // make the Camera/Lens dropdowns reappear.
+  /**
+   * Image-derived dimensions are shown whenever the page has ANY image, with no explicit
+   * suppression needed otherwise: {@link extractCollectionFilterOptions} sources cameras/lenses
+   * from `allImages` alone, so a page with no images already yields empty values, and every
+   * consumer gates on `values.length`.
+   */
   const baseCollectionOptions = useMemo<CollectionFilterDimensions>(
     () => extractCollectionFilterOptions(allImages, allCollections, datedGifs),
     [allImages, allCollections, datedGifs]
@@ -402,30 +433,35 @@ export default function CollectionPageClient({
    */
   const widthCostBaseline = useMemo(() => getMeanWidthCost(allContent), [allContent]);
 
-  // `visibility.highlyRated` is already false below two images (canFilter), so no extra
-  // collection-count suppression is needed — see D7.
+  /** `visibility.highlyRated` is already false below two images, so no extra suppression is needed. */
   const showHighlyRated = visibility.highlyRated;
 
-  // The Order control is image-derived via `computeFilterVisibility`, which reports false on a
-  // collection-dominant page (no images => `canFilter` short-circuits below two items). Collection
-  // tiles are independently sortable by their own date and rating, so OR that in — otherwise
-  // /collections, whose content is 100% collection tiles, renders no Order chip at all.
+  /**
+   * The Order control is image-derived via {@link computeFilterVisibility}, which reports false on
+   * a collection-dominant page (no images). Collection tiles are independently sortable by their
+   * own date and rating, so OR that in — otherwise `/collections` renders no Order chip at all.
+   */
   const showDateSort = visibility.dateSort || allCollections.length >= 2;
 
-  // Admin-only, and only once the payload actually carries visibility: a chip that cannot change
-  // what is on screen is worse than no chip. Appears on its own when the backend enrichment lands.
-  // It renders SELECTED by default, reading as "non-public collections are showing" — switching it
-  // off is what previews the general-audience view, so an admin's default is unchanged from today.
+  /**
+   * Admin-only, and only once the payload actually carries visibility: a chip that cannot change
+   * what is on screen is worse than no chip. It renders SELECTED by default, reading as "non-public
+   * collections are showing" — switching it off previews the general-audience view.
+   */
   const showHiddenToggle = (me?.isAdmin ?? false) && hasVisibilityData(rawContent);
 
   const hiddenCount = useMemo(() => countNonListedCollections(rawContent), [rawContent]);
 
-  // Armed by knowing the set, not by it being non-empty: a viewer who follows nothing here should
-  // still see the chip report zero rather than have the control vanish.
+  /**
+   * Armed by knowing the set, not by it being non-empty: a viewer who follows nothing here should
+   * still see the chip report zero rather than have the control vanish.
+   */
   const showFollowingToggle = followedCollectionIds !== undefined;
 
-  // From `rawContent`, so the badge keeps saying how many followed collections the page holds even
-  // while the filter is on and the rest are scoped away — the same reason `hiddenCount` reads raw.
+  /**
+   * From `rawContent`, so the badge keeps saying how many followed collections the page holds even
+   * while the filter is on and the rest are scoped away — the same reason `hiddenCount` reads raw.
+   */
   const followingCount = useMemo(
     () =>
       followedCollectionIds === undefined
@@ -441,13 +477,14 @@ export default function CollectionPageClient({
     if (!hasActiveFilters) return null;
     const dims = extractCollectionFilterOptions(filteredImages, allCollections);
 
-    // `dates`, `years` and `lenses` are single-valued per image, so each is SELF-EXCLUSIVE: deriving its
-    // availability from `filteredImages` -- which already reflects that dimension's own active
-    // selection -- collapses every other option to "unavailable" the instant one is picked, and a
-    // disabled chip cannot be switched to. Re-derive each from a pass with its OWN key omitted, so
-    // its options never grey each other out while an option ruled out by a DIFFERENT active filter
-    // (e.g. camera) still greys out correctly. Both are single-choice in the toolbar
-    // (`EXCLUSIVE_FILTER_KEYS`), which is what makes switching the only reachable move.
+    /**
+     * `dates`, `years` and `lenses` are single-valued per image, so each is SELF-EXCLUSIVE:
+     * deriving its availability from `filteredImages` — which already reflects that dimension's own
+     * active selection — collapses every other option to "unavailable" the instant one is picked,
+     * and a disabled chip cannot be switched to. Re-derive each from a pass with its OWN key
+     * omitted, so its options never grey each other out while an option ruled out by a DIFFERENT
+     * active filter (e.g. camera) still greys out correctly.
+     */
     const availabilityWithout = (key: 'dates' | 'years' | 'lenses'): CollectionFilterDimensions => {
       const { [key]: _omitted, ...selfExcluded } = criteria;
       const content = applyCollectionFilters(allContent, allImages, selfExcluded);
@@ -517,9 +554,11 @@ export default function CollectionPageClient({
       return ordered;
     }
 
-    // Pinned "Your Selects" region: duplicated, marked clones of the selected images, prepended so
-    // they sit at the top while the originals still render in place. The marker only affects the
-    // React key (see Component.tsx) — layout treats them as normal image blocks.
+    /**
+     * Pinned "Your Selects" region: duplicated, marked clones of the selected images, prepended so
+     * they sit at the top while the originals still render in place. The marker only affects the
+     * React key (see Component.tsx) — layout treats them as normal image blocks.
+     */
     const pinned = buildPinnedSelects(ordered, new Set(pinnedSelectedIds));
     return [...pinned, ...ordered];
   }, [
@@ -543,6 +582,13 @@ export default function CollectionPageClient({
     [syncToUrl]
   );
 
+  /**
+   * Whether this render has anything to show a density control for. Gating `onDensityChange` on it
+   * hides the photo-size control on an empty section (an empty Saved tab, the empty Admin section)
+   * rather than offering a control with nothing to resize.
+   */
+  const hasRenderableContent = (collection.content?.length ?? 0) > 0;
+
   const filterContextValue = useMemo(
     () => ({
       filterState,
@@ -554,9 +600,7 @@ export default function CollectionPageClient({
       dateTwoState: isChronological,
       density: displayDensity,
       densityMax,
-      onDensityChange: handleDensityChange,
-      // Curators keep the fine 1-10 control so they can still land on an off-tier value; visitors
-      // get the three photo-size presets.
+      onDensityChange: hasRenderableContent ? handleDensityChange : undefined,
       densityVariant: editMode ? ('slider' as const) : ('tiers' as const),
       densityTiers,
       activeDensityTier,
@@ -572,6 +616,7 @@ export default function CollectionPageClient({
       isChronological,
       displayDensity,
       densityMax,
+      hasRenderableContent,
       handleDensityChange,
       editMode,
       densityTiers,
@@ -582,45 +627,50 @@ export default function CollectionPageClient({
 
   const pageSize = collection.contentPerPage ?? 30;
 
-  // The landing page never gets the filter bar while it is being VIEWED. It is a curated
-  // showcase, not a browsable index: the running order is the point, so offering to re-sort or
-  // facet it works against the page. This is a property of the home collection itself rather than
-  // a caller's preference, so it is decided here instead of via a prop — and it outranks
-  // `alwaysShowFilterBar` for the same reason. BROWSE_EXCLUDED_SLUGS keys off HOME_SLUG likewise.
-  //
-  // Curating it is the other half of that rule, not an exception to it: an admin at
-  // `/home?manage=1` is arranging the very running order the suppression protects, and both the
-  // toolbar and the edit-mode density slider mount from this page's filter context with no other
-  // source. Suppressing them there would take away the controls rather than the temptation, and
-  // manage mode is meant to be the public page plus the manage bar, never a lesser one.
+  /**
+   * The landing page never gets the filter bar while it is being VIEWED: it is a curated showcase,
+   * not a browsable index, so offering to re-sort or facet it works against the page. This is a
+   * property of the home collection itself rather than a caller's preference — it outranks
+   * `alwaysShowFilterBar` for the same reason.
+   *
+   * It lifts while the page is being CURATED: an admin at `/home?manage=1` is arranging the very
+   * running order the suppression protects, and both the toolbar and the edit-mode density slider
+   * mount from this page's filter context with no other source, so suppressing them there would
+   * take away the controls rather than the temptation.
+   */
   const isHomeShowcaseView = collection.slug === HOME_SLUG && !editMode;
 
-  // Sections alone justify the bar: a sectioned page needs its section chips even with no facet
-  // dimensions of its own, and rendering the bar is also what gives it the shared chrome (the
-  // density slider) that makes it match an ordinary collection page.
+  /**
+   * Sections alone justify the bar: a sectioned page needs its section chips even with no facet
+   * dimensions of its own, which is also what gives it the shared chrome (the density slider) that
+   * makes it match an ordinary collection page.
+   *
+   * `CollectionFilterProvider` below stays mounted always and gates the filter UI through a null
+   * VALUE instead — `hasOptions` is live in edit mode (it flips when an upload gives an empty
+   * collection its first filterable content), and conditionally mounting the provider on it would
+   * reparent the subtree, remounting `EditModeLayer` and resetting its state.
+   */
   const hasOptions =
     !isHomeShowcaseView &&
     (alwaysShowFilterBar ||
       (sections !== undefined && sections.length > 0) ||
       hasFilterableOptions(baseCollectionOptions, showHighlyRated, showDateSort));
 
+  /**
+   * In edit mode this element is the loading fallback while the edit chunk streams in, so
+   * `enableFullScreenView` stays false from first paint — a tap during that window must not open a
+   * viewer the layer is about to tear down.
+   */
   const grid = (
     <ContentBlockWithFullScreen
       content={contentBlocks}
       priorityBlockIndex={0}
-      // In edit mode this element is the loading fallback while the edit chunk streams in, and
-      // a tap during that window must not open the viewer the layer will immediately tear down
-      // — edit mode keeps fullscreen disabled from first paint (the layer's grid also does).
       enableFullScreenView={!editMode}
       initialPageSize={pageSize}
       chunkSize={density}
       mobileChunkSize={mobileDensity}
       collectionSlug={collection.slug}
       collectionData={collection}
-      // The filter bar and the download row both mount into the header's metadata rail, so the
-      // rail has to exist whenever either will render — even on a collection with no metadata
-      // text of its own. Without this, `/user` (no date, no locations, no siblings) built a
-      // cover-only header and silently dropped the bar.
       forceHeaderRail={hasOptions || canDownload}
       widthCostBaseline={widthCostBaseline}
       serverContentWidth={serverContentWidth}
@@ -675,22 +725,25 @@ export default function CollectionPageClient({
       withSelects
     );
 
-  // Always mount the provider and gate the filter UI via a null VALUE (observationally the same
-  // for consumers, which null-check). hasOptions is live in edit mode — it flips when an upload
-  // gives an empty collection its first filterable content — and conditionally mounting the
-  // provider on it would reparent the subtree, remounting EditModeLayer and resetting its state.
-  // Saves (bookmarks) are cross-collection and available to ANY logged-in viewer, so mount the
-  // provider whenever a principal is present — independent of the client-gallery-scoped Selects.
+  /**
+   * Saves (bookmarks) are cross-collection and available to ANY logged-in viewer, so mount the
+   * provider whenever a principal is present — independent of the client-gallery-scoped Selects.
+   */
   const withSaves = me ? (
     <SavesProvider initialSavedIds={initialSavedImageIds}>{maybeWrappedContent}</SavesProvider>
   ) : (
     maybeWrappedContent
   );
 
+  const extras = useMemo(
+    () => ({ rail: railExtras, toolbar: toolbarExtras }),
+    [railExtras, toolbarExtras]
+  );
+
   return (
     <MeProvider me={me}>
       <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
-        <CollectionRailProvider value={railExtras}>{withSaves}</CollectionRailProvider>
+        <CollectionExtrasProvider value={extras}>{withSaves}</CollectionExtrasProvider>
       </CollectionFilterProvider>
     </MeProvider>
   );

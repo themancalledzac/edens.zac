@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import CollectionContentRenderer from '@/app/components/Content/CollectionContentRenderer';
-import { CollectionRailProvider } from '@/app/components/ContentCollection/CollectionRailContext';
+import { CollectionExtrasProvider } from '@/app/components/ContentCollection/CollectionExtrasContext';
 import {
   type InlineEditContextValue,
   InlineEditProvider,
@@ -113,16 +113,13 @@ describe('CollectionContentRenderer — sibling collections as cover cards', () 
     ];
     render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
 
-    // Related context preserved
     expect(screen.getByText('Related')).toBeInTheDocument();
 
-    // Each card is a link to /{slug} with an accessible name (the collection title)
     const filmLink = screen.getByRole('link', { name: /Dolomites Film/ });
     expect(filmLink).toHaveAttribute('href', '/dolomites-film');
     const link2025 = screen.getByRole('link', { name: /Dolomites 2025/ });
     expect(link2025).toHaveAttribute('href', '/dolomites-2025');
 
-    // Cover images render with alt text = collection name
     const filmImage = screen.getByRole('img', { name: 'Dolomites Film' });
     expect(filmImage).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Dolomites 2025' })).toBeInTheDocument();
@@ -140,13 +137,10 @@ describe('CollectionContentRenderer — sibling collections as cover cards', () 
     ];
     render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
 
-    // Card path is active (one sibling has a cover) so we still see the cover image
     expect(screen.getByRole('img', { name: 'Has Cover' })).toBeInTheDocument();
 
-    // The cover-less sibling is still a navigable link (rendered as a text chip)
     const noCoverLink = screen.getByRole('link', { name: 'No Cover' });
     expect(noCoverLink).toHaveAttribute('href', '/no-cover');
-    // No image rendered for the cover-less sibling
     expect(screen.queryByRole('img', { name: 'No Cover' })).not.toBeInTheDocument();
   });
 
@@ -166,7 +160,6 @@ describe('CollectionContentRenderer — sibling collections as cover cards', () 
       'href',
       '/dolomites-2025'
     );
-    // No images in the pure-fallback path
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 });
@@ -220,8 +213,10 @@ describe('CollectionContentRenderer — TEXT branch inline edit context', () => 
     expect(onEditLocation).toHaveBeenCalledTimes(1);
   });
 
-  // The admin user rail mounts this same context for a PERSON, which has no locations. Gating the
-  // location affordance on `inlineEdit` alone put an "Add location" button on a user's profile.
+  /**
+   * The admin user rail mounts this same context for a PERSON, which has no locations. Gating the
+   * location affordance on `inlineEdit` alone put an "Add location" button on a user's profile.
+   */
   it('omits the location affordance when the surface supplies no onEditLocation', () => {
     const ctx: InlineEditContextValue = {
       title: 'Cara',
@@ -269,8 +264,10 @@ describe('CollectionContentRenderer — TEXT branch inline edit context', () => 
     expect(screen.getByTestId('email-slot')).toBeInTheDocument();
   });
 
-  // The admin user rail leads with the email: the space's cover already carries the person's name,
-  // so the title slot takes the surface's own node instead of the editable title.
+  /**
+   * The admin user rail leads with the email: the space's cover already carries the person's name,
+   * so the title slot takes the surface's own node instead of the editable title.
+   */
   it('lets titleLead take the leading slot instead of the title', () => {
     const ctx: InlineEditContextValue = {
       title: 'Cara',
@@ -347,7 +344,7 @@ describe('CollectionContentRenderer — coverless collection tile (regression)',
 });
 
 describe('CollectionContentRenderer — cover "Update" shortcut (isAdmin-gated)', () => {
-  // The header cover image is the parallax IMAGE block with the sentinel id -1.
+  /** The header cover image is the parallax IMAGE block with the sentinel id -1. */
   const coverProps = {
     contentId: -1,
     className: 'imageSingle',
@@ -415,8 +412,10 @@ describe('CollectionContentRenderer — cover "Update" shortcut (isAdmin-gated)'
 });
 
 describe('CollectionContentRenderer — cover-pick toggle on the manage grid', () => {
-  // Same sentinel-id cover block as above, but on the manage path (currentCollectionId set), so
-  // the public "Update" shortcut stands down and the inline-edit surface takes over.
+  /**
+   * Same sentinel-id cover block as above, but on the manage path (`currentCollectionId` set), so
+   * the public "Update" shortcut stands down and the inline-edit surface takes over.
+   */
   const coverProps = {
     contentId: -1,
     className: 'imageSingle',
@@ -583,8 +582,10 @@ describe('CollectionContentRenderer — the image tile is keyboard operable', ()
     expect(onFullScreenImageClick).not.toHaveBeenCalled();
   });
 
-  // A tile with nothing to activate must stay inert rather than advertising a button role it
-  // cannot honour — otherwise every decorative tile becomes a dead tab stop.
+  /**
+   * A tile with nothing to activate must stay inert rather than advertising a button role it
+   * cannot honour — otherwise every decorative tile becomes a dead tab stop.
+   */
   it('stays inert when the tile has no action', () => {
     render(<CollectionContentRenderer {...imageProps} />);
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
@@ -635,9 +636,11 @@ describe('CollectionContentRenderer — the tile never announces a filename', ()
     ).toBeInTheDocument();
   });
 
-  // aria-label on the tile already describes everything inside it. Repeating the string on the
-  // <img> is invisible in normal reading (the label overrides the subtree) but reads as a stutter
-  // to anyone stepping through elements one at a time.
+  /**
+   * `aria-label` on the tile already describes everything inside it. Repeating the string on the
+   * `<img>` is invisible in normal reading (the label overrides the subtree) but reads as a
+   * stutter to anyone stepping through elements one at a time.
+   */
   it('leaves the image unnamed when the tile around it carries the name', () => {
     const { container } = render(
       <CollectionContentRenderer
@@ -742,8 +745,10 @@ describe('CollectionContentRenderer — naming through the real normalizer', () 
     expect(screen.getByRole('button', { name: 'View photo' })).toBeInTheDocument();
   });
 
-  // Provenance, not string shape: the fix must not blacklist the word. A photo a person genuinely
-  // titled "Image" is named "Image", while a photo with no title at all is not.
+  /**
+   * Provenance, not string shape: the fix must not blacklist the word. A photo a person genuinely
+   * titled "Image" is named "Image", while a photo with no title at all is not.
+   */
   it('keeps a photo a person actually titled "Image"', () => {
     renderContent(createImageContent(1, { alt: undefined, title: 'Image' }), openable);
 
@@ -769,9 +774,9 @@ describe('CollectionContentRenderer — naming through the real normalizer', () 
 describe('CollectionContentRenderer — TEXT branch rail extras', () => {
   const renderWithExtras = (extras: React.ReactNode, textItems: TextBlockItem[] = []) =>
     render(
-      <CollectionRailProvider value={extras}>
+      <CollectionExtrasProvider value={{ rail: extras, toolbar: [] }}>
         <CollectionContentRenderer {...baseProps} textItems={textItems} />
-      </CollectionRailProvider>
+      </CollectionExtrasProvider>
     );
 
   it('renders the extras inside the rail', () => {
@@ -779,9 +784,11 @@ describe('CollectionContentRenderer — TEXT branch rail extras', () => {
     expect(screen.getByText('Account details')).toBeInTheDocument();
   });
 
-  // The gate used to bail on empty textItems alone, which would have thrown away the extras on
-  // exactly the page that needs them: /user's synthetic collection has no date, location or
-  // siblings, so its rail is item-less by construction.
+  /**
+   * The gate used to bail on empty `textItems` alone, which would have thrown away the extras on
+   * exactly the page that needs them: `/user`'s synthetic collection has no date, location or
+   * siblings, so its rail is item-less by construction.
+   */
   it('keeps an otherwise-empty rail alive when only extras are present', () => {
     renderWithExtras(<p>Account details</p>, []);
     expect(screen.getByText('Account details')).toBeInTheDocument();
@@ -888,6 +895,10 @@ describe('CollectionContentRenderer — click branches', () => {
       expect(link).toHaveAttribute('href', '/dolomites-2025');
     });
 
+    /**
+     * Select mode sets `onImageClick` grid-wide. A collection card must stay a link rather than
+     * become a download target carrying its content-table id.
+     */
     it('navigates via href even when onImageClick is supplied (slug nav wins)', () => {
       const onImageClick = jest.fn();
       render(
@@ -900,17 +911,17 @@ describe('CollectionContentRenderer — click branches', () => {
           onImageClick={onImageClick}
         />
       );
-      // Select mode sets onImageClick grid-wide. A collection card must stay a link rather than
-      // become a download target carrying its content-table id.
       const link = screen.getByRole('link', { name: 'Dolomites' });
       expect(link).toHaveAttribute('href', '/dolomites-2025');
       fireEvent.click(link);
       expect(onImageClick).not.toHaveBeenCalled();
     });
 
+    /**
+     * `EditModeLayer` sets `onImageClick` grid-wide and threads `currentCollectionId`. Its handler
+     * pushes `manageHref(childSlug)`, so an admin drilling into a child stays in manage mode.
+     */
     it('on the MANAGE grid the card is NOT a public link and routes through onImageClick', () => {
-      // EditModeLayer sets onImageClick grid-wide AND threads currentCollectionId. Its handler
-      // pushes manageHref(childSlug), so an admin drilling into a child stays in manage mode.
       const onImageClick = jest.fn();
       const { container } = render(
         <CollectionContentRenderer

@@ -21,9 +21,11 @@ import type { CollectionModel } from '@/app/types/Collection';
 import type { AnyContentModel } from '@/app/types/Content';
 import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 
-// jsdom ships no IntersectionObserver, and the real grid's lazy-render hook builds one on mount.
-// Rendering the unmocked grid is the whole point of this suite, so stub the API rather than mock
-// the grid away.
+/**
+ * jsdom ships no IntersectionObserver, and the real grid's lazy-render hook builds one on mount.
+ * Rendering the unmocked grid is the whole point of this suite, so stub the API rather than mock
+ * the grid away.
+ */
 class NoopIntersectionObserver {
   observe() {}
   unobserve() {}
@@ -141,10 +143,12 @@ describe('CollectionPageClient — header rail', () => {
     expect(current[0]).toHaveTextContent('Saved');
   });
 
+  /**
+   * The photo-size control is the visible proof that the page picked up the shared bar chrome
+   * rather than a `/user`-only approximation of it. Visitors get the tier radiogroup, not the raw
+   * slider — that is edit-mode only.
+   */
   it('brings the shared density control along with the bar', () => {
-    // The photo-size control is the visible proof that the page picked up the shared bar chrome
-    // rather than a /user-only approximation of it. Visitors get the tier radiogroup, not the
-    // raw slider -- that is edit-mode only.
     render(
       <CollectionPageClient
         collection={bareCollection([collectionCard(1)])}
@@ -157,12 +161,49 @@ describe('CollectionPageClient — header rail', () => {
     expect(screen.queryByLabelText('Row density')).not.toBeInTheDocument();
   });
 
+  /**
+   * The rail is forced only when controls will mount. An ordinary metadata-less collection with no
+   * filterable dimensions keeps its full-width cover and gains no empty rail.
+   */
   it('renders no bar on a metadata-less collection that has nothing to put in it', () => {
-    // The rail is forced only when controls will mount. An ordinary metadata-less collection
-    // with no filterable dimensions keeps its full-width cover and gains no empty rail.
     render(<CollectionPageClient collection={bareCollection([collectionCard(1)])} {...ssr} />);
     expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
     expect(screen.queryAllByRole('link', { name: /collections/i })).toHaveLength(0);
+  });
+
+  it('hands page-level toolbar extras to the bar', () => {
+    render(
+      <CollectionPageClient
+        collection={bareCollection([collectionCard(1)])}
+        sections={[{ key: 'a', label: 'A', href: '/x?tab=a' }]}
+        activeSectionKey="a"
+        toolbarExtras={[{ key: 'share', weight: 400, node: <button type="button">Share</button> }]}
+      />
+    );
+    expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument();
+  });
+
+  it('renders toolbar extras on an unsectioned page (extras present, sections absent)', () => {
+    render(
+      <CollectionPageClient
+        collection={bareCollection([collectionCard(1)])}
+        {...ssr}
+        alwaysShowFilterBar
+        toolbarExtras={[{ key: 'share', weight: 400, node: <button type="button">Share</button> }]}
+      />
+    );
+    expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument();
+  });
+
+  it('hides the photo-size control when the section has no content', () => {
+    render(
+      <CollectionPageClient
+        collection={bareCollection([])}
+        sections={[{ key: 'a', label: 'A', href: '/x?tab=a' }]}
+        activeSectionKey="a"
+      />
+    );
+    expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
   });
 });
 
@@ -203,8 +244,10 @@ describe('CollectionPageClient — the landing page never gets the filter bar', 
     expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
   });
 
-  // The rule is a property of the home collection, not a caller preference, so the one prop that
-  // exists to force the bar on (`/collections` uses it) must not be able to override it.
+  /**
+   * The rule is a property of the home collection, not a caller preference, so the one prop that
+   * exists to force the bar on (`/collections` uses it) must not be able to override it.
+   */
   it('outranks alwaysShowFilterBar', () => {
     render(<CollectionPageClient collection={withSlug(HOME_SLUG)} {...ssr} alwaysShowFilterBar />);
     expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
@@ -253,8 +296,10 @@ describe('CollectionPageClient — the landing page keeps the filter bar while c
     expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
   });
 
-  // Nothing about `alwaysShowFilterBar` is special in manage mode: with the home rule lifted, the
-  // prop is simply back in force, so it can carry a payload that has nothing of its own to filter.
+  /**
+   * Nothing about `alwaysShowFilterBar` is special in manage mode: with the home rule lifted, the
+   * prop is simply back in force, so it can carry a payload that has nothing of its own to filter.
+   */
   it('honours alwaysShowFilterBar on the home collection in manage mode', () => {
     render(
       <CollectionPageClient

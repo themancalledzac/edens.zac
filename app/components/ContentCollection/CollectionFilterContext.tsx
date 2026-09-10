@@ -67,8 +67,11 @@ interface CollectionFilterContextValue {
   density: number;
   /** Upper bound of the density slider for the active viewport (10 or 5). */
   densityMax: number;
-  /** Receives a value in the active viewport's scale; see {@link density}. */
-  onDensityChange: (value: number) => void;
+  /**
+   * Receives a value in the active viewport's scale; see {@link density}. Absent when this render
+   * has nothing to resize — an empty section hides the density control rather than offering one.
+   */
+  onDensityChange?: (value: number) => void;
   /** `slider` gives edit mode the fine 1-`densityMax` control; visitors get the three tiers. */
   densityVariant: 'tiers' | 'slider';
   /** Photo-size presets on the CANONICAL desktop scale — NOT the viewport scale {@link density} uses. */

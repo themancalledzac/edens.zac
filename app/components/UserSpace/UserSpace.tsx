@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { FormError } from '@/app/components/ui/Field/FormError';
+import { type ToolbarExtra } from '@/app/components/ui/FilterToolbar/chipWeights';
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { type TabKey, type UserSpaceData } from '@/app/components/UserSpace/userSpaceData';
@@ -27,10 +28,12 @@ export interface UserSpaceProps {
   ssrViewport: SsrViewport | null;
   /**
    * Page-level content for the header rail, beside the cover image. This is where the things that
-   * are *about* the space go — `/user`'s Account and Admin cards, the admin view's role
-   * membership — rather than in a slab below the grid.
+   * are *about* the space go — the admin view's role membership — rather than in a slab below the
+   * grid.
    */
   railExtras?: ReactNode;
+  /** Page-level chips for the bar's upper tier. `/user` and `/admin` pass Share, Contact, Face / Touch ID. */
+  toolbarExtras?: readonly ToolbarExtra[];
 }
 
 /**
@@ -109,6 +112,7 @@ export function UserSpace({
   me,
   ssrViewport,
   railExtras = null,
+  toolbarExtras,
 }: UserSpaceProps) {
   const {
     collection,
@@ -120,8 +124,10 @@ export function UserSpace({
   } = data;
   const active = sections[activeKey];
 
-  // From the data, not TAB_KEYS: a share recipient is offered Collections and Images only, since
-  // Saved and Following are the owner's private bookmarks and are absent from their view.
+  /**
+   * From the data, not `TAB_KEYS`: a share recipient is offered Collections and Images only, since
+   * Saved and Following are the owner's private bookmarks and are absent from their view.
+   */
   const toolbarSections: ToolbarSection[] = visibleKeys.map(key => {
     const section = sections[key];
     return {
@@ -132,14 +138,18 @@ export function UserSpace({
     };
   });
 
-  // Same collection (so the header row, slug and display mode are unchanged section to section),
-  // swapping only which blocks the grid renders.
+  /**
+   * Same collection (so the header row, slug and display mode are unchanged section to section),
+   * swapping only which blocks the grid renders.
+   */
   const sectionCollection: CollectionModel = { ...collection, content: active.content };
 
-  // Deliberately NOT keyed on `activeKey`. Remounting per section collapsed the document height
-  // for a frame mid-swap, which made the browser clamp scroll position and threw the viewer toward
-  // the top on every section switch. `CollectionPageClient` resets its own per-section state off
-  // `activeSectionKey` instead — see the `renderedSectionKey` block there.
+  /**
+   * Deliberately NOT keyed on `activeKey`. Remounting per section collapsed the document height for
+   * a frame mid-swap, which made the browser clamp scroll position and threw the viewer toward the
+   * top on every section switch. `CollectionPageClient` resets its own per-section state off
+   * `activeSectionKey` instead — see the `renderedSectionKey` block there.
+   */
   const grid = (
     <UserSpaceGrid
       collection={sectionCollection}
@@ -151,6 +161,7 @@ export function UserSpace({
       sections={toolbarSections}
       activeSectionKey={activeKey}
       railExtras={railExtras}
+      toolbarExtras={toolbarExtras}
       grantedCollectionIds={grantedCollectionIds}
     />
   );
