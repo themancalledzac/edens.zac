@@ -4,10 +4,10 @@
  * Guards the CI workflow against the two ways it can quietly stop being verification.
  *
  * A dropped check step is the first. The workflow exists so that `type-check`, `lint:js`,
- * `lint:css` and `test` stop being local-only claims; a workflow that installs dependencies
- * and asserts nothing is a green badge over an unverified tree, which is worse than no badge
- * because it is trusted. Each script is matched as an invoked command rather than as a
- * substring, so `lint:js:fix` cannot stand in for `lint:js`.
+ * `lint:css`, `test` and `audit` stop being local-only claims; a workflow that installs
+ * dependencies and asserts nothing is a green badge over an unverified tree, which is worse
+ * than no badge because it is trusted. Each script is matched as an invoked command rather
+ * than as a substring, so `lint:js:fix` cannot stand in for `lint:js`.
  *
  * A drifting Node version is the second. CI passing on a runtime the repo does not claim to
  * support proves nothing about the runtime it does. There used to be two literals to drift —
@@ -32,7 +32,7 @@ const packageJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'))
   scripts: Record<string, string>;
 };
 
-const VERIFICATION_SCRIPTS = ['type-check', 'lint:js', 'lint:css', 'test'] as const;
+const VERIFICATION_SCRIPTS = ['type-check', 'lint:js', 'lint:css', 'test', 'audit'] as const;
 
 const runCommands = [...workflow.matchAll(/^\s*run: (.+)$/gm)].map(match =>
   (match[1] ?? '').trim()
