@@ -53,4 +53,18 @@ describe('PasskeyChip', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(copy);
     expect(chip()).toBeEnabled();
   });
+
+  it('clears error on successful retry', async () => {
+    mockRegisterPasskey.mockRejectedValueOnce(new Error('first attempt fails'));
+    render(<PasskeyChip initiallyEnrolled={false} />);
+    const button = chip();
+    fireEvent.click(button);
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't save. Try again.");
+    expect(button).toBeEnabled();
+
+    mockRegisterPasskey.mockResolvedValueOnce();
+    fireEvent.click(button);
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(screen.getByRole('status')).toHaveTextContent('Face / Touch ID added.');
+  });
 });

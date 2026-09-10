@@ -55,7 +55,7 @@ export function PasskeyChip({ initiallyEnrolled }: PasskeyChipProps) {
   if (enrolled) {
     return announce ? (
       <span className={styles.srOnly} role="status">
-        Face / Touch ID added.
+        {PASSKEY_LABEL} added.
       </span>
     ) : null;
   }
