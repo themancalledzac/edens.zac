@@ -31,7 +31,9 @@ export function SegmentedChip({ segments, ariaLabel }: SegmentedChipProps) {
               href={segment.href}
               scroll={false}
               aria-current={segment.current ? 'page' : undefined}
-              className={segment.current ? `${styles.segment} ${styles.current}` : styles.segment}
+              className={[styles.segment, segment.current ? styles.current : null]
+                .filter(Boolean)
+                .join(' ')}
             >
               {segment.label}
               {segment.count !== undefined && (
