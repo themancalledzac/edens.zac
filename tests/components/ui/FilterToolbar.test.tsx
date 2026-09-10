@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { type ComponentProps } from 'react';
 
+import { CHIP_WEIGHT } from '@/app/components/ui/FilterToolbar/chipWeights';
 import {
   FilterToolbar,
   MAX_FLAT_DATE_CHIPS,
@@ -150,26 +151,6 @@ describe('FilterToolbar', () => {
         filterState: { ...INITIAL_FILTER_STATE, followedOnly: true },
       });
       expect(screen.getByRole('button', { name: /reset all filters/i })).toBeEnabled();
-    });
-
-    /**
-     * The placement is the decision this item turned on: the filter sits with the toggles, after
-     * the separator, so it cannot read as a fifth section tab.
-     */
-    it('renders after the section chips, not among them', () => {
-      renderToolbar({
-        showFollowingToggle: true,
-        sections: [
-          { key: 'collections', label: 'Collections', count: 14, href: '/user?tab=collections' },
-          { key: 'images', label: 'Images', count: 2, href: '/user?tab=images' },
-        ],
-        activeSectionKey: 'collections',
-      });
-
-      const collections = screen.getByRole('link', { name: /collections/i });
-      const chip = followingChip();
-      expect(collections.compareDocumentPosition(chip)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-      expect(chip.tagName).not.toBe('A');
     });
   });
 
@@ -694,6 +675,73 @@ describe('FilterToolbar', () => {
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
     expect(trigger.querySelector('span')?.textContent).toBe('▴');
+  });
+});
+
+describe('FilterToolbar upper tier', () => {
+  const sections = [
+    { key: 'collections', label: 'Collections', count: 2, href: '/user?tab=collections' },
+    { key: 'images', label: 'Images', count: 1, href: '/user?tab=images' },
+  ];
+
+  it('renders the sections as one segmented control above the filter cluster', () => {
+    const { container } = render(
+      <FilterToolbar
+        filterState={INITIAL_FILTER_STATE}
+        onFilterChange={() => {}}
+        dimensions={{}}
+        sections={sections}
+        activeSectionKey="collections"
+        showFollowingToggle
+      />
+    );
+    const nav = screen.getByRole('navigation', { name: 'Sections' });
+    expect(nav.closest('.upper')).not.toBeNull();
+    expect(nav.closest('.controls')).toBeNull();
+    expect(screen.getByRole('button', { name: /^Following/ }).closest('.controls')).not.toBeNull();
+    expect(container.querySelector('.separator')).toBeNull();
+  });
+
+  it('orders the upper tier by weight, highest first, sections leading', () => {
+    const { container } = render(
+      <FilterToolbar
+        filterState={INITIAL_FILTER_STATE}
+        onFilterChange={() => {}}
+        dimensions={{}}
+        sections={sections}
+        activeSectionKey="collections"
+        extras={[
+          {
+            key: 'passkey',
+            weight: CHIP_WEIGHT.passkey,
+            node: <button type="button">Face</button>,
+          },
+          { key: 'share', weight: CHIP_WEIGHT.share, node: <button type="button">Share</button> },
+          {
+            key: 'contact',
+            weight: CHIP_WEIGHT.contact,
+            node: <button type="button">Contact</button>,
+          },
+        ]}
+      />
+    );
+    const upper = container.querySelector('.upper') as HTMLElement;
+    const order = Array.from(upper.querySelectorAll('nav, button')).map(
+      el => el.getAttribute('aria-label') ?? el.textContent
+    );
+    expect(order).toEqual(['Sections', 'Share', 'Contact', 'Face']);
+  });
+
+  it('renders no upper tier on a page with neither sections nor extras', () => {
+    const { container } = render(
+      <FilterToolbar
+        filterState={INITIAL_FILTER_STATE}
+        onFilterChange={() => {}}
+        dimensions={{}}
+        showDateSort
+      />
+    );
+    expect(container.querySelector('.upper')).toBeNull();
   });
 });
 
