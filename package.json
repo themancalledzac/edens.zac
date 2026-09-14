@@ -38,8 +38,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^8.57.1",
-    "@next/bundle-analyzer": "^16.3.4",
-    "@next/eslint-plugin-next": "^16.3.4",
+    "@next/bundle-analyzer": "^16.3.5",
+    "@next/eslint-plugin-next": "^16.3.5",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
@@ -59,6 +59,6 @@
     "stylelint-config-standard-scss": "^17.0.0",
     "stylelint-prettier": "^5.0.3",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.69.0"
+    "typescript-eslint": "^8.70.0"
   }
 }
