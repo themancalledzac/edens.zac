@@ -111,5 +111,3 @@ export function UserSpace({
     grid
   );
 }
-
-export default UserSpace;

@@ -40,5 +40,3 @@ export function UpgradePersonButton({ person }: UpgradePersonButtonProps) {
     </div>
   );
 }
-
-export default UpgradePersonButton;

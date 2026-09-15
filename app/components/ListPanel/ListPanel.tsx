@@ -68,10 +68,6 @@ export function ListPanel({
 }: ListPanelProps) {
   const isCollapsed = onCollapsedChange !== undefined && collapsed;
 
-  // Both wrappers are unconditional. `Disclosure` renders `action` as a bare sibling of the
-  // toggle, so without them the header's grid has no stable column for the trailing control:
-  // an absent middle would slide the action from column 3 into column 2 and take the right rail
-  // with it, exactly on the mode changes that hide the middle control.
   const headerSections = (
     <>
       <div className={styles.headerMiddle}>{headerMiddle}</div>
@@ -133,8 +129,6 @@ export function ListRows({ children }: ListRowsProps) {
 interface ListRowProps {
   /** The row's identity — a name over an email, a subject over a body. Hugs the left rail. */
   left: ReactNode;
-  /** Optional middle section. Absent in every panel today; the column stays reserved. */
-  middle?: ReactNode;
   /** Actions and trailing stats. Hugs the right rail, the same one the header's action hugs. */
   right?: ReactNode;
   /**
@@ -152,10 +146,10 @@ interface ListRowProps {
  *
  * Height is declared, not measured: `listPanelShape.ts` derives it from the slots each section
  * stacks, and the layout packer reserves that number before the panel ever renders. So a section's
- * content must not change height with the row's width — every text slot inside `left`, `middle`
- * and `right` is `nowrap` + ellipsis, and no `@media` or `@container` may enter this subtree.
+ * content must not change height with the row's width — every text slot inside `left` and `right`
+ * is `nowrap` + ellipsis, and no `@media` or `@container` may enter this subtree.
  */
-export function ListRow({ left, middle, right, onActivate, ariaLabel }: ListRowProps) {
+export function ListRow({ left, right, onActivate, ariaLabel }: ListRowProps) {
   return (
     <li className={styles.row}>
       {onActivate ? (
@@ -170,7 +164,7 @@ export function ListRow({ left, middle, right, onActivate, ariaLabel }: ListRowP
       ) : (
         <div className={styles.rowLeft}>{left}</div>
       )}
-      <div className={styles.rowMiddle}>{middle}</div>
+      <div className={styles.rowMiddle} />
       <div className={styles.rowRight}>{right}</div>
     </li>
   );
@@ -201,5 +195,3 @@ export function ViewAllLink({ href, count }: ViewAllLinkProps) {
     </Link>
   );
 }
-
-export default ListPanel;

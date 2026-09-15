@@ -22,17 +22,12 @@ export const ROLES_HREF = '/admin';
  * the hub, which reads this `role` param and opens that role instead of its list. The link is
  * still a link to a specific role, it just lands on the hub with that role already open.
  */
-export function roleHref(roleId: number): string {
+function roleHref(roleId: number): string {
   return `${ROLES_HREF}?role=${roleId}`;
 }
 
 export interface UserRolesSectionProps {
   userId: number;
-  /**
-   * Render membership without the controls that change it. The read view of the user detail page
-   * passes this; the edit surfaces do not.
-   */
-  readOnly?: boolean;
   /**
    * Lay the roles out as a wrapping row of chips instead of a stacked list.
    *
@@ -45,7 +40,7 @@ export interface UserRolesSectionProps {
 }
 
 /**
- * One user's role membership — the list, and (unless `readOnly`) the controls to change it.
+ * One user's role membership — the list, and the controls to change it.
  *
  * Every role name here is a link. A role is a real place in this admin — `/admin?role=[roleId]`
  * opens it on the hub, showing its members and the collections it grants — and membership is only
@@ -65,9 +60,6 @@ export interface UserRolesSectionProps {
  * in any roles yet." — a confident, wrong answer about who can see what. Unknown membership is
  * reported as unknown.
  *
- * `readOnly` skips the `listRoles` catalog read entirely. It only ever fed the add-select, so
- * fetching it for a view with no add-select would be a second round trip bought for nothing.
- *
  * Labelled by a `role="group"` + `aria-labelledby` pair rather than a heading, because this renders
  * under an `<h2>` inside `UserManagementPanel` and under the page's own heading level on
  * `/admin/users/[id]`. No fixed heading level is correct in both, and the component cannot know
@@ -75,11 +67,7 @@ export interface UserRolesSectionProps {
  * ARIA equivalent of `<fieldset>`/`<legend>`. A `<section aria-labelledby>` was rejected: a named
  * section becomes a `region` landmark, promoting a form subsection to page-level navigation.
  */
-export function UserRolesSection({
-  userId,
-  readOnly = false,
-  compact = false,
-}: UserRolesSectionProps) {
+export function UserRolesSection({ userId, compact = false }: UserRolesSectionProps) {
   const headingId = useId();
   const [userRoles, setUserRoles] = useState<UserRoleRow[]>([]);
   const [allRoles, setAllRoles] = useState<RoleSummary[]>([]);
@@ -92,10 +80,7 @@ export function UserRolesSection({
     setRolesError(null);
     void (async () => {
       try {
-        const [membership, all] = await Promise.all([
-          listUserRoles(userId),
-          readOnly ? Promise.resolve<RoleSummary[]>([]) : listRoles(),
-        ]);
+        const [membership, all] = await Promise.all([listUserRoles(userId), listRoles()]);
         if (!active) return;
         setUserRoles(membership);
         setAllRoles(all);
@@ -112,7 +97,7 @@ export function UserRolesSection({
     return () => {
       active = false;
     };
-  }, [userId, readOnly]);
+  }, [userId]);
 
   const availableRoles = allRoles.filter(r => !userRoles.some(ur => ur.roleId === r.id));
 
@@ -156,7 +141,7 @@ export function UserRolesSection({
    * as a chip so it can lead the chip row; the accessible name stays the fuller "Add Role", which
    * still contains the visible word.
    */
-  const addControl = !readOnly && availableRoles.length > 0 && (
+  const addControl = availableRoles.length > 0 && (
     <select
       aria-label="Add Role"
       className={compact ? styles.addChip : styles.addSelect}
@@ -198,31 +183,27 @@ export function UserRolesSection({
 
       {(userRoles.length > 0 || (compact && addControl)) && (
         <ul className={compact ? styles.chipList : styles.list}>
-          {/* Compact leads the row with the join control, so "Roles" is followed immediately by the
-              way to add one and the row stays a single wrapping line. */}
           {compact && addControl && <li className={styles.addItem}>{addControl}</li>}
           {userRoles.map(r => (
             <li key={r.roleId} className={compact ? styles.chip : styles.row}>
               <Link href={roleHref(r.roleId)} className={styles.roleLink}>
                 {r.name}
               </Link>
-              {!readOnly && (
-                <IconButton
-                  aria-label={`Remove ${r.name}`}
-                  shape="square"
-                  size="sm"
-                  className={styles.remove}
-                  disabled={pending}
-                  onClick={() =>
-                    void runAction(
-                      () => removeUserFromRole(userId, r.roleId),
-                      'Failed to remove role. Please try again.'
-                    )
-                  }
-                >
-                  ×
-                </IconButton>
-              )}
+              <IconButton
+                aria-label={`Remove ${r.name}`}
+                shape="square"
+                size="sm"
+                className={styles.remove}
+                disabled={pending}
+                onClick={() =>
+                  void runAction(
+                    () => removeUserFromRole(userId, r.roleId),
+                    'Failed to remove role. Please try again.'
+                  )
+                }
+              >
+                ×
+              </IconButton>
             </li>
           ))}
         </ul>

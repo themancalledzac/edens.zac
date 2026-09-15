@@ -1,6 +1,7 @@
 /**
- * Data layer for the "user space" page — the three-section view rendered at `/user` for the
- * signed-in user and at `/admin/users/[id]` for an admin looking at someone else's space.
+ * Data layer for the "user space" page — the three-section (Collections, Images, Saved) view
+ * rendered at `/user` for the signed-in user and at `/admin/users/[id]` for an admin looking at
+ * someone else's space.
  *
  * Both surfaces render the SAME sections from the SAME assembler output; only the reads differ.
  * `/api/read/user/**` binds every read to the session principal (self-only by construction), so
@@ -73,7 +74,7 @@ export function resolveSpaceKey(raw: string | string[] | undefined): SpaceKey {
 }
 
 /** Split the synthetic user collection's content into COLLECTION blocks and IMAGE/GIF blocks. */
-export function splitUserContent(content: AnyContentModel[] | undefined): {
+function splitUserContent(content: AnyContentModel[] | undefined): {
   collectionBlocks: AnyContentModel[];
   imageBlocks: AnyContentModel[];
 } {
@@ -95,7 +96,7 @@ export function splitUserContent(content: AnyContentModel[] | undefined): {
  * `convertCollectionContentToParallax`, which carries `referencedCollectionId` through as the
  * card's `collectionId` — the id the follow toggle persists against.
  */
-export function toCollectionBlocks(collections: CollectionModel[]): ContentCollectionModel[] {
+function toCollectionBlocks(collections: CollectionModel[]): ContentCollectionModel[] {
   return collections.map((collection, index) => ({
     contentType: 'COLLECTION',
     id: collection.id,
@@ -232,10 +233,11 @@ export interface UserSpaceData {
   /**
    * Which section chips to offer, in order.
    *
-   * All four for the owner and for an admin. A share recipient gets Collections and Images only:
-   * Saved and Following are the owner's private bookmarks, which the backend deliberately keeps
-   * out of the recipient view. Rendering them empty would be worse than omitting them — an empty
-   * "Saved" tab reads as a claim that the owner has saved nothing, which is not what we know.
+   * All three (Collections, Images, Saved) for the owner and for an admin. A share recipient gets
+   * Collections and Images only: Saved is the owner's private bookmark list, which the backend
+   * deliberately keeps out of the recipient view. Rendering it empty would be worse than omitting
+   * it — an empty "Saved" tab reads as a claim that the owner has saved nothing, which is not what
+   * we know.
    */
   visibleKeys: readonly [TabKey, ...TabKey[]];
   /**

@@ -85,5 +85,3 @@ export function GenerateInviteButton({ userId, email, status }: GenerateInviteBu
     </>
   );
 }
-
-export default GenerateInviteButton;

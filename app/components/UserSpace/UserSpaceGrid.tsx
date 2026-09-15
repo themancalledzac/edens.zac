@@ -86,7 +86,10 @@ export function pruneUnfollowed(
 }
 
 export interface UserSpaceGridProps {
-  /** Backend-assembled: no `id`, `isClient` or `isPasswordProtected`. Never synthesize these. */
+  /**
+   * Backend-assembled: no `id`, `isClient` or `isPasswordProtected`. Never synthesize these — a
+   * synthesized `id` arms the download and Selects UI on a page with no gallery to grant.
+   */
   collection: CollectionModel;
   sections: Record<TabKey, UserSpaceSection>;
   /** Which section chips to offer, in order. See {@link UserSpaceData.visibleKeys}. */
@@ -193,5 +196,3 @@ export function UserSpaceGrid({
     </>
   );
 }
-
-export default UserSpaceGrid;

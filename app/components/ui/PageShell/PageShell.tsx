@@ -43,5 +43,3 @@ export function PageShell({
     </div>
   );
 }
-
-export default PageShell;

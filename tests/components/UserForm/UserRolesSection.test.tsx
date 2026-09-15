@@ -6,8 +6,7 @@
  * - every role name, and the section's own label, is a link to a real admin destination;
  * - adding commits on `change` (no second "Add" button) and removing is the red × on the row;
  * - a failed read reports membership as UNKNOWN rather than as "no roles" — the one thing here
- *   that must never regress, because the wrong answer is a confident claim about who can see what;
- * - readOnly drops the mutating controls and skips the role-catalog read entirely.
+ *   that must never regress, because the wrong answer is a confident claim about who can see what.
  */
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -17,13 +16,15 @@ import { ApiError } from '@/app/lib/api/core';
 import * as rolesApi from '@/app/lib/api/roles';
 import { type UserRoleRow } from '@/app/types/Role';
 
+/**
+ * `jest.fn(() => Promise.resolve())` rather than `.mockResolvedValue(undefined)`: an untyped
+ * `jest.fn()` infers `unknown`, so tsc demands the argument, while eslint's
+ * `unicorn/no-useless-undefined` auto-strips it, leaving `mockResolvedValue()`, which then fails
+ * the type check. This form satisfies both.
+ */
 jest.mock('@/app/lib/api/roles', () => ({
   listUserRoles: jest.fn(() => Promise.resolve([])),
   listRoles: jest.fn(() => Promise.resolve([])),
-  // `jest.fn(() => Promise.resolve())` rather than `.mockResolvedValue(undefined)`: an untyped
-  // jest.fn() infers `unknown`, so tsc demands the argument, while eslint's
-  // unicorn/no-useless-undefined auto-strips it — leaving `mockResolvedValue()`, which then fails
-  // the type check. This form satisfies both.
   addUserToRole: jest.fn(() => Promise.resolve()),
   removeUserFromRole: jest.fn(() => Promise.resolve()),
 }));
@@ -40,9 +41,6 @@ const mockRemoveUserFromRole = rolesApi.removeUserFromRole as jest.MockedFunctio
 >;
 
 describe('UserRolesSection', () => {
-  // `jest.clearAllMocks()` clears calls but NOT implementations, so a rejection installed by one
-  // test leaks into the next. Every mock this suite reprograms is restored here, or the failure
-  // shows up in whichever test happens to run after the one that set it.
   beforeEach(() => {
     jest.clearAllMocks();
     mockListUserRoles.mockResolvedValue([]);
@@ -72,14 +70,12 @@ describe('UserRolesSection', () => {
     render(<UserRolesSection userId={8} />);
 
     const select = await screen.findByLabelText('Add Role');
-    // The previous shape needed a second tap on an "Add" button; picking the role IS the intent.
     expect(screen.queryByRole('button', { name: /^add$/i })).not.toBeInTheDocument();
 
     mockListUserRoles.mockResolvedValue([{ roleId: 3, name: 'power' }]);
     fireEvent.change(select, { target: { value: '3' } });
 
     await waitFor(() => expect(mockAddUserToRole).toHaveBeenCalledWith(8, 3));
-    // Membership is re-read rather than patched locally, so the list shows what the server stored.
     await waitFor(() => expect(screen.getByRole('link', { name: 'power' })).toBeInTheDocument());
   });
 
@@ -122,9 +118,6 @@ describe('UserRolesSection', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/failed to add role/i));
   });
 
-  // The write and the read back are reported separately: an add that LANDED and then failed to
-  // re-read must not claim the add failed, or an admin retries a grant that already exists — or
-  // worse, walks away believing access was never given.
   it('does not report a landed change as a failure when only the re-read throws', async () => {
     mockListRoles.mockResolvedValue([{ id: 3, name: 'power' }]);
 
@@ -143,8 +136,6 @@ describe('UserRolesSection', () => {
     expect(screen.queryByText(/failed to add role/i)).not.toBeInTheDocument();
   });
 
-  // An admin auditing permissions must never be shown "Not in any roles yet." for a read that
-  // failed — the reads throw on any non-OK response, and `[]` is a different claim entirely.
   it('reports unknown membership instead of claiming the user has no roles', async () => {
     mockListUserRoles.mockRejectedValue(new ApiError('Backend unreachable', 500));
 
@@ -168,8 +159,6 @@ describe('UserRolesSection', () => {
   });
 
   describe('compact', () => {
-    // The rail's roles are one wrapping row, so the join control leads it as a chip rather than
-    // sitting under the row as a form field.
     it('leads the row with an "Add" chip, before the role chips', async () => {
       mockListUserRoles.mockResolvedValue([{ roleId: 3, name: 'power' }]);
       mockListRoles.mockResolvedValue([{ id: 9, name: 'clients' }]);
@@ -177,7 +166,6 @@ describe('UserRolesSection', () => {
       render(<UserRolesSection userId={8} compact />);
 
       const add = await screen.findByLabelText('Add Role');
-      // Shorter visible label; the accessible name stays the fuller phrase and still contains it.
       expect(add).toHaveDisplayValue('Add');
 
       const row = add.closest('ul');
@@ -209,27 +197,6 @@ describe('UserRolesSection', () => {
     });
   });
 
-  describe('readOnly', () => {
-    it('keeps the links but drops the controls that change membership', async () => {
-      mockListUserRoles.mockResolvedValue([{ roleId: 3, name: 'power' }]);
-      mockListRoles.mockResolvedValue([{ id: 9, name: 'clients' }]);
-
-      render(<UserRolesSection userId={8} readOnly />);
-
-      await waitFor(() =>
-        expect(screen.getByRole('link', { name: 'power' })).toHaveAttribute('href', '/admin?role=3')
-      );
-      expect(screen.queryByLabelText('Add Role')).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument();
-    });
-
-    it('skips the role-catalog read, which only ever fed the add control', async () => {
-      render(<UserRolesSection userId={8} readOnly />);
-
-      await waitFor(() => expect(mockListUserRoles).toHaveBeenCalledWith(8));
-      expect(mockListRoles).not.toHaveBeenCalled();
-    });
-  });
   /**
    * The mount effect's per-run cancellation. Both cases resolve the superseded read while the
    * component stays mounted, because that is the only one of the two that is observable: React 19

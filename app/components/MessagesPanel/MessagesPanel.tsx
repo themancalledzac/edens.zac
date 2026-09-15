@@ -134,5 +134,3 @@ export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelPro
     </ListPanel>
   );
 }
-
-export default MessagesPanel;

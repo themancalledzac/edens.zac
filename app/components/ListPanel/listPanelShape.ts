@@ -95,7 +95,7 @@ export const SLOT_GAP = 4;
 export const ROW_PADDING_Y = 13;
 
 /**
- * Fixed height around a panel's list, mirroring `AdminPanel.module.scss`. Written as its parts
+ * Fixed height around a panel's list, mirroring `ListPanel.module.scss`. Written as its parts
  * rather than one measured total so a token change is traceable: `.panel` border (1px x 2),
  * `.header` block padding (`--space-3` x 2) plus its bottom rule, and `.body` padding
  * (`--space-4` x 2).
