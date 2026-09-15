@@ -15,9 +15,8 @@ const config = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
-  // Test files are in /tests folder mirroring app/ structure
   testMatch: ['<rootDir>/tests/**/*.test.{ts,tsx}'],
-  testPathIgnorePatterns: ['/node_modules/', '/.next/'],
+  testPathIgnorePatterns: ['/node_modules/', '/.next/', '/tests/e2e/'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'mjs', 'json'],
   collectCoverageFrom: [
     'app/**/*.{ts,tsx}',
