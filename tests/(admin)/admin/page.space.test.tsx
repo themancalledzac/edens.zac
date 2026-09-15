@@ -82,10 +82,8 @@ const gifBlock = (id: number) => ({ id, contentType: 'GIF' });
 
 /**
  * Walk the rendered element tree and return the first element of the given type's props. `UserSpace`
- * is invoked rather than descended, since it renders the collection stack and the hub itself rather
- * than passing children through. Copied from `tests/app/user/page.test.tsx`; the walk already
- * handles arrays and fragments, so it descends through `UserSpace` into the hub rendered as a
- * sibling of the grid without any change.
+ * is invoked rather than descended, since it renders the collection stack rather than passing
+ * children through. Copied from `tests/app/user/page.test.tsx`.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function findProps(node: any, type: unknown): any {
@@ -145,9 +143,10 @@ describe("AdminPage as the admin's own space", () => {
     expect(Object.keys(sections)).toEqual(['collections', 'images', 'saved']);
   });
 
-  it('hands the grid the admin hub', async () => {
+  it('hands the grid an AdminHubClient element the page built itself', async () => {
     const result = await renderAdmin();
-    expect(gridProps(result).adminHub).not.toBeUndefined();
+    expect(gridProps(result).adminHub.type).toBe(AdminHubClient);
+    expect(gridProps(result).adminHub.props.mobileChunkSize).toBe(1);
   });
 
   it('hands the grid every section’s blocks, not just one the page picked', async () => {

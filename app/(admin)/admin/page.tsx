@@ -31,18 +31,22 @@ export default async function AdminPage() {
     principal ? readShareSettings() : Promise.resolve(null),
   ]);
 
+  const hubNode = (
+    <AdminHubClient
+      content={hub.content}
+      seed={hub.seed}
+      mobileChunkSize={1}
+      serverContentWidth={ssrViewport?.contentWidth}
+      serverViewportHeight={ssrViewport?.viewportHeight}
+      serverIsMobile={ssrViewport?.isMobile}
+    />
+  );
+
   if (!principal || !data || !share) {
     return (
       <PageShell>
         <h1 className={styles.srOnly}>Admin</h1>
-        <AdminHubClient
-          content={hub.content}
-          seed={hub.seed}
-          mobileChunkSize={1}
-          serverContentWidth={ssrViewport?.contentWidth}
-          serverViewportHeight={ssrViewport?.viewportHeight}
-          serverIsMobile={ssrViewport?.isMobile}
-        />
+        {hubNode}
       </PageShell>
     );
   }
@@ -56,7 +60,7 @@ export default async function AdminPage() {
           basePath="/admin"
           me={principal}
           ssrViewport={ssrViewport}
-          adminHub={hub}
+          adminHub={hubNode}
           toolbarExtras={ownSpaceExtras(principal, share)}
         />
       </div>

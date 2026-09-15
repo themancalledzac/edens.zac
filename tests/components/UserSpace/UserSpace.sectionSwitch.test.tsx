@@ -79,11 +79,6 @@ jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => {
   return { __esModule: true, default: MockGrid };
 });
 
-jest.mock('@/app/(admin)/admin/AdminHubClient', () => ({
-  AdminHubClient: () => <div data-testid="hub">Hub</div>,
-}));
-
-import { type AdminHub } from '@/app/(admin)/admin/loadAdminHub';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import {
   TAB_KEYS,
@@ -347,7 +342,7 @@ describe('UserSpace — a section whose read failed', () => {
  * (`content: []`, which also hides the density control) — see `UserSpaceGrid`.
  */
 describe('UserSpace — the Admin section', () => {
-  const adminHub: AdminHub = { content: [], seed: {} } as unknown as AdminHub;
+  const adminHub = <div data-testid="hub">Hub</div>;
 
   const viewWithHub = (data: UserSpaceData = makeData()) => (
     <UserSpace

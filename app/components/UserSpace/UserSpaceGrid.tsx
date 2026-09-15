@@ -103,7 +103,7 @@ export interface UserSpaceGridProps {
   ssrViewport: SsrViewport | null;
   railExtras?: ReactNode;
   toolbarExtras?: readonly ToolbarExtra[];
-  /** The Admin section's content, pre-rendered by `UserSpace`. Only `/admin` passes it. */
+  /** The Admin section's content, built as an element by `/admin`, the only page that passes it. */
   adminHub?: ReactNode;
 }
 

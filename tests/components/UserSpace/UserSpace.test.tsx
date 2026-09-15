@@ -187,9 +187,30 @@ describe('UserSpace — forwards the section data untouched', () => {
 });
 
 /**
- * Page-level rail content — `/user`'s Account and Admin cards, the admin view-as note — belongs in
- * the collection header rail beside the cover, not in a slab below the grid. `UserSpace` only
- * forwards it.
+ * `/admin` builds the hub element itself and hands it over as a node, so this server component
+ * never imports anything from the `(admin)` route. It forwards the node by reference.
+ */
+describe('UserSpace — admin hub', () => {
+  it('forwards the adminHub node untouched to the grid', () => {
+    const hub = <div>hub</div>;
+    const result = UserSpace({
+      data: makeData(),
+      basePath: '/admin',
+      me: principal,
+      ssrViewport: null,
+      adminHub: hub,
+    });
+    expect(findProps(result, UserSpaceGrid).adminHub).toBe(hub);
+  });
+
+  it('hands the grid no hub when the page passes none', () => {
+    expect(findProps(render(principal), UserSpaceGrid).adminHub).toBeUndefined();
+  });
+});
+
+/**
+ * Page-level rail content — `/admin/users/[id]`'s role membership — belongs in the collection
+ * header rail beside the cover, not in a slab below the grid. `UserSpace` only forwards it.
  */
 describe('UserSpace — rail extras', () => {
   it('forwards railExtras to the collection stack', () => {

@@ -1,7 +1,5 @@
 import { type ReactNode } from 'react';
 
-import { AdminHubClient } from '@/app/(admin)/admin/AdminHubClient';
-import { type AdminHub } from '@/app/(admin)/admin/loadAdminHub';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { type ToolbarExtra } from '@/app/components/ui/FilterToolbar/chipWeights';
 import { type UserSpaceData } from '@/app/components/UserSpace/userSpaceData';
@@ -29,8 +27,8 @@ export interface UserSpaceProps {
   railExtras?: ReactNode;
   /** Page-level chips for the bar's upper tier. `/user` and `/admin` pass Share, Contact, Face / Touch ID. */
   toolbarExtras?: readonly ToolbarExtra[];
-  /** The admin hub to render as the `admin` section. Only `/admin` passes it. */
-  adminHub?: AdminHub;
+  /** The Admin section's content, already an element. Only `/admin` passes it. */
+  adminHub?: ReactNode;
 }
 
 /**
@@ -39,9 +37,10 @@ export interface UserSpaceProps {
  *
  * Every section and which one is on screen render through {@link UserSpaceGrid} — a client
  * component that reads the active section straight off the URL, so a chip click swaps sections in
- * place with no server round trip. This component builds the Admin hub node (kept server-side so
- * `(admin)`-route JS never reaches `/user` or `/s/[token]`'s bundle) and otherwise just decides
- * whether a `FollowsProvider` is mounted, forwarding the rest of `data` untouched.
+ * place with no server round trip. The Admin hub arrives as a finished node built by `/admin`, so
+ * that page is the only server graph that references `AdminHubClient` and none of its JS is
+ * collected into `/user`, `/s/[token]` or `/admin/users/[id]`. Beyond that this component only
+ * decides whether a `FollowsProvider` is mounted and forwards the rest of `data` untouched.
  *
  * ## Why admin and share mode pass `me={null}`
  *
@@ -78,17 +77,6 @@ export function UserSpace({
     visibleKeys,
   } = data;
 
-  const adminHubNode = adminHub ? (
-    <AdminHubClient
-      content={adminHub.content}
-      seed={adminHub.seed}
-      mobileChunkSize={1}
-      serverContentWidth={ssrViewport?.contentWidth}
-      serverViewportHeight={ssrViewport?.viewportHeight}
-      serverIsMobile={ssrViewport?.isMobile}
-    />
-  ) : undefined;
-
   const grid = (
     <UserSpaceGrid
       collection={collection}
@@ -101,7 +89,7 @@ export function UserSpace({
       ssrViewport={ssrViewport}
       railExtras={railExtras}
       toolbarExtras={toolbarExtras}
-      adminHub={adminHubNode}
+      adminHub={adminHub}
     />
   );
 
