@@ -25,18 +25,18 @@ test('enrolls a passkey from /admin and signs back in with it', async ({ page, c
   await page.goto('/login');
   await page.getByLabel(/email/i).fill(email!);
   await page.getByLabel(/password/i).fill(password!);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
 
-  const passkeyChip = page.getByRole('button', { name: /Face\s*\/\s*Touch ID/ });
+  const passkeyChip = page.getByRole('button', { name: /^Face\s*\/\s*Touch ID$/ });
   await expect(passkeyChip).toBeVisible();
   await passkeyChip.click();
   await expect(passkeyChip).toHaveCount(0);
 
-  await page.getByRole('button', { name: /menu/i }).click();
-  await page.getByRole('button', { name: 'Log out' }).click();
+  await page.getByRole('button', { name: 'Open navigation menu', exact: true }).click();
+  await page.getByRole('button', { name: 'Log out', exact: true }).click();
   await page.goto('/login');
   await page.getByLabel(/email/i).fill(email!);
-  await page.getByRole('button', { name: 'Sign in with Face / Touch ID' }).click();
+  await page.getByRole('button', { name: 'Sign in with Face / Touch ID', exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
 });
