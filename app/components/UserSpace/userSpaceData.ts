@@ -281,13 +281,10 @@ async function loadShareView(target: { mode: 'share'; token?: string }): Promise
  * caller turns into a 404 / empty state; any other read failure rejects so the error boundary
  * handles it.
  *
- * The collection catalog (`getAllCollections(0, 500)`, ~0.5s and ~57KB against the local backend)
- * is read whenever the target is not a share link: it turns the followed-id list into renderable
- * Collections blocks, and every mode that offers a Collections section needs it up front now that
- * the section is no longer selected server-side. A share recipient has no follow state, so the
- * followed half of their Collections list is always empty and the read is skipped outright. The
- * read still sits inside the `Promise.all` below, so it overlaps the page read rather than adding
- * to it.
+ * The collection catalog (`getAllCollections(0, 500)`) is read whenever the target is not a share
+ * link, since every mode with a Collections section now needs it up front rather than only when
+ * that section happened to be server-selected. A share recipient has no follow state, so the read
+ * is skipped for them.
  *
  * ## Fail-soft reads
  *

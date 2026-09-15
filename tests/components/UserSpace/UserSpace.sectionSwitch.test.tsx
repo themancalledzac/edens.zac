@@ -1,29 +1,16 @@
 /**
- * `UserSpace` switches sections from the URL, in place, with no server round trip.
+ * `UserSpaceGrid` switches sections from `?tab=` in place: a chip click pushes the new URL with
+ * `window.history.pushState` instead of navigating, so `useSearchParams()` re-renders with the new
+ * value and no server round trip happens.
  *
- * `UserSpaceGrid` reads `?tab=` via `useSearchParams()` instead of taking it as a prop, and a chip
- * click intercepts the link and pushes the new URL with `window.history.pushState` — Next's router
- * picks that up without an RSC fetch, so `useSearchParams()` re-renders with the new value and
- * `loadUserSpace` is never called again. `getUserPage` (the read behind it) stands in for that: it
- * is mocked here purely to prove it stays uncalled from the client, not because anything in this
- * tree would ever call it.
- *
- * `CollectionPageClient` is stood in here rather than rendered for real. This file is about the
- * CONTRACT `UserSpaceGrid` hands it — which section, which blocks, whether the node survives a
- * switch — not about `FilterToolbar`/`SegmentedChip`'s own rendering, which their own suites already
- * cover. The stand-in renders exactly what a chip click needs: a nav of real links carrying `href`
- * and `aria-current`, plus a mount counter and the active section's blocks.
- *
- * The "does not remount" cases are the load-bearing ones. `UserSpaceGrid` renders
- * `CollectionPageClient` unkeyed, so a section switch is a prop change, not a teardown — a remount
- * would collapse the document to the header's height for a frame, clamp `scrollY`, and throw the
- * viewer toward the top on every chip click. A prop change and a remount produce the same final
- * markup, so the assertions below are chosen to tell them apart (a mount counter, and the identity
- * of a DOM node a remount would necessarily replace) rather than to check the output.
+ * `CollectionPageClient` is stood in here (this file is about the contract `UserSpaceGrid` hands
+ * it, not `FilterToolbar`/`SegmentedChip`'s own rendering) and never keyed on the section, so the
+ * "does not remount" cases tell a prop change apart from a teardown by a mount counter and DOM-node
+ * identity rather than by output.
  */
 import '@testing-library/jest-dom';
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 jest.mock('@/app/lib/api/personal');
 
@@ -49,10 +36,12 @@ jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => {
     collection,
     sections,
     activeSectionKey,
+    onSectionSelect,
   }: {
     collection: { content?: { id: number }[] };
-    sections?: readonly { key: string; label: string; href: string }[];
+    sections?: readonly { key: string; label: string; href: string; count?: number }[];
     activeSectionKey?: string;
+    onSectionSelect?: (key: string, href: string) => void;
   }) => {
     useEffect(() => {
       mockGridMounts.push(activeSectionKey ?? 'unsectioned');
@@ -67,8 +56,17 @@ jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => {
               key={section.key}
               href={section.href}
               aria-current={section.key === activeSectionKey ? 'page' : undefined}
+              onClick={
+                onSectionSelect
+                  ? event => {
+                      event.preventDefault();
+                      onSectionSelect(section.key, section.href);
+                    }
+                  : undefined
+              }
             >
               {section.label}
+              {section.count !== undefined && <span aria-hidden="true">{section.count}</span>}
             </a>
           ))}
         </nav>
@@ -119,7 +117,7 @@ const collectionBlock = (id: number) =>
     title: `Collection ${id}`,
   }) as unknown as UserSpaceSection['content'][number];
 
-function makeData(): UserSpaceData {
+function makeData(overrides: Partial<UserSpaceData> = {}): UserSpaceData {
   return {
     collection: {
       slug: 'user',
@@ -146,6 +144,7 @@ function makeData(): UserSpaceData {
     grantedCollectionIds: [1],
     visibleKeys: TAB_KEYS,
     ownerName: null,
+    ...overrides,
   };
 }
 
@@ -190,6 +189,53 @@ describe('UserSpace — switches sections from the URL with no server round trip
     rerender(view());
 
     expect(screen.getByRole('link', { name: 'Saved' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  /**
+   * The click side of the contract: a chip click must reach `window.history.pushState`, not just
+   * the URL-to-render-state direction the cases above pin.
+   */
+  it('pushes the new URL when a chip is clicked, instead of navigating', () => {
+    setTab('collections');
+    render(view());
+    const pushStateSpy = jest.spyOn(window.history, 'pushState').mockImplementation(() => {});
+
+    fireEvent.click(screen.getByRole('link', { name: 'Images' }));
+
+    expect(pushStateSpy).toHaveBeenCalledWith(expect.anything(), '', '/user?tab=images');
+    pushStateSpy.mockRestore();
+  });
+});
+
+describe('UserSpace — narrows an untrusted `?tab=` before rendering', () => {
+  it('falls back to Collections for an unknown `?tab=`', () => {
+    setTab('nope');
+    render(view());
+    expect(screen.getByRole('link', { name: 'Collections' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
+  });
+
+  it('takes the first value when `?tab=` is repeated', () => {
+    mockSearchParams.append('tab', 'images');
+    mockSearchParams.append('tab', 'saved');
+    render(view());
+    expect(screen.getByRole('link', { name: 'Images' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('clamps to visibleKeys when the requested section is not offered', () => {
+    setTab('saved');
+    render(
+      view(makeData({ visibleKeys: ['collections', 'images'] as UserSpaceData['visibleKeys'] }))
+    );
+
+    const current = screen
+      .getAllByRole('link')
+      .filter(link => link.getAttribute('aria-current') === 'page');
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent('Collections');
+    expect(screen.queryByRole('link', { name: 'Saved' })).not.toBeInTheDocument();
   });
 });
 
@@ -288,14 +334,17 @@ describe('UserSpace — a section whose read failed', () => {
     expect(screen.getByText('This user has not saved any images yet.')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
+
+  it('omits the failed section’s count from its chip instead of badging it 0', () => {
+    renderSaved('Saved images are unavailable right now.');
+    expect(screen.getByRole('link', { name: 'Saved' })).toHaveTextContent(/^Saved$/);
+    expect(screen.getByRole('link', { name: 'Collections' })).toHaveTextContent('Collections1');
+  });
 });
 
 /**
- * On `/admin` the Admin section leads the segmented chip and renders the hub's packed panels
- * beneath the shared header instead of a grid, so the hub's own layout code stays untouched. The
- * personal grid renders alongside it with `content: []`, which is also what hides the density
- * control (`CollectionPageClient`'s own `hasRenderableContent` gate) without `UserSpaceGrid` having
- * to know about density at all.
+ * On `/admin` the Admin section leads the segmented chip and renders the hub instead of a grid
+ * (`content: []`, which also hides the density control) — see `UserSpaceGrid`.
  */
 describe('UserSpace — the Admin section', () => {
   const adminHub: AdminHub = { content: [], seed: {} } as unknown as AdminHub;

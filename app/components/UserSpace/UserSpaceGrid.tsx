@@ -3,8 +3,6 @@
 import { useSearchParams } from 'next/navigation';
 import { type ReactNode, useCallback, useMemo } from 'react';
 
-import { AdminHubClient } from '@/app/(admin)/admin/AdminHubClient';
-import { type AdminHub } from '@/app/(admin)/admin/loadAdminHub';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { useFollows } from '@/app/components/Personal/FollowsContext';
 import { FormError } from '@/app/components/ui/Field/FormError';
@@ -88,14 +86,7 @@ export function pruneUnfollowed(
 }
 
 export interface UserSpaceGridProps {
-  /**
-   * Invariant: the backend's `UserPageAssembler` builds this collection with no `id`, `isClient` or
-   * `isPasswordProtected` (it is assembled, not a `collection` row). That absence is what keeps the
-   * client-gallery affordances inside `CollectionPageClient` switched off — `canDownloadCollection`
-   * short-circuits on the missing id and `selectsEnabled` on the missing `isClient`. Do not
-   * synthesize an id onto this collection to satisfy the `CollectionModel` type; doing so would arm
-   * the download and Selects UI on a page that has no gallery to grant.
-   */
+  /** Backend-assembled: no `id`, `isClient` or `isPasswordProtected`. Never synthesize these. */
   collection: CollectionModel;
   sections: Record<TabKey, UserSpaceSection>;
   /** Which section chips to offer, in order. See {@link UserSpaceData.visibleKeys}. */
@@ -109,42 +100,16 @@ export interface UserSpaceGridProps {
   ssrViewport: SsrViewport | null;
   railExtras?: ReactNode;
   toolbarExtras?: readonly ToolbarExtra[];
-  /** The admin hub to render as the `admin` section. Only `/admin` passes it. */
-  adminHub?: AdminHub;
+  /** The Admin section's content, pre-rendered by `UserSpace`. Only `/admin` passes it. */
+  adminHub?: ReactNode;
 }
 
 /**
- * Picks the active section straight off the URL, renders it through the shared collection stack,
- * and switches sections client-side with no server round trip.
- *
- * `?tab=` still drives the choice — shareable, bookmarkable, walkable with the back button — but it
- * is read here via `useSearchParams()` instead of resolved server-side, because every section's
- * content already arrived in `sections` (see `loadUserSpace`). A chip click calls
- * {@link onSectionSelect} instead of letting its `Link` navigate; that pushes the new URL with
- * `window.history.pushState`, which Next's router picks up without an RSC fetch, and
- * `useSearchParams()` re-renders this component with the new value.
- *
- * `requestedKey` is clamped to {@link visibleKeys}: a share link only offers Collections and
- * Images, and a hand-edited `?tab=saved` on one must not render a section the page does not list as
- * a chip.
- *
- * Not keyed on the active section, deliberately: `CollectionPageClient` stays mounted across a
- * switch, only its `collection`/`sections`/`activeSectionKey` props change. Remounting collapsed the
- * document to the header's height for a frame, which clamps `scrollY` and throws the viewer toward
- * the top on every chip they click.
- *
- * On `/admin` an Admin section leads the segmented chip; it renders the hub's packed panels and
- * tiles beneath the shared header instead of a grid (`content: []`, which also hides the density
- * control), so the hub's layout code is untouched. A section whose read failed renders `FormError`
- * instead of `EmptyState` — the latter is a claim that there is nothing here, which is false after
- * a failed read — checked ahead of the empty state and dropping its chip's count for the same
- * reason (see {@link UserSpaceSection.unavailableLabel}).
- *
- * Reconciles the Collections badge and tile list against the viewer's LIVE follow state: `UserSpace`
- * is a Server Component that can assemble the union of granted and followed collections but cannot
- * watch it change, since following is a client-only optimistic update in `FollowsProvider`. With no
- * provider mounted (admin and share mode), `useFollows()` is null and the server render passes
- * through untouched.
+ * Picks the active section from `?tab=` (clamped to {@link visibleKeys}) and renders it through the
+ * shared collection stack; a chip click pushes the new URL with `window.history.pushState` instead
+ * of navigating, so `CollectionPageClient` (never keyed on the section) stays mounted and no server
+ * round trip happens. It also reconciles the Collections badge and tile list against the viewer's
+ * live follow state, which `UserSpace` — a Server Component — cannot watch change.
  */
 export function UserSpaceGrid({
   collection,
@@ -162,8 +127,9 @@ export function UserSpaceGrid({
   const follows = useFollows();
   const followedIds = follows?.followedIds;
 
+  const hasAdminHub = adminHub !== undefined;
   const searchParams = useSearchParams();
-  const requestedKey: SpaceKey = adminHub
+  const requestedKey: SpaceKey = hasAdminHub
     ? resolveSpaceKey(searchParams.get('tab') ?? undefined)
     : resolveTabKey(searchParams.get('tab') ?? undefined);
   const activeKey: SpaceKey =
@@ -175,7 +141,7 @@ export function UserSpaceGrid({
   }, []);
 
   const toolbarSections: ToolbarSection[] = [
-    ...(adminHub ? [{ key: 'admin', label: 'Admin', href: `${basePath}?tab=admin` }] : []),
+    ...(hasAdminHub ? [{ key: 'admin', label: 'Admin', href: `${basePath}?tab=admin` }] : []),
     ...visibleKeys.map(key => {
       const section = sections[key];
       return {
@@ -212,16 +178,7 @@ export function UserSpaceGrid({
         followedCollectionIds={followedIds}
       />
 
-      {active === null && adminHub && (
-        <AdminHubClient
-          content={adminHub.content}
-          seed={adminHub.seed}
-          mobileChunkSize={1}
-          serverContentWidth={ssrViewport?.contentWidth}
-          serverViewportHeight={ssrViewport?.viewportHeight}
-          serverIsMobile={ssrViewport?.isMobile}
-        />
-      )}
+      {active === null && adminHub}
 
       {active !== null &&
         (active.unavailableLabel === undefined ? (

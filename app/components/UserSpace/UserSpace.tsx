@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 
+import { AdminHubClient } from '@/app/(admin)/admin/AdminHubClient';
 import { type AdminHub } from '@/app/(admin)/admin/loadAdminHub';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { type ToolbarExtra } from '@/app/components/ui/FilterToolbar/chipWeights';
@@ -36,10 +37,11 @@ export interface UserSpaceProps {
  * The three-section "user space" view, shared by `/user`, `/admin` (own space), `/admin/users/[id]`
  * (an admin looking at someone else's) and `/s/[token]` (a share-link recipient).
  *
- * Every section, the Admin hub, and which one is on screen render through {@link UserSpaceGrid} — a
- * client component that reads the active section straight off the URL, so a chip click swaps
- * sections in place with no server round trip. This component's own job is deciding whether a
- * `FollowsProvider` is mounted around it, and forwarding everything else untouched.
+ * Every section and which one is on screen render through {@link UserSpaceGrid} — a client
+ * component that reads the active section straight off the URL, so a chip click swaps sections in
+ * place with no server round trip. This component builds the Admin hub node (kept server-side so
+ * `(admin)`-route JS never reaches `/user` or `/s/[token]`'s bundle) and otherwise just decides
+ * whether a `FollowsProvider` is mounted, forwarding the rest of `data` untouched.
  *
  * ## Why admin and share mode pass `me={null}`
  *
@@ -76,6 +78,17 @@ export function UserSpace({
     visibleKeys,
   } = data;
 
+  const adminHubNode = adminHub ? (
+    <AdminHubClient
+      content={adminHub.content}
+      seed={adminHub.seed}
+      mobileChunkSize={1}
+      serverContentWidth={ssrViewport?.contentWidth}
+      serverViewportHeight={ssrViewport?.viewportHeight}
+      serverIsMobile={ssrViewport?.isMobile}
+    />
+  ) : undefined;
+
   const grid = (
     <UserSpaceGrid
       collection={collection}
@@ -88,7 +101,7 @@ export function UserSpace({
       ssrViewport={ssrViewport}
       railExtras={railExtras}
       toolbarExtras={toolbarExtras}
-      adminHub={adminHub}
+      adminHub={adminHubNode}
     />
   );
 

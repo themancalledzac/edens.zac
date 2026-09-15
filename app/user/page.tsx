@@ -31,7 +31,7 @@ export default async function UserPage({ searchParams }: UserPageProps) {
 
   const { tab } = await searchParams;
   if (principal.isAdmin) {
-    redirect(tab === undefined ? '/admin' : `/admin?tab=${resolveTabKey(tab)}`);
+    redirect(tab === undefined ? '/admin' : `/admin?tab=${encodeURIComponent(resolveTabKey(tab))}`);
   }
 
   const [data, ssrViewport, share] = await Promise.all([

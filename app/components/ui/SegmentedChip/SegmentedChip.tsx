@@ -23,8 +23,8 @@ export interface SegmentedChipProps {
 
 /**
  * One chip-shaped control holding N mutually-exclusive page sections. Segments are real links with
- * `aria-current` rather than tabs: each is a different URL with server-rendered content, so
- * middle-click, sharing and the back button all keep working.
+ * `aria-current` rather than tabs: each is a different URL, so middle-click, sharing and the back
+ * button all keep working, even though a plain click intercepted by `onSelect` no longer fetches.
  */
 export function SegmentedChip({ segments, ariaLabel, onSelect }: SegmentedChipProps) {
   return (

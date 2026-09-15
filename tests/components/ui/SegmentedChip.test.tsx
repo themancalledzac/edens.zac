@@ -69,11 +69,11 @@ describe('SegmentedChip', () => {
     }
   });
 
-  it('lets a caller intercept a click and keeps the real href', () => {
+  it('lets a caller intercept a click, prevents the navigation, and keeps the real href', () => {
     const onSelect = jest.fn();
     render(<SegmentedChip segments={segments} ariaLabel="Sections" onSelect={onSelect} />);
     const link = screen.getByRole('link', { name: 'Images' });
-    fireEvent.click(link);
+    expect(fireEvent.click(link)).toBe(false);
     expect(onSelect).toHaveBeenCalledWith('images', '/user?tab=images');
     expect(link).toHaveAttribute('href', '/user?tab=images');
   });
@@ -81,7 +81,8 @@ describe('SegmentedChip', () => {
   it('leaves a modifier click to navigate normally, without calling onSelect', () => {
     const onSelect = jest.fn();
     render(<SegmentedChip segments={segments} ariaLabel="Sections" onSelect={onSelect} />);
-    fireEvent.click(screen.getByRole('link', { name: 'Images' }), { metaKey: true });
+    const link = screen.getByRole('link', { name: 'Images' });
+    expect(fireEvent.click(link, { metaKey: true })).toBe(true);
     expect(onSelect).not.toHaveBeenCalled();
   });
 
