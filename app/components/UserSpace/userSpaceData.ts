@@ -312,9 +312,7 @@ async function loadShareView(target: { mode: 'share'; token?: string }): Promise
  *
  * A share recipient owns no bookmarks, so the saved/follows reads synthesize a fail-soft empty
  * rather than skip the fetch, keeping the shape uniform for the rest of the function; neither is
- * offered as a section in that mode (see {@link UserSpaceData.visibleKeys}). The catalog read stays
- * inside the same `Promise.all` so it overlaps the page read instead of serializing behind it, and
- * is skipped entirely in share mode, where there is no follow state for it to hydrate.
+ * offered as a section in that mode (see {@link UserSpaceData.visibleKeys}).
  */
 export async function loadUserSpace(
   target: UserSpaceMode,

@@ -434,7 +434,7 @@ describe('loadUserSpace — self mode uses the session-bound reads', () => {
 
 describe('resolveSpaceKey', () => {
   it('defaults to admin and accepts admin', () => {
-    // eslint-disable-next-line unicorn/no-useless-undefined -- explicitly testing undefined input
+    // eslint-disable-next-line unicorn/no-useless-undefined
     expect(resolveSpaceKey(undefined)).toBe('admin');
     expect(resolveSpaceKey('admin')).toBe('admin');
   });

@@ -1,19 +1,9 @@
 @use '../../styles/a11y';
 
-/* The page scaffold (container/main, max-width, centering, responsive side padding) and the
-   SiteHeader come from the shared <PageShell> — identical to /user, /explore, /tag, etc.
-   This module only owns the /admin-specific bits below. */
-
-/* Visually-hidden but screen-reader-accessible <h1> for page orientation + SEO, mirroring
-   app/user/page.module.scss (the visible section titles are <h2>s deeper in the tree). */
 .srOnly {
   @extend %visually-hidden;
 }
 
 .sections {
-  /* PageShell.main already caps width, centers, and adds the responsive side padding (so BoxTree
-     rows sized for the 1300px cap / edge-to-edge mobile line up). This only owns the vertical
-     rhythm around the personal sections — kept tight, since the tab bar (not whitespace) is what
-     separates one section from the next. */
   padding: var(--space-3) 0 var(--space-5);
 }

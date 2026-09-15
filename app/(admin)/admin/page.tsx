@@ -20,26 +20,26 @@ interface AdminPageProps {
   searchParams: Promise<{ tab?: string | string[] }>;
 }
 
-const NO_TAB: AdminPageProps = { searchParams: Promise.resolve({}) };
-
 /**
  * The admin's own space with an Admin section in front: the hub's panels and tiles under
  * `?tab=admin` (the default), and the same Collections / Images / Saved sections `/user` renders,
  * which redirects admins here. Gating is the `(admin)` layout's `requireAdmin()`; locally that
  * passes an anonymous visitor through, and with no principal there is no space to render, so the
- * hub renders alone, as it did before this page hosted the space.
+ * hub renders alone, as it did before this page hosted the space. A failed `meServer` or
+ * `loadUserSpace` read falls back the same way, rather than failing the hub too.
  */
-export default async function AdminPage({ searchParams }: AdminPageProps = NO_TAB) {
+export default async function AdminPage({ searchParams }: AdminPageProps) {
   const ssrViewport = await resolveSsrViewport();
-  const principal = await meServer();
+  const hubPromise = loadAdminHub(ssrViewport?.viewportHeight);
+  const principal = await meServer().catch(() => null);
   const { tab } = await searchParams;
   const activeKey = resolveSpaceKey(tab);
   /** Skips `loadUserSpace`'s collections-catalog read, which only the `collections` key fetches. */
   const tabKey: TabKey = activeKey === 'admin' ? 'images' : activeKey;
 
   const [hub, data, share] = await Promise.all([
-    loadAdminHub(ssrViewport?.viewportHeight),
-    principal ? loadUserSpace('self', tabKey) : Promise.resolve(null),
+    hubPromise,
+    principal ? loadUserSpace('self', tabKey).catch(() => null) : Promise.resolve(null),
     principal ? readShareSettings() : Promise.resolve(null),
   ]);
 

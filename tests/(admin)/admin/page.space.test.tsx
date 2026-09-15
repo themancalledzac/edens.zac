@@ -182,4 +182,18 @@ describe("AdminPage as the admin's own space", () => {
     expect(findProps(result, AdminHubClient)).not.toBeNull();
     expect(gridProps(result)).toBeNull();
   });
+
+  it('renders the hub alone when meServer rejects', async () => {
+    (meServer as jest.Mock).mockRejectedValue(new Error('backend down'));
+    const result = await renderAdmin();
+    expect(findProps(result, AdminHubClient)).not.toBeNull();
+    expect(gridProps(result)).toBeNull();
+  });
+
+  it('renders the hub alone when loadUserSpace rejects', async () => {
+    (getUserPage as jest.Mock).mockRejectedValue(new Error('backend down'));
+    const result = await renderAdmin();
+    expect(findProps(result, AdminHubClient)).not.toBeNull();
+    expect(gridProps(result)).toBeNull();
+  });
 });

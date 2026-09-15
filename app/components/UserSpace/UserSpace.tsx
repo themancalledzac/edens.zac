@@ -18,7 +18,7 @@ import styles from './UserSpace.module.scss';
 export interface UserSpaceProps {
   data: UserSpaceData;
   activeKey: SpaceKey;
-  /** Path the section chips link to; `?tab=` is appended. `/user` or `/admin/users/{id}`. */
+  /** Path the section chips link to; `?tab=` is appended. `/user`, `/admin` or `/admin/users/{id}`. */
   basePath: string;
   /**
    * The principal to render the collection stack for, or `null` to render it as an observer.
@@ -41,8 +41,8 @@ export interface UserSpaceProps {
 }
 
 /**
- * The three-section "user space" view, shared by `/user` (own space) and `/admin/users/[id]`
- * (an admin looking at someone else's).
+ * The three-section "user space" view, shared by `/user`, `/admin` (own space) and
+ * `/admin/users/[id]` (an admin looking at someone else's).
  *
  * Each section renders through `CollectionPageClient` — the same component every collection page
  * uses — by handing it the user's synthetic collection with the selected section's blocks as its
