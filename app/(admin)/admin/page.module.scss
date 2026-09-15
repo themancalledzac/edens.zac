@@ -7,3 +7,13 @@
 .sections {
   padding: var(--space-3) 0 var(--space-5);
 }
+
+/* The "space could not be loaded" notice above a hub rendered alone. Inset like UserSpace's
+   .empty, since the hub's grid runs full-bleed on mobile. */
+.notice {
+  padding: var(--space-3) var(--page-padding-mobile) 0;
+
+  @media (width >= 768px) {
+    padding-inline: 0;
+  }
+}

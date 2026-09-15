@@ -1,9 +1,11 @@
 import { ownSpaceExtras } from '@/app/components/Personal/ownSpaceExtras';
+import { FormError } from '@/app/components/ui/Field/FormError';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
 import { meServer } from '@/app/lib/api/auth';
 import { readShareSettings } from '@/app/lib/api/share';
+import { logger } from '@/app/utils/logger';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import { AdminHubClient } from './AdminHubClient';
@@ -13,12 +15,23 @@ import styles from './page.module.scss';
 export const dynamic = 'force-dynamic';
 
 /**
- * The admin's own space with an Admin section in front: the hub's panels and tiles under
- * `?tab=admin` (the default), and the same Collections / Images / Saved sections `/user` renders,
- * which redirects admins here. Gating is the `(admin)` layout's `requireAdmin()`; locally that
- * passes an anonymous visitor through, and with no principal there is no space to render, so the
- * hub renders alone, as it did before this page hosted the space. A failed `meServer` or
- * `loadUserSpace` read falls back the same way, rather than failing the hub too.
+ * Fail-soft wrapper for {@link loadUserSpace}: the hub must still render when the admin's own
+ * space cannot be read, so the failure is logged here and the page shows a notice instead.
+ */
+async function loadOwnSpace() {
+  try {
+    return await loadUserSpace('self');
+  } catch (error) {
+    logger.error('admin', "Could not load the admin's own space", error);
+    return null;
+  }
+}
+
+/**
+ * The admin's own space with an Admin section in front: the hub under `?tab=admin` (the default)
+ * and the same Collections / Images / Saved sections `/user` renders, which redirects admins here.
+ * With no principal (local anonymous dev, or a failed `meServer`) the hub renders alone and
+ * silently; with a principal but no space it renders alone under a notice.
  */
 export default async function AdminPage() {
   const ssrViewport = await resolveSsrViewport();
@@ -27,7 +40,7 @@ export default async function AdminPage() {
 
   const [hub, data, share] = await Promise.all([
     hubPromise,
-    principal ? loadUserSpace('self').catch(() => null) : Promise.resolve(null),
+    principal ? loadOwnSpace() : Promise.resolve(null),
     principal ? readShareSettings() : Promise.resolve(null),
   ]);
 
@@ -46,6 +59,11 @@ export default async function AdminPage() {
     return (
       <PageShell>
         <h1 className={styles.srOnly}>Admin</h1>
+        {principal && !data && (
+          <div className={styles.notice}>
+            <FormError>Your space could not be loaded. The admin hub is still available.</FormError>
+          </div>
+        )}
         {hubNode}
       </PageShell>
     );

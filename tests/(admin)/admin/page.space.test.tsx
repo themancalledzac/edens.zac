@@ -47,6 +47,7 @@ jest.mock('@/app/(admin)/admin/AdminHubClient', () => ({ AdminHubClient: () => '
 
 import { AdminHubClient } from '@/app/(admin)/admin/AdminHubClient';
 import AdminPage from '@/app/(admin)/admin/page';
+import { FormError } from '@/app/components/ui/Field/FormError';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { UserSpaceGrid } from '@/app/components/UserSpace/UserSpaceGrid';
 import { meServer } from '@/app/lib/api/auth';
@@ -57,6 +58,7 @@ import {
   listSavedImagesServer,
 } from '@/app/lib/api/personal';
 import { readShareSettings } from '@/app/lib/api/share';
+import { logger } from '@/app/utils/logger';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 const authedPrincipal = {
@@ -164,11 +166,12 @@ describe("AdminPage as the admin's own space", () => {
     );
   });
 
-  it('renders the hub alone when there is no principal (local anonymous dev)', async () => {
+  it('renders the hub alone, with no notice, when there is no principal (local anonymous dev)', async () => {
     (meServer as jest.Mock).mockResolvedValue(null);
     const result = await renderAdmin();
     expect(findProps(result, AdminHubClient)).not.toBeNull();
     expect(gridProps(result)).toBeNull();
+    expect(findProps(result, FormError)).toBeNull();
   });
 
   it('renders the hub alone when meServer rejects', async () => {
@@ -178,10 +181,19 @@ describe("AdminPage as the admin's own space", () => {
     expect(gridProps(result)).toBeNull();
   });
 
-  it('renders the hub alone when loadUserSpace rejects', async () => {
+  /**
+   * A signed-in admin whose own space failed to load still gets the hub, but not silently: the
+   * failure is logged and a short notice sits above the hub, or nothing on screen says why the
+   * section chips are missing.
+   */
+  it('renders the hub with a notice, and logs, when loadUserSpace rejects', async () => {
+    const error = jest.spyOn(logger, 'error').mockImplementation(() => {});
     (getUserPage as jest.Mock).mockRejectedValue(new Error('backend down'));
     const result = await renderAdmin();
     expect(findProps(result, AdminHubClient)).not.toBeNull();
     expect(gridProps(result)).toBeNull();
+    expect(findProps(result, FormError).children).toMatch(/could not be loaded/i);
+    expect(error).toHaveBeenCalledWith('admin', expect.stringMatching(/space/i), expect.any(Error));
+    error.mockRestore();
   });
 });
