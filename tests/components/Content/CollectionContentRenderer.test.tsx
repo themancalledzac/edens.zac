@@ -411,6 +411,12 @@ describe('CollectionContentRenderer — cover "Update" shortcut (isAdmin-gated)'
     render(<CollectionContentRenderer {...coverProps} collectionSlug={undefined} />);
     expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument();
   });
+
+  it('hides the cover Update shortcut on a shadowed slug like user, which has no manage page', () => {
+    mockUseMe.mockReturnValue(adminPrincipal);
+    render(<CollectionContentRenderer {...coverProps} collectionSlug="user" />);
+    expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument();
+  });
 });
 
 describe('CollectionContentRenderer — cover-pick toggle on the manage grid', () => {

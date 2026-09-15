@@ -23,6 +23,7 @@ import {
   type ViewableContent,
 } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
+import { isShadowedRouteSlug } from '@/app/utils/collectionSlugs';
 import { createContentClickHandler } from '@/app/utils/contentComponentHandlers';
 import { COVER_IMAGE_CONTENT_ID } from '@/app/utils/contentLayout';
 import {
@@ -230,16 +231,16 @@ export default function CollectionContentRenderer({
   const me = useMe();
 
   /**
-   * Admin-only shortcut into manage mode, pinned to the header cover image. Shown only on the
-   * public view for the cover block (`contentId === -1`). Reads `useMe()` (server-resolved,
-   * mounted via `MeProvider`) rather than a per-tile client fetch, which would duplicate
-   * `/api/auth/me` across the whole grid.
+   * Admin shortcut into manage mode on the header cover. Only for collections with a backing row:
+   * a shadowed slug such as `user` has no manage page, and pushing `?manage=1` at it just
+   * re-rendered the page.
    */
   const showCoverUpdateShortcut =
     contentType === 'IMAGE' &&
     contentId === COVER_IMAGE_CONTENT_ID &&
     currentCollectionId == null &&
     !!collectionSlug &&
+    !isShadowedRouteSlug(collectionSlug) &&
     !!me?.isAdmin;
 
   /** Stops the click from bubbling to the parallax wrapper, which would otherwise open fullscreen. */

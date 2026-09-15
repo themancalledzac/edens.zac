@@ -27,9 +27,11 @@ jest.mock('@/app/(admin)/admin/users/GenerateInviteButton', () => ({
   GenerateInviteButton: () => null,
 }));
 
-// AdminUserSpaceEditor, UserRolesSection and UpgradePersonButton are client components (useRouter,
-// role reads); this suite verifies the page's orchestration of the shared space, so stub them like
-// the other children above. The editor must still render its children — the space is inside it.
+/**
+ * `AdminUserSpaceEditor`, `UserRolesSection` and `UpgradePersonButton` are client components
+ * (`useRouter`, role reads); this suite verifies the page's orchestration of the shared space, so
+ * stub them like the other children above. The editor must still render its children.
+ */
 jest.mock('@/app/(admin)/admin/users/[id]/AdminUserSpaceEditor', () => ({
   AdminUserSpaceEditor: ({ children }: { children: ReactNode }) => children,
 }));
@@ -46,7 +48,7 @@ jest.mock('@/app/components/UserSpace/UserSpace', () => ({
   UserSpace: jest.fn(() => null),
 }));
 
-// resolveTabKey is pure — keep the real one so the ?tab= narrowing is exercised end to end.
+/** `resolveTabKey` is pure — keep the real one so the `?tab=` narrowing is exercised end to end. */
 jest.mock('@/app/components/UserSpace/userSpaceData', () => ({
   ...jest.requireActual('@/app/components/UserSpace/userSpaceData'),
   loadUserSpace: jest.fn(),
@@ -94,18 +96,21 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
     mockLoadUserSpace.mockResolvedValue(spaceData);
   });
 
+  /**
+   * The loader hydrates only the active tab's section, so passing it here is what keeps the
+   * Following tab's catalog read off the other three tabs.
+   */
   it('loads the space for the routed user id, not the acting session', async () => {
     await renderPage();
 
-    // The active tab is part of the call: the loader hydrates only that section, so passing it is
-    // what keeps the Following tab's catalog read off the other three tabs.
     expect(mockLoadUserSpace).toHaveBeenCalledWith({ mode: 'admin', userId: 5 }, 'collections');
   });
 
-  // Regression, and the load-bearing one. Every personal-action control in the collection stack
-  // gates on the PRESENCE of a principal, not on ownership: SaveHeart returns null unless useMe()
-  // is truthy, and its write goes to the session-bound POST /api/read/user/saves. Passing the
-  // admin's principal here would let a click bookmark an image onto the ADMIN's own space.
+  /**
+   * Every personal-action control in the collection stack gates on the presence of a principal,
+   * not ownership: `SaveHeart` writes to the session-bound `POST /api/read/user/saves`. Passing
+   * the admin's own principal here would let a click bookmark an image onto the ADMIN's space.
+   */
   it('renders the space with me=null so personal-action controls stay disarmed', async () => {
     await renderPage();
 
@@ -131,10 +136,11 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
     expect(mockUserSpace.mock.calls[0][0].activeKey).toBe('collections');
   });
 
-  // The note rides in the header rail alongside the space's own metadata, not as a loose
-  // paragraph above the grid — same placement contract as /user's Account and Admin cards.
-  // Role membership rides the rail rather than a slab below the grid. It is the only rail extra
-  // left: the "viewing X's space" note that used to sit beside it was removed as clutter.
+  /**
+   * Role membership rides the header rail beside the space's own metadata, not a slab below the
+   * grid — the same placement contract as /user's Account and Admin cards. It is the only rail
+   * extra left; the "viewing X's space" note that used to sit beside it was removed as clutter.
+   */
   it('puts role membership in the rail', async () => {
     await renderPage();
 
@@ -144,30 +150,36 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
     expect(railExtras.props.compact).toBe(true);
   });
 
-  // The space below renders this person's name as its own title, so a page <h1> repeating it put
-  // two headings on one subject. The way back out is the breadcrumb and the card's bottom bar.
+  /**
+   * The space below renders this person's name as its own title, so a page `<h1>` repeating it
+   * put two headings on one subject. The way back out is the breadcrumb and the card's bottom bar.
+   */
   it('does not repeat the user name as a page heading above the space', async () => {
     await renderPage();
 
     expect(screen.queryByRole('heading', { name: 'Cara' })).toBeNull();
-    expect(screen.getByText('← Admin')).toBeTruthy();
+    expect(screen.getByText('Admin')).toBeTruthy();
   });
 
+  /**
+   * With the profile fields living in the space's rail, a user with no space has nowhere to be
+   * edited — so the empty state names the surface that still can (the Users panel on /admin).
+   */
   it('shows an empty state and renders no space when the user has no galleries', async () => {
     mockLoadUserSpace.mockResolvedValue(null);
 
     await renderPage();
 
     expect(mockUserSpace).not.toHaveBeenCalled();
-    // With the profile fields living in the space's rail, a user with no space has nowhere to be
-    // edited here — so the empty state has to name the surface that can still edit them.
     expect(screen.getByText(/This user has no galleries yet/)).toBeTruthy();
     expect(screen.getByText(/Users panel on \/admin/)).toBeTruthy();
   });
 
-  // The empty state above is only honest because `loadUserSpace` narrows its page read to a
-  // genuine 404 and lets the rest reject. Re-adding a catch here — at either end — would put
-  // "no galleries yet" back in front of an admin whose backend is simply down.
+  /**
+   * The empty state above is only honest because `loadUserSpace` narrows its page read to a
+   * genuine 404 and lets the rest reject. Re-adding a catch here would put "no galleries yet" in
+   * front of an admin whose backend is simply down.
+   */
   it('lets a failed space read reach the error boundary rather than showing the empty state', async () => {
     mockLoadUserSpace.mockRejectedValue(new ApiError('Service Unavailable', 503));
 
@@ -175,8 +187,11 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
     expect(screen.queryByText(/This user has no galleries yet/)).toBeNull();
   });
 
-  // `getAdminUser` throws ApiError for EVERY non-OK status. Catching them all conflated "no such
-  // user" with "backend unreachable" / "session lapsed", so an outage rendered a confident 404.
+  /**
+   * `getAdminUser` throws `ApiError` for every non-OK status. Catching them all would conflate
+   * "no such user" with "backend unreachable" or "session lapsed", turning an outage into a
+   * confident 404.
+   */
   it('404s when the read genuinely reports the user does not exist', async () => {
     mockGetAdminUser.mockRejectedValue(new ApiError('Not Found', 404));
 
@@ -219,7 +234,7 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
   });
 });
 
-// Tag-only PERSON rows have no account and no space. This branch also guards direct-URL access.
+/** Tag-only PERSON rows have no account and no space. This branch also guards direct-URL access. */
 describe('app/(admin)/admin/users/[id] — tag-only PERSON identities', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -240,8 +255,10 @@ describe('app/(admin)/admin/users/[id] — tag-only PERSON identities', () => {
     expect(screen.getByText('tag-only · no account')).toBeTruthy();
   });
 
-  // A PERSON has no space to name them, so the identity line still carries the name — but as the
-  // card's own text, matching the account branch rather than reintroducing a page heading.
+  /**
+   * A PERSON has no space to name them, so the identity line still carries the name — but as the
+   * card's own text, matching the account branch rather than reintroducing a page heading.
+   */
   it('names the identity without a page heading', async () => {
     await renderPage();
 

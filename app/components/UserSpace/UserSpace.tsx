@@ -69,9 +69,8 @@ export interface UserSpaceProps {
  *   backend binds to the SESSION — so an admin clicking a heart on someone else's page would
  *   silently bookmark that image onto their OWN space.
  * - `FollowButton` has the same shape via `FollowsProvider`, writing the admin's follows.
- * - `showCoverUpdateShortcut` in `CollectionContentRenderer` gates on `me?.isAdmin`, so it is
- *   hidden for an ordinary owner but would appear here — routing to `manageHref('user')`, which
- *   404s, because the synthetic collection has no backing row.
+ * - `showCoverUpdateShortcut` in `CollectionContentRenderer` gates on `me?.isAdmin` and on the
+ *   slug not being shadowed, so it never appears on a synthetic collection.
  *
  * Passing `me={null}` (and not mounting `FollowsProvider`) turns all three off at once, and is
  * accurate rather than a workaround: in admin mode the viewer genuinely is an observer of this

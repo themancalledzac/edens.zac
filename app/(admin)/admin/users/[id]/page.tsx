@@ -1,5 +1,8 @@
-// Admin = authenticated admin principal: the backend enforces hasRole('ADMIN') on
-// /api/admin/** (see docs 009). Gating centralized in app/(admin)/layout.tsx via requireAdmin().
+/**
+ * Admin = authenticated admin principal: the backend enforces `hasRole('ADMIN')` on
+ * `/api/admin/**` (see docs 009). Gating is centralized in `app/(admin)/layout.tsx` via
+ * `requireAdmin()`.
+ */
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -100,7 +103,7 @@ export default async function AdminUserDetailPage({
       <PageShell className={styles.page}>
         <div className={styles.header}>
           <Link href="/admin" className={styles.back}>
-            ← Admin
+            <span aria-hidden="true">←</span> Admin
           </Link>
         </div>
 
@@ -121,9 +124,11 @@ export default async function AdminUserDetailPage({
     );
   }
 
-  // `tab` is resolved BEFORE the space load rather than alongside it: `loadUserSpace` hydrates only
-  // the active section, so it needs the key as an input. `searchParams` is already in memory by
-  // this point in the request, so awaiting it first costs nothing.
+  /**
+   * `tab` is resolved before the space load rather than alongside it: `loadUserSpace` hydrates
+   * only the active section, so it needs the key as an input. `searchParams` is already in memory
+   * by this point in the request, so awaiting it first costs nothing.
+   */
   const { tab } = await searchParams;
   const activeKey = resolveTabKey(tab);
 
@@ -136,7 +141,7 @@ export default async function AdminUserDetailPage({
     <PageShell className={styles.page}>
       <div className={styles.header}>
         <Link href="/admin" className={styles.back}>
-          ← Admin
+          <span aria-hidden="true">←</span> Admin
         </Link>
       </div>
 
