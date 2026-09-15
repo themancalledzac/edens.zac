@@ -48,9 +48,7 @@ jest.mock('@/app/components/UserSpace/UserSpace', () => ({
   UserSpace: jest.fn(() => null),
 }));
 
-/** `resolveTabKey` is pure — keep the real one so the `?tab=` narrowing is exercised end to end. */
 jest.mock('@/app/components/UserSpace/userSpaceData', () => ({
-  ...jest.requireActual('@/app/components/UserSpace/userSpaceData'),
   loadUserSpace: jest.fn(),
 }));
 
@@ -81,11 +79,8 @@ const spaceData = {
   savedImageIds: [],
 };
 
-async function renderPage(tab?: string) {
-  const element = await AdminUserDetailPage({
-    params: Promise.resolve({ id: '5' }),
-    searchParams: Promise.resolve(tab === undefined ? {} : { tab }),
-  });
+async function renderPage() {
+  const element = await AdminUserDetailPage({ params: Promise.resolve({ id: '5' }) });
   render(element);
 }
 
@@ -96,14 +91,10 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
     mockLoadUserSpace.mockResolvedValue(spaceData);
   });
 
-  /**
-   * The loader hydrates only the active tab's section, so passing it here is what keeps the
-   * Following tab's catalog read off the other three tabs.
-   */
   it('loads the space for the routed user id, not the acting session', async () => {
     await renderPage();
 
-    expect(mockLoadUserSpace).toHaveBeenCalledWith({ mode: 'admin', userId: 5 }, 'collections');
+    expect(mockLoadUserSpace).toHaveBeenCalledWith({ mode: 'admin', userId: 5 });
   });
 
   /**
@@ -122,18 +113,6 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
     await renderPage();
 
     expect(mockUserSpace.mock.calls[0][0].basePath).toBe('/admin/users/5');
-  });
-
-  it('passes the ?tab= section through', async () => {
-    await renderPage('saved');
-
-    expect(mockUserSpace.mock.calls[0][0].activeKey).toBe('saved');
-  });
-
-  it('falls back to Collections for an unknown ?tab=', async () => {
-    await renderPage('nope');
-
-    expect(mockUserSpace.mock.calls[0][0].activeKey).toBe('collections');
   });
 
   /**
@@ -222,12 +201,9 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
   });
 
   it('404s on a non-integer id before any read runs', async () => {
-    await expect(
-      AdminUserDetailPage({
-        params: Promise.resolve({ id: 'abc' }),
-        searchParams: Promise.resolve({}),
-      })
-    ).rejects.toThrow('NEXT_NOT_FOUND');
+    await expect(AdminUserDetailPage({ params: Promise.resolve({ id: 'abc' }) })).rejects.toThrow(
+      'NEXT_NOT_FOUND'
+    );
 
     expect(mockGetAdminUser).not.toHaveBeenCalled();
     expect(mockLoadUserSpace).not.toHaveBeenCalled();

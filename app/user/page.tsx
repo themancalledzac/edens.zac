@@ -34,9 +34,8 @@ export default async function UserPage({ searchParams }: UserPageProps) {
     redirect(tab === undefined ? '/admin' : `/admin?tab=${resolveTabKey(tab)}`);
   }
 
-  const activeKey = resolveTabKey(tab);
   const [data, ssrViewport, share] = await Promise.all([
-    loadUserSpace('self', activeKey),
+    loadUserSpace('self'),
     resolveSsrViewport(),
     readShareSettings(),
   ]);
@@ -48,7 +47,6 @@ export default async function UserPage({ searchParams }: UserPageProps) {
       <div className={styles.sections}>
         <UserSpace
           data={data}
-          activeKey={activeKey}
           basePath="/user"
           me={principal}
           ssrViewport={ssrViewport}

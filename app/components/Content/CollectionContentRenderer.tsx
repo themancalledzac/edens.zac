@@ -477,6 +477,7 @@ export default function CollectionContentRenderer({
                 onFilterChange={collectionFilter.onFilterChange}
                 sections={collectionFilter.sections ?? undefined}
                 activeSectionKey={collectionFilter.activeSectionKey ?? undefined}
+                onSectionSelect={collectionFilter.onSectionSelect ?? undefined}
                 extras={toolbarExtras}
                 dimensions={toCollectionDimensions(collectionFilter.filterOptions)}
                 filteredAvailable={

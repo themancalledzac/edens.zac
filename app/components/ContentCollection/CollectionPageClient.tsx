@@ -108,6 +108,8 @@ interface CollectionPageClientProps {
   sections?: readonly ToolbarSection[];
   /** Key of the section currently rendered. Required alongside {@link sections}. */
   activeSectionKey?: string;
+  /** Intercepts a section click for client-side switching. See {@link CollectionFilterContext}. */
+  onSectionSelect?: (key: string, href: string) => void;
   /**
    * Collection ids the viewer follows, which arms the Following toggle and backs its narrowing.
    *
@@ -152,6 +154,7 @@ export default function CollectionPageClient({
   initialSavedImageIds = [],
   sections,
   activeSectionKey,
+  onSectionSelect,
   followedCollectionIds,
   railExtras = null,
   toolbarExtras = NO_EXTRAS,
@@ -592,6 +595,7 @@ export default function CollectionPageClient({
       onFilterChange: handleFilterChange,
       sections: sections ?? null,
       activeSectionKey: activeSectionKey ?? null,
+      onSectionSelect: onSectionSelect ?? null,
       dateTwoState: isChronological,
       density: displayDensity,
       densityMax,
@@ -608,6 +612,7 @@ export default function CollectionPageClient({
       handleFilterChange,
       sections,
       activeSectionKey,
+      onSectionSelect,
       isChronological,
       displayDensity,
       densityMax,

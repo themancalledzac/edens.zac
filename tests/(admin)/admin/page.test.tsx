@@ -54,7 +54,7 @@ const mockGetTiles = adminHomeApi.getAdminHomeTiles as jest.MockedFunction<
 const mockListUsers = usersApi.listUsers as jest.MockedFunction<typeof usersApi.listUsers>;
 const mockListRoles = rolesApi.listRoles as jest.MockedFunction<typeof rolesApi.listRoles>;
 
-const renderPage = () => AdminHubPage({ searchParams: Promise.resolve({}) });
+const renderPage = () => AdminHubPage();
 
 const ADA: AdminUserSummary = {
   id: 5,

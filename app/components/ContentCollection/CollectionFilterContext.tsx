@@ -57,6 +57,8 @@ interface CollectionFilterContextValue {
   sections: readonly ToolbarSection[] | null;
   /** Key of the section currently rendered; null when {@link sections} is null. */
   activeSectionKey: string | null;
+  /** Intercepts a section click for client-side switching; null when nobody wants to hear about it. */
+  onSectionSelect: ((key: string, href: string) => void) | null;
   /**
    * When true, the Date filter is always engaged and toggles only between directions
    * (asc <-> desc, never `off`) — used for CHRONOLOGICAL collections, which are inherently

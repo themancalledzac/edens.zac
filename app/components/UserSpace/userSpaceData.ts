@@ -274,26 +274,20 @@ async function loadShareView(target: { mode: 'share'; token?: string }): Promise
 }
 
 /**
- * Load one user's space, hydrating only the section that is actually on screen.
+ * Load one user's space: every section's content, hydrated up front so the client can switch
+ * between them with no further server round trip (see `UserSpaceGrid`).
  *
  * Returns `null` when the space itself genuinely does not exist (404 or an empty body), which the
  * caller turns into a 404 / empty state; any other read failure rejects so the error boundary
  * handles it.
  *
- * ## Why `activeKey` is a parameter
- *
- * Every section's COUNT is read on every request, so all three chips keep an accurate badge. But
- * the Collections section needs the full collection catalog to turn the followed-id list into
- * renderable blocks, and that read (`getAllCollections(0, 500)`) is ~0.5s and ~57KB against the
- * local backend. It is skipped on the sections that do not render collections.
- *
- * Collections is the DEFAULT section, so unlike the deferral this replaces, the cost is now paid on
- * the common path rather than avoided on it. That is the accepted price of merging Following into
- * Collections: one list of every association cannot be assembled without the catalog that names the
- * followed half. The read still sits inside the `Promise.all` below, so it overlaps the page read
- * rather than adding to it.
- *
- * Images and Saved need no catalog: both come from reads already required to render the page.
+ * The collection catalog (`getAllCollections(0, 500)`, ~0.5s and ~57KB against the local backend)
+ * is read whenever the target is not a share link: it turns the followed-id list into renderable
+ * Collections blocks, and every mode that offers a Collections section needs it up front now that
+ * the section is no longer selected server-side. A share recipient has no follow state, so the
+ * followed half of their Collections list is always empty and the read is skipped outright. The
+ * read still sits inside the `Promise.all` below, so it overlaps the page read rather than adding
+ * to it.
  *
  * ## Fail-soft reads
  *
@@ -314,10 +308,7 @@ async function loadShareView(target: { mode: 'share'; token?: string }): Promise
  * rather than skip the fetch, keeping the shape uniform for the rest of the function; neither is
  * offered as a section in that mode (see {@link UserSpaceData.visibleKeys}).
  */
-export async function loadUserSpace(
-  target: UserSpaceMode,
-  activeKey: TabKey = DEFAULT_TAB
-): Promise<UserSpaceData | null> {
+export async function loadUserSpace(target: UserSpaceMode): Promise<UserSpaceData | null> {
   const isSelf = target === 'self';
   const isShare = target !== 'self' && target.mode === 'share';
 
@@ -341,9 +332,7 @@ export async function loadUserSpace(
         : listFollowedCollectionIdsByUserServer(
             (target as { mode: 'admin'; userId: number }).userId
           ),
-    activeKey === 'collections' && !isShare
-      ? getAllCollections(0, 500)
-      : Promise.resolve<CollectionModel[]>([]),
+    !isShare ? getAllCollections(0, 500) : Promise.resolve<CollectionModel[]>([]),
   ]);
 
   const shareView = isShare ? (pageRead as ShareView | null) : null;

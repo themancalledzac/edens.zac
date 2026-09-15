@@ -102,16 +102,9 @@ function findProps(node: any, type: unknown): any {
   return node.props?.children ? findProps(node.props.children, type) : null;
 }
 
-/** Props the page handed to the shared collection renderer for the active section. */
+/** Props the page handed to `UserSpaceGrid` — every section's data, plus the hub. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const gridProps = (result: unknown): any => findProps(result, UserSpaceGrid);
-
-/** The section chips the page handed to the shared bar. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sectionProps = (result: unknown): any => {
-  const props = gridProps(result);
-  return { sections: props?.sections, activeKey: props?.activeSectionKey };
-};
 
 function seedApis() {
   (getUserPage as jest.Mock).mockResolvedValue({
@@ -132,9 +125,7 @@ function seedApis() {
   (readShareSettings as jest.Mock).mockResolvedValue({ ok: true, settings: null });
 }
 
-/** Render the page for a given `?tab=` value. */
-const renderAdmin = (tab?: string) =>
-  AdminPage({ searchParams: Promise.resolve(tab === undefined ? {} : { tab }) });
+const renderAdmin = () => AdminPage();
 
 describe("AdminPage as the admin's own space", () => {
   beforeEach(() => {
@@ -143,31 +134,29 @@ describe("AdminPage as the admin's own space", () => {
     seedApis();
   });
 
-  it('defaults to the Admin section and renders the hub beneath the shared header', async () => {
+  /**
+   * Whether the hub or a personal section actually renders is `UserSpaceGrid`'s call, made from the
+   * URL — see `UserSpace.sectionSwitch.test.tsx`. This page's job is handing it every section plus
+   * the hub data, which is what these two check.
+   */
+  it('hands the grid every personal section', async () => {
     const result = await renderAdmin();
-    const { sections, activeKey } = sectionProps(result);
-    expect(activeKey).toBe('admin');
-    expect(sections.map((s: { key: string }) => s.key)).toEqual([
-      'admin',
-      'collections',
-      'images',
-      'saved',
-    ]);
-    expect(sections[0].href).toBe('/admin?tab=admin');
-    expect(gridProps(result).collection.content).toEqual([]);
-    expect(findProps(result, AdminHubClient)).not.toBeNull();
+    const { sections } = gridProps(result);
+    expect(Object.keys(sections)).toEqual(['collections', 'images', 'saved']);
   });
 
-  it('renders a personal section with no hub when asked for one', async () => {
-    const result = await renderAdmin('images');
-    expect(sectionProps(result).activeKey).toBe('images');
-    expect(findProps(result, AdminHubClient)).toBeNull();
-    expect(gridProps(result).collection.content.map((b: { id: number }) => b.id)).toEqual([3, 4]);
+  it('hands the grid the admin hub', async () => {
+    const result = await renderAdmin();
+    expect(gridProps(result).adminHub).not.toBeUndefined();
+  });
+
+  it('hands the grid every section’s blocks, not just one the page picked', async () => {
+    const { sections } = gridProps(await renderAdmin());
+    expect(sections.images.content.map((b: { id: number }) => b.id)).toEqual([3, 4]);
   });
 
   it('links the personal sections under /admin', async () => {
-    const { sections } = sectionProps(await renderAdmin());
-    expect(sections[1].href).toBe('/admin?tab=collections');
+    expect(gridProps(await renderAdmin()).basePath).toBe('/admin');
   });
 
   it('passes the own-space chips like /user does', async () => {

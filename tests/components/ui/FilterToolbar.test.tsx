@@ -640,6 +640,13 @@ describe('FilterToolbar', () => {
       expect(screen.getByText('12')).toBeInTheDocument();
     });
 
+    it('routes a section click through onSectionSelect instead of navigating', () => {
+      const onSectionSelect = jest.fn();
+      renderToolbar({ sections: SECTIONS, activeSectionKey: 'collections', onSectionSelect });
+      fireEvent.click(screen.getByRole('link', { name: 'Images' }));
+      expect(onSectionSelect).toHaveBeenCalledWith('images', '/user?tab=images');
+    });
+
     it('keeps sections independent of the reset button', () => {
       const { onFilterChange } = renderToolbar({
         sections: SECTIONS,

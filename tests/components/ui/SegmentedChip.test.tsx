@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { type ReactNode } from 'react';
 
 import { SegmentedChip } from '@/app/components/ui/SegmentedChip/SegmentedChip';
@@ -67,5 +67,33 @@ describe('SegmentedChip', () => {
     for (const link of links) {
       expect(link).toHaveAttribute('data-scroll', 'false');
     }
+  });
+
+  it('lets a caller intercept a click and keeps the real href', () => {
+    const onSelect = jest.fn();
+    render(<SegmentedChip segments={segments} ariaLabel="Sections" onSelect={onSelect} />);
+    const link = screen.getByRole('link', { name: 'Images' });
+    fireEvent.click(link);
+    expect(onSelect).toHaveBeenCalledWith('images', '/user?tab=images');
+    expect(link).toHaveAttribute('href', '/user?tab=images');
+  });
+
+  it('leaves a modifier click to navigate normally, without calling onSelect', () => {
+    const onSelect = jest.fn();
+    render(<SegmentedChip segments={segments} ariaLabel="Sections" onSelect={onSelect} />);
+    fireEvent.click(screen.getByRole('link', { name: 'Images' }), { metaKey: true });
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('leaves a non-primary button click to navigate normally, without calling onSelect', () => {
+    const onSelect = jest.fn();
+    render(<SegmentedChip segments={segments} ariaLabel="Sections" onSelect={onSelect} />);
+    fireEvent.click(screen.getByRole('link', { name: 'Images' }), { button: 1 });
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('still navigates normally when no onSelect is given', () => {
+    render(<SegmentedChip segments={segments} ariaLabel="Sections" />);
+    expect(() => fireEvent.click(screen.getByRole('link', { name: 'Images' }))).not.toThrow();
   });
 });

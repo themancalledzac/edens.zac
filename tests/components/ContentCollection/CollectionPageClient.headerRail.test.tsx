@@ -13,7 +13,7 @@
  */
 import '@testing-library/jest-dom';
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { useEffect as useEffectType } from 'react';
 
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
@@ -156,6 +156,28 @@ describe('CollectionPageClient — header rail', () => {
       const chip = screen.getByRole('link', { name: new RegExp(section.label, 'i') });
       expect(chip).toHaveAttribute('href', section.href);
     }
+  });
+
+  /**
+   * `onSectionSelect` travels through `CollectionFilterContext` and the header rail's
+   * `CollectionContentRenderer` to reach the real `FilterToolbar`/`SegmentedChip` a section chip
+   * renders through — this is the one place that whole chain is exercised together.
+   */
+  it('routes a section click through onSectionSelect, all the way from the prop', () => {
+    const onSectionSelect = jest.fn();
+    render(
+      <CollectionPageClient
+        collection={bareCollection([collectionCard(1), collectionCard(2)])}
+        {...ssr}
+        sections={SECTIONS}
+        activeSectionKey="collections"
+        onSectionSelect={onSectionSelect}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: /^images/i }));
+
+    expect(onSectionSelect).toHaveBeenCalledWith('images', '/user?tab=images');
   });
 
   it('marks exactly one section chip current', () => {

@@ -14,6 +14,11 @@ export interface SegmentedChipProps {
   segments: readonly Segment[];
   /** Names the group for assistive tech, e.g. "Sections". */
   ariaLabel: string;
+  /**
+   * Intercepts a plain left click so the caller can switch sections in place instead of letting the
+   * link navigate. A modifier click or a non-primary button still navigates normally.
+   */
+  onSelect?: (key: string, href: string) => void;
 }
 
 /**
@@ -21,7 +26,7 @@ export interface SegmentedChipProps {
  * `aria-current` rather than tabs: each is a different URL with server-rendered content, so
  * middle-click, sharing and the back button all keep working.
  */
-export function SegmentedChip({ segments, ariaLabel }: SegmentedChipProps) {
+export function SegmentedChip({ segments, ariaLabel, onSelect }: SegmentedChipProps) {
   return (
     <nav aria-label={ariaLabel} className={styles.group}>
       <ul className={styles.list}>
@@ -34,6 +39,17 @@ export function SegmentedChip({ segments, ariaLabel }: SegmentedChipProps) {
               className={[styles.segment, segment.current ? styles.current : null]
                 .filter(Boolean)
                 .join(' ')}
+              onClick={
+                onSelect
+                  ? event => {
+                      if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
+                        return;
+                      }
+                      event.preventDefault();
+                      onSelect(segment.key, segment.href);
+                    }
+                  : undefined
+              }
             >
               {segment.label}
               {segment.count !== undefined && (

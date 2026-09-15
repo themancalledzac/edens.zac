@@ -1,30 +1,22 @@
 import { type ReactNode } from 'react';
 
-import { AdminHubClient } from '@/app/(admin)/admin/AdminHubClient';
 import { type AdminHub } from '@/app/(admin)/admin/loadAdminHub';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
-import { FormError } from '@/app/components/ui/Field/FormError';
 import { type ToolbarExtra } from '@/app/components/ui/FilterToolbar/chipWeights';
-import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
-import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
-import { type SpaceKey, type UserSpaceData } from '@/app/components/UserSpace/userSpaceData';
+import { type UserSpaceData } from '@/app/components/UserSpace/userSpaceData';
 import { UserSpaceGrid } from '@/app/components/UserSpace/UserSpaceGrid';
 import { type MeResponse } from '@/app/types/Auth';
-import { type CollectionModel } from '@/app/types/Collection';
 import { type SsrViewport } from '@/app/utils/ssrViewport';
-
-import styles from './UserSpace.module.scss';
 
 export interface UserSpaceProps {
   data: UserSpaceData;
-  activeKey: SpaceKey;
-  /** Path the section chips link to; `?tab=` is appended. `/user`, `/admin` or `/admin/users/{id}`. */
+  /** Path the section chips link to; `?tab=` is appended. `/user`, `/admin`, `/admin/users/{id}` or `/s/{token}`. */
   basePath: string;
   /**
    * The principal to render the collection stack for, or `null` to render it as an observer.
    *
-   * `/user` passes the signed-in principal. `/admin/users/[id]` passes `null` — see the component
-   * docblock; this is the single switch that disarms every personal-action control.
+   * `/user` passes the signed-in principal. `/admin/users/[id]` and `/s/[token]` pass `null` — this
+   * is the single switch that disarms every personal-action control.
    */
   me: MeResponse | null;
   ssrViewport: SsrViewport | null;
@@ -41,25 +33,15 @@ export interface UserSpaceProps {
 }
 
 /**
- * The three-section "user space" view, shared by `/user`, `/admin` (own space) and
- * `/admin/users/[id]` (an admin looking at someone else's).
+ * The three-section "user space" view, shared by `/user`, `/admin` (own space), `/admin/users/[id]`
+ * (an admin looking at someone else's) and `/s/[token]` (a share-link recipient).
  *
- * Each section renders through `CollectionPageClient` — the same component every collection page
- * uses — by handing it the user's synthetic collection with the selected section's blocks as its
- * content. The collection header, filter toolbar, density control, save hearts and grid therefore
- * come from the shared stack rather than a bespoke variant of it.
+ * Every section, the Admin hub, and which one is on screen render through {@link UserSpaceGrid} — a
+ * client component that reads the active section straight off the URL, so a chip click swaps
+ * sections in place with no server round trip. This component's own job is deciding whether a
+ * `FollowsProvider` is mounted around it, and forwarding everything else untouched.
  *
- * The section switcher is not a component of its own: the three sections are passed to that same
- * stack as `sections`, and render as navigating chips at the head of the shared filter bar. They
- * stay `?tab=` links rather than joining `FilterState` because each section's blocks come from a
- * different server read, and because the choice should stay shareable and back-button-walkable.
- * Their presence is also what makes the bar render here at all — a user space has no facet
- * dimensions of its own — which is how it picks up the photo-size control and the rest of the bar.
- *
- * No section passes a `chunkSize`, so each starts at `LAYOUT.defaultChunkSize`, the density an
- * ordinary collection page opens at.
- *
- * ## Why admin mode passes `me={null}`
+ * ## Why admin and share mode pass `me={null}`
  *
  * The personal-action controls in the collection stack gate on the presence of a principal, NOT on
  * whether that principal owns what is being rendered:
@@ -73,47 +55,11 @@ export interface UserSpaceProps {
  *   slug not being shadowed, so it never appears on a synthetic collection.
  *
  * Passing `me={null}` (and not mounting `FollowsProvider`) turns all three off at once, and is
- * accurate rather than a workaround: in admin mode the viewer genuinely is an observer of this
- * space, and none of the personal state on screen is theirs to mutate. Admin editing of a user
- * happens through the surfaces around this view — `UserForm` for the profile, and drilling into a
- * collection tile for its contents — not through in-place controls here.
- *
- * ## A section whose read failed is not an empty section
- *
- * `EmptyState`'s own docblock forbids using it for a failed read: it tells the viewer there is
- * nothing here, which is a claim about the data, and after an error that claim is false. So a
- * section carrying `unavailableLabel` renders that instead, through `FormError` — checked ahead of
- * the empty state, the same ordering and the same component `UserForm` uses for its unknown role
- * membership. It is styled distinctly (danger, `role="alert"`) rather than reusing the muted empty
- * text, so a dead backend cannot read as "this user has saved nothing".
- *
- * Its section chip drops its count for the same reason — a `0` badge is the same claim in
- * miniature, and it would sit beside a body that has just said the number is unknown. `count` on
- * {@link ToolbarSection} is optional precisely so an unknown count can be left unsaid.
- *
- * ## Why the grid goes through UserSpaceGrid
- *
- * Collections is one list of every collection the viewer is associated with — the ones an admin
- * granted and the ones the viewer followed — assembled server-side. Following is a client-only
- * optimistic update in `FollowsProvider`, and this is a Server Component that cannot watch it, so
- * the grid renders through {@link UserSpaceGrid}, a thin client component below the provider. It
- * reconciles the badge and drops tiles the viewer has just unfollowed, and it supplies the follow
- * set that arms the toolbar's Following filter. Without it, an unfollow would leave both the count
- * and the tile in place until the next server render.
- *
- * Invariant: the backend's `UserPageAssembler` builds this collection with no `id`,
- * `isClient` or `isPasswordProtected` (it is assembled, not a `collection` row). That absence is
- * what keeps the client-gallery affordances inside `CollectionPageClient` switched off —
- * `canDownloadCollection` short-circuits on the missing id and `selectsEnabled` on the missing
- * `isClient`. Do not synthesize an id onto this collection to satisfy the `CollectionModel` type;
- * doing so would arm the download and Selects UI on a page that has no gallery to grant.
- *
- * On `/admin` an Admin section leads the segmented chip; it renders the hub's packed panels and
- * tiles beneath the shared header instead of a grid, so the hub's layout code is untouched.
+ * accurate rather than a workaround: in these modes the viewer genuinely is an observer of this
+ * space, and none of the personal state on screen is theirs to mutate.
  */
 export function UserSpace({
   data,
-  activeKey,
   basePath,
   me,
   ssrViewport,
@@ -129,85 +75,27 @@ export function UserSpace({
     grantedCollectionIds,
     visibleKeys,
   } = data;
-  const active = activeKey === 'admin' ? null : sections[activeKey];
 
-  /**
-   * From the data, not `TAB_KEYS`: a share recipient is offered Collections and Images only, since
-   * Saved and Following are the owner's private bookmarks and are absent from their view. The
-   * Admin chip leads when a hub was passed in, ahead of the personal sections.
-   */
-  const toolbarSections: ToolbarSection[] = [
-    ...(adminHub ? [{ key: 'admin', label: 'Admin', href: `${basePath}?tab=admin` }] : []),
-    ...visibleKeys.map(key => {
-      const section = sections[key];
-      return {
-        key,
-        label: section.label,
-        count: section.unavailableLabel === undefined ? section.count : undefined,
-        href: `${basePath}?tab=${key}`,
-      };
-    }),
-  ];
-
-  /**
-   * Same collection (so the header row, slug and display mode are unchanged section to section),
-   * swapping only which blocks the grid renders. The Admin section has no blocks of its own, so it
-   * renders the grid empty and the hub beneath it instead.
-   */
-  const sectionCollection: CollectionModel = { ...collection, content: active?.content ?? [] };
-
-  /**
-   * Deliberately NOT keyed on `activeKey`. Remounting per section collapsed the document height for
-   * a frame mid-swap, which made the browser clamp scroll position and threw the viewer toward the
-   * top on every section switch. `CollectionPageClient` resets its own per-section state off
-   * `activeSectionKey` instead — see the `renderedSectionKey` block there.
-   */
   const grid = (
     <UserSpaceGrid
-      collection={sectionCollection}
-      serverContentWidth={ssrViewport?.contentWidth}
-      serverViewportHeight={ssrViewport?.viewportHeight}
-      serverIsMobile={ssrViewport?.isMobile}
-      me={me}
+      collection={collection}
+      sections={sections}
+      visibleKeys={visibleKeys}
+      grantedCollectionIds={grantedCollectionIds}
       initialSavedImageIds={savedImageIds}
-      sections={toolbarSections}
-      activeSectionKey={activeKey}
+      basePath={basePath}
+      me={me}
+      ssrViewport={ssrViewport}
       railExtras={railExtras}
       toolbarExtras={toolbarExtras}
-      grantedCollectionIds={grantedCollectionIds}
+      adminHub={adminHub}
     />
   );
 
-  return (
-    <>
-      {me ? (
-        <FollowsProvider initialFollowedIds={followedCollectionIds}>{grid}</FollowsProvider>
-      ) : (
-        grid
-      )}
-
-      {active === null && adminHub && (
-        <AdminHubClient
-          content={adminHub.content}
-          seed={adminHub.seed}
-          mobileChunkSize={1}
-          serverContentWidth={ssrViewport?.contentWidth}
-          serverViewportHeight={ssrViewport?.viewportHeight}
-          serverIsMobile={ssrViewport?.isMobile}
-        />
-      )}
-
-      {active !== null &&
-        (active.unavailableLabel === undefined ? (
-          active.content.length === 0 && (
-            <EmptyState className={styles.empty}>{active.emptyLabel}</EmptyState>
-          )
-        ) : (
-          <div className={styles.empty}>
-            <FormError>{active.unavailableLabel}</FormError>
-          </div>
-        ))}
-    </>
+  return me ? (
+    <FollowsProvider initialFollowedIds={followedCollectionIds}>{grid}</FollowsProvider>
+  ) : (
+    grid
   );
 }
 

@@ -1,33 +1,41 @@
 /**
- * `UserSpace` swaps sections WITHOUT remounting the grid.
+ * `UserSpace` switches sections from the URL, in place, with no server round trip.
  *
- * It used to render `<CollectionPageClient key={activeKey} …>`, which made every section switch a
- * teardown and a rebuild. The frame in between holds no grid, so the document collapses to the
- * height of the header, the browser clamps `scrollY` to that height, and it never comes back —
- * the viewer is thrown toward the top of the page on every chip they click, despite the chips
- * navigating with `scroll={false}`.
+ * `UserSpaceGrid` reads `?tab=` via `useSearchParams()` instead of taking it as a prop, and a chip
+ * click intercepts the link and pushes the new URL with `window.history.pushState` — Next's router
+ * picks that up without an RSC fetch, so `useSearchParams()` re-renders with the new value and
+ * `loadUserSpace` is never called again. `getUserPage` (the read behind it) stands in for that: it
+ * is mocked here purely to prove it stays uncalled from the client, not because anything in this
+ * tree would ever call it.
  *
- * A prop change and a remount produce the same final markup, so the assertions below are chosen to
- * tell them apart rather than to check the output: a mount counter in the stand-in grid, and the
- * identity of a DOM node that a remount would necessarily replace. Each is paired with a control —
- * a deliberate fresh mount, and a genuinely-changed section body — so neither can pass by simply
- * never observing anything.
+ * `CollectionPageClient` is stood in here rather than rendered for real. This file is about the
+ * CONTRACT `UserSpaceGrid` hands it — which section, which blocks, whether the node survives a
+ * switch — not about `FilterToolbar`/`SegmentedChip`'s own rendering, which their own suites already
+ * cover. The stand-in renders exactly what a chip click needs: a nav of real links carrying `href`
+ * and `aria-current`, plus a mount counter and the active section's blocks.
  *
- * The sibling `UserSpace.test.tsx` covers what this component passes DOWN; this one covers what it
- * does to the component it passes it to, which needs a real reconciler and so a real DOM.
+ * The "does not remount" cases are the load-bearing ones. `UserSpaceGrid` renders
+ * `CollectionPageClient` unkeyed, so a section switch is a prop change, not a teardown — a remount
+ * would collapse the document to the header's height for a frame, clamp `scrollY`, and throw the
+ * viewer toward the top on every chip click. A prop change and a remount produce the same final
+ * markup, so the assertions below are chosen to tell them apart (a mount counter, and the identity
+ * of a DOM node a remount would necessarily replace) rather than to check the output.
  */
 import '@testing-library/jest-dom';
 
 import { render, screen } from '@testing-library/react';
 
-import { UserSpace } from '@/app/components/UserSpace/UserSpace';
-import {
-  TAB_KEYS,
-  type TabKey,
-  type UserSpaceData,
-  type UserSpaceSection,
-} from '@/app/components/UserSpace/userSpaceData';
-import { type MeResponse } from '@/app/types/Auth';
+jest.mock('@/app/lib/api/personal');
+
+jest.mock('@/app/components/Personal/FollowsContext', () => ({
+  FollowsProvider: ({ children }: { children: unknown }) => children,
+  useFollows: () => null,
+}));
+
+const mockSearchParams = new URLSearchParams();
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => mockSearchParams,
+}));
 
 /** Incremented once per genuine mount of the grid — never on a re-render. */
 const mockGridMounts: string[] = [];
@@ -39,9 +47,11 @@ jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => {
 
   const MockGrid = ({
     collection,
+    sections,
     activeSectionKey,
   }: {
     collection: { content?: { id: number }[] };
+    sections?: readonly { key: string; label: string; href: string }[];
     activeSectionKey?: string;
   }) => {
     useEffect(() => {
@@ -51,6 +61,17 @@ jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => {
 
     return (
       <div data-testid="grid">
+        <nav aria-label="Sections">
+          {(sections ?? []).map(section => (
+            <a
+              key={section.key}
+              href={section.href}
+              aria-current={section.key === activeSectionKey ? 'page' : undefined}
+            >
+              {section.label}
+            </a>
+          ))}
+        </nav>
         <p>Section: {activeSectionKey}</p>
         <p>Blocks: {(collection.content ?? []).map(block => block.id).join(', ') || 'none'}</p>
       </div>
@@ -60,16 +81,19 @@ jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => {
   return { __esModule: true, default: MockGrid };
 });
 
-/**
- * `useFollows` returns null, the no-provider answer, because `UserSpaceGrid` calls it on every
- * render. That leaves the section counts as the server built them and the Collections list
- * unpruned, so nothing here depends on client follow state — which is what
- * `UserSpace.followCount.test.tsx` covers.
- */
-jest.mock('@/app/components/Personal/FollowsContext', () => ({
-  FollowsProvider: ({ children }: { children: unknown }) => children,
-  useFollows: () => null,
+jest.mock('@/app/(admin)/admin/AdminHubClient', () => ({
+  AdminHubClient: () => <div data-testid="hub">Hub</div>,
 }));
+
+import { type AdminHub } from '@/app/(admin)/admin/loadAdminHub';
+import { UserSpace } from '@/app/components/UserSpace/UserSpace';
+import {
+  TAB_KEYS,
+  type UserSpaceData,
+  type UserSpaceSection,
+} from '@/app/components/UserSpace/userSpaceData';
+import { getUserPage } from '@/app/lib/api/personal';
+import { type MeResponse } from '@/app/types/Auth';
 
 const principal: MeResponse = {
   email: 'c@x.com',
@@ -125,80 +149,190 @@ function makeData(): UserSpaceData {
   };
 }
 
-const view = (activeKey: TabKey) => (
-  <UserSpace
-    data={makeData()}
-    activeKey={activeKey}
-    basePath="/user"
-    me={principal}
-    ssrViewport={null}
-  />
+const view = (data: UserSpaceData = makeData()) => (
+  <UserSpace data={data} basePath="/user" me={principal} ssrViewport={null} />
 );
+
+const setTab = (tab: string) => mockSearchParams.set('tab', tab);
 
 beforeEach(() => {
   mockGridMounts.length = 0;
+  jest.clearAllMocks();
+  for (const key of Array.from(mockSearchParams.keys())) {
+    mockSearchParams.delete(key);
+  }
 });
 
-/**
- * The two controls are the second and fourth cases: a deliberate fresh mount proves the counter is
- * not inert, and a genuinely-changed section body proves the surviving node is not a stale one.
- *
- * The whole-tour case walks `TAB_KEYS` rather than a literal list, so a section added or removed is
- * covered without editing the test, and repeats the first key as the return trip. The last case
- * asserts the empty state DOES swap, which keeps "nothing remounts" from being read as "nothing
- * changes" — the grid is the one thing that must survive, not the whole subtree.
- */
+describe('UserSpace — switches sections from the URL with no server round trip', () => {
+  it('switches sections from the URL without a new server payload', () => {
+    setTab('collections');
+    const { rerender } = render(view());
+    expect(screen.getByRole('link', { name: 'Collections' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
+
+    setTab('images');
+    rerender(view());
+
+    expect(screen.getByRole('link', { name: 'Images' })).toHaveAttribute('aria-current', 'page');
+    expect(getUserPage).toHaveBeenCalledTimes(0);
+  });
+
+  it('defaults to Collections with no `?tab=` in the URL at all', () => {
+    const { rerender } = render(view());
+    expect(screen.getByRole('link', { name: 'Collections' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
+
+    setTab('saved');
+    rerender(view());
+
+    expect(screen.getByRole('link', { name: 'Saved' })).toHaveAttribute('aria-current', 'page');
+  });
+});
+
 describe('UserSpace — switching sections does not remount the grid', () => {
   it('mounts the grid once across a section change', () => {
-    const { rerender } = render(view('collections'));
-    rerender(view('images'));
+    setTab('collections');
+    const { rerender } = render(view());
+    setTab('images');
+    rerender(view());
 
     expect(mockGridMounts).toEqual(['collections']);
   });
 
   it('counts a genuine fresh mount, so the counter is not simply inert', () => {
-    const first = render(view('collections'));
+    setTab('collections');
+    const first = render(view());
     first.unmount();
-    render(view('images'));
+    setTab('images');
+    render(view());
 
     expect(mockGridMounts).toEqual(['collections', 'images']);
   });
 
   it('keeps the very same DOM node, which a teardown could not do', () => {
-    const { rerender } = render(view('collections'));
+    setTab('collections');
+    const { rerender } = render(view());
     const before = screen.getByTestId('grid');
 
-    rerender(view('images'));
+    setTab('images');
+    rerender(view());
 
     expect(screen.getByTestId('grid')).toBe(before);
   });
 
   it('swaps what that node renders, in place', () => {
-    const { rerender } = render(view('collections'));
+    setTab('collections');
+    const { rerender } = render(view());
     expect(screen.getByText('Blocks: 1')).toBeInTheDocument();
 
-    rerender(view('images'));
+    setTab('images');
+    rerender(view());
 
     expect(screen.getByText('Section: images')).toBeInTheDocument();
     expect(screen.getByText('Blocks: 2, 3')).toBeInTheDocument();
   });
 
   it('stays mounted across every section in turn, including a return trip', () => {
-    const { rerender } = render(view('collections'));
-    for (const key of [...TAB_KEYS, 'collections' as TabKey]) {
-      rerender(view(key));
+    setTab('collections');
+    const { rerender } = render(view());
+    for (const key of [...TAB_KEYS, 'collections']) {
+      setTab(key);
+      rerender(view());
     }
 
     expect(mockGridMounts).toEqual(['collections']);
   });
+});
 
-  it('still swaps the empty state, which is not part of the grid', () => {
-    const { rerender } = render(view('collections'));
+/**
+ * `EmptyState`'s docblock forbids it for a failed read: it asserts there is nothing here, which is
+ * a claim about data nobody managed to read. A section whose read failed carries `unavailableLabel`
+ * instead, checked ahead of the empty state and rendered through `FormError` — see `UserSpaceGrid`.
+ */
+describe('UserSpace — a section whose read failed', () => {
+  const dataWithFailedSaved = (unavailableLabel?: string): UserSpaceData => ({
+    ...makeData(),
+    sections: {
+      ...makeData().sections,
+      saved: {
+        label: 'Saved',
+        content: [],
+        count: 0,
+        emptyLabel: 'This user has not saved any images yet.',
+        unavailableLabel,
+      },
+    },
+  });
+
+  const renderSaved = (unavailableLabel?: string) => {
+    setTab('saved');
+    render(view(dataWithFailedSaved(unavailableLabel)));
+  };
+
+  it('says the section is unavailable rather than claiming the user has nothing', () => {
+    renderSaved('Saved images are unavailable right now.');
+    expect(screen.getByRole('alert')).toHaveTextContent('Saved images are unavailable right now.');
+  });
+
+  it('renders no genuine-empty copy for that section, so the false claim never appears', () => {
+    renderSaved('Saved images are unavailable right now.');
     expect(screen.queryByText('nothing saved')).not.toBeInTheDocument();
+  });
 
-    rerender(view('saved'));
+  it('falls back to the genuine empty copy when the read succeeded and returned nothing', () => {
+    renderSaved();
+    expect(screen.getByText('This user has not saved any images yet.')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
 
-    expect(screen.getByText('nothing saved')).toBeInTheDocument();
-    expect(mockGridMounts).toEqual(['collections']);
+/**
+ * On `/admin` the Admin section leads the segmented chip and renders the hub's packed panels
+ * beneath the shared header instead of a grid, so the hub's own layout code stays untouched. The
+ * personal grid renders alongside it with `content: []`, which is also what hides the density
+ * control (`CollectionPageClient`'s own `hasRenderableContent` gate) without `UserSpaceGrid` having
+ * to know about density at all.
+ */
+describe('UserSpace — the Admin section', () => {
+  const adminHub: AdminHub = { content: [], seed: {} } as unknown as AdminHub;
+
+  const viewWithHub = (data: UserSpaceData = makeData()) => (
+    <UserSpace
+      data={data}
+      basePath="/admin"
+      me={principal}
+      ssrViewport={null}
+      adminHub={adminHub}
+    />
+  );
+
+  it('leads the segmented chip and defaults to it with no `?tab=` at all', () => {
+    render(viewWithHub());
+    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('renders the hub and an empty grid while Admin is active', () => {
+    setTab('admin');
+    render(viewWithHub());
+    expect(screen.getByTestId('hub')).toBeInTheDocument();
+    expect(screen.getByText('Blocks: none')).toBeInTheDocument();
+  });
+
+  it('renders no hub once a personal section is active', () => {
+    setTab('images');
+    render(viewWithHub());
+    expect(screen.queryByTestId('hub')).not.toBeInTheDocument();
+    expect(screen.getByText('Blocks: 2, 3')).toBeInTheDocument();
+  });
+
+  it('renders no Admin chip and no hub when the page passes no adminHub', () => {
+    setTab('admin');
+    render(view());
+    expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('hub')).not.toBeInTheDocument();
   });
 });

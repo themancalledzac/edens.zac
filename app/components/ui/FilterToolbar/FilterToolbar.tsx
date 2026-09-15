@@ -92,6 +92,8 @@ export interface FilterToolbarProps {
   sections?: readonly ToolbarSection[];
   /** Key of the section currently rendered. Ignored when {@link sections} is absent. */
   activeSectionKey?: string;
+  /** Intercepts a section click for client-side switching. Passed to `SegmentedChip` as `onSelect`. */
+  onSectionSelect?: (key: string, href: string) => void;
   /** Page-level chips for the upper tier (Share, Contact, …), ordered by weight with the sections. */
   extras?: readonly ToolbarExtra[];
   /** Which array dimensions to surface as dropdowns, keyed by the FilterState array key. */
@@ -201,6 +203,7 @@ export function FilterToolbar({
   onFilterChange,
   sections,
   activeSectionKey,
+  onSectionSelect,
   extras,
   dimensions,
   filteredAvailable,
@@ -279,6 +282,7 @@ export function FilterToolbar({
             node: (
               <SegmentedChip
                 ariaLabel="Sections"
+                onSelect={onSectionSelect}
                 segments={sections.map(section => ({
                   key: section.key,
                   label: section.label,
