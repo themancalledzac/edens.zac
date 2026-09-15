@@ -28,7 +28,6 @@ jest.mock('next/navigation', () => ({
 
 jest.mock('@/app/lib/api/users', () => ({
   updateUser: jest.fn(),
-  // GenerateInviteButton rides in the title aside; it only calls this on click.
   regenerateInvite: jest.fn(),
 }));
 
@@ -67,8 +66,6 @@ function RailProbe() {
           ariaLabel={inlineEdit.titleLabel ?? 'Collection title'}
         />
       )}
-      {/* The rail draws no title field on this surface, so a stray 'title' commit must be a no-op
-          rather than writing something. */}
       <button type="button" onClick={() => inlineEdit.onCommitField('title', 'Renamed')}>
         commit title
       </button>
@@ -118,8 +115,10 @@ describe('AdminUserSpaceEditor', () => {
     expect(screen.getByLabelText('Status')).toHaveValue('ACTIVE');
   });
 
-  // The space's cover already carries this person's name as its overlay, so the rail leads with
-  // the email instead — in the corner the name used to hold, not buried further down the block.
+  /**
+   * The space's cover already carries this person's name as its overlay, so the rail leads with
+   * the email instead, in the corner the name used to hold.
+   */
   it('leads the rail with the email in place of the name', () => {
     renderEditor();
 
@@ -128,8 +127,10 @@ describe('AdminUserSpaceEditor', () => {
     expect(screen.getByRole('button', { name: 'Email' })).toHaveTextContent('cara@x.com');
   });
 
-  // A person has no locations and no collection cover. Leaving these set would put an "Add
-  // location" button and a cover picker in a rail that has nothing to point them at.
+  /**
+   * A person has no locations and no collection cover. Leaving these set would put an "Add
+   * location" button and a cover picker in a rail that has nothing to point them at.
+   */
   it('leaves the collection-only slots unset', () => {
     renderEditor();
 
@@ -143,8 +144,10 @@ describe('AdminUserSpaceEditor', () => {
     expect(screen.getByTestId('editor-class')).toHaveTextContent('true');
   });
 
-  // Status and the invite/reset action are both about the ACCOUNT, so they share the rail's
-  // top-right corner rather than being split between the title row and the rail's foot.
+  /**
+   * Status and the invite/reset action are both about the account, so they share the rail's
+   * top-right corner rather than being split between the title row and the rail's foot.
+   */
   it('pins the invite/reset action beside status in the title aside', () => {
     renderEditor();
 
@@ -153,7 +156,7 @@ describe('AdminUserSpaceEditor', () => {
     expect(aside).toContainElement(screen.getByRole('button', { name: 'Reset pw' }));
   });
 
-  // The label switches on account status, so it has to track a change made in the select beside it.
+  /** The label switches on account status, so it tracks a change made in the select beside it. */
   it('relabels the invite action when the status changes under it', async () => {
     renderEditor({ status: 'INVITED' });
 
@@ -166,8 +169,10 @@ describe('AdminUserSpaceEditor', () => {
     );
   });
 
-  // The display name is not editable on this surface at all — renaming happens in the /admin Users
-  // panel. A 'title' commit must therefore write nothing rather than quietly renaming the user.
+  /**
+   * The display name is not editable on this surface; renaming happens in the /admin Users panel.
+   * The probe's stray 'title' commit must write nothing rather than quietly renaming the user.
+   */
   it('ignores a title commit rather than writing a display name', async () => {
     renderEditor();
 

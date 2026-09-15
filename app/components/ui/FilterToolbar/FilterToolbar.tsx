@@ -56,14 +56,14 @@ export interface ToolbarCounts {
 }
 
 /**
- * One mutually-exclusive page section (e.g. `/user`'s Collections / Images / Saved), rendered as a
- * navigating chip at the head of the bar.
+ * One mutually-exclusive page section (e.g. Collections / Images / Saved), rendered as a segment
+ * of the `SegmentedChip` in the bar's upper tier.
  *
  * Sections are a SINGLE-select dimension addressed by a search param, which is why they are not
  * part of {@link FilterState} like every other dimension here: exactly one is always chosen, and
- * the choice must stay shareable, bookmarkable and walkable with the back button. Keeping them as
- * links also keeps a sectioned page a Server Component — each section's blocks come from a
- * different server read.
+ * the choice must stay shareable, bookmarkable and walkable with the back button. Each segment is
+ * a real link to its `?tab=` URL; `onSectionSelect` intercepts a plain click so the page switches
+ * sections client-side.
  */
 export interface ToolbarSection {
   /** Stable key, also the search-param value. */
@@ -86,8 +86,8 @@ export interface FilterToolbarProps {
   filterState: FilterState;
   onFilterChange: (update: Partial<FilterState>) => void;
   /**
-   * Mutually-exclusive page sections, leading the bar. Absent on unsectioned pages, which is
-   * every collection page — only `/user` is sectioned today.
+   * Mutually-exclusive page sections for the upper tier. Absent on unsectioned pages, which is
+   * every collection page; `/user`, `/admin`, `/admin/users/[id]` and `/s/[token]` pass them.
    */
   sections?: readonly ToolbarSection[];
   /** Key of the section currently rendered. Ignored when {@link sections} is absent. */

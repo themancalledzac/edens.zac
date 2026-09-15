@@ -173,22 +173,15 @@ export function countAssociatedCollections(
 export interface UserSpaceSection {
   label: string;
   /**
-   * The blocks this section renders — populated ONLY for the active section.
-   *
-   * An inactive section is deliberately left empty rather than hydrated, because hydrating one
-   * costs a read the viewer may never look at (see {@link loadUserSpace}). That makes
-   * `content.length` meaningless for an inactive section, which is exactly why {@link count} is a
-   * field of its own and not derived from this array.
+   * The blocks this section renders. Every section is loaded up front by {@link loadUserSpace},
+   * so `UserSpaceGrid` can switch between them client-side without another read.
    */
   content: AnyContentModel[];
   /**
-   * How many items this section holds, known independently of whether {@link content} was
-   * hydrated — this is what the section chip displays.
-   *
-   * Separate from `content.length` so a deferred section still reports a TRUE number instead of
-   * the `0` it would otherwise derive from its un-hydrated array. `undefined` means genuinely
-   * unknown (the read failed) and the chip then says nothing at all, which is the only honest
-   * rendering of an unknown count — see the {@link UserSpace} docblock.
+   * How many items this section holds, shown as the chip's badge. Kept separate from
+   * `content.length` because Collections counts ids the viewer is associated with, including ones
+   * that are not renderable as tiles. `undefined` means the read failed and the chip shows no
+   * number at all.
    */
   count?: number;
   /** Shown when the read succeeded and returned nothing. A claim about the data — must be true. */

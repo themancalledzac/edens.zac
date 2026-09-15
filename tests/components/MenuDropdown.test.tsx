@@ -1,3 +1,8 @@
+/**
+ * Every case awaits a control that only renders once `me()` has resolved (Log in, Log out, or a
+ * nav link) before asserting, so the fetch has settled and nothing races the assertions.
+ */
+
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Link from 'next/link';
 
@@ -106,7 +111,6 @@ describe('MenuDropdown — auth actions', () => {
 
   it('swaps "Log out" for "Log in" after logout without a remount', async () => {
     mockMe.mockResolvedValueOnce(principal).mockResolvedValue(null);
-    // Mirror the real logout() contract: dispatch auth-changed on success.
     mockLogout.mockImplementation(async () => {
       window.dispatchEvent(new Event(authApi.AUTH_CHANGED_EVENT));
     });
@@ -119,7 +123,7 @@ describe('MenuDropdown — auth actions', () => {
       expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument()
     );
     expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
-    expect(mockMe).toHaveBeenCalledTimes(2); // refetched, not remounted
+    expect(mockMe).toHaveBeenCalledTimes(2);
     expect(mockPush).toHaveBeenCalledWith('/');
     expect(mockRefresh).toHaveBeenCalled();
   });
@@ -150,7 +154,7 @@ describe('MenuDropdown — auth actions', () => {
     const onClose = jest.fn();
 
     render(<MenuDropdown isOpen onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     const home = screen.getByRole('link', { name: 'Home' });
     expect(home).toHaveAttribute('href', '/');
@@ -164,7 +168,7 @@ describe('MenuDropdown — auth actions', () => {
     mockPathname = '/';
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
   });
@@ -188,7 +192,7 @@ describe('MenuDropdown — destinations are links, actions are buttons', () => {
     mockMe.mockResolvedValue(null);
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
     expect(screen.getByRole('link', { name: 'Explore' })).toHaveAttribute('href', '/explore');
@@ -234,7 +238,7 @@ describe('MenuDropdown — destinations are links, actions are buttons', () => {
     const onClose = jest.fn();
 
     render(<MenuDropdown isOpen onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     fireEvent.click(screen.getByRole('link', { name: 'Collections' }));
     expect(onClose).toHaveBeenCalled();
@@ -244,7 +248,7 @@ describe('MenuDropdown — destinations are links, actions are buttons', () => {
     mockMe.mockResolvedValue(principal);
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log out/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log out/i });
 
     expect(screen.getByRole('button', { name: 'About' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Contact' })).toBeInTheDocument();
@@ -258,7 +262,7 @@ describe('MenuDropdown — destinations are links, actions are buttons', () => {
     const onClose = jest.fn();
 
     render(<MenuDropdown isOpen onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     const instagram = screen.getByRole('link', { name: 'Visit Instagram' });
     const github = screen.getByRole('link', { name: 'Visit GitHub' });
@@ -285,7 +289,7 @@ describe('MenuDropdown — About/Contact disclosures', () => {
     mockMe.mockResolvedValue(null);
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     const about = screen.getByRole('button', { name: 'About' });
     expect(about).toHaveAttribute('aria-expanded', 'false');
@@ -303,7 +307,7 @@ describe('MenuDropdown — About/Contact disclosures', () => {
     mockMe.mockResolvedValue(null);
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     const contact = screen.getByRole('button', { name: 'Contact' });
     expect(contact).toHaveAttribute('aria-expanded', 'false');
@@ -321,7 +325,7 @@ describe('MenuDropdown — About/Contact disclosures', () => {
     mockMe.mockResolvedValue(null);
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     const about = screen.getByRole('button', { name: 'About' });
     const contact = screen.getByRole('button', { name: 'Contact' });
@@ -356,7 +360,7 @@ describe('MenuDropdown — focus management', () => {
 
   it('is a labelled modal dialog', async () => {
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
@@ -370,7 +374,7 @@ describe('MenuDropdown — focus management', () => {
     expect(trigger).toHaveFocus();
 
     rerender(<Harness open onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     expect(screen.getByRole('dialog')).toHaveFocus();
   });
@@ -381,7 +385,7 @@ describe('MenuDropdown — focus management', () => {
     trigger.focus();
 
     rerender(<Harness open onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
     expect(screen.getByRole('dialog')).toHaveFocus();
 
     rerender(<Harness open={false} onClose={jest.fn()} />);
@@ -390,7 +394,7 @@ describe('MenuDropdown — focus management', () => {
 
   it('traps Tab at the end of the overlay and Shift+Tab at the start', async () => {
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     const dialog = screen.getByRole('dialog');
     const close = screen.getByRole('button', { name: /close navigation menu/i });
@@ -407,7 +411,7 @@ describe('MenuDropdown — focus management', () => {
 
   it('traps Shift+Tab when focus is still on the overlay container (post-open state)', async () => {
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     const dialog = screen.getByRole('dialog');
     const github = screen.getByRole('link', { name: 'Visit GitHub' });
@@ -419,7 +423,7 @@ describe('MenuDropdown — focus management', () => {
 
   it('applies the id it is handed so a trigger can reference it', async () => {
     render(<MenuDropdown isOpen onClose={jest.fn()} id="site-menu" />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     expect(screen.getByRole('dialog')).toHaveAttribute('id', 'site-menu');
   });
@@ -458,18 +462,18 @@ describe('MenuDropdown — admin item gating (isAdmin, not isLocalEnvironment)',
     mockMe.mockResolvedValue(adminPrincipal);
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('link', { name: 'Explore' }); // settle the me() fetch
+    await screen.findByRole('link', { name: 'Explore' });
 
     expect(screen.queryByRole('link', { name: 'Update' })).not.toBeInTheDocument();
   });
 
   it('hides Create/Update/Metadata/Comments for a logged-in non-admin principal (Explore stays public)', async () => {
-    mockMe.mockResolvedValue(principal); // isAdmin: false
+    mockMe.mockResolvedValue(principal);
 
     render(
       <MenuDropdown isOpen onClose={jest.fn()} isCollectionPage collectionSlug="my-gallery" />
     );
-    await screen.findByRole('button', { name: /log out/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log out/i });
 
     expect(screen.getByRole('link', { name: 'Explore' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Create' })).not.toBeInTheDocument();
@@ -484,7 +488,7 @@ describe('MenuDropdown — admin item gating (isAdmin, not isLocalEnvironment)',
     render(
       <MenuDropdown isOpen onClose={jest.fn()} isCollectionPage collectionSlug="my-gallery" />
     );
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     expect(screen.getByRole('link', { name: 'Explore' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Create' })).not.toBeInTheDocument();
@@ -520,10 +524,10 @@ describe('MenuDropdown — admin item gating (isAdmin, not isLocalEnvironment)',
   });
 
   it('keeps Collections visible for a logged-in non-admin principal', async () => {
-    mockMe.mockResolvedValue(principal); // isAdmin: false
+    mockMe.mockResolvedValue(principal);
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log out/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log out/i });
 
     expect(screen.getByRole('link', { name: 'Collections' })).toBeInTheDocument();
   });
@@ -532,7 +536,7 @@ describe('MenuDropdown — admin item gating (isAdmin, not isLocalEnvironment)',
     mockMe.mockResolvedValue(adminPrincipal);
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('link', { name: 'Create' }); // settle the me() fetch; other admin items ARE visible
+    await screen.findByRole('link', { name: 'Create' });
 
     expect(screen.queryByRole('button', { name: /clear cache/i })).not.toBeInTheDocument();
   });
@@ -563,7 +567,7 @@ describe('MenuDropdown — Escape', () => {
     trigger.focus();
 
     rerender(<Harness open onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
     expect(screen.getByRole('dialog')).toHaveFocus();
 
     fireEvent.keyDown(document, { key: 'Escape' });
@@ -576,7 +580,7 @@ describe('MenuDropdown — Escape', () => {
   it('ignores Escape while an IME composition is open, so cancelling a candidate keeps the draft', async () => {
     const onClose = jest.fn();
     render(<MenuDropdown isOpen onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     fireEvent.keyDown(document, { key: 'Escape', isComposing: true });
     expect(onClose).not.toHaveBeenCalled();
@@ -588,7 +592,7 @@ describe('MenuDropdown — Escape', () => {
   it('leaves other keys alone', async () => {
     const onClose = jest.fn();
     render(<MenuDropdown isOpen onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     fireEvent.keyDown(document, { key: 'Enter' });
     fireEvent.keyDown(document, { key: 'Esc' });
@@ -608,6 +612,10 @@ describe('MenuDropdown — Clear Cache keeps focus inside the trap while pending
     mockIsLocal = false;
   });
 
+  /**
+   * A `disabled` button is not focusable, so the focus assertion is what fails if the pending
+   * state ever goes back to dropping focus on `<body>`; the Tab step proves the trap still wraps.
+   */
   it('stays focusable and inert (aria-disabled, not disabled) for the duration of the action', async () => {
     mockClearCache.mockReturnValue(new Promise<never>(() => {}));
 
@@ -619,13 +627,10 @@ describe('MenuDropdown — Clear Cache keeps focus inside the trap while pending
     expect(clearCache).toHaveTextContent(/clearing/i);
     expect(clearCache).not.toBeDisabled();
 
-    // A `disabled` button is not a focusable area: this is the assertion that fails if the
-    // pending state ever goes back to dropping focus on <body>.
     screen.getByRole('dialog').focus();
     clearCache.focus();
     expect(clearCache).toHaveFocus();
 
-    // ...and the trap it is still a member of continues to wrap.
     const dialog = screen.getByRole('dialog');
     const close = screen.getByRole('button', { name: /close navigation menu/i });
     const github = screen.getByRole('link', { name: 'Visit GitHub' });
@@ -674,19 +679,20 @@ describe('MenuDropdown — focus restore when the trigger is gone', () => {
     mockMe.mockResolvedValue(null);
   });
 
+  /**
+   * The first control in the header, not merely something inside it: the header holds two links
+   * here, so "landed in the header" and "landed at the top of it" are distinguishable outcomes.
+   */
   it('falls back to the page header when the trigger unmounted while the menu was open', async () => {
     const { rerender } = render(<Harness open={false} withTrigger />);
     screen.getByTestId('trigger').focus();
 
     rerender(<Harness open withTrigger />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     rerender(<Harness open withTrigger={false} />);
     rerender(<Harness open={false} withTrigger={false} />);
 
-    // The FIRST control in the header, not merely something inside it: the fallback exists to put
-    // the viewer back at a known corner of the page, and the header holds two links here so
-    // "landed in the header" and "landed at the top of it" are distinguishable outcomes.
     expect(screen.getByRole('link', { name: 'Zac Edens' })).toHaveFocus();
   });
 
@@ -718,7 +724,7 @@ describe('MenuDropdown — focus restore when the trigger is gone', () => {
     screen.getByTestId('trigger').focus();
 
     rerender(<Bare open withTrigger />);
-    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+    await screen.findByRole('button', { name: /log in/i });
 
     rerender(<Bare open withTrigger={false} />);
     expect(() => rerender(<Bare open={false} withTrigger={false} />)).not.toThrow();

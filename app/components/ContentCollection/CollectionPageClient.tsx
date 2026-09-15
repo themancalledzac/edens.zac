@@ -122,8 +122,8 @@ interface CollectionPageClientProps {
   /**
    * Extra content for the header rail — the TEXT block leading the first row, beside the cover.
    * Use it for what is *about* this page rather than *in* it, alongside the date, location,
-   * description and filter bar that already live there. `/user` puts its Account and Admin cards
-   * here. See {@link CollectionExtrasProvider}.
+   * description and filter bar that already live there. `/admin/users/[id]` puts the user's role
+   * membership here. See {@link CollectionExtrasProvider}.
    */
   railExtras?: ReactNode;
   /**

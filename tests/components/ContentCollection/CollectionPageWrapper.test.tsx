@@ -10,6 +10,9 @@
  * implementation initialised the gate's state from `isPasswordProtected`, which is a
  * gallery property and stays true even after authentication — that bug forced
  * authenticated viewers to re-enter their password on every reload.
+ *
+ * `next/cache` is mocked because SiteHeader reaches it through the clearCache action, and its
+ * module init references Request/TextEncoder, which jsdom lacks.
  */
 
 import ClientGalleryGate from '@/app/components/ClientGalleryGate/ClientGalleryGate';
@@ -44,8 +47,6 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
   usePathname: () => '/',
 }));
-// SiteHeader → MenuDropdown → clearCache action → next/cache, which references
-// Request/TextEncoder at module init and breaks under jsdom.
 jest.mock('next/cache', () => ({
   revalidatePath: jest.fn(),
   revalidateTag: jest.fn(),
@@ -83,6 +84,10 @@ describe('CollectionPageWrapper — password-protection routing', () => {
     jest.clearAllMocks();
   });
 
+  /**
+   * The gate renders standalone: `<CollectionPage>` is never passed as children, so its RSC
+   * payload (cover image, image grid) cannot leak to a locked viewer.
+   */
   it('routes a locked CLIENT_GALLERY (content === undefined) to <ClientGalleryGate>', async () => {
     mockGetCollectionBySlug.mockResolvedValue(makeCollection({ content: undefined }));
 
@@ -90,9 +95,6 @@ describe('CollectionPageWrapper — password-protection routing', () => {
 
     expect(element.type).toBe(ClientGalleryGate);
     expect(element.props.collection.slug).toBe('smith-wedding');
-    // Critical: the gate is rendered standalone — <CollectionPage> is never
-    // passed as children, so its RSC payload (cover image, image grid)
-    // doesn't leak to a locked viewer.
     expect(element.props.children).toBeUndefined();
   });
 
@@ -209,6 +211,7 @@ describe('CollectionPageWrapper — password-protection routing', () => {
     expect(listSelectIdsServer).not.toHaveBeenCalled();
   });
 
+  /** A stale payload with no kind booleans, read by a viewer who holds a CLIENT grant for it. */
   it('degrades to no Selects seed on a payload missing isClient, and warns when a grant exists', async () => {
     const { listSelectIdsServer } = jest.requireMock('@/app/lib/api/selects') as {
       listSelectIdsServer: jest.Mock;
@@ -216,7 +219,6 @@ describe('CollectionPageWrapper — password-protection routing', () => {
     const { meServer } = jest.requireMock('@/app/lib/api/auth') as { meServer: jest.Mock };
     const warn = jest.spyOn(logger, 'warn').mockImplementation(() => {});
 
-    // Stale payload: no kind booleans, but the viewer holds a CLIENT grant for it.
     meServer.mockResolvedValueOnce({
       email: 'client@example.com',
       isAdmin: false,
@@ -272,7 +274,6 @@ describe('CollectionPageWrapper — password-protection routing', () => {
     expect(element.props.initialSavedImageIds).toEqual([7, 9]);
 
     listSavedImageIdsServer.mockClear();
-    // Anonymous phase — pinned explicitly rather than relying on the module-level default.
     meServer.mockResolvedValueOnce(null);
     await CollectionPageWrapper({ slug: 'portfolio-2026' });
     expect(listSavedImageIdsServer).not.toHaveBeenCalled();

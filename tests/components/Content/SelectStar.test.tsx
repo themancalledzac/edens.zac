@@ -53,7 +53,6 @@ describe('SelectStar', () => {
   });
 
   it('renders nothing for a client without a CLIENT membership on this collection', () => {
-    // Provider scoped to collection 999, which the client has no membership for.
     const { container } = wrap(<SelectStar contentId={42} />, client, 999);
     expect(container.querySelector('button')).toBeNull();
   });

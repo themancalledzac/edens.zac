@@ -11,9 +11,6 @@ const mockGetUserPage = jest.fn();
 jest.mock('@/app/lib/api/collections', () => ({ getCollectionBySlug: jest.fn() }));
 jest.mock('@/app/lib/api/auth', () => ({ meServer: () => mockMeServer() }));
 jest.mock('@/app/lib/api/selects', () => ({ listSelectIdsServer: jest.fn(async () => []) }));
-// `listSavedImageIdsServer` is stubbed alongside getUserPage because they now share a module.
-// It previously ran for real here and fail-softed to [] on the jsdom fetch failure; [] is the same
-// answer without the round trip.
 jest.mock('@/app/lib/api/personal', () => ({
   getUserPage: () => mockGetUserPage(),
   listSavedImageIdsServer: jest.fn(async () => []),
@@ -89,7 +86,6 @@ describe('CollectionPageWrapper — Me tile injection', () => {
 
     expect(element.type).toBe(CollectionPage);
     const content = element.props.collection.content;
-    // 4 = cover + Me tile + All-Collections tile (0216) + remaining home block.
     expect(content).toHaveLength(4);
     expect(content[1].id).toBe(ME_TILE_ID);
     expect(content[1].slug).toBe('user');
@@ -121,7 +117,6 @@ describe('CollectionPageWrapper — Me tile injection', () => {
     const element = await CollectionPageWrapper({ slug: 'home' });
 
     const content = element.props.collection.content;
-    // 3 = cover + All-Collections tile (shown to everyone, 0216) + remaining block.
     expect(content).toHaveLength(3);
     expect(content.some((b: { id: number }) => b.id === ME_TILE_ID)).toBe(false);
     expect(mockGetUserPage).not.toHaveBeenCalled();
