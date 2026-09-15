@@ -51,9 +51,16 @@ describe('FilterChip', () => {
     expect(chip.className).toMatch(/active/);
   });
 
-  it('is aria-pressed="false" when not active', () => {
+  it('is aria-pressed="false" when a toggle passes active={false}', () => {
+    render(<FilterChip label="Film" active={false} onToggle={jest.fn()} />);
+    const chip = screen.getByRole('button', { name: /film/i });
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+    expect(chip.className).not.toMatch(/active/);
+  });
+
+  it('carries no aria-pressed at all when active is omitted (a one-shot action, not a toggle)', () => {
     render(<FilterChip label="Film" onToggle={jest.fn()} />);
-    expect(screen.getByRole('button', { name: /film/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /film/i })).not.toHaveAttribute('aria-pressed');
   });
 
   it('is disabled and carries an unavailable class when state="unavailable"', () => {

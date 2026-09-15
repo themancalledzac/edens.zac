@@ -17,7 +17,11 @@ interface FilterChipBaseProps {
    * value changes -- only the label switching in and out would do that.
    */
   trailing?: string;
-  /** Whether this facet is currently selected. Drives the active style. */
+  /**
+   * Whether this facet is currently selected. Drives the active style, and on the button variant
+   * opts the chip into `aria-pressed`: pass it (even `false`) for a toggle, leave it out for a
+   * one-shot action such as passkey enrollment, which is not pressed or unpressed.
+   */
   active?: boolean;
   /** Visual tone. 'film'/'digital' are neutral tri-state tints. */
   tone?: FilterChipTone;
@@ -67,10 +71,11 @@ interface FilterChipLinkProps extends FilterChipBaseProps {
 export type FilterChipProps = FilterChipButtonProps | FilterChipLinkProps;
 
 /**
- * Canonical filter chip. Renders a real <button> with aria-pressed for in-place facet toggles, or
- * a <Link> with aria-current for chips that navigate — mutually-exclusive page sections addressed
- * by a search param, which are semantically links, not pressed toggles. Both variants share one
- * set of styles so a sectioned page's bar is visually indistinguishable from any other.
+ * Canonical filter chip. Renders a real <button> for in-place toggles and actions (`aria-pressed`
+ * only when `active` is given), or a <Link> with aria-current for chips that navigate —
+ * mutually-exclusive page sections addressed by a search param, which are semantically links, not
+ * pressed toggles. Both variants share one set of styles so a sectioned page's bar is visually
+ * indistinguishable from any other.
  *
  * 'unavailable' disables the button variant; the link variant degrades to an inert span, since a
  * disabled anchor is not a thing the platform provides.
@@ -79,7 +84,7 @@ export function FilterChip({
   label,
   count,
   trailing,
-  active = false,
+  active,
   tone = 'neutral',
   state = 'available',
   ariaLabel,
@@ -93,7 +98,7 @@ export function FilterChip({
   const unavailable = state === 'unavailable';
   const classes = [
     styles.chip,
-    active ? styles.active : null,
+    active === true ? styles.active : null,
     tone !== 'neutral' ? styles[tone] : null,
     unavailable ? styles.unavailable : null,
   ]
@@ -122,7 +127,7 @@ export function FilterChip({
         scroll={scroll}
         className={classes}
         aria-label={ariaLabel}
-        aria-current={active ? 'page' : undefined}
+        aria-current={active === true ? 'page' : undefined}
       >
         {body}
       </Link>
@@ -135,7 +140,7 @@ export function FilterChip({
       type="button"
       className={classes}
       aria-label={ariaLabel}
-      aria-pressed={ariaHasPopup === undefined ? active : undefined}
+      aria-pressed={active !== undefined && ariaHasPopup === undefined ? active : undefined}
       aria-expanded={ariaExpanded}
       aria-haspopup={ariaHasPopup}
       disabled={unavailable}

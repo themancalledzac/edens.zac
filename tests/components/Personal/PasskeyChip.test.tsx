@@ -25,6 +25,11 @@ describe('PasskeyChip', () => {
     expect(PASSKEY_LABEL).toBe('Face / Touch ID');
   });
 
+  it('is a plain action button, not a toggle: no aria-pressed', () => {
+    render(<PasskeyChip initiallyEnrolled={false} />);
+    expect(chip()).not.toHaveAttribute('aria-pressed');
+  });
+
   it('disables the chip while the ceremony is pending, then removes it and announces success', async () => {
     let finish!: () => void;
     mockRegisterPasskey.mockReturnValue(
