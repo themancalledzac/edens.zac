@@ -149,9 +149,6 @@ const PANEL_SHAPE: Record<PanelType, { header: RowShape; row: RowShape }> = {
   },
   messages: {
     header: { left: ['header'], right: ['subheader'] },
-    // Both left slots are `--text-sm`: the sender is a link, not a title, and reads at the same
-    // size as the excerpt under it. The right stack is the relative <time> (`--text-xs`, so
-    // `meta`) over the reply/delete actions, and it is the taller of the two -- 45.5 to 38.
     row: { left: ['subheader', 'subheader'], right: ['meta', 'button'] },
   },
   roles: {
