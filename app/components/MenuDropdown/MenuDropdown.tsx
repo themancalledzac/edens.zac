@@ -301,7 +301,6 @@ export function MenuDropdown({
     },
     { label: 'Metadata', href: '/metadata', show: isAdmin },
     { label: 'Comments', href: '/comments', show: isAdmin },
-    { label: 'Admin', href: '/admin', show: isAdmin },
   ];
 
   const renderNavItems = (items: MenuNavItem[]) =>

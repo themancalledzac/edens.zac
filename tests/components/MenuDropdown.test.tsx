@@ -215,7 +215,7 @@ describe('MenuDropdown — destinations are links, actions are buttons', () => {
     );
     expect(screen.getByRole('link', { name: 'Metadata' })).toHaveAttribute('href', '/metadata');
     expect(screen.getByRole('link', { name: 'Comments' })).toHaveAttribute('href', '/comments');
-    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
+    expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
   });
 
   it('falls back to the create surface when Update has no collection slug', async () => {
