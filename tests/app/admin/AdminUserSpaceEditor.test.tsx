@@ -211,6 +211,17 @@ describe('AdminUserSpaceEditor', () => {
     );
   });
 
+  it('does not re-render from the server after a successful save; the optimistic state is the truth', async () => {
+    renderEditor();
+
+    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'DISABLED' } });
+
+    await waitFor(() =>
+      expect(mockUpdateUser).toHaveBeenCalledWith(5, payload({ status: 'DISABLED' }))
+    );
+    expect(mockRefresh).not.toHaveBeenCalled();
+  });
+
   it('reverts on Escape without writing', async () => {
     renderEditor();
 

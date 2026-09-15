@@ -91,7 +91,6 @@ export function AdminUserSpaceEditor({ user, children }: AdminUserSpaceEditorPro
           status: next.status,
           description: next.description,
         });
-        router.refresh();
       } catch (error_) {
         logger.error('AdminUserSpaceEditor', 'Failed to save user field', error_, {
           userId: user.id,
