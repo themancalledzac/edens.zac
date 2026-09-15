@@ -10,6 +10,10 @@ import * as usersApi from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
 
 jest.mock('@/app/lib/api/adminHome');
+jest.mock('@/app/lib/api/auth', () => ({
+  ...jest.requireActual('@/app/lib/api/auth'),
+  meServer: jest.fn().mockResolvedValue(null),
+}));
 
 /**
  * The page fetches these two lists for their row counts and then hands them to the panels as their

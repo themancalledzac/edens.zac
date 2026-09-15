@@ -1,11 +1,13 @@
 import { type ReactNode } from 'react';
 
+import { AdminHubClient } from '@/app/(admin)/admin/AdminHubClient';
+import { type AdminHub } from '@/app/(admin)/admin/loadAdminHub';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { type ToolbarExtra } from '@/app/components/ui/FilterToolbar/chipWeights';
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
-import { type TabKey, type UserSpaceData } from '@/app/components/UserSpace/userSpaceData';
+import { type SpaceKey, type UserSpaceData } from '@/app/components/UserSpace/userSpaceData';
 import { UserSpaceGrid } from '@/app/components/UserSpace/UserSpaceGrid';
 import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel } from '@/app/types/Collection';
@@ -15,7 +17,7 @@ import styles from './UserSpace.module.scss';
 
 export interface UserSpaceProps {
   data: UserSpaceData;
-  activeKey: TabKey;
+  activeKey: SpaceKey;
   /** Path the section chips link to; `?tab=` is appended. `/user` or `/admin/users/{id}`. */
   basePath: string;
   /**
@@ -34,6 +36,8 @@ export interface UserSpaceProps {
   railExtras?: ReactNode;
   /** Page-level chips for the bar's upper tier. `/user` and `/admin` pass Share, Contact, Face / Touch ID. */
   toolbarExtras?: readonly ToolbarExtra[];
+  /** The admin hub to render as the `admin` section. Only `/admin` passes it. */
+  adminHub?: AdminHub;
 }
 
 /**
@@ -104,6 +108,9 @@ export interface UserSpaceProps {
  * `canDownloadCollection` short-circuits on the missing id and `selectsEnabled` on the missing
  * `isClient`. Do not synthesize an id onto this collection to satisfy the `CollectionModel` type;
  * doing so would arm the download and Selects UI on a page that has no gallery to grant.
+ *
+ * On `/admin` an Admin section leads the segmented chip; it renders the hub's packed panels and
+ * tiles beneath the shared header instead of a grid, so the hub's layout code is untouched.
  */
 export function UserSpace({
   data,
@@ -113,6 +120,7 @@ export function UserSpace({
   ssrViewport,
   railExtras = null,
   toolbarExtras,
+  adminHub,
 }: UserSpaceProps) {
   const {
     collection,
@@ -122,27 +130,32 @@ export function UserSpace({
     grantedCollectionIds,
     visibleKeys,
   } = data;
-  const active = sections[activeKey];
+  const active = activeKey === 'admin' ? null : sections[activeKey];
 
   /**
    * From the data, not `TAB_KEYS`: a share recipient is offered Collections and Images only, since
-   * Saved and Following are the owner's private bookmarks and are absent from their view.
+   * Saved and Following are the owner's private bookmarks and are absent from their view. The
+   * Admin chip leads when a hub was passed in, ahead of the personal sections.
    */
-  const toolbarSections: ToolbarSection[] = visibleKeys.map(key => {
-    const section = sections[key];
-    return {
-      key,
-      label: section.label,
-      count: section.unavailableLabel === undefined ? section.count : undefined,
-      href: `${basePath}?tab=${key}`,
-    };
-  });
+  const toolbarSections: ToolbarSection[] = [
+    ...(adminHub ? [{ key: 'admin', label: 'Admin', href: `${basePath}?tab=admin` }] : []),
+    ...visibleKeys.map(key => {
+      const section = sections[key];
+      return {
+        key,
+        label: section.label,
+        count: section.unavailableLabel === undefined ? section.count : undefined,
+        href: `${basePath}?tab=${key}`,
+      };
+    }),
+  ];
 
   /**
    * Same collection (so the header row, slug and display mode are unchanged section to section),
-   * swapping only which blocks the grid renders.
+   * swapping only which blocks the grid renders. The Admin section has no blocks of its own, so it
+   * renders the grid empty and the hub beneath it instead.
    */
-  const sectionCollection: CollectionModel = { ...collection, content: active.content };
+  const sectionCollection: CollectionModel = { ...collection, content: active?.content ?? [] };
 
   /**
    * Deliberately NOT keyed on `activeKey`. Remounting per section collapsed the document height for
@@ -174,15 +187,27 @@ export function UserSpace({
         grid
       )}
 
-      {active.unavailableLabel === undefined ? (
-        active.content.length === 0 && (
-          <EmptyState className={styles.empty}>{active.emptyLabel}</EmptyState>
-        )
-      ) : (
-        <div className={styles.empty}>
-          <FormError>{active.unavailableLabel}</FormError>
-        </div>
+      {active === null && adminHub && (
+        <AdminHubClient
+          content={adminHub.content}
+          seed={adminHub.seed}
+          mobileChunkSize={1}
+          serverContentWidth={ssrViewport?.contentWidth}
+          serverViewportHeight={ssrViewport?.viewportHeight}
+          serverIsMobile={ssrViewport?.isMobile}
+        />
       )}
+
+      {active !== null &&
+        (active.unavailableLabel === undefined ? (
+          active.content.length === 0 && (
+            <EmptyState className={styles.empty}>{active.emptyLabel}</EmptyState>
+          )
+        ) : (
+          <div className={styles.empty}>
+            <FormError>{active.unavailableLabel}</FormError>
+          </div>
+        ))}
     </>
   );
 }

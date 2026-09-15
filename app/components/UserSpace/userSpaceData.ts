@@ -55,14 +55,21 @@ export const SHARE_TAB_KEYS = ['collections', 'images'] as const satisfies reado
  * omits it afterwards, when the cookie identifies the link instead.
  */
 export type UserSpaceMode =
-  | 'self'
-  | { mode: 'admin'; userId: number }
-  | { mode: 'share'; token?: string };
+  'self' | { mode: 'admin'; userId: number } | { mode: 'share'; token?: string };
 
 /** Narrow an untrusted `?tab=` value to a known key, falling back to the default section. */
 export function resolveTabKey(raw: string | string[] | undefined): TabKey {
   const value = Array.isArray(raw) ? raw[0] : raw;
   return TAB_KEYS.includes(value as TabKey) ? (value as TabKey) : DEFAULT_TAB;
+}
+
+export type SpaceKey = TabKey | 'admin';
+
+/** `?tab=` narrowing for a page that also hosts the admin hub: `admin` is valid and the default. */
+export function resolveSpaceKey(raw: string | string[] | undefined): SpaceKey {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === undefined || value === 'admin') return 'admin';
+  return resolveTabKey(value);
 }
 
 /** Split the synthetic user collection's content into COLLECTION blocks and IMAGE/GIF blocks. */
@@ -208,7 +215,10 @@ export interface UserSpaceData {
    * follows read failed, which is what withholds the filter rather than showing an empty one.
    */
   followedCollectionIds: number[];
-  /** Ids the save toggle seeds from. Empty in admin mode, for the same reason. */
+  /**
+   * Ids the save toggle seeds from. Empty in admin mode, for the same reason. Derived from the
+   * saved-images read itself rather than a second ids-only fetch (single-fetch rule).
+   */
   savedImageIds: number[];
   /**
    * Collection ids an ADMIN associated with this user — the half of the Collections list that an
@@ -299,6 +309,12 @@ async function loadShareView(target: { mode: 'share'; token?: string }): Promise
  * the list may be incomplete. It also leaves {@link UserSpaceData.followedCollectionIds} empty,
  * which is what withholds the `following` filter — a filter for a set nobody could read would
  * silently report every collection as unfollowed.
+ *
+ * A share recipient owns no bookmarks, so the saved/follows reads synthesize a fail-soft empty
+ * rather than skip the fetch, keeping the shape uniform for the rest of the function; neither is
+ * offered as a section in that mode (see {@link UserSpaceData.visibleKeys}). The catalog read stays
+ * inside the same `Promise.all` so it overlaps the page read instead of serializing behind it, and
+ * is skipped entirely in share mode, where there is no follow state for it to hydrate.
  */
 export async function loadUserSpace(
   target: UserSpaceMode,
@@ -307,13 +323,8 @@ export async function loadUserSpace(
   const isSelf = target === 'self';
   const isShare = target !== 'self' && target.mode === 'share';
 
-  // A recipient owns no bookmarks here, so both fail-soft reads are a genuine empty rather than a
-  // skipped read reported as a failure. Saved/Following are not offered as sections at all in this
-  // mode (see `visibleKeys`); this only keeps the shape uniform for the code below.
   const noBookmarks = Promise.resolve<FailSoftRead<never>>({ ok: true, items: [] });
 
-  // The catalog read stays INSIDE the Promise.all rather than being awaited after it: awaiting it
-  // downstream would serialize it behind the page read instead of overlapping with it.
   const [pageRead, saved, followed, catalog] = await Promise.all([
     isSelf
       ? getUserPage()
@@ -332,38 +343,25 @@ export async function loadUserSpace(
         : listFollowedCollectionIdsByUserServer(
             (target as { mode: 'admin'; userId: number }).userId
           ),
-    // Never fetched in share mode: a recipient has no follow state, so the catalog would hydrate
-    // a half of the union that is always empty for them.
     activeKey === 'collections' && !isShare
       ? getAllCollections(0, 500)
       : Promise.resolve<CollectionModel[]>([]),
   ]);
 
-  // Share mode's read carries the owner's name alongside the page; the other two return the page
-  // alone. Unwrapped here so the rest of the function sees one shape.
   const shareView = isShare ? (pageRead as ShareView | null) : null;
   const collection = isShare ? (shareView?.page ?? null) : (pageRead as CollectionModel | null);
   if (!collection) return null;
 
-  // A failed read has no `items` to take — see {@link FailSoftRead}. `[]` here is only ever the
-  // array the SECTIONS render from; `saved.ok` / `followed.ok` is what decides whether that empty
-  // array is allowed to speak, a few lines down.
   const savedImages = saved.ok ? saved.items : [];
   const followedCollectionIds = followed.ok ? followed.items : [];
 
   const { collectionBlocks, imageBlocks } = splitUserContent(collection.content);
 
-  // Non-empty only on the Collections tab, because `catalog` is only fetched there — see the
-  // docblock.
   const followedSet = new Set(followedCollectionIds);
   const followedBlocks = toCollectionBlocks(catalog.filter(c => followedSet.has(c.id)));
 
   const associatedCollections = unionCollectionBlocks(collectionBlocks, followedBlocks);
 
-  // Second person for the owner, third for an admin looking in — an empty Saved tab saying
-  // "You have not saved any images yet" on someone else's page reads as the admin's own state.
-  // The failure copy splits the same way: "Your saved images" is wrong on a page that is not the
-  // viewer's, and the unqualified form is vague on the page that is.
   const subject = isSelf
     ? {
         possessive: 'You have',
@@ -386,8 +384,6 @@ export async function loadUserSpace(
       content: associatedCollections,
       count: countAssociatedCollections(collectionBlocks, followedCollectionIds),
       emptyLabel: 'No collections yet.',
-      // A partial failure, not a total one: the granted half rendered. The copy says the list may
-      // be incomplete rather than claiming the section is unavailable, which would be false.
       unavailableLabel: followed.ok || isShare ? undefined : subject.followingUnavailable,
     },
     images: {
@@ -408,12 +404,7 @@ export async function loadUserSpace(
   return {
     collection,
     sections,
-    // Seeding the toggles is only meaningful for one's own space. In admin mode the controls are
-    // not rendered at all (see UserSpace), so seeding them with the TARGET's ids would put another
-    // user's state into the admin's client-side providers for no benefit.
     followedCollectionIds: isSelf ? followedCollectionIds : [],
-    // `/user/saves/images` already returns the full saved set, so derive the ids from it rather
-    // than issuing a second `/user/saves` ids-only read (single-fetch rule).
     savedImageIds: isSelf ? savedImages.map(i => i.id) : [],
     grantedCollectionIds: collectionBlocks
       .filter(isContentCollection)

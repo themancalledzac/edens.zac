@@ -34,7 +34,7 @@ jest.mock('@/app/lib/api/users', () => ({
   listFollowedCollectionIdsByUserServer: jest.fn(),
 }));
 
-import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
+import { loadUserSpace, resolveSpaceKey } from '@/app/components/UserSpace/userSpaceData';
 import { getAllCollections } from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
 import {
@@ -429,5 +429,18 @@ describe('loadUserSpace — self mode uses the session-bound reads', () => {
 
     expect((await loadUserSpace('self'))?.grantedCollectionIds).toEqual([1]);
     expect((await loadAdmin())?.grantedCollectionIds).toEqual([1]);
+  });
+});
+
+describe('resolveSpaceKey', () => {
+  it('defaults to admin and accepts admin', () => {
+    // eslint-disable-next-line unicorn/no-useless-undefined -- explicitly testing undefined input
+    expect(resolveSpaceKey(undefined)).toBe('admin');
+    expect(resolveSpaceKey('admin')).toBe('admin');
+  });
+  it('narrows the personal keys the same way resolveTabKey does', () => {
+    expect(resolveSpaceKey('images')).toBe('images');
+    expect(resolveSpaceKey(['saved', 'images'])).toBe('saved');
+    expect(resolveSpaceKey('bogus')).toBe('collections');
   });
 });
