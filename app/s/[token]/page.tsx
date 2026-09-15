@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
+import { isShadowedRouteSlug } from '@/app/utils/collectionSlugs';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import styles from './page.module.scss';
@@ -51,7 +52,9 @@ export default async function SharePage({ params }: SharePageProps) {
   if (!data) notFound();
 
   return (
-    <PageShell collectionSlug={data.collection.slug}>
+    <PageShell
+      collectionSlug={isShadowedRouteSlug(data.collection.slug) ? undefined : data.collection.slug}
+    >
       <ShareSession token={token} />
 
       <div className={styles.sections}>

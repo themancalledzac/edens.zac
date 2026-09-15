@@ -6,6 +6,7 @@ import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { loadUserSpace, resolveTabKey } from '@/app/components/UserSpace/userSpaceData';
 import { meServer } from '@/app/lib/api/auth';
 import { readShareSettings } from '@/app/lib/api/share';
+import { isShadowedRouteSlug } from '@/app/utils/collectionSlugs';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import styles from './page.module.scss';
@@ -42,7 +43,9 @@ export default async function UserPage({ searchParams }: UserPageProps) {
   if (!data) notFound();
 
   return (
-    <PageShell collectionSlug={data.collection.slug}>
+    <PageShell
+      collectionSlug={isShadowedRouteSlug(data.collection.slug) ? undefined : data.collection.slug}
+    >
       <h1 className={styles.srOnly}>Your Space</h1>
       <div className={styles.sections}>
         <UserSpace

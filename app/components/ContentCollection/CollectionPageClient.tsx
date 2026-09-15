@@ -180,12 +180,7 @@ export default function CollectionPageClient({
 
   const { initialCriteria, syncToUrl } = useFilterUrlState();
 
-  /**
-   * CHRONOLOGICAL collections are inherently date-ordered, so on the PUBLIC view their Date filter
-   * defaults ON (oldest-first) and toggles only between directions. Edit mode is excluded: an admin
-   * manages order against the LIVE displayMode, so auto-engaging date sort there would revert saved
-   * manual reorders.
-   */
+  /** Public view only: in edit mode an auto-engaged date sort would revert saved manual reorders. */
   const isChronological = !editMode && collection.displayMode === 'CHRONOLOGICAL';
 
   /**
@@ -338,10 +333,7 @@ export default function CollectionPageClient({
     [isSelectMode, selectedIds, enterSelectMode, exitSelectMode]
   );
 
-  /**
-   * Live content from EditModeLayer — filter options must match what the edit grid renders so
-   * in-session uploads and tag edits surface in the filter UI.
-   */
+  /** EditModeLayer's live content, so filter options track in-session uploads and tag edits. */
   const [liveEditContent, setLiveEditContent] = useState<AnyContentModel[] | null>(null);
 
   /** Public render works off the server seed; edit mode tracks the layer's live content. */
@@ -628,27 +620,16 @@ export default function CollectionPageClient({
   const pageSize = collection.contentPerPage ?? 30;
 
   /**
-   * The landing page never gets the filter bar while it is being VIEWED: it is a curated showcase,
-   * not a browsable index, so offering to re-sort or facet it works against the page. This is a
-   * property of the home collection itself rather than a caller's preference — it outranks
-   * `alwaysShowFilterBar` for the same reason.
-   *
-   * It lifts while the page is being CURATED: an admin at `/home?manage=1` is arranging the very
-   * running order the suppression protects, and both the toolbar and the edit-mode density slider
-   * mount from this page's filter context with no other source, so suppressing them there would
-   * take away the controls rather than the temptation.
+   * The home showcase is curated, not browsable, so it gets no filter bar while viewed and this
+   * outranks `alwaysShowFilterBar`. It lifts in edit mode, where the toolbar and density slider
+   * are the only controls for arranging that running order.
    */
   const isHomeShowcaseView = collection.slug === HOME_SLUG && !editMode;
 
   /**
    * Sections alone justify the bar: a sectioned page needs its section chips even with no facet
-   * dimensions of its own, which is also what gives it the shared chrome (the density slider) that
-   * makes it match an ordinary collection page.
-   *
-   * `CollectionFilterProvider` below stays mounted always and gates the filter UI through a null
-   * VALUE instead — `hasOptions` is live in edit mode (it flips when an upload gives an empty
-   * collection its first filterable content), and conditionally mounting the provider on it would
-   * reparent the subtree, remounting `EditModeLayer` and resetting its state.
+   * dimensions. `CollectionFilterProvider` below stays mounted regardless and gates the UI through
+   * a null value, because this flips live in edit mode and remounting it would reset `EditModeLayer`.
    */
   const hasOptions =
     !isHomeShowcaseView &&

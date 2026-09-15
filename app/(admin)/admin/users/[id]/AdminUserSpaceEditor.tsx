@@ -109,7 +109,7 @@ export function AdminUserSpaceEditor({ user, children }: AdminUserSpaceEditorPro
         setSaving(false);
       }
     },
-    [current, user.id, router]
+    [current, user.id]
   );
 
   /**

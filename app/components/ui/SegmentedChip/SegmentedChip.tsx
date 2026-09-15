@@ -42,7 +42,13 @@ export function SegmentedChip({ segments, ariaLabel, onSelect }: SegmentedChipPr
               onClick={
                 onSelect
                   ? event => {
-                      if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) {
+                      if (
+                        event.metaKey ||
+                        event.ctrlKey ||
+                        event.shiftKey ||
+                        event.altKey ||
+                        event.button !== 0
+                      ) {
                         return;
                       }
                       event.preventDefault();

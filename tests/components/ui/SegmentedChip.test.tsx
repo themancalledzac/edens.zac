@@ -78,11 +78,16 @@ describe('SegmentedChip', () => {
     expect(link).toHaveAttribute('href', '/user?tab=images');
   });
 
-  it('leaves a modifier click to navigate normally, without calling onSelect', () => {
+  it.each([
+    ['meta', { metaKey: true }],
+    ['ctrl', { ctrlKey: true }],
+    ['shift', { shiftKey: true }],
+    ['alt', { altKey: true }],
+  ])('leaves a %s-click to navigate normally, without calling onSelect', (_name, init) => {
     const onSelect = jest.fn();
     render(<SegmentedChip segments={segments} ariaLabel="Sections" onSelect={onSelect} />);
     const link = screen.getByRole('link', { name: 'Images' });
-    expect(fireEvent.click(link, { metaKey: true })).toBe(true);
+    expect(fireEvent.click(link, init)).toBe(true);
     expect(onSelect).not.toHaveBeenCalled();
   });
 

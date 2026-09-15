@@ -48,6 +48,7 @@ jest.mock('@/app/(admin)/admin/AdminHubClient', () => ({ AdminHubClient: () => '
 import { AdminHubClient } from '@/app/(admin)/admin/AdminHubClient';
 import AdminPage from '@/app/(admin)/admin/page';
 import { FormError } from '@/app/components/ui/Field/FormError';
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { UserSpaceGrid } from '@/app/components/UserSpace/UserSpaceGrid';
 import { meServer } from '@/app/lib/api/auth';
@@ -158,6 +159,10 @@ describe("AdminPage as the admin's own space", () => {
 
   it('links the personal sections under /admin', async () => {
     expect(gridProps(await renderAdmin()).basePath).toBe('/admin');
+  });
+
+  it('hands PageShell no collectionSlug, since `user` is shadowed by a route', async () => {
+    expect(findProps(await renderAdmin(), PageShell).collectionSlug).toBeUndefined();
   });
 
   it('passes the own-space chips like /user does', async () => {

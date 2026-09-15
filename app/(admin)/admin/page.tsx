@@ -5,6 +5,7 @@ import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
 import { meServer } from '@/app/lib/api/auth';
 import { readShareSettings } from '@/app/lib/api/share';
+import { isShadowedRouteSlug } from '@/app/utils/collectionSlugs';
 import { logger } from '@/app/utils/logger';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
@@ -70,7 +71,9 @@ export default async function AdminPage() {
   }
 
   return (
-    <PageShell collectionSlug={data.collection.slug}>
+    <PageShell
+      collectionSlug={isShadowedRouteSlug(data.collection.slug) ? undefined : data.collection.slug}
+    >
       <h1 className={styles.srOnly}>Your Space</h1>
       <div className={styles.sections}>
         <UserSpace

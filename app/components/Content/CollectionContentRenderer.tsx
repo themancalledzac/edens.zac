@@ -613,10 +613,8 @@ export default function CollectionContentRenderer({
 
   if (failedImageIds.has(contentId)) {
     /**
-     * `currentCollectionId` is only threaded down on the manage path (`EditModeLayer`); the public
-     * `CollectionPageClient` grid, `TaxonomyPage`, and `LocationPage` never set it. On the manage
-     * path the "Image unavailable" box stays clickable, mirroring the empty-URL ("No Image")
-     * placeholder above, so the admin can open the edit/delete modal and remove the broken image.
+     * Only `EditModeLayer` threads `currentCollectionId` down. There the box stays clickable, like
+     * the "No Image" placeholder above, so the admin can open the modal and remove the broken image.
      */
     const isManage = currentCollectionId != null;
 

@@ -46,6 +46,7 @@ jest.mock('@/app/components/Personal/FollowsContext', () => ({
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { UserSpaceGrid } from '@/app/components/UserSpace/UserSpaceGrid';
 import { LAYOUT } from '@/app/constants';
@@ -178,6 +179,10 @@ describe('UserPage', () => {
     const grid = gridProps(await renderTab());
     expect(grid).not.toBeNull();
     expect(grid.me).toBe(authedPrincipal);
+  });
+
+  it('hands PageShell no collectionSlug, since `user` is shadowed by this route', async () => {
+    expect(findProps(await renderTab(), PageShell).collectionSlug).toBeUndefined();
   });
 
   it('still hands the Contact chip a lockedEmail', async () => {
