@@ -23,10 +23,8 @@ jest.mock('@/app/lib/api/core', () => ({
   getServerCookieHeader: jest.fn(),
 }));
 
-// Mock fetch globally
 global.fetch = jest.fn();
 
-// Mock navigator.credentials (jsdom does not implement WebAuthn).
 const mockCredentialsCreate = jest.fn();
 const mockCredentialsGet = jest.fn();
 Object.defineProperty(global.navigator, 'credentials', {
@@ -34,8 +32,6 @@ Object.defineProperty(global.navigator, 'credentials', {
   writable: true,
 });
 
-// Observe AUTH_CHANGED_EVENT dispatches. Registered once — jsdom's window is
-// shared across this file and jest.clearAllMocks() resets call history per test.
 const authChangedListener = jest.fn();
 window.addEventListener(AUTH_CHANGED_EVENT, authChangedListener);
 
@@ -170,6 +166,7 @@ describe('me', () => {
     email: 'admin@example.com',
     isAdmin: true,
     mfaSatisfied: true,
+    passkeyCount: 0,
     galleries: [],
   };
 
@@ -480,7 +477,7 @@ describe('meServer', () => {
       status: 200,
       json: jest
         .fn()
-        .mockResolvedValue({ email: 'c@x.com', isAdmin: false, mfaSatisfied: true, galleries: [] }),
+        .mockResolvedValue({ email: 'c@x.com', isAdmin: false, mfaSatisfied: true, passkeyCount: 0, galleries: [] }),
     });
 
     const result = await meServer();

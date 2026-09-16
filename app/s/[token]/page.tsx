@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
-import { loadUserSpace, resolveTabKey } from '@/app/components/UserSpace/userSpaceData';
+import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
+import { isShadowedRouteSlug } from '@/app/utils/collectionSlugs';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import styles from './page.module.scss';
@@ -22,7 +23,6 @@ export const metadata: Metadata = { referrer: 'no-referrer' };
 
 interface SharePageProps {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ tab?: string | string[] }>;
 }
 
 /**
@@ -36,40 +36,31 @@ interface SharePageProps {
  * Only Collections and Images are offered. Saved and Following are the owner's private bookmarks
  * and are absent from the backend's recipient view, so the section chips are narrowed rather than
  * rendered empty — an empty "Saved" tab would assert the owner has saved nothing, which is not
- * what we know.
+ * what we know. A hand-edited `?tab=saved` on a shared link is clamped back to Collections by
+ * `UserSpaceGrid`, rather than 404ing — a stale query string should land on the page.
  *
  * A dead link (unknown or reset) is a 404. The backend cannot tell those apart by design — a reset
  * leaves no trace of the old token — and neither should this page.
  */
-export default async function SharePage({ params, searchParams }: SharePageProps) {
+export default async function SharePage({ params }: SharePageProps) {
   const { token } = await params;
-  const { tab } = await searchParams;
 
-  const activeKey = resolveTabKey(tab);
   const [data, ssrViewport] = await Promise.all([
-    loadUserSpace({ mode: 'share', token }, activeKey),
+    loadUserSpace({ mode: 'share', token }),
     resolveSsrViewport(),
   ]);
   if (!data) notFound();
 
-  // `?tab=saved` on a shared link resolves to a section this view does not offer. Clamp rather
-  // than 404 — a stale or hand-edited query string should land on the page, not on an error.
-  const safeKey = data.visibleKeys.includes(activeKey) ? activeKey : data.visibleKeys[0];
-
   return (
-    <PageShell collectionSlug={data.collection.slug}>
+    <PageShell
+      collectionSlug={isShadowedRouteSlug(data.collection.slug) ? undefined : data.collection.slug}
+    >
       <ShareSession token={token} />
 
       <div className={styles.sections}>
         <ShareBanner ownerName={data.ownerName} />
 
-        <UserSpace
-          data={data}
-          activeKey={safeKey}
-          basePath={`/s/${token}`}
-          me={null}
-          ssrViewport={ssrViewport}
-        />
+        <UserSpace data={data} basePath={`/s/${token}`} me={null} ssrViewport={ssrViewport} />
       </div>
     </PageShell>
   );

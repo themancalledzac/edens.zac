@@ -19,16 +19,15 @@ jest.mock('@/app/lib/api/personal', () => ({
 }));
 
 beforeEach(() => {
-  // The toggle calls `.catch()` on the persist result, so both must return a promise.
   (addSave as jest.Mock).mockImplementation(() => Promise.resolve());
   (removeSave as jest.Mock).mockImplementation(() => Promise.resolve());
 });
 
-// Any logged-in principal — no gallery membership required for saves.
 const viewer: MeResponse = {
   email: 'viewer@example.com',
   isAdmin: false,
   mfaSatisfied: false,
+  passkeyCount: 0,
   galleries: [],
 };
 

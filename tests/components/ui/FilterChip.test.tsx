@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { type ReactNode } from 'react';
+import { createRef, type ReactNode } from 'react';
 
 import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
 
@@ -40,7 +40,6 @@ describe('FilterChip', () => {
 
   it('omits the count node when count is undefined', () => {
     render(<FilterChip label="Tags" onToggle={jest.fn()} />);
-    // The accessible name is just the label — no trailing number.
     const chip = screen.getByRole('button', { name: 'Tags' });
     expect(chip.textContent).toBe('Tags');
   });
@@ -52,9 +51,16 @@ describe('FilterChip', () => {
     expect(chip.className).toMatch(/active/);
   });
 
-  it('is aria-pressed="false" when not active', () => {
+  it('is aria-pressed="false" when a toggle passes active={false}', () => {
+    render(<FilterChip label="Film" active={false} onToggle={jest.fn()} />);
+    const chip = screen.getByRole('button', { name: /film/i });
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+    expect(chip.className).not.toMatch(/active/);
+  });
+
+  it('carries no aria-pressed at all when active is omitted (a one-shot action, not a toggle)', () => {
     render(<FilterChip label="Film" onToggle={jest.fn()} />);
-    expect(screen.getByRole('button', { name: /film/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /film/i })).not.toHaveAttribute('aria-pressed');
   });
 
   it('is disabled and carries an unavailable class when state="unavailable"', () => {
@@ -92,8 +98,6 @@ describe('FilterChip', () => {
     });
 
     it('marks the active link with aria-current, not aria-pressed', () => {
-      // Sections navigate rather than toggle a facet in place, so the accurate ARIA is
-      // current-page. aria-pressed on a link would announce it as a toggle button.
       render(<FilterChip label="Saved" href="/user?tab=saved" active />);
       const chip = screen.getByRole('link', { name: /saved/i });
       expect(chip).toHaveAttribute('aria-current', 'page');
@@ -162,5 +166,30 @@ describe('FilterChip', () => {
       render(<FilterChip label="Film" onToggle={jest.fn()} />);
       expect(screen.getByRole('button', { name: 'Film' })).toBeInTheDocument();
     });
+  });
+});
+
+describe('FilterChip button passthroughs', () => {
+  it('forwards aria-expanded and aria-haspopup', () => {
+    render(
+      <FilterChip label="Year" onToggle={() => {}} ariaExpanded={false} ariaHasPopup="true" />
+    );
+    const button = screen.getByRole('button', { name: 'Year' });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(button).toHaveAttribute('aria-haspopup', 'true');
+    expect(button).not.toHaveAttribute('aria-pressed');
+  });
+
+  it('exposes the button element through ref', () => {
+    const ref = createRef<HTMLButtonElement>();
+    render(<FilterChip label="Year" onToggle={() => {}} ref={ref} />);
+    expect(ref.current).toBe(screen.getByRole('button', { name: 'Year' }));
+  });
+
+  it('renders neither aria attribute when not asked to', () => {
+    render(<FilterChip label="Year" onToggle={() => {}} />);
+    const button = screen.getByRole('button', { name: 'Year' });
+    expect(button).not.toHaveAttribute('aria-expanded');
+    expect(button).not.toHaveAttribute('aria-haspopup');
   });
 });

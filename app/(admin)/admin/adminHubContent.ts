@@ -149,9 +149,6 @@ const PANEL_SHAPE: Record<PanelType, { header: RowShape; row: RowShape }> = {
   },
   messages: {
     header: { left: ['header'], right: ['subheader'] },
-    // Both left slots are `--text-sm`: the sender is a link, not a title, and reads at the same
-    // size as the excerpt under it. The right stack is the relative <time> (`--text-xs`, so
-    // `meta`) over the reply/delete actions, and it is the taller of the two -- 45.5 to 38.
     row: { left: ['subheader', 'subheader'], right: ['meta', 'button'] },
   },
   roles: {
@@ -343,7 +340,7 @@ export function buildAdminHubContent(
  * Zac's round-3 review: a closed panel is not only its header — it shows a small strip of the
  * (empty) body surface, "as tall as the padding around it, maybe twice as tall". Body padding is
  * 32px total (the `bodyPadding` term inside {@link panelChromeHeight}), so the visible body lands
- * at 48px — inside his stated band. Mirrored in `AdminPanel.module.scss` by the `.isCollapsed::after`
+ * at 48px — inside his stated band. Mirrored in `ListPanel.module.scss` by the `.isCollapsed::after`
  * strip, whose `min-height: var(--space-4)` (16px) inside `margin: var(--space-4)` (32px in total)
  * is the same 32 + 16 arithmetic; change the two together.
  */

@@ -71,6 +71,7 @@ describe('CollectionPageWrapper — All-Collections tile injection', () => {
       email: 'a@b.com',
       isAdmin: false,
       mfaSatisfied: true,
+      passkeyCount: 0,
       galleries: [],
     });
     mockGetUserPage.mockResolvedValue(null);

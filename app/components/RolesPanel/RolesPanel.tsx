@@ -128,8 +128,10 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
   const backToList = useCallback(() => returnToList(false), [returnToList]);
   const backToListAfterChange = useCallback(() => returnToList(true), [returnToList]);
 
-  // The create form and the detail editor both render in the panel body, so entering one has to
-  // open the panel — otherwise the header swaps to "New Role" with nothing beneath it.
+  /**
+   * The create form and the detail editor both render in the panel body, so entering one has to
+   * open the panel — otherwise the header swaps to "New Role" with nothing beneath it.
+   */
   const openView = useCallback(
     (next: View) => {
       setView(next);
@@ -138,8 +140,10 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
     [onCollapsedChange]
   );
 
-  // Keyed on the id rather than a "have we done this yet" flag, so arriving from a second role
-  // link opens that role too — the hub does not remount between two soft navigations to /admin.
+  /**
+   * Keyed on the id rather than a "have we done this yet" flag, so arriving from a second role
+   * link opens that role too — the hub does not remount between two soft navigations to /admin.
+   */
   const openedFromUrl = useRef<number | null>(null);
 
   useEffect(() => {
@@ -178,8 +182,10 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
     }
   };
 
-  // Optimistic, with rollback — the same shape as useMessageDelete: the row leaves immediately and
-  // comes back if the backend refuses, so a failed delete never reads as a successful one.
+  /**
+   * Optimistic, with rollback — the same shape as `useMessageDelete`: the row leaves immediately
+   * and comes back if the backend refuses, so a failed delete never reads as a successful one.
+   */
   const handleDelete = async (role: RoleSummary) => {
     if (!window.confirm(`Delete role “${role.name}”? Everyone in it loses that access.`)) return;
     setDeleteError(null);
@@ -213,8 +219,6 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
             {sortedRoles.map(role => (
               <ListRow
                 key={role.id}
-                // No `ariaLabel`: the activation button names itself from the role name it
-                // contains, which is what it did as `.rowMain` and what the tests read.
                 onActivate={() => openView({ mode: 'detail', role })}
                 left={<span className={styles.name}>{role.name}</span>}
                 right={
@@ -292,5 +296,3 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
     </ListPanel>
   );
 }
-
-export default RolesPanel;

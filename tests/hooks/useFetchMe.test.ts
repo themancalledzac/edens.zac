@@ -4,8 +4,6 @@ import { useFetchMe } from '@/app/hooks/useFetchMe';
 import * as authApi from '@/app/lib/api/auth';
 import { type MeResponse } from '@/app/types/Auth';
 
-// The real AUTH_CHANGED_EVENT constant is passed through so the hook listens on the
-// exact event name production dispatches (also pinned in tests/lib/api/auth.test.ts).
 jest.mock('@/app/lib/api/auth', () => ({
   AUTH_CHANGED_EVENT: (jest.requireActual('@/app/lib/api/auth') as { AUTH_CHANGED_EVENT: string })
     .AUTH_CHANGED_EVENT,
@@ -18,6 +16,7 @@ const principal: MeResponse = {
   email: 'a@b.com',
   isAdmin: false,
   mfaSatisfied: true,
+  passkeyCount: 0,
   galleries: [],
 };
 
@@ -74,7 +73,6 @@ describe('useFetchMe', () => {
 
     dispatchAuthChanged();
 
-    // Refetch in flight: the previous principal stays visible, no loading flash.
     expect(mockMe).toHaveBeenCalledTimes(2);
     expect(result.current.loading).toBe(false);
     expect(result.current.me).toEqual(principal);

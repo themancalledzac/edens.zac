@@ -7,8 +7,8 @@ import { useCallback, useState } from 'react';
 
 import { useMe } from '@/app/components/auth/MeProvider';
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
+import { useCollectionExtras } from '@/app/components/ContentCollection/CollectionExtrasContext';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
-import { useCollectionRailExtras } from '@/app/components/ContentCollection/CollectionRailContext';
 import { useInlineEdit } from '@/app/components/ContentCollection/edit/InlineEditContext';
 import { FollowButton } from '@/app/components/Personal/FollowButton';
 import { Badge } from '@/app/components/ui/Badge/Badge';
@@ -23,6 +23,7 @@ import {
   type ViewableContent,
 } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
+import { isShadowedRouteSlug } from '@/app/utils/collectionSlugs';
 import { createContentClickHandler } from '@/app/utils/contentComponentHandlers';
 import { COVER_IMAGE_CONTENT_ID } from '@/app/utils/contentLayout';
 import {
@@ -94,6 +95,9 @@ const reportedDimensionFailures = new Set<number>();
  * all three passed the same options to {@link buildWrapperClassName} (notably `isSelected: false`,
  * since none of them can be part of a selection). The main image return does NOT use it — its
  * wrapper is selection-aware and parallax-aware, so it builds its own.
+ *
+ * The TEXT branch's description container always renders, even with no description text, because
+ * it is the flex-grow spacer that pushes the download row and filter toolbar to the block's bottom.
  */
 export default function CollectionContentRenderer({
   contentId,
@@ -114,7 +118,6 @@ export default function CollectionContentRenderer({
   textItems,
   isGif = false,
   thumbnailUrl,
-  // Reorder mode props
   isReorderMode = false,
   isPickedUp = false,
   pickedUpImageId,
@@ -125,7 +128,6 @@ export default function CollectionContentRenderer({
   onPickUp,
   onPlace,
   onCancelImageMove,
-  // Click handlers
   onImageClick,
   enableFullScreenView,
   onFullScreenImageClick,
@@ -145,12 +147,15 @@ export default function CollectionContentRenderer({
 
   const [failedImageIds, setFailedImageIds] = useState<Set<number>>(new Set());
 
-  // Parallax hook (always called, but disabled if enableParallax = false)
+  /** Always called, per Rules of Hooks, but disabled internally when `enableParallax` is false. */
   const parallaxRef = useParallax({ enableParallax });
 
-  // COLLECTION tiles navigate via href; IMAGE/GIF fullscreen stays on onClick. `hasClickHandler`
-  // mirrors the guard logic in handleClick (TEXT/reorder produce no action). currentCollectionId
-  // is the manage/public discriminant — on the manage grid onImageClick is the router.
+  /**
+   * COLLECTION tiles navigate via href; IMAGE/GIF fullscreen stays on onClick. `hasClickHandler`
+   * mirrors the guard logic in {@link handleClick} (TEXT/reorder produce no action).
+   * `currentCollectionId` is the manage/public discriminant — on the manage grid `onImageClick` is
+   * the router.
+   */
   const { hasClickHandler, isSlugNav } = getClickEligibility({
     contentType,
     isReorderMode,
@@ -169,10 +174,11 @@ export default function CollectionContentRenderer({
     authoredLabel ?? (contentType === 'GIF' ? 'View animation' : 'View photo');
   const cardLinkLabel = authoredLabel ?? 'View collection';
 
+  /** No-ops on a slug-navigating tile — navigation there is handled by `<Tile href>` instead. */
   const handleClick = useCallback(() => {
     if (contentType === 'TEXT') return;
     if (isReorderMode) return;
-    if (isSlugNav) return; // navigation handled by <Tile href>
+    if (isSlugNav) return;
 
     const fullScreenContent: ViewableContent =
       contentType === 'GIF'
@@ -213,33 +219,33 @@ export default function CollectionContentRenderer({
     isReorderMode,
   ]);
 
-  // Must be defined before any early return to satisfy Rules of Hooks
+  /** Defined before any early return to satisfy Rules of Hooks. */
   const handleImageError = useCallback(() => {
     setFailedImageIds(prev => new Set(prev).add(contentId));
     onImageLoadError?.(contentId);
   }, [contentId, onImageLoadError]);
 
   const collectionFilter = useCollectionFilter();
-  const railExtras = useCollectionRailExtras();
+  const { rail: railExtras, toolbar: toolbarExtras } = useCollectionExtras();
   const inlineEdit = useInlineEdit();
   const me = useMe();
 
-  // Admin-only shortcut into manage mode, pinned to the header cover image. Shown only on the
-  // public view (manage path sets currentCollectionId) for the cover block (contentId === -1).
-  // Reads `useMe()` (server-resolved principal, mounted via MeProvider in CollectionPageClient —
-  // no extra client fetch) rather than useFetchMe(), since this component renders once per
-  // content tile and a per-tile client fetch would duplicate the /api/auth/me call across the
-  // whole grid.
+  /**
+   * Admin shortcut into manage mode on the header cover. Only for collections with a backing row:
+   * a shadowed slug such as `user` has no manage page, and pushing `?manage=1` at it just
+   * re-rendered the page.
+   */
   const showCoverUpdateShortcut =
     contentType === 'IMAGE' &&
     contentId === COVER_IMAGE_CONTENT_ID &&
     currentCollectionId == null &&
     !!collectionSlug &&
+    !isShadowedRouteSlug(collectionSlug) &&
     !!me?.isAdmin;
 
+  /** Stops the click from bubbling to the parallax wrapper, which would otherwise open fullscreen. */
   const handleCoverUpdateClick = useCallback(
     (event: { stopPropagation: () => void }) => {
-      // Stop the click from bubbling to the parallax wrapper (which opens fullscreen).
       event.stopPropagation();
       if (collectionSlug) {
         router.push(manageHref(collectionSlug));
@@ -248,10 +254,12 @@ export default function CollectionContentRenderer({
     [collectionSlug, router]
   );
 
-  // Manage-side twin of the shortcut above, pinned to the same corner of the same cover block.
-  // The two never coexist: the shortcut needs the public view, this needs the inline-edit surface,
-  // which only EditModeLayer mounts. A null `onTogglePickCover` means the active manage mode
-  // already owns grid clicks (reorder, select, pick-date), so the affordance stands down.
+  /**
+   * Manage-side twin of the shortcut above, pinned to the same corner of the same cover block. The
+   * two never coexist: the shortcut needs the public view, this needs the inline-edit surface,
+   * which only EditModeLayer mounts. A null `onTogglePickCover` means the active manage mode
+   * already owns grid clicks (reorder, select, pick-date), so the affordance stands down.
+   */
   const togglePickCover = inlineEdit?.onTogglePickCover ?? null;
   const isPickingCover = inlineEdit?.isPickingCover ?? false;
   const showCoverPickToggle =
@@ -266,11 +274,12 @@ export default function CollectionContentRenderer({
   );
 
   if (contentType === 'TEXT') {
-    // The header rail carries more than text: the filter toolbar, the client-gallery download row
-    // and any page-level rail extras mount into it. A collection with no metadata (no date,
-    // locations, description or siblings — that is `/user`) produces an item-less rail, so bailing
-    // on empty `textItems` alone would throw away all three. Mirrors `forceHeaderRail` on the
-    // layout side.
+    /**
+     * The header rail carries more than text: the filter toolbar, the client-gallery download row
+     * and any page-level rail extras mount into it. A collection with no metadata (that is `/user`)
+     * produces an item-less rail, so bailing on empty `textItems` alone would throw away all three.
+     * Mirrors `forceHeaderRail` on the layout side.
+     */
     const railHasControls =
       collectionFilter !== null || Boolean(railExtras) || (canDownload && Boolean(collectionSlug));
     const items = textItems ?? [];
@@ -286,6 +295,72 @@ export default function CollectionContentRenderer({
       (item): item is (typeof items)[number] & { slug: string } =>
         item.type === 'collection' && item.slug != null
     );
+
+    /**
+     * Gated on `onEditLocation`, not `inlineEdit`: a surface with no locations to pick (the admin
+     * user rail) would otherwise get an empty row offering to "Add location" to a user.
+     */
+    const showLocationRow = Boolean(dateItem || locationItem || inlineEdit?.onEditLocation);
+
+    /**
+     * Card path (at least one sibling has a cover image): a wrapping row of ~2:1 cover cards, with
+     * siblings still lacking a cover falling back to a text-link chip in the same row rather than a
+     * blank placeholder. Fallback path (no sibling has a cover, e.g. the backend has not deployed
+     * that field yet): the original plain text-link row.
+     */
+    const siblingsNode =
+      collectionItems.length === 0 ? null : collectionItems.some(item => item.coverImageUrl) ? (
+        <div className={cbStyles.metadataSiblingsContainer}>
+          <span className={cbStyles.metadataSiblingLabel}>Related</span>
+          <div className={cbStyles.metadataSiblingCardRow}>
+            {collectionItems.map(item =>
+              item.coverImageUrl ? (
+                <Link
+                  key={`sibling-${contentId}-${item.slug}`}
+                  href={item.slug}
+                  className={cbStyles.metadataSiblingCard}
+                  aria-label={item.value}
+                >
+                  <Image
+                    src={item.coverImageUrl}
+                    alt={item.value}
+                    fill
+                    sizes="(max-width: 768px) 140px, 200px"
+                    className={cbStyles.metadataSiblingCardImage}
+                    quality={IMAGE.quality}
+                  />
+                  <span className={cbStyles.metadataSiblingCardOverlay}>
+                    <span className={cbStyles.metadataSiblingCardTitle}>{item.value}</span>
+                  </span>
+                </Link>
+              ) : (
+                <Link
+                  key={`sibling-${contentId}-${item.slug}`}
+                  href={item.slug}
+                  className={cbStyles.metadataSiblingChip}
+                >
+                  {item.value}
+                </Link>
+              )
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className={cbStyles.metadataSiblingsContainer}>
+          <span className={cbStyles.metadataSiblingLabel}>Related</span>
+          <div className={cbStyles.metadataSiblingsRow}>
+            {collectionItems.map(item => (
+              <Link
+                key={`sibling-${contentId}-${item.slug}`}
+                href={item.slug!}
+                className={cbStyles.metadataSiblingCollection}
+              >
+                {item.value}
+              </Link>
+            ))}
+          </div>
+        </div>
+      );
 
     return (
       <div
@@ -305,9 +380,6 @@ export default function CollectionContentRenderer({
           <div className={cbStyles.metadataBlockInner}>
             {inlineEdit && (
               <div className={cbStyles.metadataTitleRow}>
-                {/* One leading occupant: the editable title, or whatever the surface puts in its
-                    place (the admin user rail leads with the email — the cover already carries
-                    the name). */}
                 {inlineEdit.titleLead ?? (
                   <InlineEditableText
                     as="input"
@@ -325,8 +397,6 @@ export default function CollectionContentRenderer({
                 {inlineEdit.titleAside}
               </div>
             )}
-            {/* A cover-less collection lays out a text-only header, so there is no cover to hover
-                — the rail is the only place left to start the pick from. */}
             {inlineEdit && !inlineEdit.hasCover && togglePickCover && (
               <button
                 type="button"
@@ -338,9 +408,7 @@ export default function CollectionContentRenderer({
                 {isPickingCover ? 'Cancel cover selection' : 'Set cover image'}
               </button>
             )}
-            {/* `onEditLocation`, not `inlineEdit`: a surface with no locations to pick (the admin
-                user rail) would otherwise get an empty row offering to "Add location" to a user. */}
-            {(dateItem || locationItem || inlineEdit?.onEditLocation) && (
+            {showLocationRow && (
               <div className={cbStyles.metadataHeaderRow}>
                 {dateItem && <div className={cbStyles.metadataDate}>{dateItem.value}</div>}
                 {inlineEdit?.onEditLocation ? (
@@ -364,9 +432,6 @@ export default function CollectionContentRenderer({
               </div>
             )}
             {inlineEdit?.beforeDescription}
-            {/* Always render the description container so it stays the
-                flex-grow spacer that pushes the download bar + toolbar to the
-                bottom — even when this gallery has no description text. */}
             <div className={cbStyles.metadataDescriptionContainer}>
               {inlineEdit ? (
                 <InlineEditableText
@@ -399,64 +464,7 @@ export default function CollectionContentRenderer({
                 ))}
               </div>
             )}
-            {collectionItems.length > 0 &&
-              (collectionItems.some(item => item.coverImageUrl) ? (
-                // Card path: at least one sibling has a cover image. Render a wrapping
-                // row of ~2:1 cover cards; siblings still lacking a cover fall back to a
-                // text-link chip inside the same row (no blank placeholder).
-                <div className={cbStyles.metadataSiblingsContainer}>
-                  <span className={cbStyles.metadataSiblingLabel}>Related</span>
-                  <div className={cbStyles.metadataSiblingCardRow}>
-                    {collectionItems.map(item =>
-                      item.coverImageUrl ? (
-                        <Link
-                          key={`sibling-${contentId}-${item.slug}`}
-                          href={item.slug}
-                          className={cbStyles.metadataSiblingCard}
-                          aria-label={item.value}
-                        >
-                          <Image
-                            src={item.coverImageUrl}
-                            alt={item.value}
-                            fill
-                            sizes="(max-width: 768px) 140px, 200px"
-                            className={cbStyles.metadataSiblingCardImage}
-                            quality={IMAGE.quality}
-                          />
-                          <span className={cbStyles.metadataSiblingCardOverlay}>
-                            <span className={cbStyles.metadataSiblingCardTitle}>{item.value}</span>
-                          </span>
-                        </Link>
-                      ) : (
-                        <Link
-                          key={`sibling-${contentId}-${item.slug}`}
-                          href={item.slug}
-                          className={cbStyles.metadataSiblingChip}
-                        >
-                          {item.value}
-                        </Link>
-                      )
-                    )}
-                  </div>
-                </div>
-              ) : (
-                // Fallback path: no sibling has a cover image (e.g. backend not yet
-                // deployed). Keep the original plain text-link row.
-                <div className={cbStyles.metadataSiblingsContainer}>
-                  <span className={cbStyles.metadataSiblingLabel}>Related</span>
-                  <div className={cbStyles.metadataSiblingsRow}>
-                    {collectionItems.map(item => (
-                      <Link
-                        key={`sibling-${contentId}-${item.slug}`}
-                        href={item.slug!}
-                        className={cbStyles.metadataSiblingCollection}
-                      >
-                        {item.value}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            {siblingsNode}
             {canDownload && collectionSlug && (
               <ClientGalleryDownload collectionSlug={collectionSlug} />
             )}
@@ -469,6 +477,8 @@ export default function CollectionContentRenderer({
                 onFilterChange={collectionFilter.onFilterChange}
                 sections={collectionFilter.sections ?? undefined}
                 activeSectionKey={collectionFilter.activeSectionKey ?? undefined}
+                onSectionSelect={collectionFilter.onSectionSelect ?? undefined}
+                extras={toolbarExtras}
                 dimensions={toCollectionDimensions(collectionFilter.filterOptions)}
                 filteredAvailable={
                   collectionFilter.filteredAvailable
@@ -533,7 +543,6 @@ export default function CollectionContentRenderer({
   const placeholderWidth = width || 300;
   const placeholderHeight = height || (placeholderWidth * 2) / 3;
 
-  // GIF content is stored as MP4
   if (contentType === 'GIF' && imageUrl && imageUrl.trim() !== '') {
     return (
       <div
@@ -603,8 +612,10 @@ export default function CollectionContentRenderer({
   }
 
   if (failedImageIds.has(contentId)) {
-    // currentCollectionId is only threaded down on the manage path (EditModeLayer);
-    // the public CollectionPageClient grid, TaxonomyPage, and LocationPage never set it.
+    /**
+     * Only `EditModeLayer` threads `currentCollectionId` down. There the box stays clickable, like
+     * the "No Image" placeholder above, so the admin can open the modal and remove the broken image.
+     */
     const isManage = currentCollectionId != null;
 
     if (!isManage) {
@@ -613,9 +624,6 @@ export default function CollectionContentRenderer({
 
     const placeholderClassName = `${boxBaseClassName} ${cbStyles.contentBox}`;
 
-    // Manage view: keep the "Image unavailable" box and make it clickable so the admin
-    // can open the edit/delete modal and remove the broken image. Mirrors the click
-    // wiring of the empty-URL ("No Image") placeholder above.
     return (
       <div
         className={placeholderClassName}
@@ -642,13 +650,16 @@ export default function CollectionContentRenderer({
   const shouldShowOverlay =
     contentType === 'IMAGE' && ((isSelectingCoverImage && isCurrentCover) || isJustClicked);
 
-  // Selects (favorites) star. SelectStar self-gates on CLIENT membership + an active SelectsProvider;
-  // on public client-gallery views it resolves to the star, elsewhere (manage/taxonomy/location,
-  // where no SelectsProvider is mounted) it resolves to null.
+  /**
+   * `SelectStar` self-gates on CLIENT membership plus an active `SelectsProvider`: it resolves to
+   * the star on public client-gallery views and to null elsewhere (manage/taxonomy/location).
+   */
   const selectStar = contentType === 'IMAGE' ? <SelectStar contentId={contentId} /> : null;
 
-  // Save (bookmark) heart. SaveHeart self-gates on any logged-in viewer + an active SavesProvider;
-  // resolves to null for anonymous viewers or where no SavesProvider is mounted.
+  /**
+   * `SaveHeart` self-gates on any logged-in viewer plus an active `SavesProvider`, resolving to
+   * null for anonymous viewers or wherever no `SavesProvider` is mounted.
+   */
   const saveHeart = contentType === 'IMAGE' ? <SaveHeart contentId={contentId} /> : null;
 
   const followButton =

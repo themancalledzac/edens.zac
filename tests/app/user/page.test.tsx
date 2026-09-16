@@ -1,9 +1,12 @@
 /** @jest-environment node */
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 jest.mock('next/navigation', () => ({
   notFound: jest.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
+  }),
+  redirect: jest.fn(() => {
+    throw new Error('NEXT_REDIRECT');
   }),
 }));
 jest.mock('@/app/lib/api/auth', () => ({ meServer: jest.fn() }));
@@ -16,6 +19,9 @@ jest.mock('@/app/lib/api/personal', () => ({
 jest.mock('@/app/utils/ssrViewport', () => ({
   resolveSsrViewport: jest.fn(),
 }));
+jest.mock('@/app/lib/api/share', () => ({
+  readShareSettings: jest.fn(),
+}));
 jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => ({
   __esModule: true,
   default: () => 'CollectionPageClient',
@@ -24,9 +30,6 @@ jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
   __esModule: true,
   default: () => 'SiteHeader',
 }));
-// SendMessageButton is deliberately NOT mocked: the real one has to run for the lockedEmail
-// assertion below to mean anything. Its modal is stubbed open and its form reduced to a probe that
-// echoes the lockedEmail it was handed.
 jest.mock('@/app/components/ui/Modal/Modal', () => ({
   Modal: ({ children }: { children: unknown }) => children,
 }));
@@ -35,25 +38,15 @@ jest.mock('@/app/components/ContactForm/ContactForm', () => ({
     <span data-locked-email={lockedEmail} />
   ),
 }));
-// `useFollows` is stubbed to null because `UserSpaceGrid` calls it on every render; null is the
-// no-provider answer, which leaves the section counts exactly as the server built them.
 jest.mock('@/app/components/Personal/FollowsContext', () => ({
   FollowsProvider: ({ children }: { children: unknown }) => children,
   useFollows: () => null,
-}));
-jest.mock('@/app/components/Personal/AccountCard', () => ({
-  AccountCard: () => 'AccountCard',
 }));
 
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
-import { AccountCard } from '@/app/components/Personal/AccountCard';
-import { AdminCard } from '@/app/components/Personal/AdminCard';
-import { ShareCard } from '@/app/components/Personal/ShareCard';
-import { SendMessageButton } from '@/app/components/SendMessageButton/SendMessageButton';
-import { FormError } from '@/app/components/ui/Field/FormError';
-import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { UserSpaceGrid } from '@/app/components/UserSpace/UserSpaceGrid';
 import { LAYOUT } from '@/app/constants';
@@ -64,10 +57,17 @@ import {
   listFollowedCollectionIdsServer,
   listSavedImagesServer,
 } from '@/app/lib/api/personal';
+import { readShareSettings } from '@/app/lib/api/share';
 import UserPage from '@/app/user/page';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
-const authedPrincipal = { email: 'c@x.com', isAdmin: false, mfaSatisfied: true, galleries: [] };
+const authedPrincipal = {
+  email: 'c@x.com',
+  isAdmin: false,
+  mfaSatisfied: true,
+  passkeyCount: 0,
+  galleries: [],
+};
 
 /**
  * `id` is the content-table row id and `referencedCollectionId` the collection it points at, which
@@ -80,7 +80,6 @@ const collectionBlock = (id: number) => ({
   contentType: 'COLLECTION',
   referencedCollectionId: id * 100,
 });
-// isContentImage requires an `imageUrl` field, so the fixture supplies one.
 const imageBlock = (id: number) => ({
   id,
   contentType: 'IMAGE',
@@ -91,15 +90,16 @@ const gifBlock = (id: number) => ({ id, contentType: 'GIF' });
 /**
  * Walk the rendered element tree and return the first element of the given type's props.
  *
- * `UserSpace` is invoked rather than descended, because the sections live inside it and it renders
- * the collection stack itself — it has no `children` to walk. It is a plain synchronous server
- * component with no hooks, so calling it here is safe, and it keeps these assertions end-to-end:
- * they still check the props the shared stack actually receives, not just what the page forwards.
+ * `UserSpace` is invoked rather than descended, because it renders the collection stack itself — it
+ * has no `children` to walk. It is a plain synchronous server component with no hooks, so calling it
+ * here is safe, and it keeps these assertions end-to-end: they still check the props the shared
+ * stack actually receives, not just what the page forwards.
  *
- * The walk stops at `UserSpaceGrid`, the client boundary that re-derives the Collections count
- * from live follow state, prunes unfollowed tiles, and forwards the rest to `CollectionPageClient`
- * verbatim. It uses hooks, so it cannot be invoked the way `UserSpace` is;
- * `UserSpace.followCount.test.tsx` renders it for real and covers what comes out the other side.
+ * The walk stops at `UserSpaceGrid`, the client boundary that resolves the active section from the
+ * URL, re-derives the Collections count from live follow state, prunes unfollowed tiles, and renders
+ * the hub / empty / unavailable states. It uses hooks, so it cannot be invoked the way `UserSpace`
+ * is; `UserSpace.sectionSwitch.test.tsx` renders it for real and covers what it does with these
+ * props.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function findProps(node: any, type: unknown): any {
@@ -116,23 +116,11 @@ function findProps(node: any, type: unknown): any {
   return node.props?.children ? findProps(node.props.children, type) : null;
 }
 
-/** Props the page handed to the shared collection renderer for the active section. */
+/** Props the page handed to `UserSpaceGrid` — every section's data, not just one. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const gridProps = (result: unknown): any => findProps(result, UserSpaceGrid);
 
-/**
- * The section chips the page handed to the shared bar. There is no `/user`-only switcher component
- * any more — the sections ride on the same CollectionPageClient props as everything else.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const sectionProps = (result: unknown): any => {
-  const props = gridProps(result);
-  return { sections: props?.sections, activeKey: props?.activeSectionKey };
-};
-
 function seedApis() {
-  // Mirrors the real payload: `UserPageAssembler` builds this collection with no `id`, `isClient`
-  // or `isPasswordProtected` — it is assembled, not a `collection` row. See the no-id test below.
   (getUserPage as jest.Mock).mockResolvedValue({
     slug: 'user',
     title: 'Your Space',
@@ -148,9 +136,10 @@ function seedApis() {
     viewportHeight: 900,
     isMobile: false,
   });
+  (readShareSettings as jest.Mock).mockResolvedValue({ ok: true, settings: null });
 }
 
-/** Render the page for a given `?tab=` value. */
+/** Render the page for a given `?tab=` value — relevant only to the admin-redirect tests now. */
 const renderTab = (tab?: string | string[]) =>
   UserPage({ searchParams: Promise.resolve(tab === undefined ? {} : { tab }) });
 
@@ -168,47 +157,62 @@ describe('UserPage', () => {
     expect(getUserPage).not.toHaveBeenCalled();
   });
 
-  it('renders every section through the shared CollectionPageClient', async () => {
+  it('redirects an admin to /admin', async () => {
+    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
+    await expect(renderTab()).rejects.toThrow('NEXT_REDIRECT');
+    expect(redirect).toHaveBeenCalledWith('/admin');
+    expect(getUserPage).not.toHaveBeenCalled();
+  });
+
+  it('keeps the requested section on the admin redirect', async () => {
+    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
+    await expect(renderTab('images')).rejects.toThrow('NEXT_REDIRECT');
+    expect(redirect).toHaveBeenCalledWith('/admin?tab=images');
+  });
+
+  it('hands the shared bar the Share, Contact and Face / Touch ID chips', async () => {
+    const extras = gridProps(await renderTab()).toolbarExtras;
+    expect(extras.map((e: { key: string }) => e.key)).toEqual(['share', 'contact', 'passkey']);
+  });
+
+  it('renders through the shared UserSpaceGrid', async () => {
     const grid = gridProps(await renderTab());
     expect(grid).not.toBeNull();
     expect(grid.me).toBe(authedPrincipal);
   });
 
-  it('still hands SendMessageButton a lockedEmail now that it rides the rail', async () => {
-    // The button used to be a SIBLING of CollectionPageClient, which is the only reason this page
-    // wrapped itself in a MeProvider. It rides `railExtras` now, so the provider CollectionPageClient
-    // mounts from the `me` asserted here is the one that reaches it. Without a principal on that
-    // path the signed-in user gets a blank, editable email field instead of their own address.
-    const result = await renderTab();
-    expect(gridProps(result).me).toBe(authedPrincipal);
+  it('hands PageShell no collectionSlug, since `user` is shadowed by this route', async () => {
+    expect(findProps(await renderTab(), PageShell).collectionSlug).toBeUndefined();
+  });
 
-    const markup = renderToStaticMarkup(
-      <MeProvider me={authedPrincipal}>{railExtras(result)}</MeProvider>
+  it('still hands the Contact chip a lockedEmail', async () => {
+    const contact = gridProps(await renderTab()).toolbarExtras.find(
+      (e: { key: string }) => e.key === 'contact'
     );
-    expect(markup).toContain('data-locked-email="c@x.com"');
+    const html = renderToStaticMarkup(<MeProvider me={authedPrincipal}>{contact.node}</MeProvider>);
+    expect(html).toContain('data-locked-email="c@x.com"');
   });
 
   it('mounts no MeProvider of its own — the collection stack already owns one', async () => {
     expect(findProps(await renderTab(), MeProvider)).toBeNull();
   });
 
-  it('defaults to Collections and passes only the COLLECTION blocks', async () => {
+  it('hands the grid every section’s blocks, not just one the page picked', async () => {
     const grid = gridProps(await renderTab());
-    expect(grid.collection.content).toHaveLength(2);
     expect(
-      grid.collection.content.every((b: { contentType: string }) => b.contentType === 'COLLECTION')
+      grid.sections.collections.content.every(
+        (b: { contentType: string }) => b.contentType === 'COLLECTION'
+      )
     ).toBe(true);
+    expect(grid.sections.collections.content).toHaveLength(2);
+    expect(grid.sections.images.content.map((b: { id: number }) => b.id)).toEqual([3, 4]);
+    expect(grid.sections.saved.content).toEqual([]);
   });
 
-  it('passes the IMAGE and GIF blocks for ?tab=images', async () => {
-    const grid = gridProps(await renderTab('images'));
-    expect(grid.collection.content.map((b: { id: number }) => b.id)).toEqual([3, 4]);
-  });
-
-  it('passes the saved images for ?tab=saved', async () => {
-    (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: true, items: [imageBlock(9)] });
-    const grid = gridProps(await renderTab('saved'));
-    expect(grid.collection.content.map((b: { id: number }) => b.id)).toEqual([9]);
+  it('hands every section the same blocks no matter what `?tab=` was requested', async () => {
+    const withoutTab = gridProps(await renderTab());
+    const withTab = gridProps(await renderTab('images'));
+    expect(withTab.sections).toEqual(withoutTab.sections);
   });
 
   /**
@@ -222,97 +226,53 @@ describe('UserPage', () => {
       { id: 7, slug: 'seven', title: 'Seven' },
       { id: 8, slug: 'eight', title: 'Eight' },
     ]);
-    const grid = gridProps(await renderTab('collections'));
-    const followed = grid.collection.content.filter((b: { slug?: string }) => b.slug === 'seven');
+    const grid = gridProps(await renderTab());
+    const content = grid.sections.collections.content;
+    const followed = content.filter((b: { slug?: string }) => b.slug === 'seven');
     expect(followed).toHaveLength(1);
     expect(followed[0]).toMatchObject({
       contentType: 'COLLECTION',
       referencedCollectionId: 7,
       slug: 'seven',
     });
-    expect(grid.collection.content.some((b: { slug?: string }) => b.slug === 'eight')).toBe(false);
+    expect(content.some((b: { slug?: string }) => b.slug === 'eight')).toBe(false);
   });
 
-  it('falls back to Collections for an unknown ?tab=', async () => {
-    expect(gridProps(await renderTab('nope')).collection.content).toHaveLength(2);
-    expect(sectionProps(await renderTab('nope')).activeKey).toBe('collections');
-    expect(sectionProps(await renderTab('')).activeKey).toBe('collections');
+  it('keeps the collection header (cover + description)', async () => {
+    const grid = gridProps(await renderTab());
+    expect(grid.collection.description).toBe('Photos I have been tagged in.');
+    expect(grid.collection.coverImage.imageUrl).toBe('https://cdn/cover.jpg');
+    expect(grid.collection.slug).toBe('user');
   });
 
-  it('takes the first value when ?tab= is repeated', async () => {
-    expect(sectionProps(await renderTab(['images', 'saved'])).activeKey).toBe('images');
-    expect(gridProps(await renderTab(['images', 'saved'])).collection.content).toHaveLength(2);
-  });
-
-  it('keeps the collection header (cover + description) across sections', async () => {
-    // The header row is rendered by CollectionPageClient from `collectionData`, so every section
-    // hands it the same collection and swaps only `content` — no /user-only header render.
-    for (const tab of [undefined, 'images', 'saved']) {
-      const grid = gridProps(await renderTab(tab));
-      expect(grid.collection.description).toBe('Photos I have been tagged in.');
-      expect(grid.collection.coverImage.imageUrl).toBe('https://cdn/cover.jpg');
-      expect(grid.collection.slug).toBe('user');
-    }
-  });
-
-  it('opens every section at the shared default density', async () => {
-    // No /user-only density constants: each section inherits LAYOUT.defaultChunkSize, the density
-    // an ordinary collection page opens at, and the shared slider re-tunes it from there. The old
-    // bespoke value (14) could not even be represented on a slider whose maximum is 10.
-    for (const tab of [undefined, 'images', 'saved']) {
-      const { chunkSize } = gridProps(await renderTab(tab));
-      expect(chunkSize).toBeUndefined();
-    }
+  it('does not pass a chunkSize, so every section opens at the shared default density', async () => {
+    expect(gridProps(await renderTab()).chunkSize).toBeUndefined();
     expect(LAYOUT.defaultChunkSize).toBeGreaterThanOrEqual(LAYOUT.minDensity);
     expect(LAYOUT.defaultChunkSize).toBeLessThanOrEqual(LAYOUT.maxDensityDesktop);
   });
 
   /**
-   * Collections badges 3 from the Saved tab, which never read the catalog: two granted blocks plus
-   * followed collection 7. The count is a union of the two id sets, so it is right on a tab that
-   * could not hydrate the followed half.
+   * Collections badges 3: two granted blocks plus followed collection 7, from the union of ids —
+   * never from `content.length`, which the badge must stay right even where the section were left
+   * unhydrated in the old per-tab design.
    */
-  it('labels all three sections with their counts regardless of the active section', async () => {
+  it('labels every section with its own count', async () => {
     (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: true, items: [imageBlock(9)] });
     (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: true, items: [7] });
     (getAllCollections as jest.Mock).mockResolvedValue([{ id: 7, slug: 'seven' }, { id: 8 }]);
-    const { sections, activeKey } = sectionProps(await renderTab('saved'));
-    expect(sections.map((s: { label: string; count: number }) => [s.label, s.count])).toEqual([
+    const { sections } = gridProps(await renderTab());
+    expect([
+      ['Collections', sections.collections.count],
+      ['Images', sections.images.count],
+      ['Saved', sections.saved.count],
+    ]).toEqual([
       ['Collections', 3],
       ['Images', 2],
       ['Saved', 1],
     ]);
-    expect(activeKey).toBe('saved');
-  });
-
-  it('gives every section a ?tab= link so the choice stays shareable', async () => {
-    // Sections are links rather than a FilterState dimension: each one's blocks come from a
-    // different server read, and the choice has to survive a copied URL and the back button.
-    const { sections } = sectionProps(await renderTab('images'));
-    expect(sections.map((s: { key: string; href: string }) => [s.key, s.href])).toEqual([
-      ['collections', '/user?tab=collections'],
-      ['images', '/user?tab=images'],
-      ['saved', '/user?tab=saved'],
-    ]);
-  });
-
-  it('always marks exactly one section active', async () => {
-    for (const [tab, expected] of [
-      [undefined, 'collections'],
-      ['images', 'images'],
-      ['saved', 'saved'],
-      ['following', 'collections'],
-      ['nope', 'collections'],
-    ] as const) {
-      const { sections, activeKey } = sectionProps(await renderTab(tab));
-      expect(activeKey).toBe(expected);
-      expect(sections.filter((s: { key: string }) => s.key === activeKey)).toHaveLength(1);
-    }
   });
 
   it('seeds the saves provider from the saved-images read (no separate ids fetch)', async () => {
-    // The full saved images read is the single source for both the Saved section and the seeded
-    // SavesProvider ids — there is no separate `/user/saves` ids-only read to duplicate it.
     (listSavedImagesServer as jest.Mock).mockResolvedValue({
       ok: true,
       items: [imageBlock(7), imageBlock(8)],
@@ -325,28 +285,24 @@ describe('UserPage', () => {
 
   it('SSR-sizes the grid so the cover LCP does not shift', async () => {
     const grid = gridProps(await renderTab());
-    expect(grid.serverContentWidth).toBe(1200);
-    expect(grid.serverViewportHeight).toBe(900);
-    expect(grid.serverIsMobile).toBe(false);
+    expect(grid.ssrViewport).toEqual({
+      contentWidth: 1200,
+      viewportHeight: 900,
+      isMobile: false,
+    });
   });
 
   it('never synthesizes an id or client-gallery flags onto the user collection', async () => {
-    // Load-bearing: `canDownloadCollection` short-circuits on the missing id and `selectsEnabled`
-    // on the missing `isClient`, which is what keeps the download and Selects affordances inside
-    // CollectionPageClient switched off on /user. Adding an id to satisfy the CollectionModel type
-    // would arm both on a page that has no gallery to grant.
-    for (const tab of [undefined, 'images', 'saved']) {
-      const { collection } = gridProps(await renderTab(tab));
-      expect(collection.id).toBeUndefined();
-      expect(collection.isClient).toBeUndefined();
-      expect(collection.isPasswordProtected).toBeUndefined();
-    }
+    const { collection } = gridProps(await renderTab());
+    expect(collection.id).toBeUndefined();
+    expect(collection.isClient).toBeUndefined();
+    expect(collection.isPasswordProtected).toBeUndefined();
   });
 
-  it('still renders a section whose content is empty', async () => {
+  it('still hands over a section whose content is empty', async () => {
     (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: true, items: [] });
-    const grid = gridProps(await renderTab('saved'));
-    expect(grid.collection.content).toEqual([]);
+    const grid = gridProps(await renderTab());
+    expect(grid.sections.saved.content).toEqual([]);
     expect(grid.collection.description).toBe('Photos I have been tagged in.');
   });
 });
@@ -355,7 +311,8 @@ describe('UserPage', () => {
  * `/user` is the owner's own page and the busier of the two surfaces, and it carried the same
  * defect the admin path did: `personal.ts` flattened every failed read to `[]`, so a backend
  * outage told the OWNER "You have not saved any images yet." These assert end-to-end — from the
- * `personal.ts` mock through `loadUserSpace` to the props and nodes the page actually renders.
+ * `personal.ts` mock through `loadUserSpace` to the section data the page hands `UserSpaceGrid`.
+ * `UserSpace.sectionSwitch.test.tsx` covers the FormError / EmptyState rendering that data drives.
  */
 describe('UserPage — a failed personal read never claims the owner has nothing', () => {
   beforeEach(() => {
@@ -367,140 +324,53 @@ describe('UserPage — a failed personal read never claims the owner has nothing
   const failSaved = () =>
     (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: false, items: [] });
 
-  it('says the saved images are unavailable, in the second person', async () => {
+  it('marks Saved unavailable, in the second person', async () => {
     failSaved();
-    const props = findProps(await renderTab('saved'), FormError);
-    expect(props.children).toBe('Your saved images are unavailable right now.');
+    const { sections } = gridProps(await renderTab());
+    expect(sections.saved.unavailableLabel).toBe('Your saved images are unavailable right now.');
   });
 
-  it('renders no EmptyState, so "You have not saved any images yet." never appears', async () => {
+  it('drops the Saved section’s count rather than badging it 0', async () => {
     failSaved();
-    expect(findProps(await renderTab('saved'), EmptyState)).toBeNull();
-  });
-
-  it('drops the Saved chip’s count rather than badging it 0', async () => {
-    failSaved();
-    const { sections } = sectionProps(await renderTab('saved'));
-    const saved = sections.find((s: { key: string }) => s.key === 'saved');
-    expect(saved.count).toBeUndefined();
+    const { sections } = gridProps(await renderTab());
+    expect(sections.saved.count).toBeUndefined();
   });
 
   it('keeps every loaded section’s count intact', async () => {
     failSaved();
-    const { sections } = sectionProps(await renderTab('saved'));
-    expect(
-      sections
-        .filter((s: { key: string }) => s.key !== 'saved')
-        .map((s: { key: string; count?: number }) => [s.key, s.count])
-    ).toEqual([
-      ['collections', 2],
-      ['images', 2],
-    ]);
+    const { sections } = gridProps(await renderTab());
+    expect(sections.collections.count).toBe(2);
+    expect(sections.images.count).toBe(2);
   });
 
   /**
    * A failed follows read is a partial failure of Collections, not a total one. The granted half
-   * still rendered, so the copy says the list may be incomplete instead of claiming the section is
-   * unavailable — and the count survives rather than going unsaid.
+   * still rendered, so the copy says the list may be incomplete instead of claiming the whole
+   * section is unavailable — and the count survives rather than going unsaid.
    */
   it('reports the Collections list incomplete when the follows read fails', async () => {
     (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: false, items: [] });
-    const rendered = await renderTab('collections');
-    expect(findProps(rendered, FormError).children).toBe(
+    const { sections } = gridProps(await renderTab());
+    expect(sections.collections.unavailableLabel).toBe(
       'Your followed collections are unavailable right now, so this list may be incomplete.'
     );
-    expect(gridProps(rendered).collection.content).toHaveLength(2);
+    expect(sections.collections.content).toHaveLength(2);
   });
 
-  it('still renders the genuine empty copy when the read succeeded with nothing', async () => {
-    const props = findProps(await renderTab('saved'), EmptyState);
-    expect(props.children).toBe('You have not saved any images yet.');
-    expect(findProps(await renderTab('saved'), FormError)).toBeNull();
+  it('still reports the genuine empty copy when the read succeeded with nothing', async () => {
+    const { sections } = gridProps(await renderTab());
+    expect(sections.saved.emptyLabel).toBe('You have not saved any images yet.');
+    expect(sections.saved.unavailableLabel).toBeUndefined();
   });
 
   it('badges a genuinely empty section with 0, which is a true count', async () => {
-    const { sections } = sectionProps(await renderTab('saved'));
-    const saved = sections.find((s: { key: string }) => s.key === 'saved');
-    expect(saved.count).toBe(0);
+    const { sections } = gridProps(await renderTab());
+    expect(sections.saved.count).toBe(0);
   });
 
   it('still renders the page rather than 500-ing when both reads fail', async () => {
     failSaved();
     (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: false, items: [] });
-    expect(gridProps(await renderTab('saved'))).not.toBeNull();
-  });
-});
-
-/**
- * The Account and Admin cards ride in the collection header rail — the TEXT block leading the
- * first row, beside the cover — not in a slab below the grid. That rail is where this app already
- * puts what is *about* a collection (date, location, description, filter bar), so these assert on
- * the `railExtras` node handed to UserSpace rather than on the page's own children.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const railExtras = (result: unknown): any => findProps(result, UserSpace)?.railExtras ?? null;
-
-/**
- * The rail's occupants in render order, with the `{cond && <X />}` falses dropped.
- *
- * Order is the whole point of the contact button's placement: it leads for a client or follower,
- * for whom messaging the photographer is plausibly the most-used thing on the page, and trails for
- * the owner, for whom it is close to useless. A test on presence alone would not see that swap.
- */
-const railOrder = (result: unknown): unknown[] =>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ((railExtras(result)?.props?.children ?? []) as any[])
-    .filter(Boolean)
-    .map((node: { type: unknown }) => node.type);
-
-describe('UserPage — header rail cards', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    seedApis();
-  });
-
-  it('puts the Account card in the rail, not below the grid', async () => {
-    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
-    const result = await renderTab();
-
-    expect(findProps(railExtras(result), AccountCard)).not.toBeNull();
-    // Nothing account-shaped is left loose in the page body.
-    expect(findProps(result.props?.children, AccountCard)).toBeNull();
-  });
-
-  /**
-   * This card is one of the site's two navigations into /admin, alongside MenuDropdown's admin
-   * link: the hub used to be reachable because localhost redirected `/` to it, and that redirect
-   * is gone. It must gate on the real `isAdmin` principal — never an environment check — because
-   * it is meant to render in production too.
-   */
-  it('omits the Admin card for an ordinary signed-in user', async () => {
-    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
-    expect(findProps(railExtras(await renderTab()), AdminCard)).toBeNull();
-  });
-
-  it('puts the Admin card in the rail for an admin principal', async () => {
-    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
-    expect(findProps(railExtras(await renderTab()), AdminCard)).not.toBeNull();
-  });
-
-  it('links to the admin hub', async () => {
-    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
-    expect(renderToStaticMarkup(railExtras(await renderTab()))).toContain('href="/admin"');
-  });
-
-  it('leads the rail with the contact button for an ordinary signed-in user', async () => {
-    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
-    expect(railOrder(await renderTab())).toEqual([SendMessageButton, AccountCard, ShareCard]);
-  });
-
-  it('puts the contact button last for an admin, after the card they read messages through', async () => {
-    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
-    expect(railOrder(await renderTab())).toEqual([
-      AccountCard,
-      ShareCard,
-      AdminCard,
-      SendMessageButton,
-    ]);
+    expect(gridProps(await renderTab())).not.toBeNull();
   });
 });

@@ -1,7 +1,24 @@
-/* ShareCard — the share link, its send controls, and the reset, on /user.
+.content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 460px;
+  padding: var(--space-4);
+}
 
-   The section shell (heading, rule, body, and the `flex: 0 0 auto` the header rail depends on)
-   comes from <Card>. Only the content inside it is styled here, mirroring AccountCard. */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
 
 .hint {
   margin: 0 0 var(--space-2);
@@ -10,8 +27,6 @@
 }
 
 .link {
-  /* Selectable as a fallback whenever the clipboard API is refused, so the link is never
-     unreachable — hence the wrap rather than an ellipsis. */
   margin: 0 0 var(--space-2);
   overflow-wrap: anywhere;
   font-size: var(--text-sm);
@@ -67,8 +82,6 @@
 }
 
 .danger {
-  /* Separated by a rule, not just spacing: reset is the one control here that takes access away
-     from someone, and it should not read as a sibling of "copy" and "send". */
   padding-top: var(--space-3);
   margin-top: var(--space-3);
   border-top: 1px solid var(--color-border);

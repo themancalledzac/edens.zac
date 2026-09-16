@@ -13,7 +13,8 @@
  */
 import '@testing-library/jest-dom';
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import type { useEffect as useEffectType } from 'react';
 
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
@@ -21,9 +22,11 @@ import type { CollectionModel } from '@/app/types/Collection';
 import type { AnyContentModel } from '@/app/types/Content';
 import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 
-// jsdom ships no IntersectionObserver, and the real grid's lazy-render hook builds one on mount.
-// Rendering the unmocked grid is the whole point of this suite, so stub the API rather than mock
-// the grid away.
+/**
+ * jsdom ships no IntersectionObserver, and the real grid's lazy-render hook builds one on mount.
+ * Rendering the unmocked grid is the whole point of this suite, so stub the API rather than mock
+ * the grid away.
+ */
 class NoopIntersectionObserver {
   observe() {}
   unobserve() {}
@@ -41,13 +44,44 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-jest.mock('next/dynamic', () => ({
-  __esModule: true,
-  default: () =>
-    function DynamicStub() {
-      return null;
+/**
+ * Mirrors `EditModeLayer`'s one behavior this suite cares about: content it discovers flows back
+ * through `onLiveContentChange`. It passes the seed straight through when the collection already has
+ * content, and manufactures one item when the seed is empty, modeling an upload landing in a
+ * collection that started with nothing.
+ */
+jest.mock('next/dynamic', () => {
+  const { useEffect } = jest.requireActual('react') as { useEffect: typeof useEffectType };
+  const DISCOVERED_CONTENT: unknown[] = [
+    {
+      id: 900,
+      contentType: 'IMAGE',
+      orderIndex: 0,
+      imageUrl: 'https://cdn.example/live-upload.jpg',
+      imageWidth: 1600,
+      imageHeight: 1067,
+      visible: true,
+      locations: [],
     },
-}));
+  ];
+  return {
+    __esModule: true,
+    default: () =>
+      function DynamicStub({
+        collection,
+        onLiveContentChange,
+      }: {
+        collection?: { content?: unknown[] };
+        onLiveContentChange?: (content: unknown[]) => void;
+      }) {
+        useEffect(() => {
+          const seeded = collection?.content ?? [];
+          onLiveContentChange?.(seeded.length > 0 ? seeded : DISCOVERED_CONTENT);
+        }, [collection, onLiveContentChange]);
+        return null;
+      },
+  };
+});
 
 const SECTIONS: ToolbarSection[] = [
   { key: 'collections', label: 'Collections', count: 12, href: '/user?tab=collections' },
@@ -124,6 +158,28 @@ describe('CollectionPageClient — header rail', () => {
     }
   });
 
+  /**
+   * `onSectionSelect` travels through `CollectionFilterContext` and the header rail's
+   * `CollectionContentRenderer` to reach the real `FilterToolbar`/`SegmentedChip` a section chip
+   * renders through — this is the one place that whole chain is exercised together.
+   */
+  it('routes a section click through onSectionSelect, all the way from the prop', () => {
+    const onSectionSelect = jest.fn();
+    render(
+      <CollectionPageClient
+        collection={bareCollection([collectionCard(1), collectionCard(2)])}
+        {...ssr}
+        sections={SECTIONS}
+        activeSectionKey="collections"
+        onSectionSelect={onSectionSelect}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: /^images/i }));
+
+    expect(onSectionSelect).toHaveBeenCalledWith('images', '/user?tab=images');
+  });
+
   it('marks exactly one section chip current', () => {
     render(
       <CollectionPageClient
@@ -141,10 +197,12 @@ describe('CollectionPageClient — header rail', () => {
     expect(current[0]).toHaveTextContent('Saved');
   });
 
+  /**
+   * The photo-size control is the visible proof that the page picked up the shared bar chrome
+   * rather than a `/user`-only approximation of it. Visitors get the tier radiogroup, not the raw
+   * slider — that is edit-mode only.
+   */
   it('brings the shared density control along with the bar', () => {
-    // The photo-size control is the visible proof that the page picked up the shared bar chrome
-    // rather than a /user-only approximation of it. Visitors get the tier radiogroup, not the
-    // raw slider -- that is edit-mode only.
     render(
       <CollectionPageClient
         collection={bareCollection([collectionCard(1)])}
@@ -157,12 +215,50 @@ describe('CollectionPageClient — header rail', () => {
     expect(screen.queryByLabelText('Row density')).not.toBeInTheDocument();
   });
 
+  /**
+   * The rail is forced only when controls will mount. An ordinary metadata-less collection with no
+   * filterable dimensions keeps its full-width cover and gains no empty rail.
+   */
   it('renders no bar on a metadata-less collection that has nothing to put in it', () => {
-    // The rail is forced only when controls will mount. An ordinary metadata-less collection
-    // with no filterable dimensions keeps its full-width cover and gains no empty rail.
     render(<CollectionPageClient collection={bareCollection([collectionCard(1)])} {...ssr} />);
     expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
     expect(screen.queryAllByRole('link', { name: /collections/i })).toHaveLength(0);
+  });
+
+  it('hands page-level toolbar extras to the bar', () => {
+    render(
+      <CollectionPageClient
+        collection={bareCollection([collectionCard(1)])}
+        sections={[{ key: 'a', label: 'A', href: '/x?tab=a' }]}
+        activeSectionKey="a"
+        toolbarExtras={[{ key: 'share', weight: 400, node: <button type="button">Share</button> }]}
+      />
+    );
+    expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument();
+  });
+
+  it('renders toolbar extras on an unsectioned page (extras present, sections absent)', () => {
+    render(
+      <CollectionPageClient
+        collection={bareCollection([collectionCard(1)])}
+        {...ssr}
+        alwaysShowFilterBar
+        toolbarExtras={[{ key: 'share', weight: 400, node: <button type="button">Share</button> }]}
+      />
+    );
+    expect(screen.getByRole('button', { name: 'Share' })).toBeInTheDocument();
+  });
+
+  it('hides the photo-size control when the section has no content', () => {
+    render(
+      <CollectionPageClient
+        collection={bareCollection([])}
+        sections={[{ key: 'a', label: 'A', href: '/x?tab=a' }]}
+        activeSectionKey="a"
+      />
+    );
+    expect(screen.getByRole('link', { name: 'A' })).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
   });
 });
 
@@ -203,8 +299,10 @@ describe('CollectionPageClient — the landing page never gets the filter bar', 
     expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
   });
 
-  // The rule is a property of the home collection, not a caller preference, so the one prop that
-  // exists to force the bar on (`/collections` uses it) must not be able to override it.
+  /**
+   * The rule is a property of the home collection, not a caller preference, so the one prop that
+   * exists to force the bar on (`/collections` uses it) must not be able to override it.
+   */
   it('outranks alwaysShowFilterBar', () => {
     render(<CollectionPageClient collection={withSlug(HOME_SLUG)} {...ssr} alwaysShowFilterBar />);
     expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
@@ -253,8 +351,10 @@ describe('CollectionPageClient — the landing page keeps the filter bar while c
     expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
   });
 
-  // Nothing about `alwaysShowFilterBar` is special in manage mode: with the home rule lifted, the
-  // prop is simply back in force, so it can carry a payload that has nothing of its own to filter.
+  /**
+   * Nothing about `alwaysShowFilterBar` is special in manage mode: with the home rule lifted, the
+   * prop is simply back in force, so it can carry a payload that has nothing of its own to filter.
+   */
   it('honours alwaysShowFilterBar on the home collection in manage mode', () => {
     render(
       <CollectionPageClient
@@ -262,6 +362,26 @@ describe('CollectionPageClient — the landing page keeps the filter bar while c
         {...ssr}
         editMode
         alwaysShowFilterBar
+      />
+    );
+    expect(screen.getByLabelText('Row density')).toBeInTheDocument();
+  });
+});
+
+/**
+ * `rawContent` — the seed merged with EditModeLayer's live content — is what the density gate must
+ * read, not the initial server seed. A collection that started empty and picked up its first upload
+ * mid-session should offer the density control immediately, not after a reload.
+ */
+describe('CollectionPageClient — density control follows live content, not the server seed', () => {
+  it('shows the density control once live content fills a section that started empty', () => {
+    render(
+      <CollectionPageClient
+        collection={bareCollection([])}
+        {...ssr}
+        sections={SECTIONS}
+        activeSectionKey="collections"
+        editMode
       />
     );
     expect(screen.getByLabelText('Row density')).toBeInTheDocument();

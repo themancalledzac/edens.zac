@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
-import { SendMessageButton } from '@/app/components/SendMessageButton/SendMessageButton';
+import { ContactChip } from '@/app/components/Personal/ContactChip';
 import { type MeResponse } from '@/app/types/Auth';
 import * as contactApi from '@/app/utils/contactApi';
 
@@ -11,45 +11,50 @@ const mockSubmit = contactApi.submitContactMessage as jest.MockedFunction<
   typeof contactApi.submitContactMessage
 >;
 
-const me: MeResponse = {
+const principal: MeResponse = {
   email: 'user@example.com',
   isAdmin: false,
   mfaSatisfied: true,
+  passkeyCount: 0,
   galleries: [],
 };
 
-function renderWithMe(principal: MeResponse | null) {
+function renderWithMe(me: MeResponse | null) {
   return render(
-    <MeProvider me={principal}>
-      <SendMessageButton />
+    <MeProvider me={me}>
+      <ContactChip />
     </MeProvider>
   );
 }
 
-describe('SendMessageButton', () => {
+describe('ContactChip', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('names the recipient on the trigger rather than just the action', () => {
-    renderWithMe(me);
-    expect(screen.getByRole('button', { name: /contact the photographer/i })).toBeInTheDocument();
+  it('is a chip that opens a dialog titled Contact the Photographer', () => {
+    render(
+      <MeProvider me={principal}>
+        <ContactChip />
+      </MeProvider>
+    );
+    const trigger = screen.getByRole('button', { name: 'Contact' });
+    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('heading', { name: 'Contact the Photographer' })).toBeInTheDocument();
+  });
+
+  it('names the chip Contact rather than the recipient', () => {
+    renderWithMe(principal);
+    expect(screen.getByRole('button', { name: 'Contact' })).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('names the same recipient on the modal heading as on the trigger', () => {
-    renderWithMe(me);
-    fireEvent.click(screen.getByRole('button', { name: /contact the photographer/i }));
-
-    expect(screen.getByRole('heading', { name: 'Contact the photographer' })).toBeInTheDocument();
-    // "Send a message" named an action, not a destination, on a page full of the viewer's own
-    // things — the one place the recipient most needed saying.
-    expect(screen.queryByText('Send a message')).not.toBeInTheDocument();
-  });
-
   it('opens the modal with the contact form (email field hidden) on click', () => {
-    renderWithMe(me);
-    fireEvent.click(screen.getByRole('button', { name: /contact the photographer/i }));
+    renderWithMe(principal);
+    fireEvent.click(screen.getByRole('button', { name: 'Contact' }));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Your message')).toBeInTheDocument();
@@ -58,9 +63,9 @@ describe('SendMessageButton', () => {
 
   it('submits using the signed-in email and keeps the modal open with a confirmation', async () => {
     mockSubmit.mockResolvedValue({ ok: true, id: 1, createdAt: '2026-04-19T10:00:00Z' });
-    renderWithMe(me);
+    renderWithMe(principal);
 
-    fireEvent.click(screen.getByRole('button', { name: /contact the photographer/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Contact' }));
     fireEvent.change(screen.getByPlaceholderText('Your message'), {
       target: { value: 'Hello!' },
     });
@@ -74,8 +79,8 @@ describe('SendMessageButton', () => {
   });
 
   it('closes the modal via the close button', () => {
-    renderWithMe(me);
-    fireEvent.click(screen.getByRole('button', { name: /contact the photographer/i }));
+    renderWithMe(principal);
+    fireEvent.click(screen.getByRole('button', { name: 'Contact' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /close/i }));

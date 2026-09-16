@@ -238,6 +238,7 @@
   min-width: 0;
 }
 
+/* No row renders content here; the track stays for the height model. */
 .rowMiddle {
   justify-self: end;
 }

@@ -61,6 +61,10 @@ export function AdminUserSpaceEditor({ user, children }: AdminUserSpaceEditorPro
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  /**
+   * The server rejects a blank login identity with a 400; catching it here keeps the message
+   * specific and avoids a write that was never going to land.
+   */
   const commit = useCallback(
     async (patch: Partial<AdminUserSummary>) => {
       const next = { ...current, ...patch };
@@ -73,8 +77,6 @@ export function AdminUserSpaceEditor({ user, children }: AdminUserSpaceEditorPro
         return;
       }
 
-      // The server rejects a blank login identity with a 400; catching it here keeps the message
-      // specific and avoids a write that was never going to land.
       if (!next.email?.trim()) {
         setError('Email is required — the change was rolled back.');
         return;
@@ -91,7 +93,6 @@ export function AdminUserSpaceEditor({ user, children }: AdminUserSpaceEditorPro
           status: next.status,
           description: next.description,
         });
-        router.refresh();
       } catch (error_) {
         logger.error('AdminUserSpaceEditor', 'Failed to save user field', error_, {
           userId: user.id,
@@ -108,16 +109,18 @@ export function AdminUserSpaceEditor({ user, children }: AdminUserSpaceEditorPro
         setSaving(false);
       }
     },
-    [current, user.id, router]
+    [current, user.id]
   );
 
+  /**
+   * No `title`: the leading slot is the email (below), because the space's cover already carries
+   * this person's name. Editing the display name lives in the /admin Users panel.
+   */
   const inlineEdit = useMemo<InlineEditContextValue>(
     () => ({
       description: current.description ?? '',
       descriptionLabel: 'Description',
       textEditorClassName: styles.seamless,
-      // No `title`: the leading slot is the email (below), because the space's cover already
-      // carries this person's name. Editing the display name lives in the /admin Users panel.
       titleLead: (
         <InlineEditableText
           as="input"
@@ -149,8 +152,6 @@ export function AdminUserSpaceEditor({ user, children }: AdminUserSpaceEditorPro
               </option>
             ))}
           </select>
-          {/* Reads `current`, not `user`: the button's own label switches between "Reset pw" and
-              "Resend" on account status, so it has to follow a status change made beside it. */}
           <GenerateInviteButton
             userId={user.id}
             email={current.email ?? ''}
@@ -173,5 +174,3 @@ export function AdminUserSpaceEditor({ user, children }: AdminUserSpaceEditorPro
     </InlineEditProvider>
   );
 }
-
-export default AdminUserSpaceEditor;

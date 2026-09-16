@@ -1,5 +1,8 @@
-// Admin = authenticated admin principal: the backend enforces hasRole('ADMIN') on
-// /api/admin/** (see docs 009). Gating centralized in app/(admin)/layout.tsx via requireAdmin().
+/**
+ * Admin = authenticated admin principal: the backend enforces `hasRole('ADMIN')` on
+ * `/api/admin/**` (see docs 009). Gating is centralized in `app/(admin)/layout.tsx` via
+ * `requireAdmin()`.
+ */
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -7,7 +10,7 @@ import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { UserRolesSection } from '@/app/components/UserForm/UserRolesSection';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
-import { loadUserSpace, resolveTabKey } from '@/app/components/UserSpace/userSpaceData';
+import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
 import { ApiError } from '@/app/lib/api/core';
 import { getAdminUser } from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
@@ -21,7 +24,6 @@ export const dynamic = 'force-dynamic';
 
 interface AdminUserDetailPageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string | string[] }>;
 }
 
 /**
@@ -78,10 +80,7 @@ interface AdminUserDetailPageProps {
  * reaches the error boundary — because an empty state after an error asserts something false. See
  * `EmptyState`'s docblock, and `loadAdminUserPage` for the narrowing itself.
  */
-export default async function AdminUserDetailPage({
-  params,
-  searchParams,
-}: AdminUserDetailPageProps) {
+export default async function AdminUserDetailPage({ params }: AdminUserDetailPageProps) {
   const { id } = await params;
   const userId = Number(id);
   if (!Number.isInteger(userId)) notFound();
@@ -100,7 +99,7 @@ export default async function AdminUserDetailPage({
       <PageShell className={styles.page}>
         <div className={styles.header}>
           <Link href="/admin" className={styles.back}>
-            ← Admin
+            <span aria-hidden="true">←</span> Admin
           </Link>
         </div>
 
@@ -121,14 +120,8 @@ export default async function AdminUserDetailPage({
     );
   }
 
-  // `tab` is resolved BEFORE the space load rather than alongside it: `loadUserSpace` hydrates only
-  // the active section, so it needs the key as an input. `searchParams` is already in memory by
-  // this point in the request, so awaiting it first costs nothing.
-  const { tab } = await searchParams;
-  const activeKey = resolveTabKey(tab);
-
   const [data, ssrViewport] = await Promise.all([
-    loadUserSpace({ mode: 'admin', userId }, activeKey),
+    loadUserSpace({ mode: 'admin', userId }),
     resolveSsrViewport(),
   ]);
 
@@ -136,7 +129,7 @@ export default async function AdminUserDetailPage({
     <PageShell className={styles.page}>
       <div className={styles.header}>
         <Link href="/admin" className={styles.back}>
-          ← Admin
+          <span aria-hidden="true">←</span> Admin
         </Link>
       </div>
 
@@ -145,7 +138,6 @@ export default async function AdminUserDetailPage({
           <div className={styles.space}>
             <UserSpace
               data={data}
-              activeKey={activeKey}
               basePath={`/admin/users/${userId}`}
               me={null}
               ssrViewport={ssrViewport}

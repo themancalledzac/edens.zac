@@ -12,6 +12,7 @@ const me: MeResponse = {
   email: 'a@b.com',
   isAdmin: false,
   mfaSatisfied: false,
+  passkeyCount: 0,
   galleries: [],
 };
 

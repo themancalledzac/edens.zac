@@ -86,13 +86,14 @@ describe('loadUserSpace — share mode', () => {
 
   /**
    * A recipient has no follow state, so the followed half of the Collections list is always empty
-   * for them and the catalog that would hydrate it is never worth its ~0.5s. Collections is the
-   * one tab that reads it in every other mode, which makes it the case worth pinning.
+   * for them and the catalog that would hydrate it is never worth its ~0.5s. Every other mode reads
+   * it unconditionally now (see `userSpaceData.test.ts`), which makes share mode's skip the case
+   * worth pinning.
    */
-  it('skips the collection catalog even on the Collections tab', async () => {
+  it('skips the collection catalog entirely', async () => {
     mockGetShareView.mockResolvedValue({ ownerName: 'Ada', page });
 
-    await loadUserSpace({ mode: 'share', token: 'tok-123' }, 'collections');
+    await loadUserSpace({ mode: 'share', token: 'tok-123' });
 
     expect(mockGetAllCollections).not.toHaveBeenCalled();
   });
@@ -104,7 +105,7 @@ describe('loadUserSpace — share mode', () => {
   it('renders the granted half alone, with nothing said about incompleteness', async () => {
     mockGetShareView.mockResolvedValue({ ownerName: 'Ada', page });
 
-    const data = await loadUserSpace({ mode: 'share', token: 'tok-123' }, 'collections');
+    const data = await loadUserSpace({ mode: 'share', token: 'tok-123' });
 
     expect(data?.sections.collections.content).toHaveLength(1);
     expect(data?.sections.collections.count).toBe(1);

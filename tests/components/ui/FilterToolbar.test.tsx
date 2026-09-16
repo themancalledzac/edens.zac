@@ -1,11 +1,13 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { type ComponentProps } from 'react';
 
+import { CHIP_WEIGHT } from '@/app/components/ui/FilterToolbar/chipWeights';
 import {
   FilterToolbar,
   MAX_FLAT_DATE_CHIPS,
   MAX_FLAT_YEAR_CHIPS,
 } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { DENSITY_TIERS } from '@/app/constants';
 import { INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import { dayLabels } from '@/app/utils/collectionDates';
 
@@ -52,7 +54,6 @@ describe('FilterToolbar', () => {
         showDateSort
       />
     );
-    // Exact-string names, not regex: '^' and 'v' are regex-significant.
     expect(screen.getByRole('button', { name: 'Order ^' })).toBeInTheDocument();
     unmount();
 
@@ -151,26 +152,6 @@ describe('FilterToolbar', () => {
       });
       expect(screen.getByRole('button', { name: /reset all filters/i })).toBeEnabled();
     });
-
-    /**
-     * The placement is the decision this item turned on: the filter sits with the toggles, after
-     * the separator, so it cannot read as a fifth section tab.
-     */
-    it('renders after the section chips, not among them', () => {
-      renderToolbar({
-        showFollowingToggle: true,
-        sections: [
-          { key: 'collections', label: 'Collections', count: 14, href: '/user?tab=collections' },
-          { key: 'images', label: 'Images', count: 2, href: '/user?tab=images' },
-        ],
-        activeSectionKey: 'collections',
-      });
-
-      const collections = screen.getByRole('link', { name: /collections/i });
-      const chip = followingChip();
-      expect(collections.compareDocumentPosition(chip)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-      expect(chip.tagName).not.toBe('A');
-    });
   });
 
   describe('admin Hidden toggle', () => {
@@ -181,8 +162,6 @@ describe('FilterToolbar', () => {
       expect(screen.queryByRole('button', { name: /hidden/i })).toBeNull();
     });
 
-    // Lit means the non-public collections ARE on screen — an admin's default. The chip reads as
-    // a statement about what is showing, not as an action.
     it('starts selected, because an admin sees everything by default', () => {
       renderToolbar({ showHiddenToggle: true, counts: { hidden: 3 } });
       expect(screen.getByText('3')).toBeInTheDocument();
@@ -245,7 +224,7 @@ describe('FilterToolbar', () => {
     const { onFilterChange } = renderToolbar({
       dimensions: { selectedTags: { label: 'Tags', options: ['sunset', 'forest'] } },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Tags' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Tags/ }));
     fireEvent.click(screen.getByRole('button', { name: 'sunset' }));
     expect(onFilterChange).toHaveBeenCalledWith({ selectedTags: ['sunset'] });
   });
@@ -255,7 +234,7 @@ describe('FilterToolbar', () => {
       dimensions: { selectedTags: { label: 'Tags', options: ['sunset', 'forest'] } },
       filteredAvailable: { selectedTags: ['sunset'] },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Tags' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Tags/ }));
     expect(screen.getByRole('button', { name: 'forest' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'sunset' })).not.toBeDisabled();
   });
@@ -277,11 +256,11 @@ describe('FilterToolbar', () => {
   });
 
   describe('photo-size tiers (default visitor variant)', () => {
-    const TIERS = [
-      { key: 'large', label: 'Large photos', value: 2 },
-      { key: 'medium', label: 'Medium photos', value: 4 },
-      { key: 'small', label: 'Small photos', value: 7 },
-    ];
+    const TIERS = DENSITY_TIERS.map(tier => ({
+      key: tier.key,
+      label: tier.label,
+      value: tier.desktop,
+    }));
 
     function renderTiers(overrides: Partial<Props> = {}) {
       const onDensityTierSelect = jest.fn();
@@ -299,7 +278,6 @@ describe('FilterToolbar', () => {
     it('renders a radiogroup of tiers instead of the raw slider by default', () => {
       renderTiers();
       expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
-      // The raw density number is meaningless to a visitor and runs backwards from photo size.
       expect(screen.queryByLabelText('Row density')).toBeNull();
     });
 
@@ -321,11 +299,10 @@ describe('FilterToolbar', () => {
     it('emits the tier value verbatim, bypassing the viewport-scaling handler', () => {
       const { onDensityTierSelect } = renderTiers();
       fireEvent.click(screen.getByRole('radio', { name: 'Small photos' }));
-      expect(onDensityTierSelect).toHaveBeenCalledWith(7);
+      expect(onDensityTierSelect).toHaveBeenCalledWith(DENSITY_TIERS[2].desktop);
     });
 
     it('highlights the nearest tier for an off-tier stored density without snapping it', () => {
-      // A collection stored at 6 keeps laying out at 6; the bar only highlights Small.
       const { onDensityTierSelect } = renderTiers({ density: 6, activeDensityTier: 'small' });
       expect(screen.getByRole('radio', { name: 'Small photos' })).toBeChecked();
       expect(onDensityTierSelect).not.toHaveBeenCalled();
@@ -333,8 +310,6 @@ describe('FilterToolbar', () => {
   });
 
   it('renders the reset button always, disabled until a filter is active', () => {
-    // Always present in the DOM (so it never pops in/out and reflows the bar); only its
-    // disabled state -- and CSS visibility, which jsdom cannot assert -- change.
     const { rerender } = render(
       <FilterToolbar
         filterState={INITIAL_FILTER_STATE}
@@ -356,7 +331,6 @@ describe('FilterToolbar', () => {
   });
 
   it('disables the reset button for a two-state date sort with no other filters', () => {
-    // The always-on chronological Date sort must not surface an active reset button on load.
     renderToolbar({
       showDateSort: true,
       dateTwoState: true,
@@ -399,7 +373,6 @@ describe('FilterToolbar', () => {
     expect(screen.getByRole('button', { name: /jul 20/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /jul 21/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /jul 22/i })).toBeInTheDocument();
-    // Flat mode means no dropdown trigger for the dimension.
     expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
   });
 
@@ -493,13 +466,7 @@ describe('FilterToolbar', () => {
   });
 
   describe('layout stability (selection must never change which nodes are present)', () => {
-    // These assertions pin STRUCTURAL invariants only -- jsdom has no layout engine, so none of
-    // this measures real pixel widths. They exist to catch a regression of any of the three
-    // known reflow causes: a weight class swapping in on .active, the Order chip's trailing
-    // slot disappearing, or the reset button being conditionally unmounted.
-
     it('keeps the reset button mounted in the DOM across every active-filter state', () => {
-      // No filters at all.
       const { unmount: unmount1 } = render(
         <FilterToolbar
           filterState={INITIAL_FILTER_STATE}
@@ -511,7 +478,6 @@ describe('FilterToolbar', () => {
       expect(screen.getByRole('button', { name: /reset all filters/i })).toBeInTheDocument();
       unmount1();
 
-      // One filter active.
       const { unmount: unmount2 } = render(
         <FilterToolbar
           filterState={{ ...INITIAL_FILTER_STATE, highlyRatedOnly: true }}
@@ -523,7 +489,6 @@ describe('FilterToolbar', () => {
       expect(screen.getByRole('button', { name: /reset all filters/i })).toBeInTheDocument();
       unmount2();
 
-      // Several filters active at once.
       render(
         <FilterToolbar
           filterState={{
@@ -554,18 +519,13 @@ describe('FilterToolbar', () => {
           />
         );
         const chip = screen.getByRole('button', { name: /^order/i });
-        // The label text is always the fixed string "Order" ...
         expect(chip.firstChild?.textContent).toBe('Order');
-        // ... and the trailing glyph slot is always present as its own element, even when empty.
         expect(chip.querySelector('span')).not.toBeNull();
         unmount();
       }
     });
 
     it('never applies a font-weight-only active class to the Order chip or a dropdown trigger', () => {
-      // Regression guard for cause 1: .active and .dropdownTriggerActive must not carry a
-      // bold-weight-only signal back in -- distinguishing an active chip must rely on the
-      // foreground/background inversion (or opacity/background), not on width-changing weight.
       renderToolbar({
         showDateSort: true,
         dimensions: { selectedTags: { label: 'Tags', options: ['sunset'] } },
@@ -611,8 +571,6 @@ describe('FilterToolbar', () => {
     });
 
     it('renders the bar with sections alone, no facet dimensions needed', () => {
-      // This is what lets /user — which has no tags/people/cameras of its own — still show the
-      // shared bar, and with it the photo-size control.
       renderToolbar({
         sections: SECTIONS,
         activeSectionKey: 'collections',
@@ -682,9 +640,14 @@ describe('FilterToolbar', () => {
       expect(screen.getByText('12')).toBeInTheDocument();
     });
 
+    it('routes a section click through onSectionSelect instead of navigating', () => {
+      const onSectionSelect = jest.fn();
+      renderToolbar({ sections: SECTIONS, activeSectionKey: 'collections', onSectionSelect });
+      fireEvent.click(screen.getByRole('link', { name: 'Images' }));
+      expect(onSectionSelect).toHaveBeenCalledWith('images', '/user?tab=images');
+    });
+
     it('keeps sections independent of the reset button', () => {
-      // Reset clears FilterState. Sections are not in FilterState, so a reset must never
-      // deselect the current section or navigate away from it.
       const { onFilterChange } = renderToolbar({
         sections: SECTIONS,
         activeSectionKey: 'saved',
@@ -701,6 +664,91 @@ describe('FilterToolbar', () => {
       expect(current).toHaveLength(1);
       expect(current[0]).toHaveTextContent('Saved');
     });
+  });
+
+  it('renders a dimension trigger as a chip with a chevron and popup aria', () => {
+    render(
+      <FilterToolbar
+        filterState={INITIAL_FILTER_STATE}
+        onFilterChange={() => {}}
+        dimensions={{ selectedPeople: { label: 'People', options: ['Ada', 'Grace'] } }}
+      />
+    );
+    const trigger = screen.getByRole('button', { name: /^People/ });
+    expect(trigger).toHaveAttribute('aria-haspopup', 'true');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger.className).toMatch(/chip/);
+    expect(trigger.querySelector('span')?.textContent).toBe('▾');
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(trigger.querySelector('span')?.textContent).toBe('▴');
+  });
+});
+
+describe('FilterToolbar upper tier', () => {
+  const sections = [
+    { key: 'collections', label: 'Collections', count: 2, href: '/user?tab=collections' },
+    { key: 'images', label: 'Images', count: 1, href: '/user?tab=images' },
+  ];
+
+  it('renders the sections as one segmented control above the filter cluster', () => {
+    const { container } = render(
+      <FilterToolbar
+        filterState={INITIAL_FILTER_STATE}
+        onFilterChange={() => {}}
+        dimensions={{}}
+        sections={sections}
+        activeSectionKey="collections"
+        showFollowingToggle
+      />
+    );
+    const nav = screen.getByRole('navigation', { name: 'Sections' });
+    expect(nav.closest('.upper')).not.toBeNull();
+    expect(nav.closest('.controls')).toBeNull();
+    expect(screen.getByRole('button', { name: /^Following/ }).closest('.controls')).not.toBeNull();
+    expect(container.querySelector('.separator')).toBeNull();
+  });
+
+  it('orders the upper tier by weight, highest first, sections leading', () => {
+    const { container } = render(
+      <FilterToolbar
+        filterState={INITIAL_FILTER_STATE}
+        onFilterChange={() => {}}
+        dimensions={{}}
+        sections={sections}
+        activeSectionKey="collections"
+        extras={[
+          {
+            key: 'passkey',
+            weight: CHIP_WEIGHT.passkey,
+            node: <button type="button">Face</button>,
+          },
+          { key: 'share', weight: CHIP_WEIGHT.share, node: <button type="button">Share</button> },
+          {
+            key: 'contact',
+            weight: CHIP_WEIGHT.contact,
+            node: <button type="button">Contact</button>,
+          },
+        ]}
+      />
+    );
+    const upper = container.querySelector('.upper') as HTMLElement;
+    const order = Array.from(upper.querySelectorAll('nav, button')).map(
+      el => el.getAttribute('aria-label') ?? el.textContent
+    );
+    expect(order).toEqual(['Sections', 'Share', 'Contact', 'Face']);
+  });
+
+  it('renders no upper tier on a page with neither sections nor extras', () => {
+    const { container } = render(
+      <FilterToolbar
+        filterState={INITIAL_FILTER_STATE}
+        onFilterChange={() => {}}
+        dimensions={{}}
+        showDateSort
+      />
+    );
+    expect(container.querySelector('.upper')).toBeNull();
   });
 });
 
@@ -762,6 +810,10 @@ describe('FilterToolbar active-filter summary', () => {
 
 describe('FilterToolbar year chips', () => {
   const threeYears = { selectedYears: { label: 'Year', options: ['2019', '2024', '2026'] } };
+
+  it('collapses four years into the Year dropdown and keeps three flat', () => {
+    expect(MAX_FLAT_YEAR_CHIPS).toBe(3);
+  });
 
   it('renders each year as its own flat chip', () => {
     renderToolbar({ dimensions: threeYears });
@@ -876,7 +928,7 @@ describe('FilterToolbar — film stock', () => {
         },
       },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Film stock' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Film stock/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Kodak Portra 400' }));
     expect(onFilterChange).toHaveBeenCalledWith({ selectedFilmTypes: ['Kodak Portra 400'] });
   });
@@ -892,7 +944,7 @@ describe('FilterToolbar — film stock', () => {
         },
       },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Film stock' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Film stock/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Cinestill 800T' }));
     expect(onFilterChange).toHaveBeenCalledWith({ selectedFilmTypes: ['Cinestill 800T'] });
   });

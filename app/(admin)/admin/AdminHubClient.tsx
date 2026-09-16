@@ -95,5 +95,3 @@ export function AdminHubClient({
     </AdminPanelSeedProvider>
   );
 }
-
-export default AdminHubClient;

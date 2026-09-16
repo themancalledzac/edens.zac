@@ -34,7 +34,7 @@ jest.mock('@/app/lib/api/users', () => ({
   listFollowedCollectionIdsByUserServer: jest.fn(),
 }));
 
-import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
+import { loadUserSpace, resolveSpaceKey } from '@/app/components/UserSpace/userSpaceData';
 import { getAllCollections } from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
 import {
@@ -72,47 +72,37 @@ beforeEach(() => {
 const loadAdmin = () => loadUserSpace({ mode: 'admin', userId: 5 });
 
 /**
- * The collection catalog is the one read that serves a single section, and it is the expensive one
- * (~0.5s / ~57KB against the local backend). It hydrates the followed half of the merged
- * Collections list, so it is read on Collections and skipped on the two sections that render no
- * collections.
- *
- * The pair below is what makes skipping it safe: the Collections badge counts the union of the
- * granted blocks and the follows id list, never the hydrated array. Derive it from `content`
- * instead and a section that skipped the catalog silently badges only the granted half.
- *
- * Admin mode. The self-mode twin is `userSpaceData.selfCatalog.test.ts`.
+ * The collection catalog is the one read that is not required to render the page (~0.5s / ~57KB
+ * against the local backend). It hydrates the followed half of the merged Collections list, so
+ * every mode that has follow state to merge reads it up front now — the client picks which section
+ * is on screen with no further server round trip, so there is no single "active" section left to
+ * scope the read to. Only share mode, which has no follow state at all, skips it (see
+ * `userSpaceData.share.test.ts`).
  */
-describe('loadUserSpace — the catalog read is scoped to the section that renders collections', () => {
-  it('skips the catalog entirely on the sections that render no collections', async () => {
-    for (const tab of ['images', 'saved'] as const) {
-      jest.clearAllMocks();
-      mockGetAllCollections.mockResolvedValue([]);
-      mockGetUserPageById.mockResolvedValue(userPage);
-      mockListSavedByUser.mockResolvedValue({ ok: true, items: [] });
-      mockListFollowsByUser.mockResolvedValue({ ok: true, items: [7] });
+describe('loadUserSpace — the collection catalog', () => {
+  it('reads the catalog for self mode', async () => {
+    await loadUserSpace('self');
 
-      await loadUserSpace({ mode: 'admin', userId: 5 }, tab);
-
-      expect(mockGetAllCollections).not.toHaveBeenCalled();
-    }
+    expect(mockGetAllCollections).toHaveBeenCalledTimes(1);
+    expect(mockGetAllCollections).toHaveBeenCalledWith(0, 500);
   });
 
-  it('reads the catalog on the Collections section and hydrates the followed half into it', async () => {
+  it('reads the catalog for admin mode and hydrates the followed half into Collections', async () => {
     mockListFollowsByUser.mockResolvedValue({ ok: true, items: [7] });
     mockGetAllCollections.mockResolvedValue([{ id: 7, slug: 'seven', title: 'Seven' }]);
 
-    const data = await loadUserSpace({ mode: 'admin', userId: 5 }, 'collections');
+    const data = await loadAdmin();
 
-    expect(mockGetAllCollections).toHaveBeenCalled();
+    expect(mockGetAllCollections).toHaveBeenCalledTimes(1);
     expect(data?.sections.collections.content).toHaveLength(1);
   });
 
-  /** The claim skipping the catalog could quietly break. */
-  it('still counts followed collections on a section that never fetched them', async () => {
+  /** The count is the union of two ID sets, never a copy of `content` — this is what makes it safe. */
+  it('counts followed collections from the ids, not from the hydrated array', async () => {
     mockListFollowsByUser.mockResolvedValue({ ok: true, items: [7, 9, 11] });
+    mockGetAllCollections.mockResolvedValue([]);
 
-    const data = await loadUserSpace({ mode: 'admin', userId: 5 }, 'images');
+    const data = await loadAdmin();
 
     expect(data?.sections.collections.content).toHaveLength(0);
     expect(data?.sections.collections.count).toBe(3);
@@ -130,7 +120,7 @@ describe('loadUserSpace — the catalog read is scoped to the section that rende
     });
     mockListFollowsByUser.mockResolvedValue({ ok: false });
 
-    const data = await loadUserSpace({ mode: 'admin', userId: 5 }, 'collections');
+    const data = await loadAdmin();
 
     expect(data?.sections.collections.count).toBe(1);
     expect(data?.sections.collections.unavailableLabel).toContain('may be incomplete');
@@ -429,5 +419,18 @@ describe('loadUserSpace — self mode uses the session-bound reads', () => {
 
     expect((await loadUserSpace('self'))?.grantedCollectionIds).toEqual([1]);
     expect((await loadAdmin())?.grantedCollectionIds).toEqual([1]);
+  });
+});
+
+describe('resolveSpaceKey', () => {
+  it('defaults to admin and accepts admin', () => {
+    // eslint-disable-next-line unicorn/no-useless-undefined
+    expect(resolveSpaceKey(undefined)).toBe('admin');
+    expect(resolveSpaceKey('admin')).toBe('admin');
+  });
+  it('narrows the personal keys the same way resolveTabKey does', () => {
+    expect(resolveSpaceKey('images')).toBe('images');
+    expect(resolveSpaceKey(['saved', 'images'])).toBe('saved');
+    expect(resolveSpaceKey('bogus')).toBe('collections');
   });
 });

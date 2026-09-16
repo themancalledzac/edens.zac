@@ -20,9 +20,6 @@ jest.mock('@/app/lib/api/selects', () => ({
 }));
 
 beforeEach(() => {
-  // The toggle test calls `.catch()` on the persist result, so both must return a promise.
-  // Use mockImplementation (not mockResolvedValue(undefined)) to satisfy both tsc — which
-  // requires the resolved value — and eslint's unicorn/no-useless-undefined.
   (addSelect as jest.Mock).mockImplementation(() => Promise.resolve());
   (removeSelect as jest.Mock).mockImplementation(() => Promise.resolve());
 });
@@ -31,6 +28,7 @@ const client: MeResponse = {
   email: 'client@example.com',
   isAdmin: false,
   mfaSatisfied: false,
+  passkeyCount: 0,
   galleries: [{ collectionId: 3, role: 'CLIENT' }],
 };
 
@@ -55,7 +53,6 @@ describe('SelectStar', () => {
   });
 
   it('renders nothing for a client without a CLIENT membership on this collection', () => {
-    // Provider scoped to collection 999, which the client has no membership for.
     const { container } = wrap(<SelectStar contentId={42} />, client, 999);
     expect(container.querySelector('button')).toBeNull();
   });

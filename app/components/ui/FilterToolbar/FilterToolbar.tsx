@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { Fragment, useCallback, useRef, useState } from 'react';
 
 import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
 import {
   type DensityTier,
   DensityTierControl,
 } from '@/app/components/ui/FilterToolbar/DensityTierControl';
+import { SegmentedChip } from '@/app/components/ui/SegmentedChip/SegmentedChip';
 import { useClickOutside } from '@/app/hooks/useClickOutside';
 import {
   ARRAY_FILTER_KEYS,
@@ -19,6 +20,7 @@ import {
   toggleArrayFilter,
 } from '@/app/types/GalleryFilter';
 
+import { CHIP_WEIGHT, type ToolbarExtra } from './chipWeights';
 import styles from './FilterToolbar.module.scss';
 import {
   collectActiveFilterBadges,
@@ -54,14 +56,14 @@ export interface ToolbarCounts {
 }
 
 /**
- * One mutually-exclusive page section (e.g. `/user`'s Collections / Images / Saved), rendered as a
- * navigating chip at the head of the bar.
+ * One mutually-exclusive page section (e.g. Collections / Images / Saved), rendered as a segment
+ * of the `SegmentedChip` in the bar's upper tier.
  *
  * Sections are a SINGLE-select dimension addressed by a search param, which is why they are not
  * part of {@link FilterState} like every other dimension here: exactly one is always chosen, and
- * the choice must stay shareable, bookmarkable and walkable with the back button. Keeping them as
- * links also keeps a sectioned page a Server Component — each section's blocks come from a
- * different server read.
+ * the choice must stay shareable, bookmarkable and walkable with the back button. Each segment is
+ * a real link to its `?tab=` URL; `onSectionSelect` intercepts a plain click so the page switches
+ * sections client-side.
  */
 export interface ToolbarSection {
   /** Stable key, also the search-param value. */
@@ -84,12 +86,16 @@ export interface FilterToolbarProps {
   filterState: FilterState;
   onFilterChange: (update: Partial<FilterState>) => void;
   /**
-   * Mutually-exclusive page sections, leading the bar. Absent on unsectioned pages, which is
-   * every collection page — only `/user` is sectioned today.
+   * Mutually-exclusive page sections for the upper tier. Absent on unsectioned pages, which is
+   * every collection page; `/user`, `/admin`, `/admin/users/[id]` and `/s/[token]` pass them.
    */
   sections?: readonly ToolbarSection[];
   /** Key of the section currently rendered. Ignored when {@link sections} is absent. */
   activeSectionKey?: string;
+  /** Intercepts a section click for client-side switching. Passed to `SegmentedChip` as `onSelect`. */
+  onSectionSelect?: (key: string, href: string) => void;
+  /** Page-level chips for the upper tier (Share, Contact, …), ordered by weight with the sections. */
+  extras?: readonly ToolbarExtra[];
   /** Which array dimensions to surface as dropdowns, keyed by the FilterState array key. */
   dimensions: Partial<Record<ArrayFilterKey, ToolbarDimension>>;
   /** Subset of options still reachable under current filters; absent options render unavailable. null/undefined = all available. */
@@ -113,10 +119,7 @@ export interface FilterToolbarProps {
    * Renders the Following toggle, which narrows a collection list to the ones the viewer follows
    * themselves.
    *
-   * It sits with the other toggles, AFTER the section separator, not among the section chips. That
-   * placement is the point: following is a property of an association, not a section of the page,
-   * and `/user`'s Collections section exists because a chip pretending to be a tab was the wrong
-   * shape for it.
+   * It sits in the filter cluster, never in the upper tier with the sections.
    *
    * Callers gate this on actually knowing the viewer's follow set, so the chip is never a control
    * that reports every collection as unfollowed.
@@ -168,10 +171,10 @@ const ORDER_GLYPHS: Record<FilterState['dateSortDirection'], string> = {
 export const MAX_FLAT_DATE_CHIPS = 5;
 
 /**
- * The same collapse threshold for the Year dimension, set higher because a year chip is four
- * characters where a day chip is a formatted label several times as wide.
+ * The Year dimension's collapse threshold: three or fewer years stay flat chips, four or more
+ * become the single-select "Year" dropdown, which closes on select.
  */
-export const MAX_FLAT_YEAR_CHIPS = 8;
+export const MAX_FLAT_YEAR_CHIPS = 3;
 
 /**
  * A dimension that should render as flat chips rather than a dropdown: present, non-empty, and
@@ -200,6 +203,8 @@ export function FilterToolbar({
   onFilterChange,
   sections,
   activeSectionKey,
+  onSectionSelect,
+  extras,
   dimensions,
   filteredAvailable,
   counts,
@@ -268,212 +273,231 @@ export function FilterToolbar({
     ...(flatYears ? (['selectedYears'] as const) : []),
   ]);
 
-  return (
-    <div ref={barRef} className={styles.toolbar}>
-      <div className={styles.controls}>
-        {sections && sections.length > 0 && (
-          <>
-            {sections.map(section => (
-              <FilterChip
-                key={`section-${section.key}`}
-                label={section.label}
-                count={section.count}
-                active={section.key === activeSectionKey}
-                href={section.href}
+  const upper: ToolbarExtra[] = [
+    ...(sections && sections.length > 0
+      ? [
+          {
+            key: 'sections',
+            weight: CHIP_WEIGHT.sections,
+            node: (
+              <SegmentedChip
+                ariaLabel="Sections"
+                onSelect={onSectionSelect}
+                segments={sections.map(section => ({
+                  key: section.key,
+                  label: section.label,
+                  count: section.count,
+                  href: section.href,
+                  current: section.key === activeSectionKey,
+                }))}
               />
-            ))}
-            <span className={styles.separator} aria-hidden="true" />
-          </>
-        )}
+            ),
+          },
+        ]
+      : []),
+    ...(extras ?? []),
+  ].sort((a, b) => b.weight - a.weight);
 
-        {showDateSort && (
-          <FilterChip
-            label="Order"
-            trailing={ORDER_GLYPHS[filterState.dateSortDirection]}
-            active={dateTwoState || filterState.dateSortDirection !== 'off'}
-            onToggle={() =>
-              onFilterChange({
-                dateSortDirection: dateTwoState
-                  ? cycleDateSortTwoState(filterState.dateSortDirection)
-                  : cycleDateSort(filterState.dateSortDirection),
-              })
-            }
-          />
-        )}
-
-        {showHighlyRated && (
-          <FilterChip
-            label="Highly Rated"
-            count={counts?.highlyRated}
-            active={filterState.highlyRatedOnly}
-            onToggle={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
-          />
-        )}
-
-        {showFollowingToggle && (
-          <FilterChip
-            label="Following"
-            count={counts?.following}
-            active={filterState.followedOnly}
-            onToggle={() => onFilterChange({ followedOnly: !filterState.followedOnly })}
-          />
-        )}
-
-        {showHiddenToggle && (
-          <FilterChip
-            label="Hidden"
-            count={counts?.hidden}
-            active={filterState.showHidden}
-            onToggle={() => onFilterChange({ showHidden: !filterState.showHidden })}
-          />
-        )}
-
-        {showFilm && (
-          <FilterChip
-            label={filterState.filmFilter === 'digital' ? 'Digital' : 'Film'}
-            count={filmCount}
-            tone={filterState.filmFilter === 'digital' ? 'digital' : 'film'}
-            active={filterState.filmFilter !== 'off'}
-            onToggle={cycleFilm}
-          />
-        )}
-
-        {flatYears?.options.map(year => {
-          const isSelected = filterState.selectedYears.includes(year);
-          const available =
-            isSelected || isOptionAvailable(filteredAvailable, 'selectedYears', year);
-          return (
+  return (
+    <div ref={barRef} className={styles.bar}>
+      {upper.length > 0 && (
+        <div className={styles.upper}>
+          {upper.map(entry => (
+            <Fragment key={entry.key}>{entry.node}</Fragment>
+          ))}
+        </div>
+      )}
+      <div className={styles.toolbar}>
+        <div className={styles.controls}>
+          {showDateSort && (
             <FilterChip
-              key={`year-${year}`}
-              label={year}
-              active={isSelected}
-              state={available ? 'available' : 'unavailable'}
-              onToggle={() => toggleArrayFilter(filterState, onFilterChange, 'selectedYears', year)}
+              label="Order"
+              trailing={ORDER_GLYPHS[filterState.dateSortDirection]}
+              active={dateTwoState || filterState.dateSortDirection !== 'off'}
+              onToggle={() =>
+                onFilterChange({
+                  dateSortDirection: dateTwoState
+                    ? cycleDateSortTwoState(filterState.dateSortDirection)
+                    : cycleDateSort(filterState.dateSortDirection),
+                })
+              }
             />
-          );
-        })}
+          )}
 
-        {flatDates?.options.map(day => {
-          const isSelected = filterState.selectedDates.includes(day);
-          const available =
-            isSelected || isOptionAvailable(filteredAvailable, 'selectedDates', day);
-          return (
+          {showHighlyRated && (
             <FilterChip
-              key={`date-${day}`}
-              label={flatDates.optionLabels?.[day] ?? day}
-              active={isSelected}
-              state={available ? 'available' : 'unavailable'}
-              onToggle={() => toggleArrayFilter(filterState, onFilterChange, 'selectedDates', day)}
+              label="Highly Rated"
+              count={counts?.highlyRated}
+              active={filterState.highlyRatedOnly}
+              onToggle={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
             />
-          );
-        })}
+          )}
 
-        {ARRAY_FILTER_KEYS.map(key => {
-          if (key === 'selectedDates' && flatDates) return null;
-          if (key === 'selectedYears' && flatYears) return null;
-          const dim = dimensions[key];
-          if (!dim || dim.options.length === 0) return null;
-          const selected = filterState[key] as readonly string[];
-          const isOpen = openDropdown === key;
-          return (
-            <div key={key} className={styles.dropdown}>
-              <button
-                ref={node => {
-                  triggerRefs.current[key] = node;
-                }}
-                type="button"
-                aria-haspopup="true"
-                aria-expanded={isOpen}
-                className={`${styles.dropdownTrigger} ${selected.length > 0 ? styles.dropdownTriggerActive : ''}`}
-                onClick={() => toggleOpen(key)}
-              >
-                {dim.label}
-                <span className={styles.chevron} aria-hidden="true">
-                  {isOpen ? '▴' : '▾'}
-                </span>
-              </button>
-              {isOpen && (
-                <div className={styles.panel}>
-                  {dim.options.map(option => {
-                    const isSelected = selected.includes(option);
-                    const available =
-                      isSelected || isOptionAvailable(filteredAvailable, key, option);
-                    return (
-                      <FilterChip
-                        key={`${key}-${option}`}
-                        label={dim.optionLabels?.[option] ?? option}
-                        count={dim.counts?.[option]}
-                        active={isSelected}
-                        state={available ? 'available' : 'unavailable'}
-                        onToggle={() => {
-                          toggleArrayFilter(filterState, onFilterChange, key, option);
-                          closeAll();
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
+          {showFollowingToggle && (
+            <FilterChip
+              label="Following"
+              count={counts?.following}
+              active={filterState.followedOnly}
+              onToggle={() => onFilterChange({ followedOnly: !filterState.followedOnly })}
+            />
+          )}
 
-        {activeBadges.length > 0 && (
-          <>
-            <span className={styles.separator} aria-hidden="true" />
-            {activeBadges.map(badge => (
+          {showHiddenToggle && (
+            <FilterChip
+              label="Hidden"
+              count={counts?.hidden}
+              active={filterState.showHidden}
+              onToggle={() => onFilterChange({ showHidden: !filterState.showHidden })}
+            />
+          )}
+
+          {showFilm && (
+            <FilterChip
+              label={filterState.filmFilter === 'digital' ? 'Digital' : 'Film'}
+              count={filmCount}
+              tone={filterState.filmFilter === 'digital' ? 'digital' : 'film'}
+              active={filterState.filmFilter !== 'off'}
+              onToggle={cycleFilm}
+            />
+          )}
+
+          {flatYears?.options.map(year => {
+            const isSelected = filterState.selectedYears.includes(year);
+            const available =
+              isSelected || isOptionAvailable(filteredAvailable, 'selectedYears', year);
+            return (
               <FilterChip
-                key={`active-${badge.key}-${badge.value}`}
-                label={badge.label}
-                ariaLabel={badge.removeLabel}
-                trailing="×"
-                active
+                key={`year-${year}`}
+                label={year}
+                active={isSelected}
+                state={available ? 'available' : 'unavailable'}
                 onToggle={() =>
-                  toggleArrayFilter(filterState, onFilterChange, badge.key, badge.value)
+                  toggleArrayFilter(filterState, onFilterChange, 'selectedYears', year)
                 }
               />
-            ))}
-          </>
-        )}
-      </div>
+            );
+          })}
 
-      <div className={styles.trailing}>
-        <button
-          type="button"
-          className={`${styles.reset} ${hasActiveFilters ? '' : styles.resetInactive}`}
-          onClick={resetAll}
-          disabled={!hasActiveFilters}
-          aria-label="Reset all filters"
-        >
-          ×
-        </button>
-
-        {onDensityChange && density !== undefined && (
-          <div className={styles.densitySlot}>
-            {densityVariant === 'tiers' && densityTiers ? (
-              <DensityTierControl
-                tiers={densityTiers}
-                activeKey={activeDensityTier ?? ''}
-                onSelect={onDensityTierSelect ?? onDensityChange}
+          {flatDates?.options.map(day => {
+            const isSelected = filterState.selectedDates.includes(day);
+            const available =
+              isSelected || isOptionAvailable(filteredAvailable, 'selectedDates', day);
+            return (
+              <FilterChip
+                key={`date-${day}`}
+                label={flatDates.optionLabels?.[day] ?? day}
+                active={isSelected}
+                state={available ? 'available' : 'unavailable'}
+                onToggle={() =>
+                  toggleArrayFilter(filterState, onFilterChange, 'selectedDates', day)
+                }
               />
-            ) : (
-              <label className={styles.slider}>
-                <span className={styles.sliderLabel} aria-hidden="true">
-                  Density {density}
-                </span>
-                <input
-                  type="range"
-                  min={1}
-                  max={densityMax}
-                  step={1}
-                  value={density}
-                  onChange={e => onDensityChange(Number(e.target.value))}
-                  aria-label="Row density"
+            );
+          })}
+
+          {ARRAY_FILTER_KEYS.map(key => {
+            if (key === 'selectedDates' && flatDates) return null;
+            if (key === 'selectedYears' && flatYears) return null;
+            const dim = dimensions[key];
+            if (!dim || dim.options.length === 0) return null;
+            const selected = filterState[key] as readonly string[];
+            const isOpen = openDropdown === key;
+            return (
+              <div key={key} className={styles.dropdown}>
+                <FilterChip
+                  ref={node => {
+                    triggerRefs.current[key] = node;
+                  }}
+                  label={dim.label}
+                  trailing={isOpen ? '▴' : '▾'}
+                  active={isOpen}
+                  ariaExpanded={isOpen}
+                  ariaHasPopup="true"
+                  onToggle={() => toggleOpen(key)}
                 />
-              </label>
-            )}
-          </div>
-        )}
+                {isOpen && (
+                  <div className={styles.panel}>
+                    {dim.options.map(option => {
+                      const isSelected = selected.includes(option);
+                      const available =
+                        isSelected || isOptionAvailable(filteredAvailable, key, option);
+                      return (
+                        <FilterChip
+                          key={`${key}-${option}`}
+                          label={dim.optionLabels?.[option] ?? option}
+                          count={dim.counts?.[option]}
+                          active={isSelected}
+                          state={available ? 'available' : 'unavailable'}
+                          onToggle={() => {
+                            toggleArrayFilter(filterState, onFilterChange, key, option);
+                            closeAll();
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {activeBadges.length > 0 && (
+            <>
+              <span className={styles.separator} aria-hidden="true" />
+              {activeBadges.map(badge => (
+                <FilterChip
+                  key={`active-${badge.key}-${badge.value}`}
+                  label={badge.label}
+                  ariaLabel={badge.removeLabel}
+                  trailing="×"
+                  active
+                  onToggle={() =>
+                    toggleArrayFilter(filterState, onFilterChange, badge.key, badge.value)
+                  }
+                />
+              ))}
+            </>
+          )}
+        </div>
+
+        <div className={styles.trailing}>
+          <button
+            type="button"
+            className={`${styles.reset} ${hasActiveFilters ? '' : styles.resetInactive}`}
+            onClick={resetAll}
+            disabled={!hasActiveFilters}
+            aria-label="Reset all filters"
+          >
+            ×
+          </button>
+
+          {onDensityChange && density !== undefined && (
+            <div className={styles.densitySlot}>
+              {densityVariant === 'tiers' && densityTiers ? (
+                <DensityTierControl
+                  tiers={densityTiers}
+                  activeKey={activeDensityTier ?? ''}
+                  onSelect={onDensityTierSelect ?? onDensityChange}
+                />
+              ) : (
+                <label className={styles.slider}>
+                  <span className={styles.sliderLabel} aria-hidden="true">
+                    Density {density}
+                  </span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={densityMax}
+                    step={1}
+                    value={density}
+                    onChange={e => onDensityChange(Number(e.target.value))}
+                    aria-label="Row density"
+                  />
+                </label>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

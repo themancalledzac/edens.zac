@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { type Ref } from 'react';
 
 import styles from './FilterChip.module.scss';
 
@@ -16,7 +17,11 @@ interface FilterChipBaseProps {
    * value changes -- only the label switching in and out would do that.
    */
   trailing?: string;
-  /** Whether this facet is currently selected. Drives the active style. */
+  /**
+   * Whether this facet is currently selected. Drives the active style, and on the button variant
+   * opts the chip into `aria-pressed`: pass it (even `false`) for a toggle, leave it out for a
+   * one-shot action such as passkey enrollment, which is not pressed or unpressed.
+   */
   active?: boolean;
   /** Visual tone. 'film'/'digital' are neutral tri-state tints. */
   tone?: FilterChipTone;
@@ -36,6 +41,11 @@ interface FilterChipButtonProps extends FilterChipBaseProps {
   onToggle: () => void;
   href?: never;
   scroll?: never;
+  /** The underlying button, for a caller that must restore focus to it (a dropdown trigger). */
+  ref?: Ref<HTMLButtonElement>;
+  /** Set on a chip that opens a popup: the open state, and the kind of popup. */
+  ariaExpanded?: boolean;
+  ariaHasPopup?: 'true' | 'dialog';
 }
 
 interface FilterChipLinkProps extends FilterChipBaseProps {
@@ -49,6 +59,9 @@ interface FilterChipLinkProps extends FilterChipBaseProps {
    * keeping the old scroll offset lands the reader partway down a page they have never seen.
    */
   scroll?: boolean;
+  ref?: never;
+  ariaExpanded?: never;
+  ariaHasPopup?: never;
 }
 
 /**
@@ -58,13 +71,11 @@ interface FilterChipLinkProps extends FilterChipBaseProps {
 export type FilterChipProps = FilterChipButtonProps | FilterChipLinkProps;
 
 /**
- * Canonical filter chip. Renders a real <button> with aria-pressed for in-place facet toggles, or
- * a <Link> with aria-current for chips that navigate — mutually-exclusive page sections addressed
- * by a search param, which are semantically links, not pressed toggles. Both variants share one
- * set of styles so a sectioned page's bar is visually indistinguishable from any other.
- *
- * The link variant also carries plain cross-page navigation — `AdminCard`'s four destinations on
- * `/user`. Those pass `scroll` so the jump behaves like a normal link; see the prop's docblock.
+ * Canonical filter chip. Renders a real <button> for in-place toggles and actions (`aria-pressed`
+ * only when `active` is given), or a <Link> with aria-current for chips that navigate —
+ * mutually-exclusive page sections addressed by a search param, which are semantically links, not
+ * pressed toggles. Both variants share one set of styles so a sectioned page's bar is visually
+ * indistinguishable from any other.
  *
  * 'unavailable' disables the button variant; the link variant degrades to an inert span, since a
  * disabled anchor is not a thing the platform provides.
@@ -73,18 +84,21 @@ export function FilterChip({
   label,
   count,
   trailing,
-  active = false,
+  active,
   tone = 'neutral',
   state = 'available',
   ariaLabel,
   href,
   scroll = false,
   onToggle,
+  ref,
+  ariaExpanded,
+  ariaHasPopup,
 }: FilterChipProps) {
   const unavailable = state === 'unavailable';
   const classes = [
     styles.chip,
-    active ? styles.active : null,
+    active === true ? styles.active : null,
     tone !== 'neutral' ? styles[tone] : null,
     unavailable ? styles.unavailable : null,
   ]
@@ -113,7 +127,7 @@ export function FilterChip({
         scroll={scroll}
         className={classes}
         aria-label={ariaLabel}
-        aria-current={active ? 'page' : undefined}
+        aria-current={active === true ? 'page' : undefined}
       >
         {body}
       </Link>
@@ -122,10 +136,13 @@ export function FilterChip({
 
   return (
     <button
+      ref={ref}
       type="button"
       className={classes}
       aria-label={ariaLabel}
-      aria-pressed={active}
+      aria-pressed={active !== undefined && ariaHasPopup === undefined ? active : undefined}
+      aria-expanded={ariaExpanded}
+      aria-haspopup={ariaHasPopup}
       disabled={unavailable}
       onClick={onToggle}
     >

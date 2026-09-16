@@ -1,97 +1,90 @@
-// Admin = authenticated admin principal: the backend enforces hasRole('ADMIN') on
-// /api/admin/** (see docs 009). Gating centralized in app/(admin)/layout.tsx via requireAdmin().
+import { ownSpaceExtras } from '@/app/components/Personal/ownSpaceExtras';
+import { FormError } from '@/app/components/ui/Field/FormError';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
-import { getAdminHomeTiles } from '@/app/lib/api/adminHome';
-import { getMetadata } from '@/app/lib/api/collections';
-import { getAdminMessages } from '@/app/lib/api/messages';
-import { listRoles } from '@/app/lib/api/roles';
-import { listUsers } from '@/app/lib/api/users';
+import { UserSpace } from '@/app/components/UserSpace/UserSpace';
+import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
+import { meServer } from '@/app/lib/api/auth';
+import { readShareSettings } from '@/app/lib/api/share';
+import { isShadowedRouteSlug } from '@/app/utils/collectionSlugs';
+import { logger } from '@/app/utils/logger';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import { AdminHubClient } from './AdminHubClient';
-import { buildAdminHubContent } from './adminHubContent';
+import { loadAdminHub } from './loadAdminHub';
 import styles from './page.module.scss';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Admin hub: the users/messages panels and the nav tiles, laid out by the shared content pipeline.
- *
- * `mobileChunkSize={1}` pins the hub to a single column on touch viewports. Without it the hub
- * inherits `LAYOUT.mobileSlotWidth`, a row budget calibrated for PHOTOS, and the packer fits
- * two items per row: the two panels land at ~212px each on a 430px phone, which is too narrow for
- * a user list (the header controls collapse and every row ellipsizes), and portrait-covered tiles
- * pair up as well. Desktop is unaffected — the option is read only on the mobile branch.
- *
- * Panels render through `AdminHubClient`, which owns their collapsed state: collapsing one swaps
- * its content model for a bar-shaped footprint, so the packer re-runs and the panels and tiles
- * still standing widen into the reclaimed space.
- *
- * The four row COUNTS are resolved here, alongside the tiles, because a panel reserves
- * `chrome + rowCount × rowHeight` of layout height and the packer needs that before it can place
- * anything. Fetching them server-side is what makes the first pack the only pack: a count supplied
- * after paint would rewrite the panels' footprints, re-pack the page, change row membership and so
- * remount every panel, whose fetches would fire again and re-enter the same loop until the browser
- * runs out of sockets. There is no second pack to converge, rather than a second pack argued to be
- * harmless.
- *
- * Messages exposes a real count (`total`), so it is fetched one row deep. Users, roles and
- * collections have no count endpoint and return their full lists; all are small admin collections
- * and every request shares one wall-clock round-trip. Each falls back independently, matching the
- * tiles' posture — a backend blip degrades a panel to its minimum reserved height instead of
- * failing the hub.
- *
- * Those three full lists are then handed to the panels as `seed`, so a list the server already
- * holds is painted rather than re-requested — the single-fetch rule, which keeping only `.length`
- * would break. `listUsers()` takes no options, which is exactly the `users:base` variant the panel
- * opens on; its "show tag-only people" variant is a different fetch and is left to load on demand.
- * A failed server fetch seeds `null`, not `[]`, so the panel loads for itself instead of announcing
- * an empty account list, and the count falls back to the layout floor.
- *
- * `getMetadata()` carries more than the collection list — tags, people, cameras — and only the
- * collections are read here. It is still the right call: it is the endpoint that already returns
- * the admin collection list, and adding a collections-only one would be a second way to ask a
- * question this already answers.
+ * Fail-soft wrapper for {@link loadUserSpace}: the hub must still render when the admin's own
+ * space cannot be read, so the failure is logged here and the page shows a notice instead.
  */
-export default async function AdminHubPage() {
-  const [tiles, ssrViewport, users, messages, roles, metadata] = await Promise.all([
-    getAdminHomeTiles().catch(() => []),
-    resolveSsrViewport(),
-    listUsers().catch(() => null),
-    getAdminMessages(1, 0).catch(() => null),
-    listRoles().catch(() => null),
-    getMetadata().catch(() => null),
+async function loadOwnSpace() {
+  try {
+    return await loadUserSpace('self');
+  } catch (error) {
+    logger.error('admin', "Could not load the admin's own space", error);
+    return null;
+  }
+}
+
+/**
+ * The admin's own space with an Admin section in front: the hub under `?tab=admin` (the default)
+ * and the same Collections / Images / Saved sections `/user` renders, which redirects admins here.
+ * With no principal (local anonymous dev, or a failed `meServer`) the hub renders alone and
+ * silently; with a principal but no space it renders alone under a notice.
+ */
+export default async function AdminPage() {
+  const ssrViewport = await resolveSsrViewport();
+  const hubPromise = loadAdminHub(ssrViewport?.viewportHeight);
+  const principal = await meServer().catch(() => null);
+
+  const [hub, data, share] = await Promise.all([
+    hubPromise,
+    principal ? loadOwnSpace() : Promise.resolve(null),
+    principal ? readShareSettings() : Promise.resolve(null),
   ]);
 
-  const collections = metadata?.collections ?? null;
-
-  // The viewport height comes from the same `Promise.all` as the counts, so the panel-height cap
-  // is known before the first pack -- the same single-pack rule the counts follow.
-  const content = buildAdminHubContent(
-    tiles,
-    {
-      users: users?.length ?? 0,
-      messages: messages?.total ?? 0,
-      roles: roles?.length ?? 0,
-      collections: collections?.length ?? 0,
-    },
-    ssrViewport?.viewportHeight
+  const hubNode = (
+    <AdminHubClient
+      content={hub.content}
+      seed={hub.seed}
+      mobileChunkSize={1}
+      serverContentWidth={ssrViewport?.contentWidth}
+      serverViewportHeight={ssrViewport?.viewportHeight}
+      serverIsMobile={ssrViewport?.isMobile}
+    />
   );
 
+  if (!principal || !data || !share) {
+    return (
+      <PageShell>
+        <h1 className={styles.srOnly}>Admin</h1>
+        {principal && !data && (
+          <div className={styles.notice}>
+            <FormError>Your space could not be loaded. The admin hub is still available.</FormError>
+          </div>
+        )}
+        {hubNode}
+      </PageShell>
+    );
+  }
+
   return (
-    <PageShell>
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Admin</h1>
-        <span className={styles.subtitle}>local dev console</span>
+    <PageShell
+      collectionSlug={isShadowedRouteSlug(data.collection.slug) ? undefined : data.collection.slug}
+    >
+      <h1 className={styles.srOnly}>Your Space</h1>
+      <div className={styles.sections}>
+        <UserSpace
+          data={data}
+          basePath="/admin"
+          me={principal}
+          ssrViewport={ssrViewport}
+          adminHub={hubNode}
+          toolbarExtras={ownSpaceExtras(principal, share)}
+        />
       </div>
-      <AdminHubClient
-        content={content}
-        mobileChunkSize={1}
-        seed={{ users, roles, collections }}
-        serverContentWidth={ssrViewport?.contentWidth}
-        serverViewportHeight={ssrViewport?.viewportHeight}
-        serverIsMobile={ssrViewport?.isMobile}
-      />
     </PageShell>
   );
 }

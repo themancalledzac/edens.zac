@@ -10,6 +10,10 @@ import * as usersApi from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
 
 jest.mock('@/app/lib/api/adminHome');
+jest.mock('@/app/lib/api/auth', () => ({
+  ...jest.requireActual('@/app/lib/api/auth'),
+  meServer: jest.fn().mockResolvedValue(null),
+}));
 
 /**
  * The page fetches these two lists for their row counts and then hands them to the panels as their
@@ -50,6 +54,8 @@ const mockGetTiles = adminHomeApi.getAdminHomeTiles as jest.MockedFunction<
 const mockListUsers = usersApi.listUsers as jest.MockedFunction<typeof usersApi.listUsers>;
 const mockListRoles = rolesApi.listRoles as jest.MockedFunction<typeof rolesApi.listRoles>;
 
+const renderPage = () => AdminHubPage();
+
 const ADA: AdminUserSummary = {
   id: 5,
   email: 'ada@example.com',
@@ -69,7 +75,7 @@ describe('AdminHubPage', () => {
 
   it('renders every configured tile label', async () => {
     mockGetTiles.mockResolvedValue([]);
-    const ui = await AdminHubPage();
+    const ui = await renderPage();
     render(ui);
 
     for (const tile of ADMIN_TILES) {
@@ -85,7 +91,7 @@ describe('AdminHubPage', () => {
         displayOrder: 2,
       },
     ]);
-    const ui = await AdminHubPage();
+    const ui = await renderPage();
     const { container } = render(ui);
 
     const images = container.querySelectorAll('img');
@@ -94,7 +100,7 @@ describe('AdminHubPage', () => {
 
   it('pins the content block to a single column on mobile', async () => {
     mockGetTiles.mockResolvedValue([]);
-    const ui = await AdminHubPage();
+    const ui = await renderPage();
 
     const findMobileChunkSize = (node: unknown): number | undefined => {
       if (Array.isArray(node)) {
@@ -124,7 +130,7 @@ describe('AdminHubPage', () => {
     mockListUsers.mockResolvedValue([ADA]);
     mockListRoles.mockResolvedValue([{ id: 1, name: 'editor' }]);
 
-    const ui = await AdminHubPage();
+    const ui = await renderPage();
     render(ui);
 
     expect(screen.getByText('Ada')).toBeInTheDocument();
@@ -139,7 +145,7 @@ describe('AdminHubPage', () => {
     mockGetTiles.mockResolvedValue([]);
     mockListUsers.mockRejectedValue(new Error('backend down'));
 
-    const ui = await AdminHubPage();
+    const ui = await renderPage();
     render(ui);
 
     expect(screen.getByText('Loading users…')).toBeInTheDocument();
@@ -150,7 +156,7 @@ describe('AdminHubPage', () => {
 
   it('falls back gracefully when the API throws', async () => {
     mockGetTiles.mockRejectedValue(new Error('backend down'));
-    const ui = await AdminHubPage();
+    const ui = await renderPage();
     render(ui);
 
     for (const tile of ADMIN_TILES) {

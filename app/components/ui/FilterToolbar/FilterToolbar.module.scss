@@ -12,8 +12,6 @@
   /* Same token as the Download row's .buttonRow, so the two stacked rows space their
      controls identically. Was a hardcoded 4px, which is what --space-1 resolves to. */
   gap: var(--space-1);
-  padding: var(--space-2) var(--space-3) var(--space-1);
-  border-top: 1px solid var(--color-border);
 
   /* `.trailing` never shrinks, and with the manage view's density SLIDER in it, it measures
      220.7px. On a phone that starves the chips: at a 375px viewport `.controls` was left 126.3px,
@@ -66,10 +64,28 @@
       flex: 1 0 240px;
     }
   }
+}
+
+/* The whole bar: the weighted upper tier (sections and page actions) above the filter row. Carries
+   the padding and the rule so the two rows share one frame. */
+.bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  border-top: 1px solid var(--color-border);
 
   @media (width >= 768px) {
     padding: var(--space-2) 0 var(--space-1);
   }
+}
+
+/* Highest weight leftmost; plain wrap, since the row a reader starts from is the top one here. */
+.upper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
 }
 
 /* The wrapping half: every filter control. `min-width: 0` lets it shrink and wrap internally
@@ -125,10 +141,10 @@
   align-items: center;
 }
 
-/* Divides the mutually-exclusive section chips from the facet controls that filter WITHIN the
-   selected section. Margin rather than gap so it reads as a rule between two groups, not as a
-   third item in the row. Fixed height rather than `align-self: stretch`: in a wrapping container
-   stretch resolves against the TALLEST line, so the rule grew to span every wrapped row. */
+/* Divides the controls from the active-filter badges that summarise a collapsed dimension. Margin
+   rather than gap so it reads as a rule between two groups, not as a third item in the row. Fixed
+   height rather than `align-self: stretch`: in a wrapping container stretch resolves against the
+   TALLEST line, so the rule grew to span every wrapped row. */
 .separator {
   align-self: center;
   width: 1px;
@@ -139,49 +155,6 @@
 
 .dropdown {
   position: relative;
-}
-
-.dropdownTrigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  color: var(--color-fg);
-  background-color: transparent;
-  border: none;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  opacity: 0.5;
-  transition:
-    background-color var(--duration-fast) var(--ease-standard),
-    opacity var(--duration-fast) var(--ease-standard);
-
-  &:hover {
-    background-color: var(--color-overlay-soft);
-    opacity: 0.8;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-  }
-}
-
-.dropdownTriggerActive {
-  opacity: 1;
-  background-color: var(--color-overlay-soft);
-}
-
-.chevron {
-  font-size: 0.55rem;
-  line-height: 1;
-  opacity: 0.5;
 }
 
 .panel {

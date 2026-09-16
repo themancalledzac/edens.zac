@@ -22,11 +22,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 
 import { FollowButton } from '@/app/components/Personal/FollowButton';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
-import {
-  TAB_KEYS,
-  type TabKey,
-  type UserSpaceData,
-} from '@/app/components/UserSpace/userSpaceData';
+import { TAB_KEYS, type UserSpaceData } from '@/app/components/UserSpace/userSpaceData';
 import { addFollow, removeFollow } from '@/app/lib/api/personal';
 import { type MeResponse } from '@/app/types/Auth';
 
@@ -37,6 +33,11 @@ jest.mock('@/app/lib/api/personal', () => ({
 
 jest.mock('@/app/utils/logger', () => ({
   logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn(), debug: jest.fn() },
+}));
+
+/** Renders the `collections` section by default — no test here switches sections. */
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 /**
@@ -85,6 +86,7 @@ const principal: MeResponse = {
   email: 'c@x.com',
   isAdmin: true,
   mfaSatisfied: true,
+  passkeyCount: 0,
   galleries: [],
 };
 
@@ -178,16 +180,8 @@ const followToggles = (
 );
 
 function renderSpace(data: UserSpaceData = makeData(), me: MeResponse | null = principal) {
-  const activeKey: TabKey = 'collections';
   render(
-    <UserSpace
-      data={data}
-      activeKey={activeKey}
-      basePath="/user"
-      me={me}
-      ssrViewport={null}
-      railExtras={followToggles}
-    />
+    <UserSpace data={data} basePath="/user" me={me} ssrViewport={null} railExtras={followToggles} />
   );
 }
 

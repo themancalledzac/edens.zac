@@ -1,29 +1,19 @@
-.pageHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  border-bottom: 1px solid var(--color-border);
-  padding: 0 var(--page-padding-mobile) var(--space-2);
-  margin-bottom: var(--space-5);
+@use '../../styles/a11y';
 
-  @media (width >= 768px) {
-    padding: 0 0 var(--space-2);
-    margin-bottom: var(--space-6);
-  }
+.srOnly {
+  @extend %visually-hidden;
 }
 
-.pageTitle {
-  font-size: 1.6rem;
-  font-weight: 700;
-  margin: 0;
-  color: var(--color-on-surface);
-
-  @media (width >= 768px) {
-    font-size: 2rem;
-  }
+.sections {
+  padding: var(--space-3) 0 var(--space-5);
 }
 
-.subtitle {
-  color: var(--color-on-surface-muted);
-  font-size: var(--text-md);
+/* The "space could not be loaded" notice above a hub rendered alone. Inset like UserSpace's
+   .empty, since the hub's grid runs full-bleed on mobile. */
+.notice {
+  padding: var(--space-3) var(--page-padding-mobile) 0;
+
+  @media (width >= 768px) {
+    padding-inline: 0;
+  }
 }

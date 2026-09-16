@@ -107,10 +107,15 @@ function restoreFocus(previous: HTMLElement | null) {
  * so About/ContactForm stay direct flex children of the scroll container and the layout is
  * unchanged.
  *
- * Clear Cache goes `aria-disabled` rather than `disabled` while its action is in flight. Disabling
- * the focused button drops focus to `<body>`, and the Tab trap is a handler on the overlay root —
- * once focus is out there no keydown reaches it and Tab walks the `aria-modal`'d page behind the
- * overlay. Staying focusable keeps focus inside; the handler guards the pending state itself.
+ * Clear Cache renders only in a local environment by product choice: it is a dev workflow tool,
+ * not something for every prod page, though the endpoint exists in every profile. It goes
+ * `aria-disabled` rather than `disabled` while its action is in flight. Disabling the focused
+ * button drops focus to `<body>`, and the Tab trap is a handler on the overlay root — once focus
+ * is out there no keydown reaches it and Tab walks the `aria-modal`'d page behind the overlay.
+ * Staying focusable keeps focus inside; the handler guards the pending state itself.
+ *
+ * Log out refreshes and clears the cached panel data even when `logout()` rejects: the cookie may
+ * already be gone, and admin emails or message bodies must not outlive the session in the browser.
  *
  * "Update" links to `/[slug]?manage=1`, the same route the page is already on, so the soft
  * navigation hands `CollectionPageClient` `editMode=true` without remounting it. No slug falls
@@ -148,16 +153,8 @@ export function MenuDropdown({
   };
 
   const handleLogout = () => {
-    // Best-effort: even if logout() rejects, the cookie may already be cleared —
-    // refresh so server components re-render in the logged-out state. The panel cache
-    // goes unconditionally for the same reason: admin emails and message bodies must
-    // not survive on a browser whose session may already be gone.
     void (async () => {
-      try {
-        await logout();
-      } catch {
-        // swallow — proceed to refresh regardless
-      }
+      await logout().catch(() => {});
       clearCachedPanelData();
       router.push('/');
       router.refresh();
@@ -219,7 +216,6 @@ export function MenuDropdown({
     }
   };
 
-  // Click outside to close on desktop only
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isOpen && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -237,7 +233,6 @@ export function MenuDropdown({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, onClose]);
 
-  // Escape key to close dropdown
   useEffect(() => {
     const handleEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape' && !event.isComposing && isOpen) {
@@ -254,7 +249,6 @@ export function MenuDropdown({
 
   useBodyScrollLock(isOpen);
 
-  // Move focus into the overlay on open; hand it back to the trigger on close
   useEffect(() => {
     if (!isOpen) return;
 
@@ -267,7 +261,6 @@ export function MenuDropdown({
     };
   }, [isOpen]);
 
-  // Reset forms when dropdown closes
   useEffect(() => {
     if (!isOpen) {
       setShowContactForm(false);
@@ -275,7 +268,6 @@ export function MenuDropdown({
     }
   }, [isOpen]);
 
-  // Preload About image on open to avoid layout shift
   useEffect(() => {
     if (isOpen) {
       const img = new Image();
@@ -301,7 +293,6 @@ export function MenuDropdown({
     },
     { label: 'Metadata', href: '/metadata', show: isAdmin },
     { label: 'Comments', href: '/comments', show: isAdmin },
-    { label: 'Admin', href: '/admin', show: isAdmin },
   ];
 
   const renderNavItems = (items: MenuNavItem[]) =>
@@ -376,12 +367,6 @@ export function MenuDropdown({
 
         {renderNavItems(secondaryNavItems)}
 
-        {/* Clear Cache stays local-only by choice: evicting the backend's
-            in-process admin caches + nuking the Next route cache is a dev
-            workflow tool, not something to surface on every prod page. Since
-            BE 0207 the endpoint (/api/admin/cache/clear) exists in all
-            profiles behind the /api/admin/** ADMIN gate, so this gating is
-            product preference — no longer 404-avoidance. */}
         {isLocalEnvironment() && (
           <div className={styles.dropdownMenuItem}>
             <button

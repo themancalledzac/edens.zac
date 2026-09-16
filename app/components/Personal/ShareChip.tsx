@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
-import { Card } from '@/app/components/ui/Card/Card';
+import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
 import { FormError } from '@/app/components/ui/Field/FormError';
+import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
+import { Modal } from '@/app/components/ui/Modal/Modal';
 import { ApiError } from '@/app/lib/api/core';
 import {
   addShareCollection,
@@ -18,9 +20,9 @@ import {
 import { type CollectionModel } from '@/app/types/Collection';
 import { isEmailDisabled } from '@/app/utils/emailSendReason';
 
-import styles from './ShareCard.module.scss';
+import styles from './ShareChip.module.scss';
 
-export interface ShareCardProps {
+export interface ShareChipProps {
   /**
    * Server-resolved starting state. The failure arm is kept distinct from "no link yet" on
    * purpose — see {@link ShareSettingsRead}.
@@ -55,27 +57,12 @@ function mapError(error: unknown, fallback: string): string {
 }
 
 /**
- * "Share" card for `/user`: the link the owner hands to a friend, client or parent, plus the
- * controls for sending and revoking it.
- *
- * The link is deliberately shown in full and copyable on every visit, not just the one that
- * created it. Sending the same link to a second person months later must not require a reset —
- * a reset cuts off whoever is already using the first copy, which is the failure this whole
- * feature exists to avoid. Reset is therefore presented as the destructive action it is, well
- * away from the everyday copy and email controls.
- *
- * The opt-in list is off by default and covers only galleries the owner was granted access to but
- * is not tagged in. Tagged-in work is in every share already; a gallery someone else let them into
- * is not theirs to pass on, so sharing it has to be a deliberate act.
- *
- * Three smaller choices, so they are not undone by accident: the origin is read on the client so a
- * copied link matches the host the owner is actually on, without threading a base URL down from
- * the server; a refused clipboard permission is not an error, since the link is on screen and
- * selectable either way; and a failed settings read renders "unavailable" rather than the
- * create-a-link empty state, which would read as "you have none" to someone whose link is out
- * there working.
+ * Share chip for the owner's own space. Opens a dialog holding the link, copy, send-by-email,
+ * gallery opt-ins and reset controls. The failure arm stays distinct from "no link yet" (see
+ * {@link ShareSettingsRead}).
  */
-export function ShareCard({ read }: ShareCardProps) {
+export function ShareChip({ read }: ShareChipProps) {
+  const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState<ShareSettings | null>(read.ok ? read.settings : null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -154,29 +141,27 @@ export function ShareCard({ read }: ShareCardProps) {
       );
     }, 'Could not update what your link shows. Please try again.');
 
+  const openDialog = () => {
+    setError(null);
+    setEmailNote(null);
+    setRecipient('');
+    setCopied(false);
+    setOpen(true);
+  };
+
   const busy = phase === 'pending';
 
-  if (!read.ok) {
-    return (
-      <Card title="Share">
-        <p className={styles.hint}>Your share link is unavailable right now.</p>
-      </Card>
-    );
-  }
-
-  if (!settings?.exists) {
-    return (
-      <Card title="Share">
-        <Button type="button" variant="outline" loading={busy} onClick={handleReset}>
-          Link to share
-        </Button>
-        {error && <FormError>{error}</FormError>}
-      </Card>
-    );
-  }
-
-  return (
-    <Card title="Share">
+  const body = !read.ok ? (
+    <p className={styles.hint}>Your share link is unavailable right now.</p>
+  ) : !settings?.exists ? (
+    <>
+      <Button type="button" variant="outline" loading={busy} onClick={handleReset}>
+        Create link
+      </Button>
+      {error && <FormError>{error}</FormError>}
+    </>
+  ) : (
+    <>
       {shareUrl ? (
         <>
           <p className={styles.hint}>
@@ -193,8 +178,11 @@ export function ShareCard({ read }: ShareCardProps) {
           <div className={styles.row}>
             <input
               type="email"
+              name="recipientEmail"
+              autoComplete="email"
+              spellCheck={false}
               className={styles.input}
-              placeholder="Email it to someone"
+              placeholder="name@example.com…"
               aria-label="Send the link to this email address"
               value={recipient}
               onChange={event => setRecipient(event.target.value)}
@@ -254,6 +242,23 @@ export function ShareCard({ read }: ShareCardProps) {
       </div>
 
       {error && <FormError>{error}</FormError>}
-    </Card>
+    </>
+  );
+
+  return (
+    <>
+      <FilterChip label="Share" onToggle={openDialog} ariaHasPopup="dialog" ariaExpanded={open} />
+      <Modal open={open} onClose={() => setOpen(false)} variant="overlay" labelledBy="share-title">
+        <div className={styles.content}>
+          <div className={styles.header}>
+            <h2 id="share-title" className={styles.title}>
+              Share
+            </h2>
+            <CloseButton onClick={() => setOpen(false)} aria-label="Close" />
+          </div>
+          {body}
+        </div>
+      </Modal>
+    </>
   );
 }

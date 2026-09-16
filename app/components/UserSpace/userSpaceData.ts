@@ -1,6 +1,7 @@
 /**
- * Data layer for the "user space" page — the three-section view rendered at `/user` for the
- * signed-in user and at `/admin/users/[id]` for an admin looking at someone else's space.
+ * Data layer for the "user space" page — the three-section (Collections, Images, Saved) view
+ * rendered at `/user` for the signed-in user and at `/admin/users/[id]` for an admin looking at
+ * someone else's space.
  *
  * Both surfaces render the SAME sections from the SAME assembler output; only the reads differ.
  * `/api/read/user/**` binds every read to the session principal (self-only by construction), so
@@ -55,9 +56,7 @@ export const SHARE_TAB_KEYS = ['collections', 'images'] as const satisfies reado
  * omits it afterwards, when the cookie identifies the link instead.
  */
 export type UserSpaceMode =
-  | 'self'
-  | { mode: 'admin'; userId: number }
-  | { mode: 'share'; token?: string };
+  'self' | { mode: 'admin'; userId: number } | { mode: 'share'; token?: string };
 
 /** Narrow an untrusted `?tab=` value to a known key, falling back to the default section. */
 export function resolveTabKey(raw: string | string[] | undefined): TabKey {
@@ -65,8 +64,17 @@ export function resolveTabKey(raw: string | string[] | undefined): TabKey {
   return TAB_KEYS.includes(value as TabKey) ? (value as TabKey) : DEFAULT_TAB;
 }
 
+export type SpaceKey = TabKey | 'admin';
+
+/** `?tab=` narrowing for a page that also hosts the admin hub: `admin` is valid and the default. */
+export function resolveSpaceKey(raw: string | string[] | undefined): SpaceKey {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === undefined || value === 'admin') return 'admin';
+  return resolveTabKey(value);
+}
+
 /** Split the synthetic user collection's content into COLLECTION blocks and IMAGE/GIF blocks. */
-export function splitUserContent(content: AnyContentModel[] | undefined): {
+function splitUserContent(content: AnyContentModel[] | undefined): {
   collectionBlocks: AnyContentModel[];
   imageBlocks: AnyContentModel[];
 } {
@@ -88,7 +96,7 @@ export function splitUserContent(content: AnyContentModel[] | undefined): {
  * `convertCollectionContentToParallax`, which carries `referencedCollectionId` through as the
  * card's `collectionId` — the id the follow toggle persists against.
  */
-export function toCollectionBlocks(collections: CollectionModel[]): ContentCollectionModel[] {
+function toCollectionBlocks(collections: CollectionModel[]): ContentCollectionModel[] {
   return collections.map((collection, index) => ({
     contentType: 'COLLECTION',
     id: collection.id,
@@ -165,22 +173,15 @@ export function countAssociatedCollections(
 export interface UserSpaceSection {
   label: string;
   /**
-   * The blocks this section renders — populated ONLY for the active section.
-   *
-   * An inactive section is deliberately left empty rather than hydrated, because hydrating one
-   * costs a read the viewer may never look at (see {@link loadUserSpace}). That makes
-   * `content.length` meaningless for an inactive section, which is exactly why {@link count} is a
-   * field of its own and not derived from this array.
+   * The blocks this section renders. Every section is loaded up front by {@link loadUserSpace},
+   * so `UserSpaceGrid` can switch between them client-side without another read.
    */
   content: AnyContentModel[];
   /**
-   * How many items this section holds, known independently of whether {@link content} was
-   * hydrated — this is what the section chip displays.
-   *
-   * Separate from `content.length` so a deferred section still reports a TRUE number instead of
-   * the `0` it would otherwise derive from its un-hydrated array. `undefined` means genuinely
-   * unknown (the read failed) and the chip then says nothing at all, which is the only honest
-   * rendering of an unknown count — see the {@link UserSpace} docblock.
+   * How many items this section holds, shown as the chip's badge. Kept separate from
+   * `content.length` because Collections counts ids the viewer is associated with, including ones
+   * that are not renderable as tiles. `undefined` means the read failed and the chip shows no
+   * number at all.
    */
   count?: number;
   /** Shown when the read succeeded and returned nothing. A claim about the data — must be true. */
@@ -208,7 +209,10 @@ export interface UserSpaceData {
    * follows read failed, which is what withholds the filter rather than showing an empty one.
    */
   followedCollectionIds: number[];
-  /** Ids the save toggle seeds from. Empty in admin mode, for the same reason. */
+  /**
+   * Ids the save toggle seeds from. Empty in admin mode, for the same reason. Derived from the
+   * saved-images read itself rather than a second ids-only fetch (single-fetch rule).
+   */
   savedImageIds: number[];
   /**
    * Collection ids an ADMIN associated with this user — the half of the Collections list that an
@@ -222,10 +226,11 @@ export interface UserSpaceData {
   /**
    * Which section chips to offer, in order.
    *
-   * All four for the owner and for an admin. A share recipient gets Collections and Images only:
-   * Saved and Following are the owner's private bookmarks, which the backend deliberately keeps
-   * out of the recipient view. Rendering them empty would be worse than omitting them — an empty
-   * "Saved" tab reads as a claim that the owner has saved nothing, which is not what we know.
+   * All three (Collections, Images, Saved) for the owner and for an admin. A share recipient gets
+   * Collections and Images only: Saved is the owner's private bookmark list, which the backend
+   * deliberately keeps out of the recipient view. Rendering it empty would be worse than omitting
+   * it — an empty "Saved" tab reads as a claim that the owner has saved nothing, which is not what
+   * we know.
    */
   visibleKeys: readonly [TabKey, ...TabKey[]];
   /**
@@ -264,26 +269,17 @@ async function loadShareView(target: { mode: 'share'; token?: string }): Promise
 }
 
 /**
- * Load one user's space, hydrating only the section that is actually on screen.
+ * Load one user's space: every section's content, hydrated up front so the client can switch
+ * between them with no further server round trip (see `UserSpaceGrid`).
  *
  * Returns `null` when the space itself genuinely does not exist (404 or an empty body), which the
  * caller turns into a 404 / empty state; any other read failure rejects so the error boundary
  * handles it.
  *
- * ## Why `activeKey` is a parameter
- *
- * Every section's COUNT is read on every request, so all three chips keep an accurate badge. But
- * the Collections section needs the full collection catalog to turn the followed-id list into
- * renderable blocks, and that read (`getAllCollections(0, 500)`) is ~0.5s and ~57KB against the
- * local backend. It is skipped on the sections that do not render collections.
- *
- * Collections is the DEFAULT section, so unlike the deferral this replaces, the cost is now paid on
- * the common path rather than avoided on it. That is the accepted price of merging Following into
- * Collections: one list of every association cannot be assembled without the catalog that names the
- * followed half. The read still sits inside the `Promise.all` below, so it overlaps the page read
- * rather than adding to it.
- *
- * Images and Saved need no catalog: both come from reads already required to render the page.
+ * The collection catalog (`getAllCollections(0, 500)`) is read whenever the target is not a share
+ * link, since every mode with a Collections section now needs it up front rather than only when
+ * that section happened to be server-selected. A share recipient has no follow state, so the read
+ * is skipped for them.
  *
  * ## Fail-soft reads
  *
@@ -299,21 +295,17 @@ async function loadShareView(target: { mode: 'share'; token?: string }): Promise
  * the list may be incomplete. It also leaves {@link UserSpaceData.followedCollectionIds} empty,
  * which is what withholds the `following` filter — a filter for a set nobody could read would
  * silently report every collection as unfollowed.
+ *
+ * A share recipient owns no bookmarks, so the saved/follows reads synthesize a fail-soft empty
+ * rather than skip the fetch, keeping the shape uniform for the rest of the function; neither is
+ * offered as a section in that mode (see {@link UserSpaceData.visibleKeys}).
  */
-export async function loadUserSpace(
-  target: UserSpaceMode,
-  activeKey: TabKey = DEFAULT_TAB
-): Promise<UserSpaceData | null> {
+export async function loadUserSpace(target: UserSpaceMode): Promise<UserSpaceData | null> {
   const isSelf = target === 'self';
   const isShare = target !== 'self' && target.mode === 'share';
 
-  // A recipient owns no bookmarks here, so both fail-soft reads are a genuine empty rather than a
-  // skipped read reported as a failure. Saved/Following are not offered as sections at all in this
-  // mode (see `visibleKeys`); this only keeps the shape uniform for the code below.
   const noBookmarks = Promise.resolve<FailSoftRead<never>>({ ok: true, items: [] });
 
-  // The catalog read stays INSIDE the Promise.all rather than being awaited after it: awaiting it
-  // downstream would serialize it behind the page read instead of overlapping with it.
   const [pageRead, saved, followed, catalog] = await Promise.all([
     isSelf
       ? getUserPage()
@@ -332,38 +324,23 @@ export async function loadUserSpace(
         : listFollowedCollectionIdsByUserServer(
             (target as { mode: 'admin'; userId: number }).userId
           ),
-    // Never fetched in share mode: a recipient has no follow state, so the catalog would hydrate
-    // a half of the union that is always empty for them.
-    activeKey === 'collections' && !isShare
-      ? getAllCollections(0, 500)
-      : Promise.resolve<CollectionModel[]>([]),
+    !isShare ? getAllCollections(0, 500) : Promise.resolve<CollectionModel[]>([]),
   ]);
 
-  // Share mode's read carries the owner's name alongside the page; the other two return the page
-  // alone. Unwrapped here so the rest of the function sees one shape.
   const shareView = isShare ? (pageRead as ShareView | null) : null;
   const collection = isShare ? (shareView?.page ?? null) : (pageRead as CollectionModel | null);
   if (!collection) return null;
 
-  // A failed read has no `items` to take — see {@link FailSoftRead}. `[]` here is only ever the
-  // array the SECTIONS render from; `saved.ok` / `followed.ok` is what decides whether that empty
-  // array is allowed to speak, a few lines down.
   const savedImages = saved.ok ? saved.items : [];
   const followedCollectionIds = followed.ok ? followed.items : [];
 
   const { collectionBlocks, imageBlocks } = splitUserContent(collection.content);
 
-  // Non-empty only on the Collections tab, because `catalog` is only fetched there — see the
-  // docblock.
   const followedSet = new Set(followedCollectionIds);
   const followedBlocks = toCollectionBlocks(catalog.filter(c => followedSet.has(c.id)));
 
   const associatedCollections = unionCollectionBlocks(collectionBlocks, followedBlocks);
 
-  // Second person for the owner, third for an admin looking in — an empty Saved tab saying
-  // "You have not saved any images yet" on someone else's page reads as the admin's own state.
-  // The failure copy splits the same way: "Your saved images" is wrong on a page that is not the
-  // viewer's, and the unqualified form is vague on the page that is.
   const subject = isSelf
     ? {
         possessive: 'You have',
@@ -386,8 +363,6 @@ export async function loadUserSpace(
       content: associatedCollections,
       count: countAssociatedCollections(collectionBlocks, followedCollectionIds),
       emptyLabel: 'No collections yet.',
-      // A partial failure, not a total one: the granted half rendered. The copy says the list may
-      // be incomplete rather than claiming the section is unavailable, which would be false.
       unavailableLabel: followed.ok || isShare ? undefined : subject.followingUnavailable,
     },
     images: {
@@ -408,12 +383,7 @@ export async function loadUserSpace(
   return {
     collection,
     sections,
-    // Seeding the toggles is only meaningful for one's own space. In admin mode the controls are
-    // not rendered at all (see UserSpace), so seeding them with the TARGET's ids would put another
-    // user's state into the admin's client-side providers for no benefit.
     followedCollectionIds: isSelf ? followedCollectionIds : [],
-    // `/user/saves/images` already returns the full saved set, so derive the ids from it rather
-    // than issuing a second `/user/saves` ids-only read (single-fetch rule).
     savedImageIds: isSelf ? savedImages.map(i => i.id) : [],
     grantedCollectionIds: collectionBlocks
       .filter(isContentCollection)
