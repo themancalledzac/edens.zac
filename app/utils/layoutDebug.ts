@@ -37,12 +37,12 @@ export interface RowMeasurements {
   heightPx: number;
   /** Blank area inside the row from column-height mismatches, in px². */
   pocketPx2: number;
-  /** Compact structure string, e.g. `H(V(panel:users, panel:messages), image:All Images)`. */
+  /** Compact structure string, e.g. `H(panel, V(image:All Images, image:All Collections))`. */
   structure: string;
 }
 
 function leafLabel(content: AnyContentModel): string {
-  if (isPanelContent(content)) return `panel:${content.panelType}`;
+  if (isPanelContent(content)) return 'panel';
   const title = 'title' in content && content.title ? content.title : content.contentType;
   return `${content.contentType.toLowerCase()}:${title}`;
 }

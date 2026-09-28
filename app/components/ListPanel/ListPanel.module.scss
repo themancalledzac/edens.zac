@@ -1,12 +1,15 @@
+@use '../../styles/a11y';
+
 /* ListPanel — shared shell for list panels (header + scrollable body + the rows' list surface) */
 
-/* Height is deliberately absent HERE: the panel is a flex item of AdminPanelRenderer's .box, which
-   carries the packer's number as a real `height` (not a max-height — the packed number IS the
-   panel's content height, `chrome + rowCount * rowHeight`). As a non-growing flex item the panel is
-   then as tall as its own contents, bounded by that box. `overflow: hidden` is what lets it shrink
-   past its content size when the box binds (it zeroes the flex automatic minimum size) and hand the
-   overflow to .body's scroll — an explicit `min-height: 0` here would be a second mechanism for the
-   same job. `.isCollapsed` below is the one state that opts out and fills the box instead. */
+/* The panel FILLS the box AdminPanelRenderer sizes from the packer's number (`height: 100%`). That
+   box is sized for the tallest tab (see `tabbedPanelHeight` in adminHubContent.ts), so filling it
+   keeps the shell the same size whichever tab is showing: switching tabs changes the list, never
+   the panel, and nothing around it on the page moves. Outside a sized box, 100% of an auto-height
+   parent resolves to auto, and the panel is as tall as its content.
+
+   `overflow: hidden` is what lets the panel shrink below its content size when the box binds and
+   hand the overflow to .body's scroll. */
 .panel {
   /* The --lp-* ramp: shell -> list -> row, plus a hover surface and a row separator. Scoped to
      this component rather than added to globals.css, following the --sel-* precedent in
@@ -46,6 +49,7 @@
 
   display: flex;
   flex-direction: column;
+  height: 100%;
   overflow: hidden;
   background: var(--lp-surface-shell);
   border: 1px solid var(--color-border);
@@ -68,39 +72,115 @@
   }
 }
 
-/* The header is the SAME grid as .row below, which is the whole point of this component: the two
-   share one right rail, so a header action cannot drift out of line with the row actions under it.
-   `justify-content: space-between` used to live here and was a no-op — `.title { flex: 1 }` left no
-   free space to distribute — and it is superseded rather than repaired, because the grid places
-   all three sections by track instead of by leftover space.
+/* One line: [chevron] [title or tabs] [action]. Flex rather than the row grid, because the header
+   no longer has three sections to line up with a row's three. What it shares with the rows is the
+   RIGHT RAIL: its inline padding is the same --space-4 that .list insets row content by, so the
+   action ends exactly where the row actions end. subtreeRules.test.ts pins that pairing.
 
-   Left column is `1fr` so the title takes the slack; the middle and right columns are `auto` so
-   each is exactly as wide as its content and the last one ends flush with the header's content
-   edge. Both of those wrappers are rendered unconditionally by ListPanel — see the note there. */
+   `nowrap` plus a shrinkable tab strip is what keeps this one line at any width: the strip scrolls
+   sideways before anything wraps, because a second header line would be height the packer never
+   reserved. */
 .header {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
+  display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
 }
 
-.headerMiddle {
-  justify-self: end;
-}
-
-.headerRight {
+/* The panel's single action, pushed to the far right whatever precedes it. */
+.action {
   display: flex;
-  justify-self: end;
+  flex: none;
   align-items: center;
-  gap: var(--space-2);
+  margin-left: auto;
 }
 
-/* Collapsed the panel fills the packer's uniform bar box, so a text-only header stretches its
-   body strip to the same height as a button-carrying one. */
-.isCollapsed {
-  height: 100%;
+/* The tab strip takes the space between the chevron and the action, and scrolls sideways when four
+   labels do not fit a phone-width panel. `min-width: 0` is what lets it shrink below its content
+   instead of pushing the action off the panel.
+
+   The mask fades the strip's last --space-5 so a tab cut off at a phone width reads as "more this
+   way" rather than as missing. Where the tabs fit, the strip is wider than its tabs and the fade
+   falls on empty space. `position: relative` makes the strip the tabs' offsetParent, which
+   TabStrip reads to scroll the active tab into view. */
+.tabs {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--space-5)), transparent);
+}
+
+/* A tab is exactly the header's `button` slot tall (--lp-slot-button), the same height as the
+   action beside it, so the header's reserved height does not change with tabs. The selected tab is
+   marked by weight, colour and an inset underline, which takes no layout space. */
+.tab {
+  flex: none;
+  height: var(--lp-slot-button);
+  padding: 0 var(--space-2);
+  background: none;
+  border: none;
+  border-radius: var(--radius-1) var(--radius-1) 0 0;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-on-surface-muted);
+  cursor: pointer;
+  transition: color var(--duration-base) var(--ease-standard);
+
+  &:hover {
+    color: var(--color-on-surface);
+  }
+
+  &[aria-selected='true'] {
+    font-weight: 600;
+    color: var(--color-on-surface);
+    box-shadow: inset 0 -2px 0 var(--color-on-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+}
+
+/* The header action, in one style for every panel whether it is a link or a button (see
+   PanelAction). A quiet text button: no fill until hovered, so it reads as a control without
+   competing with the tabs. Its height is the `button` slot, so it can never grow the header. */
+.panelAction {
+  display: inline-flex;
+  align-items: center;
+  height: var(--lp-slot-button);
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-1);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-on-surface);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--duration-base) var(--ease-standard);
+
+  &:hover:not(:disabled) {
+    background: var(--color-overlay-soft);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
 }
 
 /* Collapsed keeps a strip of the body visible below the header — a closed panel reads as the
@@ -129,18 +209,26 @@
 }
 
 .title {
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
   font-size: var(--text-md);
   font-weight: 500;
   color: var(--color-on-surface);
+}
 
-  /* `flex: 1` is gone with the flex header — it was what stretched the disclosure button across
-     everything between "Users" and the action controls, making that whole span a clickable but
-     visually unmarked surface. `min-width: 0` stays, and is layout correctness rather than a
-     leftover: a grid item's automatic minimum is its min-content width, so without this a long
-     title would grow the `1fr` track past its share and push the right rail off the panel — the
-     same protection .rowLeft carries for the same reason. */
-  min-width: 0;
+/* The heading around a tabbed panel's collapse toggle. The tabs name the content, so the heading is
+   only as wide as the chevron, and its text is visually hidden (.srOnly). */
+.toggleHeading {
+  flex: none;
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.srOnly {
+  @extend %visually-hidden;
 }
 
 /* Layout and the button reset live in Disclosure; this is the panel's own skin on top of it.
@@ -176,6 +264,36 @@
   min-height: 0;
   overflow-y: auto;
   padding: var(--space-4) 0;
+}
+
+/* The body's first line: a view's heading on the left, its filters on the right. Inset on the same
+   rail as the header and the rows. Its text is `nowrap` for the same reason a row's is: in the list
+   view this line is part of the height the packer reserves (`toolbar` in listPanelShape.ts). */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4) var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+  white-space: nowrap;
+}
+
+.viewTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-on-surface);
+}
+
+.toolbarControls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 /* The list surface, declared once here instead of once per panel: all three carried a
@@ -282,20 +400,5 @@
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
     border-radius: var(--radius-1);
-  }
-}
-
-/* The header's trailing "N · View all" link (see `ViewAllLink`). Hoisted byte-for-byte out of
-   CollectionsPanel and MessagesPanel, which each had their own copy — the second one added under a
-   comment saying it was copying the first, which is the point at which a rule stops belonging to
-   either panel. */
-.viewAll {
-  font-size: var(--text-sm);
-  color: var(--color-on-surface-muted);
-  text-decoration: none;
-
-  &:hover {
-    color: var(--color-on-surface);
-    text-decoration: underline;
   }
 }

@@ -1,17 +1,13 @@
 'use client';
 
-import { type ComponentType } from 'react';
-
-import { CollectionsPanel } from '@/app/components/CollectionsPanel/CollectionsPanel';
+import { AdminLists } from '@/app/components/AdminLists/AdminLists';
 import { useAdminPanelCollapse } from '@/app/components/ListPanel/AdminPanelCollapseContext';
-import { MessagesPanel } from '@/app/components/MessagesPanel/MessagesPanel';
-import { RolesPanel } from '@/app/components/RolesPanel/RolesPanel';
-import UserManagementPanel from '@/app/components/UserManagementPanel/UserManagementPanel';
 import type { ContentPanelModel } from '@/app/types/Content';
 
 import styles from './AdminPanelRenderer.module.scss';
 
 interface AdminPanelRendererProps {
+  /** The PANEL block. Only its size matters here; the packer already read the rest. */
   content: ContentPanelModel;
   width: number;
   height: number;
@@ -19,27 +15,9 @@ interface AdminPanelRendererProps {
   positionClassName?: string;
 }
 
-interface AdminPanelChildProps {
-  collapsed?: boolean;
-  onCollapsedChange?: (collapsed: boolean) => void;
-}
-
 /**
- * A lookup rather than a ternary chain: an `else` branch silently renders the wrong panel for
- * anything it does not name, while a missing key here is a type error.
- */
-const PANEL_COMPONENTS: Record<
-  ContentPanelModel['panelType'],
-  ComponentType<AdminPanelChildProps>
-> = {
-  users: UserManagementPanel,
-  messages: MessagesPanel,
-  roles: RolesPanel,
-  collections: CollectionsPanel,
-};
-
-/**
- * Bridges a PANEL content block to its component, inside the box the layout packer sized.
+ * Bridges the PANEL content block to the hub's tabbed list panel ({@link AdminLists}), inside the
+ * box the layout packer sized.
  *
  * A panel is an ordinary leaf of the content layout, and this renders it as one — same
  * `positionClassName` a photograph gets at the same slot (`ContentComponent.module.scss`'s
@@ -94,26 +72,20 @@ const PANEL_COMPONENTS: Record<
  *
  * Collapsed state is READ here but OWNED upstream by `AdminHubClient`, because collapsing has to
  * change the panel's content model before layout runs: the packer sizes every row from those
- * models, so a flag held at this depth can shrink one panel's own box and nothing else. Owning it
+ * models, so a flag held at this depth could shrink the panel's own box and nothing else. Owning it
  * above `Component` is what lets the rest of the hub re-pack.
  *
  * With no provider the collapse props are omitted entirely, and `ListPanel` renders its plain
  * non-collapsible header — the same opt-in gate it already applies to `onCollapsedChange`.
  */
 export function AdminPanelRenderer({
-  content,
   width,
   height,
   positionClassName = '',
 }: AdminPanelRendererProps) {
   const collapse = useAdminPanelCollapse();
-  const collapsed = collapse?.isCollapsed(content.panelType) ?? false;
-  const Panel = PANEL_COMPONENTS[content.panelType];
   const collapseProps = collapse
-    ? {
-        collapsed,
-        onCollapsedChange: (next: boolean) => collapse.setCollapsed(content.panelType, next),
-      }
+    ? { collapsed: collapse.collapsed, onCollapsedChange: collapse.setCollapsed }
     : {};
 
   return (
@@ -121,7 +93,7 @@ export function AdminPanelRenderer({
       className={`${positionClassName} ${styles.box}`.trim()}
       style={{ width, height, boxSizing: 'border-box', position: 'relative' }}
     >
-      <Panel {...collapseProps} />
+      <AdminLists {...collapseProps} />
     </div>
   );
 }

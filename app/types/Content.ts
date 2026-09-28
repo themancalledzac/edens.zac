@@ -391,15 +391,12 @@ export interface ContentCollectionModel extends Content {
   visibility?: CollectionVisibility;
 }
 
-/** The admin hub panels that can appear as a PANEL content block. */
-export type PanelType = 'users' | 'messages' | 'roles' | 'collections';
-
 /**
- * Panel content model - displays a UI panel (e.g. users or messages) as a rated content block
+ * Panel content model — the admin hub's tabbed list panel (users, messages, roles, collections),
+ * placed by the layout packer as a rated content block.
  */
 export interface ContentPanelModel extends Content {
   contentType: 'PANEL';
-  panelType: PanelType;
   rating: number;
 }
 

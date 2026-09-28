@@ -8,6 +8,7 @@ import {
   rowHeight,
   type RowShape,
   SLOT_HEIGHT,
+  TOOLBAR_GAP,
 } from '@/app/components/ListPanel/listPanelShape';
 
 /**
@@ -120,6 +121,16 @@ describe('rowHeight', () => {
 });
 
 describe('panelChromeHeight', () => {
+  it('adds a toolbar line and its gap when the panel declares one', () => {
+    const tabbedHeader: RowShape = { left: ['button'], right: ['button'] };
+    const plain = panelChromeHeight(tabbedHeader);
+    expect(plain).toBe(86);
+    expect(panelChromeHeight(tabbedHeader, ['subheader'])).toBe(
+      plain + SLOT_HEIGHT.subheader + TOOLBAR_GAP
+    );
+    expect(panelChromeHeight(tabbedHeader, [])).toBe(plain);
+  });
+
   it('is taller for a header carrying a button than a text-only one', () => {
     expect(panelChromeHeight({ left: ['header'], right: ['button'] })).toBeGreaterThan(
       panelChromeHeight({ left: ['header'] })

@@ -5,7 +5,13 @@ import { useRouter } from 'next/navigation';
 import { type ReactNode, useMemo } from 'react';
 
 import { useAdminPanelSeed } from '@/app/components/ListPanel/AdminPanelSeedContext';
-import { ListPanel, ListRow, ListRows, ViewAllLink } from '@/app/components/ListPanel/ListPanel';
+import {
+  ListPanel,
+  type ListPanelShell,
+  ListRow,
+  ListRows,
+  ViewAllLink,
+} from '@/app/components/ListPanel/ListPanel';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadError } from '@/app/components/ui/StatusText/LoadError';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
@@ -20,8 +26,8 @@ import { compareCollectionsNewestFirst } from '@/app/utils/sortCollections';
 import styles from './CollectionsPanel.module.scss';
 
 interface CollectionsPanelProps {
-  collapsed?: boolean;
-  onCollapsedChange?: (collapsed: boolean) => void;
+  /** The hub's tab strip and collapse state; absent when mounted on its own. */
+  shell?: ListPanelShell;
 }
 
 /**
@@ -48,7 +54,7 @@ async function fetchCollections(): Promise<CollectionListModel[]> {
  * The hub's collection list: a cover thumbnail, the collection's name and its date, per row.
  *
  * The first panel built on {@link ListPanel} rather than migrated onto it. Its row declares
- * `left: ['header', 'subheader']` and nothing on the right (`PANEL_SHAPE` in `adminHubContent.ts`),
+ * `left: ['header', 'subheader']` and nothing on the right (`TAB_SHAPE` in `adminHubContent.ts`),
  * which derives to 54px. The thumbnail is deliberately not part of that declaration: at 32px it is
  * shorter than the 41px name-over-date stack, so the stack governs the row and the thumbnail costs
  * no height. Growing it past 41px would make the declared shape wrong with nothing to catch it.
@@ -63,10 +69,10 @@ async function fetchCollections(): Promise<CollectionListModel[]> {
  * background refresh over showing data raises the {@link StaleNotice} instead. Both follow
  * {@link RolesPanel}, which this panel is otherwise a simpler version of.
  *
- * Collapsed state is owned by `AdminHubClient` and passed straight through: this panel has no
- * body-only mode to force itself open for.
+ * The Collections tab of the `/admin` hub's list panel. The tab strip and collapsed state arrive as
+ * `shell` and pass straight through: this panel has no body-only mode to force itself open for.
  */
-export function CollectionsPanel({ collapsed, onCollapsedChange }: CollectionsPanelProps) {
+export function CollectionsPanel({ shell }: CollectionsPanelProps) {
   const router = useRouter();
   const seed = useAdminPanelSeed();
 
@@ -79,7 +85,7 @@ export function CollectionsPanel({ collapsed, onCollapsedChange }: CollectionsPa
 
   const collections = useMemo(() => [...(data ?? [])].sort(compareCollectionsNewestFirst), [data]);
 
-  const headerRight = <ViewAllLink href="/collections" count={collections.length} />;
+  const action = <ViewAllLink href="/collections" count={collections.length} />;
 
   let body: ReactNode = null;
   if (!loading) {
@@ -123,13 +129,7 @@ export function CollectionsPanel({ collapsed, onCollapsedChange }: CollectionsPa
   }
 
   return (
-    <ListPanel
-      title="Collections"
-      ariaLabel="Collections"
-      headerRight={headerRight}
-      collapsed={collapsed}
-      onCollapsedChange={onCollapsedChange}
-    >
+    <ListPanel {...shell} title="Collections" ariaLabel="Collections" action={action}>
       <LoadingText isLoading={loading}>Loading collections…</LoadingText>
       {!loading && !loadError && revalidationFailed && <StaleNotice />}
       {body}

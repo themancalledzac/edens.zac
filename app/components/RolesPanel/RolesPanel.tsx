@@ -14,7 +14,13 @@ import {
 } from 'react';
 
 import { useAdminPanelSeed } from '@/app/components/ListPanel/AdminPanelSeedContext';
-import { ListPanel, ListRow, ListRows } from '@/app/components/ListPanel/ListPanel';
+import {
+  ListPanel,
+  type ListPanelShell,
+  ListRow,
+  ListRows,
+  PanelAction,
+} from '@/app/components/ListPanel/ListPanel';
 import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
@@ -36,30 +42,31 @@ import styles from './RolesPanel.module.scss';
 type View = { mode: 'list' } | { mode: 'create' } | { mode: 'detail'; role: RoleSummary };
 
 interface RolesPanelProps {
-  collapsed?: boolean;
-  onCollapsedChange?: (collapsed: boolean) => void;
+  /** The hub's tab strip and collapse state; absent when mounted on its own. */
+  shell?: ListPanelShell;
 }
 
 /**
  * Tall, self-contained admin panel that owns the role list and swaps its body between a scrollable
- * list, a create form, and a role's detail editor — all in the same fixed-size space. Lives on the
- * `/admin` hub alongside {@link UserManagementPanel} and {@link MessagesPanel}, and replaces the
- * former standalone `/admin/roles` and `/admin/roles/[roleId]` routes.
+ * list, a create form, and a role's detail editor — all in the same fixed-size space. The Roles tab
+ * of the `/admin` hub's list panel; it replaced the former standalone `/admin/roles` and
+ * `/admin/roles/[roleId]` routes.
  *
  * A role is an admin-curated group of users that carries per-collection grants; joining the role is
  * how a user inherits them. Opening one swaps the body rather than navigating, so an admin can move
  * through several roles without losing the hub.
  *
- * A role stays addressable even without a route of its own: `/admin?role=[id]` opens that role's
- * detail directly, which is what `UserRolesSection` links a user's role names to. The param is an
- * entry point only — moving around inside the panel does not rewrite the URL, so a Back to the
- * list leaves `?role=` standing and a reload would reopen that role.
+ * A role stays addressable even without a route of its own: `/admin?role=[id]` selects this tab
+ * (see `resolveAdminListTab`) and opens that role's detail directly, which is what
+ * `UserRolesSection` links a user's role names to. The param is an entry point only — moving around
+ * inside the panel does not rewrite the URL, so a Back to the list leaves `?role=` standing and a
+ * reload would reopen that role.
  *
  * Deleting is offered twice on purpose: the per-row × here for the common case, and a Delete role
  * button inside {@link RoleDetailView} for when you have opened a role to check what it grants
  * before removing it. Both confirm first, matching the rest of the admin surface.
  *
- * Collapsed state is owned by `AdminPanelRenderer` (it sizes the box) and passed straight through to
+ * The tab strip and collapsed state arrive as `shell` and pass straight through to
  * {@link ListPanel}. This panel only intervenes to force itself open when the body gains something
  * the user must see: the create form and the detail editor both live in the body, so opening one
  * while collapsed would otherwise look like the control did nothing.
@@ -87,7 +94,7 @@ interface RolesPanelProps {
  * has to outlive the branches it reports on (see its docblock), and `backToList` flips the view and
  * re-enters loading in the same commit.
  */
-export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
+export function RolesPanel({ shell }: RolesPanelProps) {
   const searchParams = useSearchParams();
   const [view, setView] = useState<View>({ mode: 'list' });
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -132,6 +139,7 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
    * The create form and the detail editor both render in the panel body, so entering one has to
    * open the panel — otherwise the header swaps to "New Role" with nothing beneath it.
    */
+  const onCollapsedChange = shell?.onCollapsedChange;
   const openView = useCallback(
     (next: View) => {
       setView(next);
@@ -203,8 +211,8 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
     }
   };
 
-  const headerTitle =
-    view.mode === 'create' ? 'New Role' : view.mode === 'detail' ? view.role.name : 'Roles';
+  const viewTitle =
+    view.mode === 'create' ? 'New Role' : view.mode === 'detail' ? view.role.name : undefined;
 
   let listBody: ReactNode = null;
   if (!loading) {
@@ -241,24 +249,20 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
     }
   }
 
-  const headerRight =
+  const action =
     view.mode === 'list' ? (
-      <Button variant="secondary" size="sm" onClick={() => openView({ mode: 'create' })}>
-        + New Role
-      </Button>
+      <PanelAction onClick={() => openView({ mode: 'create' })}>+ New Role</PanelAction>
     ) : (
-      <Button variant="ghost" size="sm" onClick={backToList}>
-        ← Back
-      </Button>
+      <PanelAction onClick={backToList}>← Back</PanelAction>
     );
 
   return (
     <ListPanel
-      title={headerTitle}
+      {...shell}
+      title="Roles"
       ariaLabel="Role management"
-      headerRight={headerRight}
-      collapsed={collapsed}
-      onCollapsedChange={onCollapsedChange}
+      viewTitle={viewTitle}
+      action={action}
     >
       <LoadingText isLoading={loading}>Loading roles…</LoadingText>
 

@@ -14,17 +14,7 @@ import { buildAdminHubContent, COLLAPSED_PANEL_SIZE } from '@/app/(admin)/admin/
  * DOM the packer produced changed shape, not just that a class toggled.
  */
 
-/**
- * The real max desktop content width (pageMaxWidth 1300 − desktopPadding 25.6). This suite renders
- * `buildAdminHubContent([])`, i.e. the zero-count fallback, and 1274.4px sits inside a band where
- * that fixture packs all three panels into one row. There is no single "three panels share a row"
- * threshold to quote — an earlier revision of this header claimed 1232.0px, but swept in 0.1px
- * steps through `buildContentRows` the zero-count fallback shares a row from 712.80px, SPLITS
- * again from 1045.48px, and shares once more from 1232.00px. See the header docblock of
- * `adminHubContent.ts` for the measured picture on all three fixtures. What this test needs from
- * the width is only that the click below re-packs a shared row rather than one panel per row;
- * `page.collapsedLayout.test.ts` pins the narrow cases.
- */
+/** The real max desktop content width (pageMaxWidth 1300 − desktopPadding 25.6). */
 const DESKTOP_VIEWPORT = { contentWidth: 1274.4, viewportHeight: 900, isMobile: false };
 
 /**
@@ -62,17 +52,16 @@ jest.mock('next/navigation', () => ({
 }));
 
 interface PanelStubProps {
-  collapsed?: boolean;
-  onCollapsedChange?: (collapsed: boolean) => void;
+  shell?: { collapsed?: boolean; onCollapsedChange?: (collapsed: boolean) => void };
 }
 
 function panelStub(label: string) {
-  return function Stub({ collapsed, onCollapsedChange }: PanelStubProps) {
+  return function Stub({ shell }: PanelStubProps) {
     return (
       <div data-testid={`${label}-stub`}>
         {label}
-        <span data-testid={`${label}-collapsed`}>{String(collapsed)}</span>
-        <button type="button" onClick={() => onCollapsedChange?.(true)}>
+        <span data-testid={`${label}-collapsed`}>{String(shell?.collapsed)}</span>
+        <button type="button" onClick={() => shell?.onCollapsedChange?.(true)}>
           {`collapse ${label}`}
         </button>
       </div>
@@ -97,7 +86,7 @@ jest.mock('@/app/components/CollectionsPanel/CollectionsPanel', () => ({
   CollectionsPanel: panelStub('CollectionsPanel'),
 }));
 
-/** The `AdminPanelRenderer` box wrapping a stubbed panel — where `width`/`maxHeight` land. */
+/** The `AdminPanelRenderer` box wrapping the stubbed active tab — where `width`/`height` land. */
 function panelBox(label: string): HTMLElement {
   const stub = screen.getByTestId(`${label}-stub`);
   const box = stub.parentElement;
@@ -117,29 +106,21 @@ describe('AdminHubClient', () => {
       />
     );
 
-    const usersWidthBefore = Number.parseFloat(panelBox('UserManagementPanel').style.width);
-    const usersHeightBefore = Number.parseFloat(panelBox('UserManagementPanel').style.height);
-    const rolesHeightBefore = Number.parseFloat(panelBox('RolesPanel').style.height);
-
-    expect(usersWidthBefore).toBeLessThan(1000);
+    // Only the active tab is mounted: Users, the default.
+    expect(screen.queryByTestId('RolesPanel-stub')).not.toBeInTheDocument();
+    const heightBefore = Number.parseFloat(panelBox('UserManagementPanel').style.height);
 
     fireEvent.click(screen.getByRole('button', { name: 'collapse UserManagementPanel' }));
 
-    const usersBoxAfter = panelBox('UserManagementPanel');
-    const usersWidthAfter = Number.parseFloat(usersBoxAfter.style.width);
-    const usersHeightAfter = Number.parseFloat(usersBoxAfter.style.height);
-    const rolesHeightAfter = Number.parseFloat(panelBox('RolesPanel').style.height);
+    const boxAfter = panelBox('UserManagementPanel');
+    const widthAfter = Number.parseFloat(boxAfter.style.width);
+    const heightAfter = Number.parseFloat(boxAfter.style.height);
 
-    expect(usersWidthAfter).toBeGreaterThanOrEqual(COLLAPSED_PANEL_SIZE.minWidth);
-    expect(usersBoxAfter.style.maxHeight).toBe('');
-
-    // The collapse is a real re-pack, not a local restyle: Users drops to the bar height while
-    // Roles — untouched by the click — keeps the height its own row count dictates. Height is the
-    // honest signal now; the old assertion here was "roles gets WIDER", which the composer
-    // invalidated once it could reclaim freed space by pulling more items into the row instead.
-    expect(usersHeightAfter).toBe(COLLAPSED_PANEL_SIZE.minHeight);
-    expect(usersHeightAfter).toBeLessThan(usersHeightBefore);
-    expect(rolesHeightAfter).toBe(rolesHeightBefore);
+    // A real re-pack, not a local restyle: the box the packer hands the panel drops to the bar.
+    expect(heightAfter).toBe(COLLAPSED_PANEL_SIZE.minHeight);
+    expect(heightAfter).toBeLessThan(heightBefore);
+    expect(widthAfter).toBeGreaterThanOrEqual(COLLAPSED_PANEL_SIZE.minWidth);
+    expect(boxAfter.style.maxHeight).toBe('');
 
     expect(screen.getByTestId('UserManagementPanel-collapsed')).toHaveTextContent('true');
   });

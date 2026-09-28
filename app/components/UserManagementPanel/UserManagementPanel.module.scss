@@ -72,12 +72,18 @@
   white-space: nowrap;
 }
 
-/* The header's middle slot. `margin-left: auto` is gone: it was pushing this control rightwards
-   through a flex header, and the header is a grid now — .headerMiddle's own track places it. */
+/* The tag-only filter on the body's first line (ListPanel's `toolbar`). The checkbox's default
+   margins are zeroed so the line is exactly its --text-sm text tall — the `subheader` slot the
+   Users tab's toolbar declares in adminHubContent.ts. */
 .toggle {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-sm);
   color: var(--color-on-surface-muted);
+  cursor: pointer;
+
+  input {
+    margin: 0;
+  }
 }

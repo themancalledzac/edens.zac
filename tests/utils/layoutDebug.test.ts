@@ -71,11 +71,11 @@ describe('measureRow', () => {
     expect(m.pocketPx2).toBeCloseTo(50 * 200, 6);
   });
 
-  it('labels a panel leaf by its panel type', () => {
-    const users = createPanelContent(1, { panelType: 'users' });
-    const m = measureRow({ boxTree: leaf(users), items: [sized(users, 400, 300)] });
+  it('labels a panel leaf as a panel', () => {
+    const panel = createPanelContent(1);
+    const m = measureRow({ boxTree: leaf(panel), items: [sized(panel, 400, 300)] });
 
-    expect(m.structure).toBe('panel:users');
+    expect(m.structure).toBe('panel');
   });
 
   it('measures a tree-less rail as its items laid end to end', () => {
