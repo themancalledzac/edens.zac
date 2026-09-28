@@ -2,15 +2,13 @@
 
 import { createContext, type ReactNode, useContext } from 'react';
 
-import { type PanelType } from '@/app/types/Content';
-
 /**
- * Collapsed state for the admin hub's panels, owned by whoever also owns the CONTENT ARRAY the
+ * Collapsed state for the admin hub's list panel, owned by whoever also owns the CONTENT ARRAY the
  * layout is derived from — collapsing has to change the panel's model, not just its rendering.
  */
 export interface AdminPanelCollapseValue {
-  isCollapsed: (panelType: PanelType) => boolean;
-  setCollapsed: (panelType: PanelType, collapsed: boolean) => void;
+  collapsed: boolean;
+  setCollapsed: (collapsed: boolean) => void;
 }
 
 const AdminPanelCollapseContext = createContext<AdminPanelCollapseValue | null>(null);
@@ -34,7 +32,7 @@ export function AdminPanelCollapseProvider({
   return <AdminPanelCollapseContext value={value}>{children}</AdminPanelCollapseContext>;
 }
 
-/** Null outside a provider, which renders the panels non-collapsible. */
+/** Null outside a provider, which renders the panel non-collapsible. */
 export function useAdminPanelCollapse(): AdminPanelCollapseValue | null {
   return useContext(AdminPanelCollapseContext);
 }

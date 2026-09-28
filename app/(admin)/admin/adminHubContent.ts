@@ -1,16 +1,16 @@
 /**
- * Builds the AnyContentModel[] for the admin hub. Array order: panels first, then nav tiles.
+ * Builds the AnyContentModel[] for the admin hub. Array order: the one tabbed list panel first,
+ * then the nav tiles.
  *
- * A panel's HEIGHT is content-derived, not shape-derived: `chrome + rowCount × rowHeight`, declared
- * to the layout engine as `minHeight === maxHeight` — a pin. The sizer models every block as
- * `H(W) = a·W + b` and reads a pin as `a = 0`, so a panel holding two messages reserves a
- * two-message box and a panel holding twelve users reserves a twelve-user box. See
- * {@link panelContentHeight}.
+ * The panel's HEIGHT is content-derived, not shape-derived: `chrome + rowCount × rowHeight` for its
+ * TALLEST tab, declared to the layout engine as `minHeight === maxHeight` — a pin. The sizer models
+ * every block as `H(W) = a·W + b` and reads a pin as `a = 0`. See {@link tabbedPanelHeight}. Sizing
+ * for the tallest tab rather than the active one is what lets a tab switch leave the page alone.
  *
  * That is only safe because a panel's height does not vary with its width, which is a measured
  * property and not an obvious one. Probing the real components against the live Inter font across
  * panel widths 400 → 610px: every row measures the same at every width (see the row heights in
- * {@link PANEL_SHAPE}). The one thing that would break it is a row wrapping to a second line, and
+ * {@link TAB_SHAPE}). The one thing that would break it is a row wrapping to a second line, and
  * the Users row — the tightest of them — wraps at a panel width of **350px**, which
  * {@link PANEL_MIN_WIDTH} keeps 50px clear of.
  *
@@ -22,43 +22,26 @@
  * The declared `width`/`height` ratio still drives Stage-1 packing — width-cost, prominence and row
  * membership all read it — and only the rendered height comes from the pin. Keep that ratio
  * strictly taller than 1:2: `prominenceFactor` steps at `EXTREMENESS_RAMP_START` (2.0), so 600×1200
- * would jump a panel's prominence from 5.0 to 7.0 and re-solve width allocation for the whole hub.
+ * would jump the panel's prominence from 5.0 to 7.0 and re-solve width allocation for the whole hub.
  * 600×1100 is extremeness 1.83 and sits safely under it.
  *
- * Row composition, not rating, is the lever for a panel's width: the packer splits a row's budget
- * among whatever shares it, so a panel's width moves only when the number or shape of its
- * row-mates changes.
- *
- * That is why each panel declares {@link PANEL_MIN_WIDTH} rather than a higher rating: the minimum
- * acts on row MEMBERSHIP, and membership is the lever that moves. `firstCleanExtension` refuses to
- * grow a row into a composition that starves a declared minimum, so the row closes instead.
- *
- * MEMBERSHIP IS NOT MONOTONIC IN WIDTH, and there is no single content width at which "the panels
- * share a row" starts being true. The composer can STACK panels into one column, so they fit a row
- * far narrower than four 400px columns would need, and the pinned-row predicates can reject a WIDER
- * arrangement that a narrower one satisfies. It depends on the panels' content heights and the nav
- * tiles' cover shapes as much as on the width. Do not restate measured transition widths here —
- * they are specific to a panel count and go stale in silence. `page.collapsedLayout.test.ts` and
- * `page.collapseStates.test.ts` carry the measured picture as assertions, which is the only form
- * that fails when it drifts.
- *
- * Do NOT recompute any threshold as 4 × 400 + 3 × gap. That is the width at which four
- * SIDE-BY-SIDE 400px columns would first fit, and a flat four-column row is not an arrangement the
- * composer picks.
+ * The panel declares {@link PANEL_MIN_WIDTH} rather than a higher rating: the minimum acts on row
+ * MEMBERSHIP, which is the lever that moves a panel's width. `firstCleanExtension` refuses to grow a
+ * row into a composition that starves a declared minimum, so the row closes instead. The measured
+ * compositions are carried as assertions in `page.desktopLayout.test.tsx`,
+ * `page.mobileLayout.test.tsx` and `page.collapsedLayout.test.ts` rather than restated here, where
+ * they would go stale in silence.
  */
 
+import { ADMIN_LIST_TABS, type AdminListTab } from '@/app/components/AdminLists/adminListTabs';
 import {
   panelChromeHeight,
   rowHeight,
   type RowShape,
+  type SectionShape,
 } from '@/app/components/ListPanel/listPanelShape';
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
-import {
-  type AnyContentModel,
-  type ContentPanelModel,
-  type PanelType,
-  pinnedHeight,
-} from '@/app/types/Content';
+import { type AnyContentModel, type ContentPanelModel, pinnedHeight } from '@/app/types/Content';
 import { clampParallaxDimensions } from '@/app/utils/contentLayout';
 import { isPanelContent } from '@/app/utils/contentTypeGuards';
 
@@ -67,14 +50,14 @@ import { ADMIN_TILES } from './adminTiles';
 /**
  * Narrowest width, in CSS px, at which a panel still displays everything it holds.
  *
- * Set by the widest irreducible row of chrome, which is the Users panel's: a header
- * carrying the title, the "Show tag-only people" toggle and "+ New User", over body rows
- * carrying an identity plus "Update" and "Reset pw".
+ * Set by the widest irreducible row of chrome, which is the Users tab's: body rows carrying an
+ * identity plus "Update" and "Reset pw". The header's four tabs scroll sideways rather than wrap,
+ * so they do not set a floor.
  *
  * The Users row wraps — `.rowActions` dropping below `.rowMain`, whose `flex: 1 1 220px` basis is
  * what sets the threshold — at a panel width of **350px**, measured against the live Inter font by
- * sweeping the real geometry from 300 to 600px. 400 keeps 50px clear of that, and is shared by all
- * four panels so the row solves symmetrically. Since the height model assumes a row never wraps,
+ * sweeping the real geometry from 300 to 600px. 400 keeps 50px clear of that. Since the height
+ * model assumes a row never wraps,
  * this margin is now load-bearing for layout and not only for legibility.
  *
  * The packer treats this as a preference over ROW MEMBERSHIP, not a reservation of page
@@ -120,43 +103,35 @@ export const PANEL_MAX_WIDTH = 700;
 const TILE_MIN_WIDTH = 300;
 
 /**
- * What each panel's header and list rows are made of, as {@link RowShape} slot stacks.
- *
- * Replaces the measured `PANEL_ROW_HEIGHT` / `PANEL_CHROME.headerControl` /
- * `PANEL_HAS_HEADER_BUTTON` trio. Those encoded a panel's height as three numbers a human had to
- * keep in agreement with the stylesheet; this encodes what the panel RENDERS and lets
- * {@link rowHeight} and {@link panelChromeHeight} do the arithmetic. Registering a new panel is
- * now a declaration rather than a measurement -- which matters because the measurement was the one
- * registration step that failed silently (see the {@link panelContentHeight} docblock).
- *
- * The first three derive their rendered height to the pixel: 71 / 58.5 / 40 per row, on 86 / 79 /
- * 86 of chrome. Measured in Chrome against the live Inter font at panel widths 400, 430, 520 and
- * 610px -- identical at all four, which is the property {@link PANEL_MIN_WIDTH} exists to protect.
- * No shape carries a residual; the `heightAdjustment` escape hatch that covered the two un-migrated
- * panels is gone with them.
- *
- * `collections` is the first shape DECLARED rather than measured -- it was written before the panel
- * existed, and the panel was then built to it. 54px per row, on 79 of chrome. That is the model
- * working as intended (registering a panel is a declaration now), but it does mean this one shape
- * has not been confirmed against a browser the way the other three were. The two things that could
- * make it wrong are both pinned elsewhere: a text line taller than its slot, and the 32px cover
- * thumbnail growing past the 41px text stack beside it.
+ * The tabbed panel's header: tabs on the left, one action on the right, both `button`-slot tall.
+ * Every tab shares it, which is why the header's height no longer depends on which panel it is.
  */
-const PANEL_SHAPE: Record<PanelType, { header: RowShape; row: RowShape }> = {
+const HEADER_SHAPE: RowShape = { left: ['button'], right: ['button'] };
+
+/**
+ * What each tab's list rows are made of, as {@link RowShape} slot stacks, plus the body's first
+ * line where a tab has one. {@link rowHeight} and {@link panelChromeHeight} do the arithmetic.
+ *
+ * Users, Messages and Roles derive their rendered row height to the pixel: 71 / 58.5 / 40, measured
+ * in Chrome against the live Inter font at panel widths 400, 430, 520 and 610px -- identical at all
+ * four, which is the property {@link PANEL_MIN_WIDTH} exists to protect. Collections was declared
+ * before its panel existed (54px) and the panel built to it.
+ *
+ * Users is the one tab with a `toolbar`: its tag-only toggle is a `--text-sm` line on the body's
+ * first line, a `subheader` slot.
+ */
+const TAB_SHAPE: Record<AdminListTab, { row: RowShape; toolbar?: SectionShape }> = {
   users: {
-    header: { left: ['header'], right: ['button'] },
     row: { left: ['header', 'subheader'], right: ['button', 'button'] },
+    toolbar: ['subheader'],
   },
   messages: {
-    header: { left: ['header'], right: ['subheader'] },
     row: { left: ['subheader', 'subheader'], right: ['meta', 'button'] },
   },
   roles: {
-    header: { left: ['header'], right: ['button'] },
     row: { left: ['header'], right: ['button'] },
   },
   collections: {
-    header: { left: ['header'], right: ['subheader'] },
     row: { left: ['header', 'subheader'], right: [] },
   },
 };
@@ -177,12 +152,7 @@ const PANEL_SHAPE: Record<PanelType, { header: RowShape; row: RowShape }> = {
 const PANEL_HEIGHT_BOUNDS = { min: 192, max: 1000 } as const;
 
 /** The row counts the hub needs before it can lay out. Resolved server-side in `page.tsx`. */
-export interface AdminPanelCounts {
-  users: number;
-  messages: number;
-  roles: number;
-  collections: number;
-}
+export type AdminPanelCounts = Record<AdminListTab, number>;
 
 /**
  * Fraction of the viewport a panel may occupy. Below 1 so the page keeps a strip to scroll by --
@@ -192,7 +162,7 @@ export interface AdminPanelCounts {
 const VIEWPORT_HEIGHT_FRACTION = 0.9;
 
 /**
- * The height a panel reserves for `rowCount` rows, bounded by {@link PANEL_HEIGHT_BOUNDS}.
+ * The height one tab needs for `rowCount` rows, bounded by {@link PANEL_HEIGHT_BOUNDS}.
  *
  * Declared to the layout engine through {@link pinnedHeight}, whose equal `minHeight`/`maxHeight`
  * pair is what marks a block's height as independent of its width. Anything that makes a row's
@@ -211,12 +181,13 @@ const VIEWPORT_HEIGHT_FRACTION = 0.9;
  * clipped instead of a gap left under it.
  */
 export function panelContentHeight(
-  panelType: PanelType,
+  tab: AdminListTab,
   rowCount: number,
   viewportHeight?: number
 ): number {
-  const shape = PANEL_SHAPE[panelType];
-  const raw = panelChromeHeight(shape.header) + Math.max(0, rowCount) * rowHeight(shape.row);
+  const shape = TAB_SHAPE[tab];
+  const raw =
+    panelChromeHeight(HEADER_SHAPE, shape.toolbar) + Math.max(0, rowCount) * rowHeight(shape.row);
   const viewportCeiling =
     viewportHeight && viewportHeight > 0
       ? Math.min(PANEL_HEIGHT_BOUNDS.max, viewportHeight * VIEWPORT_HEIGHT_FRACTION)
@@ -226,51 +197,41 @@ export function panelContentHeight(
 }
 
 /**
+ * The height the tabbed panel reserves: its TALLEST tab's {@link panelContentHeight}.
+ *
+ * One box for every tab, rather than a footprint that follows the active tab, so switching tabs
+ * never re-packs the page -- the list changes, the panel and everything around it stay put. A
+ * shorter tab leaves the shell's surface showing below its list, which `ListPanel` fills.
+ */
+export function tabbedPanelHeight(counts: AdminPanelCounts, viewportHeight?: number): number {
+  return Math.max(
+    ...ADMIN_LIST_TABS.map(({ id }) => panelContentHeight(id, counts[id], viewportHeight))
+  );
+}
+
+/**
  * Counts used when the server-side lookup failed. Deliberately the floor rather than a guess at a
  * typical list: an under-reservation is corrected by the panel's own scroll, while an
  * over-reservation reintroduces exactly the blank well this feature exists to remove.
  */
 const FALLBACK_COUNTS: AdminPanelCounts = { users: 0, messages: 0, roles: 0, collections: 0 };
 
+/** The panel's content id, clear of the nav tiles' `1..n`. */
+const PANEL_ID = 1001;
+
 /**
- * The panels the hub renders, in the order they are handed to the packer.
- *
- * Order is the only thing this list decides: `id` and `orderIndex` are derived from a panel's
- * position, so inserting a fifth panel here renumbers the ones after it rather than needing four
- * literals kept in step by hand. The hub renders the array in the order this function returns it —
- * nothing on the admin path sorts by `orderIndex` — so both numbers exist to stay unique and in
- * step with position, not to place a panel.
- *
- * `panelType` doubles as the key into {@link AdminPanelCounts} and {@link PANEL_SHAPE}, which is
- * what lets one `.map` build all four.
+ * The panel's `orderIndex`, clear of the nav tiles' `0..n-1` run. Nothing on the admin path sorts
+ * by it -- `buildAdminHubContent` puts the panel first in the array itself -- so it only has to stay
+ * unique.
  */
-const PANEL_ORDER: ReadonlyArray<{ panelType: PanelType; title: string }> = [
-  { panelType: 'users', title: 'Users' },
-  { panelType: 'messages', title: 'Messages' },
-  { panelType: 'roles', title: 'Roles' },
-  { panelType: 'collections', title: 'Collections' },
-];
-
-/** Panel ids start here, clear of the nav tiles' `1..n`. */
-const PANEL_ID_BASE = 1001;
+const PANEL_ORDER_INDEX = 100;
 
 /**
- * Panel `orderIndex` values start here, clear of the nav tiles' `0..n-1` run.
- *
- * A higher number than the tiles carry does NOT put the panels last: nothing on the admin path
- * reads `orderIndex` to order anything, and `buildAdminHubContent` returns the panels ahead of the
- * tiles in the array itself. These are the values the four literals carried before this list
- * replaced them, kept so the refactor moves no pixels.
- */
-const PANEL_ORDER_INDEX_BASE = 100;
-
-/**
- * The width:height ratio every panel DECLARES — not the height it renders, which is the pin from
- * {@link panelContentHeight}.
+ * The width:height ratio the panel DECLARES — not the height it renders, which is the pin from
+ * {@link tabbedPanelHeight}.
  *
  * NOT DEAD, despite `minHeight`/`maxHeight` overriding the rendered height. Stage-1 packing reads
- * this ratio for width-cost, prominence and row membership, and 15 hub tests move if it changes.
- * See this function's docblock for why it must stay strictly taller than 1:2: `prominenceFactor`
+ * this ratio for width-cost, prominence and row membership. See the module docblock for why it must stay strictly taller than 1:2: `prominenceFactor`
  * steps at `EXTREMENESS_RAMP_START` (2.0), so 600×1200 would jump a panel from 5.0 to 7.0 and
  * re-solve width allocation for the whole hub. 600×1100 is extremeness 1.83 and sits under it.
  */
@@ -316,22 +277,21 @@ export function buildAdminHubContent(
     };
   });
 
-  const panels: ContentPanelModel[] = PANEL_ORDER.map(({ panelType, title }, i) => ({
+  const panel: ContentPanelModel = {
     contentType: 'PANEL',
-    panelType,
-    id: PANEL_ID_BASE + i,
+    id: PANEL_ID,
     rating: 5,
-    title,
+    title: 'Admin',
     width: PANEL_DECLARED_WIDTH,
     height: PANEL_DECLARED_HEIGHT,
     minWidth: PANEL_MIN_WIDTH,
     maxWidth: PANEL_MAX_WIDTH,
-    ...pinnedHeight(panelContentHeight(panelType, counts[panelType], viewportHeight)),
-    orderIndex: PANEL_ORDER_INDEX_BASE + i,
+    ...pinnedHeight(tabbedPanelHeight(counts, viewportHeight)),
+    orderIndex: PANEL_ORDER_INDEX,
     visible: true,
-  }));
+  };
 
-  return [...panels, ...tileModels];
+  return [panel, ...tileModels];
 }
 
 /**
@@ -349,12 +309,9 @@ const COLLAPSED_BODY_SLIVER = 16;
 /**
  * The height a collapsed panel reserves and renders: full header chrome over the padded empty
  * body sliver. Derived through the same {@link panelChromeHeight} as the expanded model so a token
- * change moves both. Uses the with-button header for every panel — bars sit side by side, and a
- * uniform height is what keeps them reading as one system; the CSS stretches a text-only header's
- * panel to the same box. Hence the Users header shape rather than each panel's own.
+ * change moves both. No toolbar term: the body, and its first line, unmount while collapsed.
  */
-export const COLLAPSED_PANEL_HEIGHT =
-  panelChromeHeight(PANEL_SHAPE.users.header) + COLLAPSED_BODY_SLIVER;
+export const COLLAPSED_PANEL_HEIGHT = panelChromeHeight(HEADER_SHAPE) + COLLAPSED_BODY_SLIVER;
 
 /**
  * Footprint a COLLAPSED panel reports to the layout packer: an ordinary small block.
@@ -393,8 +350,8 @@ export const COLLAPSED_PANEL_SIZE = {
 } as const;
 
 /**
- * Derive the content array the packer actually sees: each collapsed panel's block swapped for the
- * bar footprint, every other block untouched. `buildContentRows` is a pure function of these
+ * Derive the content array the packer actually sees: the panel's block swapped for the bar
+ * footprint while collapsed, every other block untouched. `buildContentRows` is a pure function of these
  * models, so re-deriving the array IS how collapsing a panel re-packs the page.
  *
  * Deliberately the ONLY footprint rewrite. A measured-size path (each panel reporting its rendered
@@ -403,13 +360,12 @@ export const COLLAPSED_PANEL_SIZE = {
  * height → re-pack oscillates, and since a re-pack remounts the panels it re-fired all three admin
  * fetches every cycle until the browser exhausted its socket pool. See `AdminPanelRenderer`.
  *
- * Returns a new array every call — memoize at the caller.
+ * Returns a new array whenever it rewrites anything — memoize at the caller.
  */
 export function withPanelFootprints(
   content: AnyContentModel[],
-  collapsed: Readonly<Record<PanelType, boolean>>
+  collapsed: boolean
 ): AnyContentModel[] {
-  return content.map(item =>
-    isPanelContent(item) && collapsed[item.panelType] ? { ...item, ...COLLAPSED_PANEL_SIZE } : item
-  );
+  if (!collapsed) return content;
+  return content.map(item => (isPanelContent(item) ? { ...item, ...COLLAPSED_PANEL_SIZE } : item));
 }

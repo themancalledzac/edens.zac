@@ -185,7 +185,6 @@ export const createPanelContent = (
   contentType: 'PANEL',
   orderIndex: id,
   visible: true,
-  panelType: 'users',
   rating: 5,
   width: 600,
   height: 1000,

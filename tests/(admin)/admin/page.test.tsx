@@ -42,9 +42,11 @@ jest.mock('next/cache', () => ({
   revalidatePath: jest.fn(),
   revalidateTag: jest.fn(),
 }));
+let mockSearch = '';
+
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(mockSearch),
   usePathname: () => '/admin',
 }));
 
@@ -131,13 +133,23 @@ describe('AdminHubPage', () => {
     mockListRoles.mockResolvedValue([{ id: 1, name: 'editor' }]);
 
     const ui = await renderPage();
-    render(ui);
+    const { unmount } = render(ui);
 
     expect(screen.getByText('Ada')).toBeInTheDocument();
-    expect(screen.getByText('editor')).toBeInTheDocument();
     expect(screen.queryByText('Loading users…')).not.toBeInTheDocument();
-
     await act(async () => {});
+    unmount();
+
+    // Only the active tab is mounted, so the Roles seed shows on the Roles tab.
+    mockSearch = 'list=roles';
+    try {
+      render(await renderPage());
+      expect(screen.getByText('editor')).toBeInTheDocument();
+      expect(screen.queryByText('Loading roles…')).not.toBeInTheDocument();
+      await act(async () => {});
+    } finally {
+      mockSearch = '';
+    }
   });
 
   /** A server-side failure seeds nothing, so the panel loads for itself rather than showing `[]`. */

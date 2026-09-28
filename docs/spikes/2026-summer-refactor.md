@@ -247,6 +247,7 @@ grep -ohE '^#{2,3} [☐◐⛔✅☑] [A-H][0-9]+[a-z]?' docs/spikes/2026-summer-
 | --- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | B8  | Fill the required-coverage gaps                         | ◐ 5 of 6 — #266, #267, #295, #296; only the optional bullet is open (`sharedObserver` 116 / `useParallax` 169 / `useContentReordering` 197 lines, all untested)                                                                            |
 | E7  | Edit-grid handoff (was `useFilteredContentBlocks` hook) | ◐ waste FIXED #337; hook REJECTED; one path open (`EditModeLayer.tsx:281` reorder branch, unsized)                                                                                                                                         |
+| E19 | One section-list shell for every "header over rows"     | ☐ PLANNED 2026-09-28 — the admin hub's four panels shipped as one tabbed `ListPanel` with one `PanelAction` style; six other variants remain (see section)                                                                                 |
 | F1  | Decompose `useCollectionEdit.tsx` (1,829 lines)         | ☐ COLD — largest open item; anchors re-derived 2026-09-06; goes BEFORE feature-board MA1 and leaves the update-form region alone (see section)                                                                                             |
 | F3  | File moves and renames                                  | ◐ seven shipped (#324 #336 #343 #348 #349 #409 #414); invite REJECTED; two bullets open                                                                                                                                                    |
 | F4  | `TaxonomyPage` ← `LocationPageClient`                   | ☐ DECIDED 2026-09-08 **merge them** — tag pages take filters, the collections strip, the header cover and follow seeding, and become a client page. COLD and UNSIZED; do not schedule beside F1                                            |
@@ -463,7 +464,7 @@ one commit, while this board called it COLD for six days and the 2026-09-04 hand
 Half B "genuinely open" (the hook's `collection` derives from `currentState`, so the premise was
 false). Full write-ups and closed rows:
 [group-e-consolidations.md](2026-summer-refactor/group-e-consolidations.md), which now also holds
-**E9 (closed 2026-09-08, `.srOnly` partial shipped #410)**. **Only E7 is open below.**
+**E9 (closed 2026-09-08, `.srOnly` partial shipped #410)**. **E7 and E19 are open below.**
 
 ### ◐ E7 · Edit-grid handoff — the waste is FIXED (#337); the hook is REJECTED; one path open
 
@@ -484,6 +485,56 @@ while the layer is mounted.** (The #337 guard's exit-path bug was C10, merged #3
       (`processedContent`) is a third `processContentBlocks` caller in the collection-page path, and
       repo-wide there are **six** — `SearchPageClient.tsx:84` (SD1), `TaxonomyPage.tsx:13`,
       `LocationPageClient.tsx:84` plus the three collection-page callers. Say which number you mean.
+
+### ☐ E19 · One section-list shell for every "header over rows"
+
+**Origin (2026-09-28, Zac):** the admin hub's Users / Messages / Roles / Collections panels were
+four boxes whose header actions were styled four ways (`+ New User` ghost Button, `+ New Role`
+filled secondary Button, `N · View all` muted link) — "multiple versions of this otherwise
+identical component". **Shipped in the same branch:** one tabbed `ListPanel`
+(`app/components/AdminLists/`), the action at the far right of the tab bar rendered by
+`PanelAction` (one class for link and button alike), the "Show tag-only people" toggle moved to
+the Users tab's first body line (`ListPanel`'s `toolbar`), and one collapse for the whole box.
+The four-panel collapse combinatorics (2⁴ states) went with it.
+
+The same shape — a header (title, optional chevron, one trailing action) over a list of rows —
+still has **six other implementations**, verified 2026-09-28:
+
+| Variant                                                     | Shell today                                  | Header action today                                    |
+| ----------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------ |
+| `RoleDetailView` sections (Collections, Members)            | own `.section` + uppercase `.sectionHeading` | none; add control is a bottom `.addRow` (Button ghost) |
+| `CollectionRolesSection`                                    | own `.section` + `.sectionTitle`             | none; bottom `.addRow`                                 |
+| `UserRolesSection`                                          | `role="group"` + `.heading` link             | `<select>` as `.addSelect` / `.addChip`                |
+| `CollectionListSelector` header + bucket accordion          | `Disclosure` + `--sel-*` tokens              | "Add New Child" Button secondary sm                    |
+| `CommentsList` (`/comments`, where Messages' View all goes) | own `.list` / `.row`                         | search row; "Load more" Button outline                 |
+| `FilterToolbar` dropdown                                    | `FilterChip` with `▴`/`▾`                    | — (popover, not a section)                             |
+
+`RolesPanel.module.scss` and `CollectionRolesSection.module.scss` each carry near-copies of
+`.section`, `.rowName`, `.addRow`, `.grow` and `.select`; the three role editors use three heading
+treatments (sm/700 uppercase, md/bold, md/600).
+
+**Plan, in order — one MR each, each independently shippable:**
+
+- [ ] **E19a · `SectionList` for the three role editors.** Extract `app/components/ui/SectionList/`
+      (heading + optional `PanelAction`-styled action + `ListRows`-style rows + an `addRow` slot),
+      move `RoleDetailView`, `CollectionRolesSection` and `UserRolesSection` onto it, and delete the
+      duplicated SCSS. One heading style. Largest win; `UserRolesSection`'s compact mode is the
+      part to design first, since it is a chip row, not a list.
+- [ ] **E19b · `PanelAction` everywhere a section carries a trailing action.** Move `PanelAction`
+      (and its `.panelAction` rule) out of `ListPanel` into `app/components/ui/`, then use it for
+      CollectionListSelector's "Add New Child". A one-rule change per adopter once it is a primitive.
+- [ ] **E19c · `CommentsList` rows on `ListRows`/`ListRow`.** The page "View all" leads to should
+      read as the panel it expands. Its rows are not height-modelled, so only the markup and
+      surfaces move, not `listPanelShape`.
+- [ ] **E19d · One chevron.** `Disclosure` draws `▸`/`▾`, `FilterChip` trailing text draws `▴`/`▾`.
+      Pick one glyph set (or an icon) and export it from `Disclosure`.
+
+**Not in scope:** `MenuDropdown`'s About/Contact disclosure (already on `Disclosure`, no list) and
+the `Dropdown` combobox (a form control, not a section).
+
+**Estimate honestly (bias 1/1b above):** E19a is the only one expected to come out negative on
+source, because it deletes three stylesheets' worth of copies; it still buys a new required test
+suite for the extracted primitive. E19b–d are flat-to-positive on source.
 
 ## Group F — Structural
 

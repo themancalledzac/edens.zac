@@ -130,24 +130,32 @@ export function rowHeight(shape: RowShape): number {
 }
 
 /**
- * Fixed height a panel spends on chrome, given the shape of its header row.
- *
- * All three panels' header totals fall straight out of the shape -- Users and Roles at 86 (their
- * `+ New` / create button governs at 27) and Messages at 79 (text link only, so the title line
- * governs). Messages is the one place `header`'s 0.5px over-reservation shows: that header
- * measures 78.5 and reserves 79. Unchanged by the density pass, which touches rows only.
+ * Space under the body's first line (`.toolbar`'s `--space-2` bottom padding), separating it from
+ * the list. Counted only for a panel that declares a toolbar.
  */
-export function panelChromeHeight(header: RowShape): number {
+export const TOOLBAR_GAP = 8;
+
+/**
+ * Fixed height a panel spends on chrome, given the shape of its header row and, when it has one,
+ * of the body's first line (`toolbar` -- the users panel's tag-only toggle).
+ *
+ * The header totals fall straight out of the shape: 86 for a header carrying a `button`-slot
+ * control, which every tabbed header does (a tab and the action are both button-slot tall).
+ * A toolbar adds its own stack plus {@link TOOLBAR_GAP}.
+ */
+export function panelChromeHeight(header: RowShape, toolbar?: SectionShape): number {
   const headerContent = Math.max(
     stackHeight(header.left),
     stackHeight(header.middle),
     stackHeight(header.right)
   );
+  const toolbarHeight = toolbar && toolbar.length > 0 ? stackHeight(toolbar) + TOOLBAR_GAP : 0;
   return (
     PANEL_CHROME.border +
     PANEL_CHROME.headerPadding +
     PANEL_CHROME.headerRule +
     PANEL_CHROME.bodyPadding +
-    headerContent
+    headerContent +
+    toolbarHeight
   );
 }

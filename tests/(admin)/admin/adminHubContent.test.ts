@@ -1,6 +1,8 @@
 import {
   buildAdminHubContent,
   COLLAPSED_PANEL_SIZE,
+  panelContentHeight,
+  tabbedPanelHeight,
   withPanelFootprints,
 } from '@/app/(admin)/admin/adminHubContent';
 import { ADMIN_TILES } from '@/app/(admin)/admin/adminTiles';
@@ -20,18 +22,18 @@ function makeTile(tileKey: string, overrides: Partial<AdminHomeTileApi> = {}): A
   };
 }
 
-/** Users, Messages, Roles, Collections — the panels the hub puts ahead of the nav tiles. */
-const PANEL_COUNT = 4;
+/** The one tabbed list panel (Users, Messages, Roles, Collections) the hub puts ahead of the tiles. */
+const PANEL_COUNT = 1;
 
 describe('buildAdminHubContent', () => {
   const apiTiles: AdminHomeTileApi[] = ADMIN_TILES.map(c => makeTile(c.tileKey));
   const result = buildAdminHubContent(apiTiles);
 
-  it('returns one item per configured tile, plus the panels', () => {
+  it('returns one item per configured tile, plus the panel', () => {
     expect(result).toHaveLength(ADMIN_TILES.length + PANEL_COUNT);
   });
 
-  it('panels come first', () => {
+  it('the panel comes first', () => {
     for (const panel of result.slice(0, PANEL_COUNT)) {
       expect(panel.contentType).toBe('PANEL');
     }
@@ -103,24 +105,12 @@ describe('buildAdminHubContent', () => {
     }
   });
 
-  it('carries every panel type, in order, all rated 5', () => {
-    const panels = result.slice(0, PANEL_COUNT) as ContentPanelModel[];
-    expect(panels.map(p => p.panelType)).toEqual(['users', 'messages', 'roles', 'collections']);
-    for (const panel of panels) {
-      expect(panel.rating).toBe(5);
-    }
-  });
-
-  /**
-   * The four panel literals are one `PANEL_ORDER.map` now, with `id` and `orderIndex` derived from
-   * a panel's position rather than written out. These are the values the literals carried, pinned
-   * so the derivation cannot drift: an off-by-one in either base, or a `.map` that reused the same
-   * index, would still produce four panels in the right order and pass every other test here.
-   */
-  it('numbers panel ids and orderIndex from their position in the list', () => {
-    const panels = result.slice(0, PANEL_COUNT) as ContentPanelModel[];
-    expect(panels.map(p => p.id)).toEqual([1001, 1002, 1003, 1004]);
-    expect(panels.map(p => p.orderIndex)).toEqual([100, 101, 102, 103]);
+  it('declares one panel, rated 5, with a fixed id and orderIndex', () => {
+    const [panel] = result as ContentPanelModel[];
+    expect(panel?.contentType).toBe('PANEL');
+    expect(panel?.rating).toBe(5);
+    expect(panel?.id).toBe(1001);
+    expect(panel?.orderIndex).toBe(100);
   });
 
   /**
@@ -170,50 +160,25 @@ describe('buildAdminHubContent', () => {
 
 describe('withPanelFootprints', () => {
   const content = buildAdminHubContent([]);
-  const NONE = { users: false, messages: false, roles: false, collections: false } as const;
 
-  it('returns the content unchanged when nothing is collapsed', () => {
-    expect(withPanelFootprints(content, NONE)).toEqual(content);
+  it('returns the content unchanged when expanded', () => {
+    expect(withPanelFootprints(content, false)).toEqual(content);
   });
 
-  it('gives a collapsed panel the bar footprint and leaves its siblings alone', () => {
-    const [users, messages, roles, collections] = withPanelFootprints(content, {
-      ...NONE,
-      users: true,
-    }) as ContentPanelModel[];
+  it('gives the collapsed panel the bar footprint', () => {
+    const [panel] = withPanelFootprints(content, true) as ContentPanelModel[];
 
-    expect(users?.width).toBe(COLLAPSED_PANEL_SIZE.width);
-    expect(users?.height).toBe(COLLAPSED_PANEL_SIZE.height);
-    expect(users?.rating).toBe(COLLAPSED_PANEL_SIZE.rating);
-    expect(users?.minWidth).toBe(COLLAPSED_PANEL_SIZE.minWidth);
-    expect(users?.maxWidth).toBe(COLLAPSED_PANEL_SIZE.maxWidth);
-    expect(users?.minHeight).toBe(COLLAPSED_PANEL_SIZE.minHeight);
-    expect(users?.maxHeight).toBe(COLLAPSED_PANEL_SIZE.maxHeight);
-    expect(messages?.height).toBe(1100);
-    expect(roles?.height).toBe(1100);
-    expect(collections?.height).toBe(1100);
-  });
-
-  it('collapses every panel type, not just the first', () => {
-    const panels = withPanelFootprints(content, {
-      users: true,
-      messages: true,
-      roles: true,
-      collections: true,
-    }).slice(0, PANEL_COUNT) as ContentPanelModel[];
-
-    for (const panel of panels) {
-      expect(panel.height).toBe(COLLAPSED_PANEL_SIZE.height);
-    }
+    expect(panel?.width).toBe(COLLAPSED_PANEL_SIZE.width);
+    expect(panel?.height).toBe(COLLAPSED_PANEL_SIZE.height);
+    expect(panel?.rating).toBe(COLLAPSED_PANEL_SIZE.rating);
+    expect(panel?.minWidth).toBe(COLLAPSED_PANEL_SIZE.minWidth);
+    expect(panel?.maxWidth).toBe(COLLAPSED_PANEL_SIZE.maxWidth);
+    expect(panel?.minHeight).toBe(COLLAPSED_PANEL_SIZE.minHeight);
+    expect(panel?.maxHeight).toBe(COLLAPSED_PANEL_SIZE.maxHeight);
   });
 
   it('leaves non-panel blocks untouched', () => {
-    const collapsed = withPanelFootprints(content, {
-      users: true,
-      messages: true,
-      roles: true,
-      collections: true,
-    });
+    const collapsed = withPanelFootprints(content, true);
     expect(collapsed.slice(PANEL_COUNT)).toEqual(content.slice(PANEL_COUNT));
   });
 
@@ -225,80 +190,89 @@ describe('withPanelFootprints', () => {
    * row composition like any other item.
    */
   it('a collapsed panel stays under the solo-hero gates, so it composes like any block', () => {
-    const [users] = withPanelFootprints(content, { ...NONE, users: true });
-    expect(isSoloHero(users!, LAYOUT.defaultChunkSize)).toBe(false);
+    const [panel] = withPanelFootprints(content, true);
+    expect(isSoloHero(panel!, LAYOUT.defaultChunkSize)).toBe(false);
   });
 
   it('an expanded panel does NOT solo — it shares its row', () => {
-    const [users] = withPanelFootprints(content, NONE);
-    expect(isSoloHero(users!, LAYOUT.defaultChunkSize)).toBe(false);
+    const [panel] = withPanelFootprints(content, false);
+    expect(isSoloHero(panel!, LAYOUT.defaultChunkSize)).toBe(false);
   });
 
   /**
-   * Collapse is still the only footprint rewrite `withPanelFootprints` performs — it must hand an
-   * expanded panel back exactly as `buildAdminHubContent` declared it. What that declaration
-   * CONTAINS changed: a panel now carries a content-derived height pin. The pin is set once, on the
-   * server, from a row count; it is not a measurement and nothing downstream of layout may rewrite
-   * it. That distinction is what separates this from the measured-size path that shipped briefly on
-   * 2026-08-10 and was reverted the same day (oscillating re-pack → remount → refetch storm).
+   * Collapse is the only footprint rewrite `withPanelFootprints` performs — it must hand an
+   * expanded panel back exactly as `buildAdminHubContent` declared it, content-derived height pin
+   * included. The pin is set once, on the server, from row counts; it is not a measurement and
+   * nothing downstream of layout may rewrite it. That distinction is what separates this from the
+   * measured-size path that shipped briefly on 2026-08-10 and was reverted the same day
+   * (oscillating re-pack → remount → refetch storm).
    */
   it('hands an expanded panel back exactly as declared, pin included', () => {
-    const [users, messages, roles, collections] = withPanelFootprints(
-      content,
-      NONE
-    ) as ContentPanelModel[];
-    const [declaredUsers, declaredMessages, declaredRoles, declaredCollections] =
-      content as ContentPanelModel[];
+    const [panel] = withPanelFootprints(content, false) as ContentPanelModel[];
+    const [declared] = content as ContentPanelModel[];
 
-    for (const [panel, declared] of [
-      [users, declaredUsers],
-      [messages, declaredMessages],
-      [roles, declaredRoles],
-      [collections, declaredCollections],
-    ] as const) {
-      expect(panel?.width).toBe(600);
-      expect(panel?.height).toBe(1100);
-      expect(panel?.minWidth).toBe(400);
-      expect(panel?.minHeight).toBe(declared?.minHeight);
-      expect(panel?.maxHeight).toBe(declared?.maxHeight);
-    }
+    expect(panel?.width).toBe(600);
+    expect(panel?.height).toBe(1100);
+    expect(panel?.minWidth).toBe(400);
+    expect(panel?.minHeight).toBe(declared?.minHeight);
+    expect(panel?.maxHeight).toBe(declared?.maxHeight);
+  });
+});
+
+describe('tabbed panel height', () => {
+  const NONE = { users: 0, messages: 0, roles: 0, collections: 0 };
+
+  /**
+   * The pin has to be equal on both ends (that equality is how the sizer recognises a
+   * width-independent height) and it has to MOVE with the counts.
+   */
+  it('pins the panel to a height that grows with its row counts', () => {
+    const [lean] = buildAdminHubContent([], {
+      users: 2,
+      messages: 2,
+      roles: 2,
+      collections: 2,
+    }) as ContentPanelModel[];
+    const [full] = buildAdminHubContent([], {
+      users: 9,
+      messages: 9,
+      roles: 9,
+      collections: 9,
+    }) as ContentPanelModel[];
+
+    expect(lean?.minHeight).toBe(lean?.maxHeight);
+    expect(full?.minHeight).toBe(full?.maxHeight);
+    expect(full!.minHeight!).toBeGreaterThan(lean!.minHeight!);
   });
 
   /**
-   * The pin is what makes a panel's reserved box track its contents, so it has to be equal on both
-   * ends (that equality is how the sizer recognises a width-independent height) and it has to
-   * MOVE with the count. A panel that reserved the same height for two messages as for forty is
-   * the bug this feature exists to remove.
+   * One box for every tab: switching tabs must not re-pack the page, so the panel reserves what its
+   * TALLEST tab needs. Checked against each tab in turn being the tall one, so a max over the wrong
+   * set of tabs (or a sum) cannot pass.
    */
-  it('pins a panel to a height that grows with its row count', () => {
-    const small = buildAdminHubContent([], { users: 2, messages: 2, roles: 2, collections: 2 });
-    const large = buildAdminHubContent([], { users: 12, messages: 9, roles: 9, collections: 9 });
-
-    for (const index of [0, 1, 2, 3]) {
-      const lean = small[index] as ContentPanelModel;
-      const full = large[index] as ContentPanelModel;
-
-      expect(lean.minHeight).toBe(lean.maxHeight);
-      expect(full.minHeight).toBe(full.maxHeight);
-      expect(full.minHeight!).toBeGreaterThan(lean.minHeight!);
+  it.each(['users', 'messages', 'roles', 'collections'] as const)(
+    'reserves the tallest tab when %s is the long list',
+    tab => {
+      const counts = { ...NONE, [tab]: 8 };
+      expect(tabbedPanelHeight(counts)).toBe(panelContentHeight(tab, 8));
+      const [panel] = buildAdminHubContent([], counts) as ContentPanelModel[];
+      expect(panel?.minHeight).toBe(panelContentHeight(tab, 8));
     }
+  );
+
+  /** The Users tab's tag-only toggle is a first body line the other tabs do not have. */
+  it('adds the Users toolbar line to that tab only', () => {
+    // 86 of header chrome, then the 17px toggle line and its 8px gap, then 71px rows.
+    expect(panelContentHeight('users', 5)).toBe(86 + 17 + 8 + 5 * 71);
+    // No toolbar: 86 of header chrome, then 40px rows.
+    expect(panelContentHeight('roles', 5)).toBe(86 + 5 * 40);
   });
 
   it('floors an empty panel and caps a runaway one, so neither breaks the row', () => {
-    const [emptyUsers] = buildAdminHubContent([], {
-      users: 0,
-      messages: 0,
-      roles: 0,
-      collections: 0,
-    }) as ContentPanelModel[];
-    const [hugeUsers] = buildAdminHubContent([], {
-      users: 500,
-      messages: 0,
-      roles: 0,
-      collections: 0,
-    }) as ContentPanelModel[];
+    const [empty] = buildAdminHubContent([], NONE) as ContentPanelModel[];
+    const [huge] = buildAdminHubContent([], { ...NONE, users: 500 }) as ContentPanelModel[];
 
-    expect(emptyUsers?.minHeight).toBe(192);
-    expect(hugeUsers?.minHeight).toBe(1000);
+    expect(empty?.minHeight).toBe(192);
+    expect(huge?.minHeight).toBe(1000);
   });
 });

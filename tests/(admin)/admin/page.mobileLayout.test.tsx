@@ -10,17 +10,14 @@ import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
  * items per row on a phone. `mobileChunkSize={1}` restores the single column the pre-pipeline
  * `AdminHubGrid` had via `grid-template-columns: 1fr`.
  *
- * The panels no longer depend on that prop for their own protection — each declares a 400px
- * {@link Content.minWidth}, which a 430px phone cannot satisfy twice over, so the packer keeps them
- * one per row at any budget. Portrait-covered nav TILES still pair up at ~212px without the prop,
+ * The panel no longer depends on that prop for its own protection — it declares a 400px
+ * {@link Content.minWidth}, which a 430px phone cannot satisfy beside anything else, so the packer
+ * gives it a row of its own at any budget. Portrait-covered nav TILES still pair up at ~212px without the prop,
  * which is what it is still there for; the last case below pins exactly that split.
  */
 const MOBILE_VIEWPORT = { contentWidth: 430, viewportHeight: 932, isMobile: true };
-/**
- * Users, Messages, Roles, Collections. Named rather than written as a literal at each call site,
- * because a fourth panel is exactly the change that made these assertions fail.
- */
-const PANEL_COUNT = 4;
+/** The one tabbed list panel (Users, Messages, Roles, Collections). */
+const PANEL_COUNT = 1;
 
 // Keyed off ADMIN_TILES rather than a hardcoded list: a fixture key that matches no
 // configured tile silently exercises the no-cover path instead of the cover path it
@@ -69,7 +66,7 @@ describe('admin hub mobile layout', () => {
     }
   });
 
-  it('leaves every panel one per row at the un-pinned budget, on its declared minimum alone', () => {
+  it('gives the panel a row of its own at the un-pinned budget, on its declared minimum alone', () => {
     const panelRows = layout([]).filter(row =>
       row.items.some(item => item.content.contentType === 'PANEL')
     );

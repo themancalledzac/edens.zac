@@ -9,72 +9,34 @@ import {
 } from '@/app/components/ListPanel/AdminPanelCollapseContext';
 import type { ContentPanelModel } from '@/app/types/Content';
 
-interface PanelProps {
+interface AdminListsProps {
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
 }
 
-function panelStub(label: string) {
-  return function Stub({ collapsed, onCollapsedChange }: PanelProps) {
-    return (
-      <div>
-        {label}
-        <span data-testid={`${label}-collapsed`}>{String(collapsed)}</span>
-        <button type="button" onClick={() => onCollapsedChange?.(true)}>
-          {`collapse ${label}`}
-        </button>
-      </div>
-    );
-  };
-}
-
-jest.mock('@/app/components/UserManagementPanel/UserManagementPanel', () => ({
-  __esModule: true,
-  default: panelStub('UserManagementPanel'),
-}));
-
-jest.mock('@/app/components/MessagesPanel/MessagesPanel', () => ({
-  MessagesPanel: panelStub('MessagesPanel'),
-}));
-
-jest.mock('@/app/components/RolesPanel/RolesPanel', () => ({
-  RolesPanel: panelStub('RolesPanel'),
+jest.mock('@/app/components/AdminLists/AdminLists', () => ({
+  AdminLists: ({ collapsed, onCollapsedChange }: AdminListsProps) => (
+    <div>
+      AdminLists
+      <span data-testid="collapsed">{String(collapsed)}</span>
+      <button type="button" onClick={() => onCollapsedChange?.(true)}>
+        collapse
+      </button>
+    </div>
+  ),
 }));
 
 const baseContent: ContentPanelModel = {
   id: 1,
   contentType: 'PANEL',
   orderIndex: 0,
-  panelType: 'users',
   rating: 5,
 };
 
 describe('AdminPanelRenderer', () => {
-  it('renders UserManagementPanel for panelType "users"', () => {
+  it('renders the tabbed admin lists', () => {
     render(<AdminPanelRenderer content={baseContent} width={800} height={600} />);
-    expect(screen.getByText('UserManagementPanel')).toBeInTheDocument();
-  });
-
-  it('renders MessagesPanel for panelType "messages"', () => {
-    render(
-      <AdminPanelRenderer
-        content={{ ...baseContent, panelType: 'messages' }}
-        width={800}
-        height={600}
-      />
-    );
-    expect(screen.getByText('MessagesPanel')).toBeInTheDocument();
-  });
-
-  it('renders RolesPanel for panelType "roles"', () => {
-    render(
-      <AdminPanelRenderer
-        content={{ ...baseContent, panelType: 'roles' }}
-        width={800}
-        height={600}
-      />
-    );
-    expect(screen.getByText('RolesPanel')).toBeInTheDocument();
+    expect(screen.getByText('AdminLists')).toBeInTheDocument();
   });
 
   /**
@@ -119,37 +81,33 @@ describe('AdminPanelRenderer', () => {
   function collapseValue(
     overrides: Partial<AdminPanelCollapseValue> = {}
   ): AdminPanelCollapseValue {
-    return { isCollapsed: () => false, setCollapsed: jest.fn(), ...overrides };
+    return { collapsed: false, setCollapsed: jest.fn(), ...overrides };
   }
 
   it('renders a non-collapsible panel with no provider', () => {
     render(<AdminPanelRenderer content={baseContent} width={400} height={300} />);
-    expect(screen.getByTestId('UserManagementPanel-collapsed')).toHaveTextContent('undefined');
+    expect(screen.getByTestId('collapsed')).toHaveTextContent('undefined');
   });
 
   it('reports the provider collapsed state to the panel', () => {
     render(
-      <AdminPanelCollapseProvider value={collapseValue({ isCollapsed: () => true })}>
+      <AdminPanelCollapseProvider value={collapseValue({ collapsed: true })}>
         <AdminPanelRenderer content={baseContent} width={400} height={300} />
       </AdminPanelCollapseProvider>
     );
-    expect(screen.getByTestId('UserManagementPanel-collapsed')).toHaveTextContent('true');
+    expect(screen.getByTestId('collapsed')).toHaveTextContent('true');
   });
 
-  it('routes a collapse request to the provider, keyed by panel type', () => {
+  it('routes a collapse request to the provider', () => {
     const setCollapsed = jest.fn();
     render(
       <AdminPanelCollapseProvider value={collapseValue({ setCollapsed })}>
-        <AdminPanelRenderer
-          content={{ ...baseContent, panelType: 'roles' }}
-          width={400}
-          height={300}
-        />
+        <AdminPanelRenderer content={baseContent} width={400} height={300} />
       </AdminPanelCollapseProvider>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'collapse RolesPanel' }));
-    expect(setCollapsed).toHaveBeenCalledWith('roles', true);
+    fireEvent.click(screen.getByRole('button', { name: 'collapse' }));
+    expect(setCollapsed).toHaveBeenCalledWith(true);
   });
 
   /**
@@ -163,7 +121,7 @@ describe('AdminPanelRenderer', () => {
    */
   it('renders a collapsed bar at the pinned height, by the same rule as an expanded panel', () => {
     const { container } = render(
-      <AdminPanelCollapseProvider value={collapseValue({ isCollapsed: () => true })}>
+      <AdminPanelCollapseProvider value={collapseValue({ collapsed: true })}>
         <AdminPanelRenderer content={baseContent} width={400} height={56} />
       </AdminPanelCollapseProvider>
     );

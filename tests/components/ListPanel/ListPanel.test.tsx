@@ -1,7 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { ListPanel, ListRow, ListRows, ViewAllLink } from '@/app/components/ListPanel/ListPanel';
+import {
+  ListPanel,
+  type ListPanelTabs,
+  ListRow,
+  ListRows,
+  PanelAction,
+  ViewAllLink,
+} from '@/app/components/ListPanel/ListPanel';
 
 /**
  * The shell contract, inherited from `AdminPanel` when this component replaced it.
@@ -9,8 +16,7 @@ import { ListPanel, ListRow, ListRows, ViewAllLink } from '@/app/components/List
  * These are that primitive's own tests, moved rather than rewritten: they cover behaviour
  * `ListPanel` still owns -- the opt-in collapse, the action staying outside the toggle, the
  * collapsed sliver being an `::after` and not markup -- and deleting them alongside the file would
- * have dropped the coverage while the behaviour stayed. `action` is now `headerRight`, which is
- * the only substantive change; the assertions themselves are unchanged.
+ * have dropped the coverage while the behaviour stayed.
  */
 describe('ListPanel shell', () => {
   it('renders the title', () => {
@@ -20,7 +26,7 @@ describe('ListPanel shell', () => {
 
   it('renders the header action', () => {
     render(
-      <ListPanel title="Users" headerRight={<button type="button">+ New User</button>}>
+      <ListPanel title="Users" action={<button type="button">+ New User</button>}>
         content
       </ListPanel>
     );
@@ -55,7 +61,7 @@ describe('ListPanel — collapsible', () => {
       <ListPanel
         title="Users"
         ariaLabel="User management"
-        headerRight={<button type="button">+ New User</button>}
+        action={<button type="button">+ New User</button>}
         collapsed={collapsed}
         onCollapsedChange={onCollapsedChange}
       >
@@ -135,7 +141,7 @@ describe('ListPanel header', () => {
     render(
       <ListPanel
         title="Users"
-        headerRight={<button type="button">+ New</button>}
+        action={<button type="button">+ New</button>}
         collapsed={false}
         onCollapsedChange={() => {}}
       >
@@ -152,7 +158,7 @@ describe('ListPanel header', () => {
     render(
       <ListPanel
         title="Users"
-        headerRight={
+        action={
           <button type="button" onClick={onAction}>
             + New
           </button>
@@ -167,54 +173,138 @@ describe('ListPanel header', () => {
     expect(onAction).toHaveBeenCalledTimes(1);
     expect(onCollapsedChange).not.toHaveBeenCalled();
   });
+});
 
-  /**
-   * The header and a row must present the SAME three sections in the same order, because that is
-   * what puts a header action and a row action on one rail.
-   *
-   * Structure rather than computed style: `next/jest` stubs CSS modules, so nothing in this
-   * environment has a `grid-template-columns` to compare -- an assertion that two elements'
-   * computed grids match would read `'' === ''` and pass no matter what the stylesheet said. The
-   * grid definitions themselves are compared against the real SCSS in `subtreeRules.test.ts`;
-   * what belongs here is that both ends actually emit three section boxes for those tracks to
-   * place, since a slot dropped from the markup moves the rail just as surely.
-   */
-  it('gives the header and a row the same three sections in the same order', () => {
-    const { container } = render(
-      <ListPanel
-        title="Users"
-        headerRight={<button type="button">+ New</button>}
-        collapsed={false}
-        onCollapsedChange={() => {}}
-      >
-        <ListRows>
-          <ListRow left={<span>name</span>} right={<button type="button">Update</button>} />
-        </ListRows>
-      </ListPanel>
-    );
-    const sectionClasses = (el: Element) => [...el.children].map(c => c.className.split(' ')[0]);
-
-    const header = container.querySelector('div.header');
-    const row = container.querySelector('li');
-    expect(header).toBeTruthy();
-    expect(row).toBeTruthy();
-
-    expect(sectionClasses(header as Element)).toEqual(['title', 'headerMiddle', 'headerRight']);
-    expect(sectionClasses(row as Element)).toEqual(['rowLeft', 'rowMiddle', 'rowRight']);
-  });
-
-  it('renders a middle slot when given one', () => {
+describe('ListPanel body first line', () => {
+  it('renders the toolbar above the list', () => {
     render(
-      <ListPanel
-        title="Users"
-        headerMiddle={<label>Show people</label>}
-        collapsed={false}
-        onCollapsedChange={() => {}}
-      >
+      <ListPanel title="Users" toolbar={<label>Show people</label>}>
         <p>body</p>
       </ListPanel>
     );
-    expect(screen.getByText('Show people')).toBeInTheDocument();
+    const toolbar = screen.getByText('Show people');
+    const body = screen.getByText('body');
+    expect(toolbar.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('renders a view title as a heading on the first line', () => {
+    render(
+      <ListPanel title="Users" viewTitle="New User">
+        <p>form</p>
+      </ListPanel>
+    );
+    expect(screen.getByRole('heading', { name: 'New User', level: 3 })).toBeInTheDocument();
+  });
+
+  it('renders no first line when given neither', () => {
+    const { container } = render(
+      <ListPanel title="Users">
+        <p>body</p>
+      </ListPanel>
+    );
+    expect(container.querySelector('.toolbar')).toBeNull();
+  });
+});
+
+describe('ListPanel — tabbed', () => {
+  const TABS = [
+    { id: 'users', label: 'Users' },
+    { id: 'messages', label: 'Messages' },
+    { id: 'roles', label: 'Roles' },
+  ];
+
+  const renderTabbed = ({
+    active = 'users',
+    collapsed,
+  }: { active?: string; collapsed?: boolean } = {}) => {
+    const onChange = jest.fn();
+    const onCollapsedChange = jest.fn();
+    const tabs: ListPanelTabs = { tabs: TABS, active, onChange };
+    render(
+      <ListPanel
+        title="Admin"
+        ariaLabel="Admin lists"
+        tabs={tabs}
+        action={<PanelAction onClick={() => {}}>+ New</PanelAction>}
+        {...(collapsed === undefined ? {} : { collapsed, onCollapsedChange })}
+      >
+        <p>body content</p>
+      </ListPanel>
+    );
+    return { onChange, onCollapsedChange };
+  };
+
+  it('shows the tabs in place of the title', () => {
+    renderTabbed();
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
+    expect(screen.getAllByRole('tab').map(t => t.textContent)).toEqual([
+      'Users',
+      'Messages',
+      'Roles',
+    ]);
+    expect(screen.queryByRole('heading', { name: 'Admin' })).not.toBeInTheDocument();
+  });
+
+  it('marks only the active tab selected, and only it in the Tab order', () => {
+    renderTabbed({ active: 'messages' });
+    const [users, messages] = screen.getAllByRole('tab');
+    expect(messages).toHaveAttribute('aria-selected', 'true');
+    expect(messages).toHaveAttribute('tabindex', '0');
+    expect(users).toHaveAttribute('aria-selected', 'false');
+    expect(users).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('labels the body by the active tab', () => {
+    renderTabbed({ active: 'roles' });
+    const panel = screen.getByRole('tabpanel', { name: 'Roles' });
+    expect(panel).toHaveTextContent('body content');
+    expect(screen.getByRole('tab', { name: 'Roles' })).toHaveAttribute('aria-controls', panel.id);
+  });
+
+  it('reports a clicked tab', () => {
+    const { onChange } = renderTabbed();
+    fireEvent.click(screen.getByRole('tab', { name: 'Roles' }));
+    expect(onChange).toHaveBeenCalledWith('roles');
+  });
+
+  it.each([
+    ['ArrowRight', 'users', 'messages'],
+    ['ArrowRight', 'roles', 'users'],
+    ['ArrowLeft', 'users', 'roles'],
+    ['Home', 'roles', 'users'],
+    ['End', 'users', 'roles'],
+  ])('moves selection with %s from %s to %s', (key, from, to) => {
+    const { onChange } = renderTabbed({ active: from });
+    fireEvent.keyDown(screen.getByRole('tab', { selected: true }), { key });
+    expect(onChange).toHaveBeenCalledWith(to);
+  });
+
+  it('keeps the action at the end of the header, outside the tab list', () => {
+    renderTabbed();
+    const action = screen.getByRole('button', { name: '+ New' });
+    expect(screen.getByRole('tablist')).not.toContainElement(action);
+  });
+
+  it('keeps a chevron toggle named by the title when collapsible', () => {
+    renderTabbed({ collapsed: false });
+    const toggle = screen.getByRole('button', { name: 'Admin' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('tablist')).not.toContainElement(toggle);
+  });
+
+  it('expands when a tab is chosen while collapsed', () => {
+    const { onChange, onCollapsedChange } = renderTabbed({ collapsed: true });
+    fireEvent.click(screen.getByRole('tab', { name: 'Messages' }));
+    expect(onChange).toHaveBeenCalledWith('messages');
+    expect(onCollapsedChange).toHaveBeenCalledWith(false);
+  });
+
+  it('points no tab at the unmounted body while collapsed', () => {
+    renderTabbed({ collapsed: true });
+    expect(screen.queryByText('body content')).not.toBeInTheDocument();
+    for (const tab of screen.getAllByRole('tab')) {
+      expect(tab).not.toHaveAttribute('aria-controls');
+    }
   });
 });
 
@@ -239,21 +329,41 @@ describe('ListRow', () => {
 });
 
 /**
- * The header's trailing "N · View all" link, hoisted here out of CollectionsPanel and
- * MessagesPanel. Each carried a byte-identical `.viewAll` rule and the same five lines of JSX,
- * the second under a comment saying it was copying the first.
+ * The one header-action style. `+ New User`, `+ New Role` and `View all` used to be a ghost
+ * Button, a filled secondary Button and a muted text link; every panel renders its action through
+ * this now, so a link and a button must come out identical.
  */
+describe('PanelAction', () => {
+  it('renders a link when given an href', () => {
+    render(<PanelAction href="/comments">View all</PanelAction>);
+    expect(screen.getByRole('link', { name: 'View all' })).toHaveAttribute('href', '/comments');
+  });
+
+  it('renders a button when given onClick', () => {
+    const onClick = jest.fn();
+    render(<PanelAction onClick={onClick}>+ New User</PanelAction>);
+    fireEvent.click(screen.getByRole('button', { name: '+ New User' }));
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives the link and the button the same class', () => {
+    render(
+      <>
+        <PanelAction href="/comments">View all</PanelAction>
+        <PanelAction onClick={() => {}}>+ New Role</PanelAction>
+      </>
+    );
+    expect(screen.getByRole('link').className).toBe(screen.getByRole('button').className);
+  });
+});
+
+/** The `N · View all` action, shared by the Collections and Messages tabs. */
 describe('ViewAllLink', () => {
   it('links to the full list', () => {
     render(<ViewAllLink href="/collections" count={12} />);
     expect(screen.getByRole('link', { name: /view all/i })).toHaveAttribute('href', '/collections');
   });
 
-  /**
-   * The count leads and the label follows, separated by a middle dot. Asserted as one string rather
-   * than two `getByText` calls: the order is the reason the component exists — the two panels sit
-   * side by side on the hub and their headers align on that separator.
-   */
   it('reads as the count, then the separator, then the label', () => {
     render(<ViewAllLink href="/comments" count={7} />);
     expect(screen.getByRole('link', { name: /view all/i })).toHaveTextContent('7 · View all');
@@ -264,12 +374,13 @@ describe('ViewAllLink', () => {
     expect(screen.getByRole('link', { name: /view all/i })).toHaveTextContent('0 · View all');
   });
 
-  it('sits in the header when a panel passes it as headerRight', () => {
+  it('is styled as a PanelAction', () => {
     render(
-      <ListPanel title="Collections" headerRight={<ViewAllLink href="/collections" count={3} />}>
-        body
-      </ListPanel>
+      <>
+        <ViewAllLink href="/collections" count={3} />
+        <PanelAction onClick={() => {}}>+ New</PanelAction>
+      </>
     );
-    expect(screen.getByRole('link', { name: /view all/i })).toHaveTextContent('3 · View all');
+    expect(screen.getByRole('link').className).toBe(screen.getByRole('button').className);
   });
 });

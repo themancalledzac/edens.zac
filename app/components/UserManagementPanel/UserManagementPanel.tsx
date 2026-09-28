@@ -6,7 +6,13 @@ import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { GenerateInviteButton } from '@/app/(admin)/admin/users/GenerateInviteButton';
 import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { useAdminPanelSeed } from '@/app/components/ListPanel/AdminPanelSeedContext';
-import { ListPanel, ListRow, ListRows } from '@/app/components/ListPanel/ListPanel';
+import {
+  ListPanel,
+  type ListPanelShell,
+  ListRow,
+  ListRows,
+  PanelAction,
+} from '@/app/components/ListPanel/ListPanel';
 import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIdentityModal';
 import { Button } from '@/app/components/ui/Button/Button';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
@@ -25,22 +31,27 @@ import styles from './UserManagementPanel.module.scss';
 type View = { mode: 'list' } | { mode: 'create' } | { mode: 'edit'; user: AdminUserSummary };
 
 interface UserManagementPanelProps {
-  collapsed?: boolean;
-  onCollapsedChange?: (collapsed: boolean) => void;
+  /** The hub's tab strip and collapse state; absent when mounted on its own. */
+  shell?: ListPanelShell;
 }
 
 /**
  * Tall, self-contained admin panel that owns the user list and swaps its body between a scrollable
- * list, a create form, and an edit form — all in the same fixed-size space. Lives on the `/admin`
- * hub. Per-row "Update" opens edit-in-place; "Reset" reuses {@link GenerateInviteButton}; clicking
+ * list, a create form, and an edit form — all in the same fixed-size space. The Users tab of the
+ * `/admin` hub's list panel.
+ *
+ * Per-row "Update" opens edit-in-place; "Reset" reuses {@link GenerateInviteButton}; clicking
  * the rest of a row navigates to `/admin/users/[id]`, which renders that user's space as they see
  * it. Tag-only PERSON rows are not navigable and instead offer "Merge…" (fold into an existing
  * account) and "Upgrade" (promote in place).
  *
- * Collapsed state is owned by `AdminPanelRenderer` (it sizes the box) and passed straight through
- * to {@link ListPanel}. This panel only intervenes to force itself open when the body gains
- * something the user must see: the create and edit forms both live in the body, so opening one
- * while collapsed would otherwise look like the "+ New User" button did nothing.
+ * The tab strip and collapsed state arrive as `shell` and pass straight through to
+ * {@link ListPanel}. This panel only intervenes to force itself open when the body gains something
+ * the user must see: the create and edit forms both live in the body, so opening one while
+ * collapsed would otherwise look like the "+ New User" action did nothing.
+ *
+ * The "Show tag-only people" toggle is the body's first line (`toolbar`), not a header control: it
+ * filters this list, so it sits on the list, and the header keeps exactly one action.
  *
  * A failed load gets its own body branch, checked ahead of the empty state — an admin whose
  * backend is down must never be told there are no users, an invitation to create a duplicate
@@ -69,7 +80,7 @@ interface UserManagementPanelProps {
  * its text already in place on every return from a form, which is the case that fails to announce.
  * Empty it is zero-height, so standing in front of the forms costs nothing.
  */
-export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManagementPanelProps) {
+export function UserManagementPanel({ shell }: UserManagementPanelProps) {
   const router = useRouter();
   const seed = useAdminPanelSeed();
   const [view, setView] = useState<View>({ mode: 'list' });
@@ -103,6 +114,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
 
   // Both forms render in the panel body, so entering one has to open the panel — otherwise the
   // header swaps to "New User" / "Edit User" with nothing beneath it.
+  const onCollapsedChange = shell?.onCollapsedChange;
   const openView = useCallback(
     (next: View) => {
       setView(next);
@@ -120,8 +132,8 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
     [users]
   );
 
-  const headerTitle =
-    view.mode === 'create' ? 'New User' : view.mode === 'edit' ? 'Edit User' : 'Users';
+  const viewTitle =
+    view.mode === 'create' ? 'New User' : view.mode === 'edit' ? 'Edit User' : undefined;
 
   let listBody: ReactNode = null;
   if (!loading) {
@@ -186,11 +198,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
     }
   }
 
-  // The CONTROL is conditional, its SLOT is not: ListPanel always renders the middle wrapper, so
-  // the header keeps three grid columns and the right rail holds still when a form view hides the
-  // filter. Guarding the slot itself would slide the action into the middle column on every mode
-  // change.
-  const headerMiddle =
+  const toolbar =
     view.mode === 'list' ? (
       <label className={styles.toggle}>
         <input
@@ -202,27 +210,21 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
       </label>
     ) : null;
 
-  // `ghost`, not `secondary`: this is a panel-scope action and should not read with the same weight
-  // as the row-level controls beneath it.
-  const headerRight =
+  const action =
     view.mode === 'list' ? (
-      <Button variant="ghost" size="sm" onClick={() => openView({ mode: 'create' })}>
-        + New User
-      </Button>
+      <PanelAction onClick={() => openView({ mode: 'create' })}>+ New User</PanelAction>
     ) : (
-      <Button variant="ghost" size="sm" onClick={backToList}>
-        ← Back
-      </Button>
+      <PanelAction onClick={backToList}>← Back</PanelAction>
     );
 
   return (
     <ListPanel
-      title={headerTitle}
+      {...shell}
+      title="Users"
       ariaLabel="User management"
-      headerMiddle={headerMiddle}
-      headerRight={headerRight}
-      collapsed={collapsed}
-      onCollapsedChange={onCollapsedChange}
+      viewTitle={viewTitle}
+      toolbar={toolbar}
+      action={action}
     >
       <LoadingText isLoading={loading}>Loading users…</LoadingText>
 

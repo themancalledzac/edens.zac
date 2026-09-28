@@ -56,19 +56,34 @@ describe('ListPanel rails', () => {
 
   const rowPadding = () => declarationOf('.row', 'padding');
 
+  /** The inline (second) value of a `padding: <block> <inline>` shorthand. */
+  const inlinePadding = (selector: string) => declarationOf(selector, 'padding')?.split(/\s+/)[1];
+
   /**
-   * The header and the row must declare the SAME column tracks. This is the component's entire
-   * reason for existing: header controls used to sit at a 17px inset and row controls at 33px, and
-   * one shared rail is what makes that misalignment unavailable rather than fixed-for-now.
+   * The header and the list must inset their content by the SAME amount, because that is what puts
+   * the header's action and the row actions on one right-hand rail. Header controls used to sit at
+   * a 17px inset and row controls at 33px; one shared inset is what keeps that from coming back.
    *
-   * Compared as declarations because there is nowhere else to compare them. jsdom has no cascade,
-   * and the two rules are what the browser resolves against each other.
+   * Compared as declarations because there is nowhere else to compare them. jsdom has no cascade.
    */
-  it('resolves the header and the row against the same columns', () => {
-    const header = declarationOf('.header', 'grid-template-columns');
-    const row = declarationOf('.row', 'grid-template-columns');
-    expect(header).toBe('1fr auto auto');
-    expect(row).toBe(header);
+  it('insets the header and the list by the same rail', () => {
+    expect(inlinePadding('.header')).toBe('var(--space-4)');
+    expect(inlinePadding('.list')).toBe(inlinePadding('.header'));
+  });
+
+  /** The body's first line (`toolbar`) sits on the same rail as the header and the rows. */
+  it('insets the toolbar by the same rail', () => {
+    expect(declarationOf('.toolbar', 'padding')).toBe('0 var(--space-4) var(--space-2)');
+  });
+
+  /**
+   * A tab and the header action are both exactly the `button` slot tall, which is what the tabbed
+   * header's `{ left: ['button'], right: ['button'] }` shape reserves. Taller, and every panel
+   * would render a header the packer never reserved.
+   */
+  it('sizes tabs and the header action to the button slot', () => {
+    expect(declarationOf('.tab', 'height')).toBe('var(--lp-slot-button)');
+    expect(declarationOf('.panelAction', 'height')).toBe('var(--lp-slot-button)');
   });
 
   /**

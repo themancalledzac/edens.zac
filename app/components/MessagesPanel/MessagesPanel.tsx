@@ -2,7 +2,13 @@
 
 import { type Dispatch, type ReactNode, type SetStateAction, useCallback } from 'react';
 
-import { ListPanel, ListRow, ListRows, ViewAllLink } from '@/app/components/ListPanel/ListPanel';
+import {
+  ListPanel,
+  type ListPanelShell,
+  ListRow,
+  ListRows,
+  ViewAllLink,
+} from '@/app/components/ListPanel/ListPanel';
 import { MessageRowLeft, MessageRowRight } from '@/app/components/messages/MessageRow';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { LoadError } from '@/app/components/ui/StatusText/LoadError';
@@ -15,16 +21,16 @@ import { type AdminMessageView, getAdminMessages } from '@/app/lib/api/messages'
 import styles from './MessagesPanel.module.scss';
 
 interface MessagesPanelProps {
-  collapsed?: boolean;
-  onCollapsedChange?: (collapsed: boolean) => void;
+  /** The hub's tab strip and collapse state; absent when mounted on its own. */
+  shell?: ListPanelShell;
 }
 
 /**
  * Self-fetching admin panel that lists messages newest-first in a compact column.
  *
- * Collapsed state is owned by `AdminPanelRenderer` (it sizes the box) and passed through to
- * {@link ListPanel}. Unlike the users panel this one has no body-only modes to guard, so it
- * simply forwards both props.
+ * The Messages tab of the `/admin` hub's list panel. The tab strip and collapsed state arrive as
+ * `shell` and pass straight through to {@link ListPanel}: unlike the users panel this one has no
+ * body-only modes to force the panel open for.
  *
  * `getAdminMessages` resolves `null` only for an empty (204) body — any non-OK response throws
  * `ApiError` out of `fetchAdminGetApi`. `useCachedPanelData` turns a throw with nothing cached
@@ -57,7 +63,7 @@ async function fetchMessages(): Promise<AdminMessagesPayload> {
   return { messages: sorted, total: result.total };
 }
 
-export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelProps) {
+export function MessagesPanel({ shell }: MessagesPanelProps) {
   const { data, loading, loadError, revalidationFailed, refresh, setData } = useCachedPanelData(
     'messages',
     fetchMessages,
@@ -87,7 +93,7 @@ export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelPro
   );
   const { deletingId, error, handleDelete } = useMessageDelete(messages, setMessages, setTotal);
 
-  const headerRight = <ViewAllLink href="/comments" count={total} />;
+  const action = <ViewAllLink href="/comments" count={total} />;
 
   let body: ReactNode = null;
   if (!loading) {
@@ -121,13 +127,7 @@ export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelPro
   }
 
   return (
-    <ListPanel
-      title="Messages"
-      ariaLabel="Comments"
-      headerRight={headerRight}
-      collapsed={collapsed}
-      onCollapsedChange={onCollapsedChange}
-    >
+    <ListPanel {...shell} title="Messages" ariaLabel="Comments" action={action}>
       <LoadingText isLoading={loading}>Loading…</LoadingText>
       {!loading && !loadError && revalidationFailed && <StaleNotice />}
       {body}
