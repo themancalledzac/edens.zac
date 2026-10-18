@@ -24,6 +24,9 @@
 }
 
 .link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--color-on-surface-muted);
   font-size: var(--text-sm);
 
@@ -34,5 +37,5 @@
 
 .copyright {
   margin: 0;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
 }

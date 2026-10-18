@@ -250,7 +250,7 @@ export function UserManagementPanel({ shell }: UserManagementPanelProps) {
                 <Link href={`/admin/users/${sheetUser.id}`} className={styles.openSpace}>
                   Open space
                 </Link>
-                <Button variant="ghost" size="sm" onClick={() => setSheetEditing(true)}>
+                <Button variant="secondary" size="sm" onClick={() => setSheetEditing(true)}>
                   Edit
                 </Button>
               </>

@@ -213,13 +213,8 @@ describe('UserManagementPanel', () => {
     );
 
     const dialog = await screen.findByRole('dialog');
-    const link = within(dialog).queryByRole('link', { name: /open space/i });
-    if (link) {
-      expect(link).toHaveAttribute('href', '/admin/users/1');
-    } else {
-      fireEvent.click(within(dialog).getByRole('button', { name: /open space/i }));
-      expect(mockPush).toHaveBeenCalledWith('/admin/users/1');
-    }
+    const link = within(dialog).getByRole('link', { name: /open space/i });
+    expect(link).toHaveAttribute('href', '/admin/users/1');
   });
 
   it('A5: Edit opens the user form inside the sheet', async () => {
