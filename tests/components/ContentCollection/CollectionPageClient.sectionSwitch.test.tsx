@@ -182,7 +182,7 @@ function sectionCollection(content: AnyContentModel[]): CollectionModel {
 const COLLECTIONS_BLOCKS = [image(1, 'Leica'), image(2, 'Nikon')];
 const IMAGES_BLOCKS = [image(3, 'Leica')];
 
-const ssr = { serverContentWidth: 1200, serverViewportHeight: 900, serverIsMobile: false };
+const ssr = { ssrViewport: { contentWidth: 1200, viewportHeight: 900, isMobile: false } };
 
 function renderSectioned(activeSectionKey = 'collections', content = COLLECTIONS_BLOCKS) {
   return render(

@@ -46,9 +46,7 @@ export default async function TaxonomyPage({ entityName, images, ssrViewport }: 
           enableFullScreenView
           initialPageSize={30}
           chunkSize={4}
-          serverContentWidth={ssrViewport?.contentWidth}
-          serverViewportHeight={ssrViewport?.viewportHeight}
-          serverIsMobile={ssrViewport?.isMobile}
+          ssrViewport={ssrViewport}
         />
       ) : (
         <EmptyState align="page">No photos have this tag yet.</EmptyState>

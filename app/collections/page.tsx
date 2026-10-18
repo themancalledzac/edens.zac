@@ -139,9 +139,7 @@ export default async function CollectionsPage() {
       <CollectionPageClient
         collection={{ ...collection, content: blocks }}
         me={me}
-        serverContentWidth={ssrViewport?.contentWidth}
-        serverViewportHeight={ssrViewport?.viewportHeight}
-        serverIsMobile={ssrViewport?.isMobile}
+        ssrViewport={ssrViewport}
         alwaysShowFilterBar
       />
 

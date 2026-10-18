@@ -47,9 +47,7 @@ describe('Component — SSR fallback viewport', () => {
     render(
       <Component
         content={content}
-        serverContentWidth={1274}
-        serverViewportHeight={800}
-        serverIsMobile={false}
+        ssrViewport={{ contentWidth: 1274, viewportHeight: 800, isMobile: false }}
       />
     );
 
@@ -77,9 +75,7 @@ describe('Component — SSR fallback viewport', () => {
     render(
       <Component
         content={content}
-        serverContentWidth={390}
-        serverViewportHeight={844}
-        serverIsMobile
+        ssrViewport={{ contentWidth: 390, viewportHeight: 844, isMobile: true }}
       />
     );
 

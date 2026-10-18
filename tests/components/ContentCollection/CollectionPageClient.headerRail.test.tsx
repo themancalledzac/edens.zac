@@ -136,9 +136,7 @@ function bareCollection(content: AnyContentModel[]): CollectionModel {
 }
 
 const ssr = {
-  serverContentWidth: 1200,
-  serverViewportHeight: 900,
-  serverIsMobile: false,
+  ssrViewport: { contentWidth: 1200, viewportHeight: 900, isMobile: false },
 };
 
 describe('CollectionPageClient — header rail', () => {

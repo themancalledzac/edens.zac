@@ -12,6 +12,7 @@ import { type RowWithPatternAndSizes } from '@/app/utils/contentLayout';
 import { canDownloadCollection } from '@/app/utils/galleryAccess';
 import { describeLayoutRows } from '@/app/utils/layoutDebug';
 import { logger } from '@/app/utils/logger';
+import { type SsrViewport } from '@/app/utils/ssrViewport';
 
 import { BoxRenderer } from './BoxRenderer';
 import {
@@ -63,9 +64,7 @@ export interface ContentComponentProps extends SharedRendererProps {
    */
   widthCostBaseline?: number;
   /** SSR fallback viewport. Used when `useViewport()` hasn't measured yet. */
-  serverContentWidth?: number;
-  serverViewportHeight?: number;
-  serverIsMobile?: boolean;
+  ssrViewport?: SsrViewport;
 }
 
 /**
@@ -123,9 +122,7 @@ export default function Component({
   collectionData,
   forceHeaderRail = false,
   widthCostBaseline,
-  serverContentWidth,
-  serverViewportHeight,
-  serverIsMobile,
+  ssrViewport,
   ...shared
 }: ContentComponentProps) {
   // `EditModeLayer` provides the edit slice above this component; every public caller renders
@@ -143,10 +140,14 @@ export default function Component({
     () =>
       resolveEffectiveViewport(
         measured,
-        { serverContentWidth, serverViewportHeight, serverIsMobile },
+        {
+          serverContentWidth: ssrViewport?.contentWidth,
+          serverViewportHeight: ssrViewport?.viewportHeight,
+          serverIsMobile: ssrViewport?.isMobile,
+        },
         LAYOUT.ssrRecomputeToleranceWidth
       ),
-    [measured, serverContentWidth, serverViewportHeight, serverIsMobile]
+    [measured, ssrViewport]
   );
 
   // Images whose URL 404s only fail at load time, after the BoxTree slot is allocated. On the

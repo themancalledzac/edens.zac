@@ -148,9 +148,7 @@ export default function CollectionPage({
                 collection={collection}
                 chunkSize={chunkSize}
                 mobileChunkSize={mobileChunkSize}
-                serverContentWidth={ssrViewport?.contentWidth}
-                serverViewportHeight={ssrViewport?.viewportHeight}
-                serverIsMobile={ssrViewport?.isMobile}
+                ssrViewport={ssrViewport}
                 editMode={editMode}
                 me={me ?? null}
                 initialSelectedIds={initialSelectedIds}
@@ -184,9 +182,7 @@ export default function CollectionPage({
                 initialPageSize={30}
                 chunkSize={chunkSize}
                 mobileChunkSize={mobileChunkSize}
-                serverContentWidth={ssrViewport?.contentWidth}
-                serverViewportHeight={ssrViewport?.viewportHeight}
-                serverIsMobile={ssrViewport?.isMobile}
+                ssrViewport={ssrViewport}
               />
             ) : null}
           </SkipTarget>

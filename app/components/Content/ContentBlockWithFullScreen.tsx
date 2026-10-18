@@ -9,6 +9,7 @@ import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type AnyContentModel, type ViewableContent } from '@/app/types/Content';
 import { isCollectionCard } from '@/app/utils/contentRatingUtils';
+import { type SsrViewport } from '@/app/utils/ssrViewport';
 
 import Component from './Component';
 import styles from './ContentBlockWithFullScreen.module.scss';
@@ -40,9 +41,7 @@ interface ContentBlockWithFullScreenProps extends SharedRendererProps {
   /** Mean width-cost of the UNFILTERED content, so filtering does not resize every photo. */
   widthCostBaseline?: number;
   /** SSR fallback viewport, forwarded to Component. */
-  serverContentWidth?: number;
-  serverViewportHeight?: number;
-  serverIsMobile?: boolean;
+  ssrViewport?: SsrViewport;
 }
 export default function ContentBlockWithFullScreen({
   content: allBlocks,
@@ -54,9 +53,7 @@ export default function ContentBlockWithFullScreen({
   collectionData,
   forceHeaderRail,
   widthCostBaseline,
-  serverContentWidth,
-  serverViewportHeight,
-  serverIsMobile,
+  ssrViewport,
   ...shared
 }: ContentBlockWithFullScreenProps) {
   const {
@@ -178,9 +175,7 @@ export default function ContentBlockWithFullScreen({
         collectionData={collectionData}
         forceHeaderRail={forceHeaderRail}
         widthCostBaseline={widthCostBaseline}
-        serverContentWidth={serverContentWidth}
-        serverViewportHeight={serverViewportHeight}
-        serverIsMobile={serverIsMobile}
+        ssrViewport={ssrViewport}
       />
 
       {hasMore && (

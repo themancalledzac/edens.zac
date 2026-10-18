@@ -173,9 +173,7 @@ export function UserSpaceGrid({
     <>
       <CollectionPageClient
         collection={sectionCollection}
-        serverContentWidth={ssrViewport?.contentWidth}
-        serverViewportHeight={ssrViewport?.viewportHeight}
-        serverIsMobile={ssrViewport?.isMobile}
+        ssrViewport={ssrViewport ?? undefined}
         me={me}
         initialSavedImageIds={initialSavedImageIds}
         sections={reconcileCollectionsCount(toolbarSections, grantedCollectionIds, followedIds)}

@@ -76,9 +76,7 @@ describe('TaxonomyPage', () => {
     );
     expect(contentBlockProps).toHaveBeenCalledWith(
       expect.objectContaining({
-        serverContentWidth: 640,
-        serverViewportHeight: 480,
-        serverIsMobile: true,
+        ssrViewport: { contentWidth: 640, viewportHeight: 480, isMobile: true },
       })
     );
   });

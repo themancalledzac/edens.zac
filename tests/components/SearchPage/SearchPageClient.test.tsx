@@ -25,20 +25,16 @@ jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
   __esModule: true,
   default: ({
     content,
-    serverContentWidth,
-    serverViewportHeight,
-    serverIsMobile,
+    ssrViewport,
   }: {
     content: unknown[];
-    serverContentWidth?: number;
-    serverViewportHeight?: number;
-    serverIsMobile?: boolean;
+    ssrViewport?: { contentWidth: number; viewportHeight: number; isMobile: boolean };
   }) => (
     <div
       data-testid="content-blocks"
-      data-width={serverContentWidth}
-      data-height={serverViewportHeight}
-      data-mobile={String(serverIsMobile)}
+      data-width={ssrViewport?.contentWidth}
+      data-height={ssrViewport?.viewportHeight}
+      data-mobile={String(ssrViewport?.isMobile)}
     >
       {content.length}
     </div>

@@ -119,9 +119,7 @@ describe('CollectionsPage', () => {
       makeParent([createCollectionContent(1, { title: 'Solo', slug: 'solo' })])
     );
     const stack = stackProps(await CollectionsPage());
-    expect(stack.serverContentWidth).toBe(1200);
-    expect(stack.serverViewportHeight).toBe(900);
-    expect(stack.serverIsMobile).toBe(false);
+    expect(stack.ssrViewport).toEqual({ contentWidth: 1200, viewportHeight: 900, isMobile: false });
   });
 
   it('keeps the parent shell and swaps only its content', async () => {
