@@ -1,5 +1,7 @@
 'use client';
 
+import { type JSX } from 'react';
+
 import { Button } from '@/app/components/ui/Button/Button';
 import { LOCATION_ADD_NEW_FIELDS } from '@/app/components/ui/Dropdown/commonAddNewFields';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
@@ -51,7 +53,7 @@ export default function EssentialInfoSection({
   isGif,
   isBulkEdit = false,
   onPickCaptureDate,
-}: EssentialInfoSectionProps): React.JSX.Element {
+}: EssentialInfoSectionProps): JSX.Element {
   const currentCollectionVisible = isCurrentCollectionVisible(
     updateState.collections,
     currentCollectionId

@@ -8,15 +8,11 @@
 
 import { render, screen } from '@testing-library/react';
 
-import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
-import { collectionPublicLabel } from '@/app/components/ui/Badge/Badge';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
-import { type ContentParallaxImageModel } from '@/app/types/Content';
-import { logger } from '@/app/utils/logger';
 
 /**
  * SiteHeader transitively pulls next/cache (via MenuDropdown -> clearCacheAction) and cannot run
@@ -38,15 +34,6 @@ jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => ({
   default: jest.fn(() => null),
 }));
 
-/**
- * The array branch feeds converted parallax cards into the full content grid; stub it and capture
- * props so the cover-strip test can inspect the converted blocks without mounting the layout engine.
- */
-jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
-  __esModule: true,
-  default: jest.fn(() => null),
-}));
-
 const mockBottomNav = jest.fn();
 
 jest.mock('@/app/components/ui/BottomNav/BottomNav', () => ({
@@ -57,7 +44,6 @@ jest.mock('@/app/components/ui/BottomNav/BottomNav', () => ({
   },
 }));
 
-const mockContentBlock = ContentBlockWithFullScreen as unknown as jest.Mock;
 const mockHeader = SiteHeader as unknown as jest.Mock;
 const mockClient = CollectionPageClient as unknown as jest.Mock;
 
@@ -105,7 +91,6 @@ describe('CollectionPage (single collection)', () => {
 describe('CollectionPage — row budgets', () => {
   beforeEach(() => {
     mockClient.mockClear();
-    mockContentBlock.mockClear();
   });
 
   it('forwards chunkSize and a pinned mobileChunkSize to the client on the single branch', () => {
@@ -114,154 +99,11 @@ describe('CollectionPage — row budgets', () => {
     expect(mockClient).toHaveBeenCalledTimes(1);
     expect(mockClient.mock.calls[0][0]).toMatchObject({ chunkSize: 2, mobileChunkSize: 2 });
   });
-
-  it('forwards them to the grid on the array branch', () => {
-    render(<CollectionPage collection={[makeCollection()]} chunkSize={2} mobileChunkSize={2} />);
-
-    expect(mockContentBlock.mock.calls[0][0]).toMatchObject({ chunkSize: 2, mobileChunkSize: 2 });
-  });
-});
-
-describe('CollectionPage (collection array) — protected-cover stripping', () => {
-  beforeEach(() => {
-    mockContentBlock.mockClear();
-  });
-
-  const coverImage = {
-    id: 10,
-    contentType: 'IMAGE' as const,
-    orderIndex: 0,
-    imageUrl: 'https://example.com/secret-cover.jpg',
-    imageWidth: 1600,
-    imageHeight: 1200,
-    visible: true,
-    locations: [],
-  };
-
-  function renderedBlocks(): ContentParallaxImageModel[] {
-    expect(mockContentBlock).toHaveBeenCalledTimes(1);
-    return mockContentBlock.mock.calls[0][0].content as ContentParallaxImageModel[];
-  }
-
-  it('strips the cover image from a password-protected client gallery card', () => {
-    render(
-      <CollectionPage
-        collection={[
-          makeCollection({
-            isBlog: false,
-            isClient: true,
-            isPasswordProtected: true,
-            coverImage,
-          }),
-        ]}
-      />
-    );
-
-    expect(renderedBlocks()[0]?.imageUrl).toBe('');
-  });
-
-  it('strips the cover image from a protected NON-client collection (kind-agnostic)', () => {
-    render(
-      <CollectionPage
-        collection={[
-          makeCollection({ isBlog: false, isClient: false, isPasswordProtected: true, coverImage }),
-        ]}
-      />
-    );
-
-    expect(renderedBlocks()[0]?.imageUrl).toBe('');
-  });
-
-  it('strips (and warns) when a protected payload carries no kind booleans', () => {
-    const warn = jest.spyOn(logger, 'warn').mockImplementation(() => {});
-
-    render(
-      <CollectionPage
-        collection={[
-          makeCollection({
-            isBlog: undefined,
-            isClient: undefined,
-            isPasswordProtected: true,
-            coverImage,
-          }),
-        ]}
-      />
-    );
-
-    expect(renderedBlocks()[0]?.imageUrl).toBe('');
-    expect(warn).toHaveBeenCalledWith(
-      'CollectionPage',
-      expect.stringContaining('missing isClient/isBlog'),
-      expect.objectContaining({ slug: 'paris-2025' })
-    );
-
-    warn.mockRestore();
-  });
-
-  it('keeps the cover image for an unprotected client gallery', () => {
-    render(
-      <CollectionPage
-        collection={[
-          makeCollection({ isBlog: false, isClient: true, isPasswordProtected: false, coverImage }),
-        ]}
-      />
-    );
-
-    expect(renderedBlocks()[0]?.imageUrl).toBe('https://example.com/secret-cover.jpg');
-  });
-
-  it('keeps the cover for a protected client gallery when showProtectedCovers opts in (admin)', () => {
-    render(
-      <CollectionPage
-        collection={[
-          makeCollection({ isBlog: false, isClient: true, isPasswordProtected: true, coverImage }),
-        ]}
-        showProtectedCovers
-      />
-    );
-
-    expect(renderedBlocks()[0]?.imageUrl).toBe('https://example.com/secret-cover.jpg');
-  });
-});
-
-describe('CollectionPage (collection array) — badge carry-through', () => {
-  beforeEach(() => {
-    mockContentBlock.mockClear();
-  });
-
-  function renderedBlocks(): ContentParallaxImageModel[] {
-    expect(mockContentBlock).toHaveBeenCalledTimes(1);
-    return mockContentBlock.mock.calls[0][0].content as ContentParallaxImageModel[];
-  }
-
-  it('labels blogs "Story" and leaves other collections unbadged', () => {
-    render(
-      <CollectionPage
-        collection={[makeCollection({ isBlog: true }), makeCollection({ id: 2, isBlog: false })]}
-      />
-    );
-
-    const blocks = renderedBlocks();
-    expect(collectionPublicLabel(blocks[0] ?? {})).toBe('Story');
-    expect(collectionPublicLabel(blocks[1] ?? {})).toBeNull();
-  });
-
-  it('does not carry CollectionModel.tags (only synthetic list payloads ever set them)', () => {
-    render(
-      <CollectionPage
-        collection={[makeCollection({ isBlog: false, tags: ['Landscape', 'Art Gallery'] })]}
-      />
-    );
-
-    const block = renderedBlocks()[0];
-    expect(block?.tags).toBeUndefined();
-    expect(collectionPublicLabel(block ?? {})).toBeNull();
-  });
 });
 
 /**
  * CollectionPage builds its own container/main/header instead of using PageShell, so it supplies
- * the skip link's landing zone itself on BOTH branches. The link half is rendered once from the
+ * the skip link's landing zone itself. The link half is rendered once from the
  * root layout, above the route's Suspense boundary — see tests/app/skipLink.layout.test.tsx, which
  * pins that stream order and composes the two halves.
  */
@@ -272,12 +114,6 @@ describe('CollectionPage — skip target', () => {
     render(<CollectionPage collection={makeCollection({ id: 1, slug: 'dolomites' })} />);
 
     expect(target()).toBeInTheDocument();
-    expect(target()).toHaveAttribute('tabindex', '-1');
-  });
-
-  it('renders it on the collection-array branch too', () => {
-    render(<CollectionPage collection={[makeCollection({ id: 1, slug: 'dolomites' })]} />);
-
     expect(target()).toHaveAttribute('tabindex', '-1');
   });
 
@@ -298,17 +134,14 @@ describe('CollectionPage — skip target', () => {
     expect(target()).not.toContainElement(main as HTMLElement);
   });
 
-  it.each([
-    ['single-collection', () => makeCollection({ id: 1, slug: 'dolomites' })],
-    ['collection-array', () => [makeCollection({ id: 1, slug: 'dolomites' })]],
-  ])('renders no skip link of its own on the %s branch', (_name, build) => {
-    render(<CollectionPage collection={build()} />);
+  it('renders no skip link of its own', () => {
+    render(<CollectionPage collection={makeCollection({ id: 1, slug: 'dolomites' })} />);
     expect(screen.queryByRole('link', { name: /skip to main content/i })).not.toBeInTheDocument();
   });
 });
 
 /**
- * A16 / A15: both branches hand the server-resolved `me` to SiteHeader unchanged. An omitted `me`
+ * A16 / A15: the page hands the server-resolved `me` to SiteHeader unchanged. An omitted `me`
  * must stay undefined (menu fetches on first open); only an explicit null means anonymous.
  */
 describe('CollectionPage — me forwarding to SiteHeader', () => {
@@ -321,9 +154,8 @@ describe('CollectionPage — me forwarding to SiteHeader', () => {
     typeof CollectionPage
   >[0]['me'];
 
-  const branches: Array<[string, () => CollectionModel | CollectionModel[]]> = [
+  const branches: Array<[string, () => CollectionModel]> = [
     ['single-collection', () => makeCollection()],
-    ['collection-array', () => [makeCollection()]],
   ];
 
   it.each(branches)('A16: forwards a signed-in me on the %s branch', (_n, build) => {
@@ -351,13 +183,11 @@ describe('CollectionPage — me forwarding to SiteHeader', () => {
 });
 
 /**
- * `backHref` renders a "← Admin" link as the first element inside the skip target on both
- * branches, and nothing extra when unset.
+ * `backHref` renders a "← Admin" link as the first element inside the skip target and nothing extra when unset.
  */
 describe('CollectionPage — back link', () => {
-  const builds: [string, () => CollectionModel | CollectionModel[]][] = [
+  const builds: [string, () => CollectionModel][] = [
     ['single-collection', () => makeCollection({ id: 1, slug: 'dolomites' })],
-    ['collection-array', () => [makeCollection({ id: 1, slug: 'dolomites' })]],
   ];
 
   it.each(builds)('renders no link when backHref is unset on the %s branch', (_name, build) => {
@@ -384,13 +214,11 @@ describe('CollectionPage — back link', () => {
 });
 
 /**
- * The footer renders once per page, after <main> as its sibling inside the container, on both
- * branches, and `withFooter={false}` removes it.
+ * The footer renders once per page, after <main> as its sibling inside the container, and `withFooter={false}` removes it.
  */
 describe('CollectionPage — footer', () => {
-  const builds: [string, () => CollectionModel | CollectionModel[]][] = [
+  const builds: [string, () => CollectionModel][] = [
     ['single-collection', () => makeCollection({ id: 1, slug: 'dolomites' })],
-    ['collection-array', () => [makeCollection({ id: 1, slug: 'dolomites' })]],
   ];
 
   it.each(builds)('renders one footer after <main> on the %s branch', (_name, build) => {
@@ -456,30 +284,25 @@ describe('CollectionPage — bottom nav', () => {
     expect(screen.getByTestId('bottom-nav')).toBeInTheDocument();
   });
 
-  it('renders the bar on the array branch', () => {
-    render(<CollectionPage collection={[makeCollection()]} />);
-    expect(screen.getByTestId('bottom-nav')).toBeInTheDocument();
-  });
-
   it('omits the bar when editMode is true', () => {
     render(<CollectionPage collection={makeCollection()} editMode />);
     expect(screen.queryByTestId('bottom-nav')).not.toBeInTheDocument();
   });
 
-  it.each([
-    ['single', makeCollection()],
-    ['array', [makeCollection()]],
-  ])('S1: passes me through unchanged on the %s branch', (_label, collection) => {
-    const me = { id: 7 } as unknown as Parameters<typeof CollectionPage>[0]['me'];
-    const first = render(<CollectionPage collection={collection} me={me} />);
-    expect(mockBottomNav.mock.calls[0][0].me).toBe(me);
-    first.unmount();
-    mockBottomNav.mockClear();
-    const second = render(<CollectionPage collection={collection} me={null} />);
-    expect(mockBottomNav.mock.calls[0][0].me).toBeNull();
-    second.unmount();
-    mockBottomNav.mockClear();
-    render(<CollectionPage collection={collection} />);
-    expect(mockBottomNav.mock.calls[0][0].me).toBeUndefined();
-  });
+  it.each([['single', makeCollection()]])(
+    'S1: passes me through unchanged on the %s branch',
+    (_label, collection) => {
+      const me = { id: 7 } as unknown as Parameters<typeof CollectionPage>[0]['me'];
+      const first = render(<CollectionPage collection={collection} me={me} />);
+      expect(mockBottomNav.mock.calls[0][0].me).toBe(me);
+      first.unmount();
+      mockBottomNav.mockClear();
+      const second = render(<CollectionPage collection={collection} me={null} />);
+      expect(mockBottomNav.mock.calls[0][0].me).toBeNull();
+      second.unmount();
+      mockBottomNav.mockClear();
+      render(<CollectionPage collection={collection} />);
+      expect(mockBottomNav.mock.calls[0][0].me).toBeUndefined();
+    }
+  );
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext } from 'react';
+import { createContext, type ReactNode, useContext } from 'react';
 
 /**
  * Page-level select/download state for CLIENT_GALLERY pages.
@@ -28,7 +28,7 @@ export function ClientGalleryDownloadProvider({
   children,
   value,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   value: ClientGalleryDownloadContextValue;
 }) {
   return <ClientGalleryDownloadContext value={value}>{children}</ClientGalleryDownloadContext>;

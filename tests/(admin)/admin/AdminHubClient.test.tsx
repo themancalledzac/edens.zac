@@ -100,9 +100,7 @@ describe('AdminHubClient', () => {
       <AdminHubClient
         content={buildAdminHubContent([])}
         mobileChunkSize={1}
-        serverContentWidth={DESKTOP_VIEWPORT.contentWidth}
-        serverViewportHeight={DESKTOP_VIEWPORT.viewportHeight}
-        serverIsMobile={DESKTOP_VIEWPORT.isMobile}
+        ssrViewport={DESKTOP_VIEWPORT}
       />
     );
 

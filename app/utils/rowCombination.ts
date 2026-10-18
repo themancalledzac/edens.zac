@@ -97,7 +97,7 @@ export const MAX_FILL_RATIO = 1.15;
  * A leading item whose effective rating is at or below this may be passed over so that
  * a solo-eligible hero just behind it leads the row instead.
  */
-export const LOW_RATED_THRESHOLD = 2;
+const LOW_RATED_THRESHOLD = 2;
 
 /**
  * Whether a set of components fills a row within the acceptable band
@@ -226,14 +226,14 @@ export function acToBoxTree(component: AtomicComponent): BoxTree {
 // =============================================================================
 
 /** Row AR must be at least targetAR × this value. */
-export const AR_FLOOR_MULTIPLIER = 0.7;
+const AR_FLOOR_MULTIPLIER = 0.7;
 
 /** Never pull a row's target AR below this fraction of the baseline. */
-export const ROW_TARGET_AR_MIN_FRACTION = 0.6;
+const ROW_TARGET_AR_MIN_FRACTION = 0.6;
 /** Peak height-demand at or below which no pull is applied (≈ a 5★ pano's Vv). */
 export const ROW_TARGET_AR_VV_LOW = 1.85;
 /** Peak height-demand at or above which the pull is full (≈ a 1:3 portrait hero). */
-export const ROW_TARGET_AR_VV_HIGH = 5.0;
+const ROW_TARGET_AR_VV_HIGH = 5.0;
 
 /**
  * Per-row target AR: the viewport baseline pulled toward a floor in proportion to
@@ -781,6 +781,61 @@ function collectRowItems(
  * minimum degrades instead), and it is skipped entirely — via one hoisted precheck — for
  * content that declares no minimum.
  *
+ * Pixel-aware membership needs usable pixels, and "usable" means finite: a NaN width would
+ * make every deficit and every clean-extension test NaN, and NaN fails every comparison, so
+ * the guards would quietly wave through the rows they exist to close. Falling back to the
+ * unitless fill loop is the same code every collection page runs.
+ *
+ * One O(n) precheck, hoisted above every loop below. False for every collection page —
+ * no photograph declares a minimum — and then the fill loops are the pre-feature code.
+ *
+ * Membership guard: item i is the (sequentialCount + 1)-th unskipped item, so this
+ * asks "would the row I am about to grow fail its declared constraints?" and closes
+ * the row at its current members if so. Placed ahead of all three add sites below —
+ * the moderate-overfill accept, the AR-widening pass, and the plain fill — so none
+ * of them can slip an item past it.
+ *
+ * Pinned rows get the stronger form: a row must COMPOSE CLEAN — no starved minimum, no
+ * unconsumed width past the fill tolerance (a capped column asked to carry width its
+ * members may not render), one shared width across its pinned blocks, and no slack pocket
+ * past the pocket tolerance. And because pinned geometry is non-monotonic in the member
+ * count — [users, bar, roles] can only pocket while [users, bar, roles, tile] fills the
+ * box exactly — a defective candidate closes the row only after a LOOKAHEAD through the
+ * window fails to find a farther clean extension. Growth may pass through defective
+ * intermediates; it must LAND clean.
+ *
+ * A clean extension that strands a single leftover hands the next row a full-width
+ * solo. When the row already stands at a validated clean count, closing here beats
+ * growing into that; when it does not, landing clean — even stranding — still beats
+ * closing on a defective row.
+ *
+ * The width-cost budget measures a row laid out SIDE BY SIDE — every member charged for
+ * horizontal space. A row containing a pinned block is not laid out that way: the composer
+ * stacks short blocks into a shared column, and two items in one column cost one item's
+ * width. So the budget systematically under-counts how much such a row holds, and closing
+ * on it strands items that would have fitted. On the hub it stranded the third nav tile,
+ * which then took its own row beside ~1000px of blank padding.
+ *
+ * The membership guard above is the honest stopping condition here: it composes the larger
+ * row for real and closes when a member would fall under its declared minimum. That is a
+ * width test on the actual arrangement rather than an estimate of one, so it cannot be
+ * fooled by stacking. `MAX_ROW_IMAGES` still bounds the loop.
+ *
+ * Same reasoning as the fill-cap above, and this is the check that actually closed the hub's
+ * first row: a row reaches MIN_FILL_RATIO and declares itself complete long before a stacked
+ * column is full. Both the fill and `estimateRowAR` are computed from declared aspect
+ * ratios, which a pinned block does not have — so on a pinned row this asks a question about
+ * a layout that is not the one being built. The membership guard is left as the only
+ * stopping rule, and it is a real one: it composes the larger row and closes when a member
+ * would fall under its declared minimum. `MAX_ROW_IMAGES` bounds the loop regardless.
+ *
+ * The same membership guard as the greedy loop. This path is reached only when
+ * greedy fill took nothing at all, so it starts a row from scratch and can starve
+ * a minimum in exactly the same way. `break` rather than `continue` is deliberate
+ * and matches the greedy loop: one starving candidate closes the row, instead of
+ * skipping past it to a later window item, which would reorder content to squeeze
+ * in a filler.
+ *
  * @param rowWidth - Row width budget (5 desktop, 4 tablet, etc.).
  * @param targetARBaseline - Baseline (viewport) target AR. Fill and estimate use it
  *   directly; each row derives a per-row target from it via rowTargetAR.
@@ -798,10 +853,6 @@ export function buildRows(
 
   const effectiveMinFill = MIN_FILL_RATIO;
 
-  // Pixel-aware membership needs usable pixels, and "usable" means finite: a NaN width would
-  // make every deficit and every clean-extension test NaN, and NaN fails every comparison, so
-  // the guards would quietly wave through the rows they exist to close. Falling back to the
-  // unitless fill loop is the same code every collection page runs.
   const hasPixels =
     pixelContext !== undefined &&
     Number.isFinite(pixelContext.componentWidth) &&
@@ -809,8 +860,6 @@ export function buildRows(
   const rowPixels = hasPixels ? pixelContext.componentWidth : 0;
   const rowGap = hasPixels ? pixelContext.gap : 0;
 
-  // One O(n) precheck, hoisted above every loop below. False for every collection page —
-  // no photograph declares a minimum — and then the fill loops are the pre-feature code.
   const constrained = hasPixels && items.some(item => getMinWidth(item) !== undefined);
 
   /**
@@ -901,20 +950,6 @@ export function buildRows(
         continue;
       }
 
-      // Membership guard: item i is the (sequentialCount + 1)-th unskipped item, so this
-      // asks "would the row I am about to grow fail its declared constraints?" and closes
-      // the row at its current members if so. Placed ahead of all three add sites below —
-      // the moderate-overfill accept, the AR-widening pass, and the plain fill — so none
-      // of them can slip an item past it.
-      //
-      // Pinned rows get the stronger form: a row must COMPOSE CLEAN — no starved minimum, no
-      // unconsumed width past the fill tolerance (a capped column asked to carry width its
-      // members may not render), one shared width across its pinned blocks, and no slack pocket
-      // past the pocket tolerance. And because pinned geometry is non-monotonic in the member
-      // count — [users, bar, roles] can only pocket while [users, bar, roles, tile] fills the
-      // box exactly — a defective candidate closes the row only after a LOOKAHEAD through the
-      // window fails to find a farther clean extension. Growth may pass through defective
-      // intermediates; it must LAND clean.
       if (constrained && sequentialCount > 0 && sequentialCount + 1 > commitThrough) {
         if (hasPinnedMember) {
           const clean = firstCleanExtension(
@@ -927,10 +962,6 @@ export function buildRows(
             rowGap
           );
           if (clean === null) break;
-          // A clean extension that strands a single leftover hands the next row a full-width
-          // solo. When the row already stands at a validated clean count, closing here beats
-          // growing into that; when it does not, landing clean — even stranding — still beats
-          // closing on a defective row.
           if (clean.strandsOne && commitThrough > 0 && sequentialCount === commitThrough) break;
           commitThrough = clean.count;
         } else if (
@@ -947,17 +978,6 @@ export function buildRows(
 
       const newFill = (sequentialTotal + widthCost) / rowWidth;
 
-      // The width-cost budget measures a row laid out SIDE BY SIDE — every member charged for
-      // horizontal space. A row containing a pinned block is not laid out that way: the composer
-      // stacks short blocks into a shared column, and two items in one column cost one item's
-      // width. So the budget systematically under-counts how much such a row holds, and closing
-      // on it strands items that would have fitted. On the hub it stranded the third nav tile,
-      // which then took its own row beside ~1000px of blank padding.
-      //
-      // The membership guard above is the honest stopping condition here: it composes the larger
-      // row for real and closes when a member would fall under its declared minimum. That is a
-      // width test on the actual arrangement rather than an estimate of one, so it cannot be
-      // fooled by stacking. `MAX_ROW_IMAGES` still bounds the loop.
       if (newFill > MAX_FILL_RATIO && !slotCountComplete && !hasPinnedMember) {
         const currentFill = sequentialTotal / rowWidth;
         if (currentFill < effectiveMinFill && newFill <= 1.35) {
@@ -986,13 +1006,6 @@ export function buildRows(
       sequentialTotal += widthCost;
       sequentialCount += 1;
 
-      // Same reasoning as the fill-cap above, and this is the check that actually closed the hub's
-      // first row: a row reaches MIN_FILL_RATIO and declares itself complete long before a stacked
-      // column is full. Both the fill and `estimateRowAR` are computed from declared aspect
-      // ratios, which a pinned block does not have — so on a pinned row this asks a question about
-      // a layout that is not the one being built. The membership guard is left as the only
-      // stopping rule, and it is a real one: it composes the larger row and closes when a member
-      // would fall under its declared minimum. `MAX_ROW_IMAGES` bounds the loop regardless.
       if (newFill >= effectiveMinFill && !hasPinnedMember) {
         const rowItems = collectRowItems(expandedWindow, sequentialCount, skippedStandalones);
         const rowImgs = rowItems.map(item => toImageType(item));
@@ -1047,12 +1060,6 @@ export function buildRows(
       for (let idx = 1; idx < window.length; idx++) {
         if (!available.has(idx)) continue;
 
-        // The same membership guard as the greedy loop. This path is reached only when
-        // greedy fill took nothing at all, so it starts a row from scratch and can starve
-        // a minimum in exactly the same way. `break` rather than `continue` is deliberate
-        // and matches the greedy loop: one starving candidate closes the row, instead of
-        // skipping past it to a later window item, which would reorder content to squeeze
-        // in a filler.
         if (
           constrained &&
           starvesMinWidth([...bestFitComponents, window[idx]!], targetARBaseline, rowPixels, rowGap)
@@ -1441,13 +1448,14 @@ export function splitLeftWidth(component: AtomicComponent, width: number, gap: n
  * stretch, so an hPair holding a 986px Users panel beside a 251px Messages panel genuinely
  * leaves 735px × 400px of nothing — the blank well from Zac's 2026-08-10 screenshots, which
  * until now no term in the score could see, let alone prefer to avoid.
+ *
+ * Width-notch: a capped leaf handed more width than it may render leaves a blank strip
+ * beside itself for its whole height — a bar spanning 773px above a 700px-capped panel is
+ * the same dead space as a height pocket, rotated. Heights: a pinned leaf renders its pin;
+ * an AR leaf at its capped width renders proportionally shorter.
  */
 function slackArea(component: AtomicComponent, width: number, gap: number): number {
   if (component.type === 'single') {
-    // Width-notch: a capped leaf handed more width than it may render leaves a blank strip
-    // beside itself for its whole height — a bar spanning 773px above a 700px-capped panel is
-    // the same dead space as a height pocket, rotated. Heights: a pinned leaf renders its pin;
-    // an AR leaf at its capped width renders proportionally shorter.
     const maxWidth = getMaxWidth(component.img.source);
     if (maxWidth === undefined || width <= maxWidth) return 0;
     const pinnedHeight = getPinnedHeight(component.img.source);
@@ -1503,6 +1511,10 @@ const SLACK_WEIGHT = 10;
  * A vStack consumes what its widest member can use; an hPair consumes both sides plus its gap.
  * Leaves without a cap consume everything they are given, so photo rows always consume exactly
  * their row width and this measures 0.
+ *
+ * Stacked members SHARE one width — the atomic-design default (Zac's round-3 review: three
+ * vertically-joined panels "should just adhere to the same width"). A column therefore
+ * consumes only what EVERY member can render: its most-constrained member caps the column.
  */
 function consumedWidth(component: AtomicComponent, width: number, gap: number): number {
   if (component.type === 'single') {
@@ -1510,9 +1522,6 @@ function consumedWidth(component: AtomicComponent, width: number, gap: number): 
     return maxWidth === undefined ? width : Math.min(width, maxWidth);
   }
   if (component.direction === 'V') {
-    // Stacked members SHARE one width — the atomic-design default (Zac's round-3 review: three
-    // vertically-joined panels "should just adhere to the same width"). A column therefore
-    // consumes only what EVERY member can render: its most-constrained member caps the column.
     return Math.min(
       consumedWidth(component.children[0], width, gap),
       consumedWidth(component.children[1], width, gap)
@@ -1726,6 +1735,33 @@ function pickRootAssignment(tree: AbstractNode, targetAR: number): AtomicCompone
  * cannot always satisfy a minimum (the root is a forced hPair, so n leaves always split
  * one width n ways); {@link buildRows}' membership guard is what frees up the width, and
  * this only spends what it is given as well as possible.
+ *
+ * Every pixel-aware term below is gated on this. Finite, not merely present: a NaN or Infinity
+ * width poisons every arithmetic term it touches, and NaN comparisons are all false, so a
+ * single bad pixel would silently hand the row to whichever candidate happened to be scored
+ * first. Unitless scoring is the honest fallback when the caller has no usable pixels — it is
+ * what every collection page runs anyway.
+ *
+ * One O(n) precheck, hoisted above the candidate loops: false for every collection
+ * page, and then `consider` below scores exactly what it scored pre-feature.
+ *
+ * Second O(n) precheck, same shape as `constrained`. A pinned member makes the enumeration's
+ * scalar AR wrong (its real AR is width/pinnedHeight), so the two terms below switch to the
+ * rendered-height model. No photograph declares a pin, so this is false for every collection
+ * page and `consider` scores exactly what it scored pre-feature.
+ *
+ * Third precheck, same discipline: no photograph declares a maxWidth, so the fill term below
+ * is identically 0 for every collection page.
+ *
+ * The AR floor ("never taller than wide") and ceiling ("never a thin strip") are aesthetic
+ * guards over a shape the composer is free to choose. A row carrying a pinned member has no
+ * such freedom: its height is whatever its tallest pinned block is, near enough, so both
+ * bounds stop being design choices and start vetoing arrangements for a ratio the content
+ * dictates. Skipping them here is what lets the row that FILLS its box win; slack, min-width
+ * and equity then decide, with `arPenalty` left as a mild pull toward the target.
+ *
+ * Same penalty class as starvation: a row that cannot span the body is invalid unless
+ * every alternative is too, and then the graded term prefers the least unconsumed width.
  */
 function pickBestComposition(
   items: ImageType[],
@@ -1738,11 +1774,6 @@ function pickBestComposition(
   const target = Math.max(targetAR, ROW_AR_FLOOR);
   const ceiling = CEILING_MULT * target;
 
-  // Every pixel-aware term below is gated on this. Finite, not merely present: a NaN or Infinity
-  // width poisons every arithmetic term it touches, and NaN comparisons are all false, so a
-  // single bad pixel would silently hand the row to whichever candidate happened to be scored
-  // first. Unitless scoring is the honest fallback when the caller has no usable pixels — it is
-  // what every collection page runs anyway.
   const hasPixels =
     pixelContext !== undefined &&
     Number.isFinite(pixelContext.componentWidth) &&
@@ -1750,18 +1781,10 @@ function pickBestComposition(
   const rowPixels = hasPixels ? pixelContext.componentWidth : 0;
   const rowGap = hasPixels ? pixelContext.gap : 0;
 
-  // One O(n) precheck, hoisted above the candidate loops: false for every collection
-  // page, and then `consider` below scores exactly what it scored pre-feature.
   const constrained = hasPixels && items.some(img => getMinWidth(img.source) !== undefined);
 
-  // Second O(n) precheck, same shape as `constrained`. A pinned member makes the enumeration's
-  // scalar AR wrong (its real AR is width/pinnedHeight), so the two terms below switch to the
-  // rendered-height model. No photograph declares a pin, so this is false for every collection
-  // page and `consider` scores exactly what it scored pre-feature.
   const pinned = hasPixels && items.some(img => getPinnedHeight(img.source) !== undefined);
 
-  // Third precheck, same discipline: no photograph declares a maxWidth, so the fill term below
-  // is identically 0 for every collection page.
   const capped = hasPixels && items.some(img => getMaxWidth(img.source) !== undefined);
   const fillTolerance = FILL_TOLERANCE_GAPS * rowGap;
 
@@ -1780,17 +1803,9 @@ function pickBestComposition(
       arClosestCost = cost;
       arClosest = component;
     }
-    // The AR floor ("never taller than wide") and ceiling ("never a thin strip") are aesthetic
-    // guards over a shape the composer is free to choose. A row carrying a pinned member has no
-    // such freedom: its height is whatever its tallest pinned block is, near enough, so both
-    // bounds stop being design choices and start vetoing arrangements for a ratio the content
-    // dictates. Skipping them here is what lets the row that FILLS its box win; slack, min-width
-    // and equity then decide, with `arPenalty` left as a mild pull toward the target.
     if (!pinned && (rowAR < ROW_AR_FLOOR || rowAR > ceiling)) return;
     const starvation = constrained ? minWidthDeficit(component, rowPixels, rowGap) : 0;
     const slack = pinned ? slackFraction(component, rowPixels, rowGap) : 0;
-    // Same penalty class as starvation: a row that cannot span the body is invalid unless
-    // every alternative is too, and then the graded term prefers the least unconsumed width.
     const unconsumed = capped ? rowPixels - consumedWidth(component, rowPixels, rowGap) : 0;
     const scatter = pinned ? Math.max(0, pinnedClusterCount(component) - 1) : 0;
     const violations = violationCount(starvation, unconsumed, fillTolerance);

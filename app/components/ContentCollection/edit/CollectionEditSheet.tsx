@@ -1,5 +1,3 @@
-'use client';
-
 import styles from './CollectionEditSheet.module.scss';
 import { InfoTab } from './sections/InfoTab';
 import { StructureTab } from './sections/StructureTab';

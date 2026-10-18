@@ -103,9 +103,7 @@ describe('TagPageRoute', () => {
     await renderRoute('alpine');
     expect(contentBlockProps).toHaveBeenCalledWith(
       expect.objectContaining({
-        serverContentWidth: 900,
-        serverViewportHeight: 700,
-        serverIsMobile: false,
+        ssrViewport: { contentWidth: 900, viewportHeight: 700, isMobile: false },
       })
     );
   });

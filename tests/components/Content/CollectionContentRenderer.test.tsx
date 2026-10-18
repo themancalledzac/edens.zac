@@ -36,11 +36,11 @@ jest.mock('@/app/components/ui/FilterToolbar/FilterToolbar', () => ({
   },
   MAX_FLAT_DATE_CHIPS: 5,
 }));
-jest.mock('@/app/components/auth/MeProvider', () => ({
+jest.mock('@/app/components/Auth/MeProvider', () => ({
   useMe: jest.fn(() => null),
 }));
 
-import { useMe } from '@/app/components/auth/MeProvider';
+import { useMe } from '@/app/components/Auth/MeProvider';
 import { type MeResponse } from '@/app/types/Auth';
 
 const mockUseMe = useMe as jest.MockedFunction<typeof useMe>;

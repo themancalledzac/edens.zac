@@ -172,7 +172,10 @@ export default function EditModeLayer({
     return applyCollectionFilters(allContent, allImages, criteria);
   }, [allContent, allImages, criteria, hasActiveFilters]);
 
+  const reorderActive = edit.reorder.active;
+
   const contentBlocks = useMemo(() => {
+    if (reorderActive) return [];
     const processed = processContentBlocks(
       filteredContent,
       false,
@@ -182,13 +185,12 @@ export default function EditModeLayer({
     );
     return applySort(processed, filterState.dateSortDirection);
   }, [
+    reorderActive,
     filteredContent,
     liveCollection.id,
     liveCollection.displayMode,
     filterState.dateSortDirection,
   ]);
-
-  const reorderActive = edit.reorder.active;
 
   // Reorder and select must operate on the full unfiltered list; clear active filters on entry.
   useEffect(() => {

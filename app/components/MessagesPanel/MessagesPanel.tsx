@@ -11,7 +11,7 @@ import {
   ViewAllLink,
 } from '@/app/components/ListPanel/ListPanel';
 import { PanelBody } from '@/app/components/ListPanel/PanelBody';
-import { MessageRow } from '@/app/components/messages/MessageRow';
+import { MessageRow } from '@/app/components/Messages/MessageRow';
 import { type AdminMessagesPayload, useCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { useMessageDelete } from '@/app/hooks/useMessageDelete';
 import { useMessageRead } from '@/app/hooks/useMessageRead';

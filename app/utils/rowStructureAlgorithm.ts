@@ -129,6 +129,14 @@ function treeHasPin(tree: BoxTree): boolean {
  * does not even pay for the question. That basis over-counts the gaps a nested stack already
  * absorbed, leaving a `gap²/height` residual per nesting level (< 0.2px at real column heights) —
  * small enough that closing it is not worth re-rendering every photo page.
+ *
+ * A row of siblings renders as tall as its tallest member — but the two sides do NOT shrink
+ * at the same rate under one scale factor, so "tallest now" does not identify which side
+ * limits the shrink. When the solve has equalised them, which is the normal case, the side
+ * with LESS flexible height is the tallest the moment any scale is applied, and it is what
+ * the node can give up. Breaking that tie on `>=` instead read the basis off whichever child
+ * came first, so the same tree absorbed a whole gap or a fraction of one depending only on
+ * which side held the pin.
  */
 function absorbableHeight(
   tree: BoxTree,
@@ -149,13 +157,6 @@ function absorbableHeight(
     if (node.direction === 'vertical') {
       return { height: left.height + gap + right.height, flexible: left.flexible + right.flexible };
     }
-    // A row of siblings renders as tall as its tallest member — but the two sides do NOT shrink
-    // at the same rate under one scale factor, so "tallest now" does not identify which side
-    // limits the shrink. When the solve has equalised them, which is the normal case, the side
-    // with LESS flexible height is the tallest the moment any scale is applied, and it is what
-    // the node can give up. Breaking that tie on `>=` instead read the basis off whichever child
-    // came first, so the same tree absorbed a whole gap or a fraction of one depending only on
-    // which side held the pin.
     const height = Math.max(left.height, right.height);
     const flexible =
       Math.abs(left.height - right.height) <= HBOX_HEIGHT_TIE * height
@@ -363,7 +364,36 @@ export function calculateSizesFromBoxTree(
   return sizeSubtree(tree, targetWidth, gap);
 }
 
-/** {@link calculateSizesFromBoxTree}'s recursion, below the row root, where caps bind. */
+/**
+ * {@link calculateSizesFromBoxTree}'s recursion, below the row root, where caps bind.
+ *
+ * Hand each side no more than it may render, so a cap deep in a column narrows the whole
+ * column (uniform stacked widths) instead of one member clamping alone mid-stack.
+ *
+ * Vertical: both children get the SAME width — stacked members share one column, and the
+ * column is capped by its most-constrained member (min over caps, via subtreeMaxWidth), so
+ * no member ever clamps alone mid-stack. Heights scaled to account for CSS gap.
+ * Use coefficient-predicted visual heights (not sum of returned sizes) because
+ * summing returned sizes overcounts hbox children (side-by-side, not stacked).
+ *
+ * Visual height each child would render at. Coefficients are exact for pure-AR
+ * subtrees; a subtree carrying shape bounds needs the clamp-aware prediction, or a
+ * capped child would be scaled as if it still rendered its full AR height.
+ *
+ * CSS adds a gap between the two children, so heights scale down to compensate. WHICH child
+ * pays for it is the pinned-height question: a pinned block has one correct height and
+ * shrinking it by a share of the gap is simply rendering it wrong. So the flexible member
+ * absorbs the whole gap, and when both are pinned nobody does — the stack is genuinely
+ * `sum + gap` tall, which `computeHeightCoeffs` declares so the parent solve agrees.
+ *
+ * The scale is sized against what can MOVE, not against the whole height — see
+ * {@link absorbableHeight}. A remainder no larger than the gap absorbs nothing rather than
+ * inverting the stack.
+ *
+ * Re-assert the pin per leaf rather than trusting the arithmetic above. A pinned leaf can sit
+ * arbitrarily deep inside a subtree that is itself flexible, and no scale factor chosen at
+ * this level would know to skip it.
+ */
 function sizeSubtree(tree: BoxTree, targetWidth: number, gap: number): CalculatedContentSize[] {
   if (tree.type === 'leaf') {
     const maxWidth = getMaxWidth(tree.content);
@@ -375,8 +405,6 @@ function sizeSubtree(tree: BoxTree, targetWidth: number, gap: number): Calculate
     const leftWidth = solveHboxSplit(tree, availableWidth, gap);
     const rightWidth = availableWidth - leftWidth;
 
-    // Hand each side no more than it may render, so a cap deep in a column narrows the whole
-    // column (uniform stacked widths) instead of one member clamping alone mid-stack.
     const leftSizes = sizeSubtree(
       tree.children[0],
       Math.min(leftWidth, subtreeMaxWidth(tree.children[0], gap)),
@@ -390,11 +418,6 @@ function sizeSubtree(tree: BoxTree, targetWidth: number, gap: number): Calculate
 
     return [...leftSizes, ...rightSizes];
   } else {
-    // Vertical: both children get the SAME width — stacked members share one column, and the
-    // column is capped by its most-constrained member (min over caps, via subtreeMaxWidth), so
-    // no member ever clamps alone mid-stack. Heights scaled to account for CSS gap.
-    // Use coefficient-predicted visual heights (not sum of returned sizes) because
-    // summing returned sizes overcounts hbox children (side-by-side, not stacked).
     const columnWidth = Math.min(targetWidth, subtreeMaxWidth(tree, gap));
     const leftCoeffs = computeHeightCoeffs(tree.children[0], gap);
     const rightCoeffs = computeHeightCoeffs(tree.children[1], gap);
@@ -402,9 +425,6 @@ function sizeSubtree(tree: BoxTree, targetWidth: number, gap: number): Calculate
     const leftSizes = sizeSubtree(tree.children[0], columnWidth, gap);
     const rightSizes = sizeSubtree(tree.children[1], columnWidth, gap);
 
-    // Visual height each child would render at. Coefficients are exact for pure-AR
-    // subtrees; a subtree carrying shape bounds needs the clamp-aware prediction, or a
-    // capped child would be scaled as if it still rendered its full AR height.
     const shaped = treeHasShapeBounds(tree);
     const leftVisualH = shaped
       ? predictRenderedHeight(tree.children[0], columnWidth, gap)
@@ -412,15 +432,6 @@ function sizeSubtree(tree: BoxTree, targetWidth: number, gap: number): Calculate
     const rightVisualH = shaped
       ? predictRenderedHeight(tree.children[1], columnWidth, gap)
       : heightAt(rightCoeffs, columnWidth);
-    // CSS adds a gap between the two children, so heights scale down to compensate. WHICH child
-    // pays for it is the pinned-height question: a pinned block has one correct height and
-    // shrinking it by a share of the gap is simply rendering it wrong. So the flexible member
-    // absorbs the whole gap, and when both are pinned nobody does — the stack is genuinely
-    // `sum + gap` tall, which `computeHeightCoeffs` declares so the parent solve agrees.
-    //
-    // The scale is sized against what can MOVE, not against the whole height — see
-    // {@link absorbableHeight}. A remainder no larger than the gap absorbs nothing rather than
-    // inverting the stack.
     const leftPinned = leftCoeffs.a === 0;
     const rightPinned = rightCoeffs.a === 0;
     const absorb = (basis: number) => (basis > gap ? (basis - gap) / basis : 1);
@@ -440,9 +451,6 @@ function sizeSubtree(tree: BoxTree, targetWidth: number, gap: number): Calculate
       rightScale = leftScale;
     }
 
-    // Re-assert the pin per leaf rather than trusting the arithmetic above. A pinned leaf can sit
-    // arbitrarily deep inside a subtree that is itself flexible, and no scale factor chosen at
-    // this level would know to skip it.
     const applyScale = (sizes: CalculatedContentSize[], scale: number): CalculatedContentSize[] =>
       sizes.map(size => {
         const pin = getPinnedHeight(size.content);

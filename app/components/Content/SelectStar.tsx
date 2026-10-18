@@ -2,7 +2,7 @@
 
 import { type ReactElement } from 'react';
 
-import { useMe } from '@/app/components/auth/MeProvider';
+import { useMe } from '@/app/components/Auth/MeProvider';
 import { useSelects } from '@/app/components/ContentCollection/SelectsContext';
 import { IconButton } from '@/app/components/ui/IconButton/IconButton';
 import { isClientOfCollection } from '@/app/utils/galleryAccess';

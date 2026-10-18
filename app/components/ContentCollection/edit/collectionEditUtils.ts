@@ -196,6 +196,15 @@ export function handleSingleImageEdit(
   return null;
 }
 
+/** POSTs one body to /api/revalidate. Callers own the tag literals so the cache-tag drift guard can read them. */
+function postRevalidate(body: { tag?: string; path?: string; tags?: string[] }): Promise<Response> {
+  return fetch('/api/revalidate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 /**
  * POSTs to /api/revalidate for the collection's tag, path, and the global indexes. Fails silently
  * in production.
@@ -207,18 +216,11 @@ export function handleSingleImageEdit(
  * literal will not find its registration, because the registration is a template.
  */
 export async function revalidateCollectionCache(slug: string): Promise<void> {
-  const revalidate = (body: Record<string, string>) =>
-    fetch('/api/revalidate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
   try {
     await Promise.all([
-      revalidate({ tag: `collection-${slug}`, path: `/${slug}` }),
-      revalidate({ tag: 'collections-index' }),
-      revalidate({ tag: 'collection-home' }),
+      postRevalidate({ tag: `collection-${slug}`, path: `/${slug}` }),
+      postRevalidate({ tag: 'collections-index' }),
+      postRevalidate({ tag: 'collection-home' }),
     ]);
   } catch (error) {
     if (isLocalEnvironment()) {
@@ -265,15 +267,7 @@ export async function revalidateLocationCaches(
   if (slugs.length === 0) return;
 
   try {
-    await Promise.all(
-      slugs.map(slug =>
-        fetch('/api/revalidate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tag: `collections-location-${slug}` }),
-        })
-      )
-    );
+    await Promise.all(slugs.map(slug => postRevalidate({ tag: `collections-location-${slug}` })));
   } catch (error) {
     if (isLocalEnvironment()) {
       logger.warn('collectionEditUtils', 'Failed to revalidate location caches', { error });
@@ -293,13 +287,7 @@ export async function revalidateLocationCaches(
  */
 export async function revalidateMetadataCache(): Promise<void> {
   try {
-    await fetch('/api/revalidate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tags: ['content-tags', 'content-locations', 'search-images'],
-      }),
-    });
+    await postRevalidate({ tags: ['content-tags', 'content-locations', 'search-images'] });
   } catch (error) {
     if (isLocalEnvironment()) {
       logger.warn('collectionEditUtils', 'Failed to revalidate metadata cache', { error });

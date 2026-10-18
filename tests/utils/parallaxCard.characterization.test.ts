@@ -17,7 +17,6 @@
  *   2. `isCollectionCard` keys on slug presence, so all four must keep emitting a `slug`.
  */
 
-import { collectionToContentModel } from '@/app/components/ContentCollection/CollectionPage';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import {
@@ -32,12 +31,6 @@ import {
 import { convertCollectionContentToParallax } from '@/app/utils/contentLayout';
 import { isCollectionCard } from '@/app/utils/contentRatingUtils';
 import { buildMeContentBlock, ME_TILE_ID } from '@/app/utils/meContentBlock';
-
-/**
- * CollectionPage transitively pulls next/cache (SiteHeader -> MenuDropdown -> clearCacheAction),
- * which needs a request runtime this suite does not have.
- */
-jest.mock('@/app/lib/actions/clearCache', () => ({ clearCacheAction: jest.fn() }));
 
 function cover(overrides: Partial<ContentImageModel> = {}): ContentImageModel {
   return {
@@ -185,121 +178,6 @@ describe('parallax-card builders - characterization', () => {
     });
   });
 
-  describe('collectionToContentModel (CollectionPage.tsx)', () => {
-    it('builds the full card for a LISTED collection with a cover', () => {
-      const result = collectionToContentModel(
-        collection({ isClient: true, isBlog: false } as Partial<CollectionModel>),
-        false
-      );
-
-      expect(result).toEqual({
-        contentType: 'IMAGE',
-        enableParallax: true,
-        id: 42,
-        collectionId: 42,
-        title: 'Smith Wedding',
-        slug: 'smith-wedding',
-        isClient: true,
-        isBlog: false,
-        description: 'A description',
-        imageUrl: 'https://example.com/cover.jpg',
-        overlayText: 'Smith Wedding',
-        imageWidth: 1200,
-        imageHeight: 1000,
-        width: 1200,
-        height: 1000,
-        orderIndex: 0,
-        visible: true,
-        createdAt: '2026-01-01T00:00:00Z',
-        updatedAt: '2026-01-02T00:00:00Z',
-        collectionDate: '2026-01-01',
-        locations: [],
-      });
-    });
-
-    it('does NOT carry tags even when the model has them', () => {
-      const result = collectionToContentModel(
-        collection({ tags: ['art-gallery'] } as unknown as Partial<CollectionModel>),
-        false
-      );
-
-      expect(result.tags).toBeUndefined();
-    });
-
-    it('strips the cover of a password-protected collection when covers are not opted in', () => {
-      const result = collectionToContentModel(
-        collection({ isPasswordProtected: true, isClient: true } as Partial<CollectionModel>),
-        false
-      );
-
-      expect(result.imageUrl).toBe('');
-      expect(result.imageWidth).toBeUndefined();
-      expect(result.imageHeight).toBeUndefined();
-    });
-
-    it('keeps the cover of a password-protected collection when showProtectedCovers is true', () => {
-      const result = collectionToContentModel(
-        collection({ isPasswordProtected: true, isClient: true } as Partial<CollectionModel>),
-        true
-      );
-
-      expect(result.imageUrl).toBe('https://example.com/cover.jpg');
-      expect(result.imageWidth).toBe(1200);
-    });
-
-    it('clamps a cover wider than the 5:4 parallax band', () => {
-      const result = collectionToContentModel(
-        collection({ coverImage: cover({ imageWidth: 1600, imageHeight: 1000 }) }),
-        false
-      );
-
-      expect(result.imageWidth).toBe(1600);
-      expect(result.imageHeight).toBe(1280);
-    });
-
-    it('maps UNLISTED visibility to visible=false', () => {
-      const result = collectionToContentModel(
-        collection({ visibility: CollectionVisibility.UNLISTED }),
-        false
-      );
-
-      expect(result.visible).toBe(false);
-    });
-
-    it('treats undefined visibility as visible', () => {
-      const result = collectionToContentModel(collection({ visibility: undefined }), false);
-
-      expect(result.visible).toBe(true);
-    });
-
-    it('ignores the layout width/height fields when imageWidth/imageHeight are absent', () => {
-      const result = collectionToContentModel(
-        collection({
-          coverImage: cover({
-            imageWidth: undefined,
-            imageHeight: undefined,
-            width: 1200,
-            height: 1000,
-          }),
-        }),
-        false
-      );
-
-      expect(result.imageWidth).toBeUndefined();
-      expect(result.imageHeight).toBeUndefined();
-    });
-
-    it('applies no square fallback when the cover has no dimensions', () => {
-      const result = collectionToContentModel(
-        collection({ coverImage: cover({ imageWidth: undefined, imageHeight: undefined }) }),
-        false
-      );
-
-      expect(result.imageWidth).toBeUndefined();
-      expect(result.imageHeight).toBeUndefined();
-    });
-  });
-
   describe('buildMeContentBlock (meContentBlock.ts)', () => {
     it('builds the tile from a user page with a cover', () => {
       const result = buildMeContentBlock(collection({ title: 'Zac' }));
@@ -379,7 +257,6 @@ describe('parallax-card builders - characterization', () => {
         'convertCollectionContentToParallax',
         convertCollectionContentToParallax(contentCollection()),
       ],
-      ['collectionToContentModel', collectionToContentModel(collection(), false)],
       ['buildMeContentBlock', buildMeContentBlock(collection())],
       ['buildAllCollectionsContentBlock', buildAllCollectionsContentBlock()],
     ];
@@ -396,7 +273,6 @@ describe('parallax-card builders - characterization', () => {
 
     it('real collection cards DO set collectionId', () => {
       expect(convertCollectionContentToParallax(contentCollection()).collectionId).toBe(42);
-      expect(collectionToContentModel(collection(), false).collectionId).toBe(42);
     });
   });
 });

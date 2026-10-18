@@ -79,9 +79,7 @@ export default function SearchPageClient({ images, ssrViewport }: SearchPageClie
           enableFullScreenView
           initialPageSize={30}
           chunkSize={4}
-          serverContentWidth={ssrViewport?.contentWidth}
-          serverViewportHeight={ssrViewport?.viewportHeight}
-          serverIsMobile={ssrViewport?.isMobile}
+          ssrViewport={ssrViewport}
         />
       )}
 

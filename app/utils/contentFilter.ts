@@ -111,16 +111,12 @@ function imageMatchesQuery(image: ContentImageModel, query: string): boolean {
   if (matchesQuery(image.description, query)) return true;
   if (matchesQuery(image.alt, query)) return true;
 
-  // Check locations
   if (image.locations?.some(loc => matchesQuery(loc.name, query))) return true;
 
-  // Check camera
   if (image.camera && matchesQuery(image.camera.name, query)) return true;
 
-  // Check tags
   if (image.tags?.some(tag => matchesQuery(tag.name, query))) return true;
 
-  // Check people
   if (image.people?.some(person => matchesQuery(person.name, query))) return true;
 
   return false;
@@ -143,7 +139,6 @@ function isWithinDateRange(
   }
   if (dateTo) {
     const to = new Date(dateTo);
-    // Include the entire end date by comparing to end of day (UTC)
     to.setUTCHours(23, 59, 59, 999);
     if (date > to) return false;
   }
@@ -305,6 +300,11 @@ export interface ContentFilterOptions {
 }
 
 /**
+ * Aggregate filter dimensions from collection refs when the backend
+ * populates them (forward-compat: today the fields may be undefined).
+ * This is what makes the filter bar populate on synthetic PARENT pages
+ * (e.g. /all-collections, /all-blog) where every block is a collection.
+ *
  * @param content - Array of content to extract options from
  * @param tagExclusionRatio - Exclude tags appearing on >= this ratio of images (0-1). Default: no exclusion.
  */
@@ -327,10 +327,6 @@ export function extractFilterOptions(
 
   for (const item of content) {
     if (isCollectionRef(item)) {
-      // Aggregate filter dimensions from collection refs when the backend
-      // populates them (forward-compat: today the fields may be undefined).
-      // This is what makes the filter bar populate on synthetic PARENT pages
-      // (e.g. /all-collections, /all-blog) where every block is a collection.
       for (const p of item.people ?? []) peopleSet.add(p.name);
       for (const loc of item.locations ?? []) {
         if (loc.name) locationsSet.add(loc.name);
@@ -484,14 +480,15 @@ export function computeFilterVisibility(images: ContentImageModel[]): FilterVisi
  * a control is never hidden while it is the active filter — e.g. a `?isFilm=` /
  * `?rating=` deep-link onto a page where the dimension is otherwise trivial.
  * Without this the only way to clear such a filter would be the bulk reset.
+ *
+ * dateSort and film are included here (unlike hasAnyActiveFilter, which scopes
+ * to content-reducing collection filters) because this is a visibility concern:
+ * if a control's filter is active, keep the control on screen so it can be cleared.
  */
 export function applyActiveOverride(
   visibility: FilterVisibility,
   filterState: FilterState
 ): FilterVisibility {
-  // dateSort and film are included here (unlike hasAnyActiveFilter, which scopes
-  // to content-reducing collection filters) because this is a visibility concern:
-  // if a control's filter is active, keep the control on screen so it can be cleared.
   return {
     dateSort: visibility.dateSort || filterState.dateSortDirection !== 'off',
     highlyRated: visibility.highlyRated || filterState.highlyRatedOnly,
@@ -844,6 +841,24 @@ export interface CollectionFilterDimensions {
  * locations need 2+ values), `filterable` is false so the bar renders it as an
  * inline info chip instead of a dropdown.
  *
+ * Pass images + refs together so extractFilterOptions can aggregate filter
+ * dimensions from collection refs too. This is what populates the filter bar
+ * on synthetic PARENT pages whose `content` is 100% collection refs and 0
+ * images (e.g. /all-collections, /all-blog).
+ *
+ * Distinct capture days, ascending. See the `dates` gate below for the visibility rule.
+ * Dated GIFs contribute their day here only -- MIN_IMAGES_FOR_DATE_FILTER below still counts
+ * `images.length` alone, never `images.length + datedGifs.length`.
+ *
+ * cameras/lenses/locations: need 2+ distinct values AND canFilter (length>=2 alone
+ * would wrongly mark a dimension filterable when all values blanket every item).
+ *
+ * Exactly two conditions: 2+ distinct capture days, and enough images that splitting
+ * by day is worthwhile. `canFilter` is intentionally NOT part of this gate: a capture
+ * day is single-valued per image, so whenever `dates.length >= 2` at least two distinct
+ * days are present and no single day's count can equal the total -- canFilter would
+ * already be guaranteed true here, making it redundant.
+ *
  * @param images - Image content to aggregate dimensions from
  * @param collectionRefs - Collection refs (synthetic PARENT pages aggregate from these too)
  * @param datedGifs - GIF/MP4 blocks that carry a captureDate. Contribute ONLY to the `dates`
@@ -863,16 +878,9 @@ export function extractCollectionFilterOptions(
   collectionRefs: ContentCollectionModel[] = [],
   datedGifs: ContentGifModel[] = []
 ): CollectionFilterDimensions {
-  // Pass images + refs together so extractFilterOptions can aggregate filter
-  // dimensions from collection refs too. This is what populates the filter bar
-  // on synthetic PARENT pages whose `content` is 100% collection refs and 0
-  // images (e.g. /all-collections, /all-blog).
   const combined = [...images, ...collectionRefs];
   const baseOptions = extractFilterOptions(combined, 0.9);
 
-  // Distinct capture days, ascending. See the `dates` gate below for the visibility rule.
-  // Dated GIFs contribute their day here only -- MIN_IMAGES_FOR_DATE_FILTER below still counts
-  // `images.length` alone, never `images.length + datedGifs.length`.
   const dates = distinctDays([
     ...images.map(img => img.captureDate),
     ...datedGifs.map(gif => gif.captureDate),
@@ -884,8 +892,6 @@ export function extractCollectionFilterOptions(
     ...collectionRefs.map(ref => ref.collectionDate),
   ]);
 
-  // cameras/lenses/locations: need 2+ distinct values AND canFilter (length>=2 alone
-  // would wrongly mark a dimension filterable when all values blanket every item).
   return {
     tags: {
       values: baseOptions.tags,
@@ -915,11 +921,6 @@ export function extractCollectionFilterOptions(
     },
     dates: {
       values: dates,
-      // Exactly two conditions: 2+ distinct capture days, and enough images that splitting
-      // by day is worthwhile. `canFilter` is intentionally NOT part of this gate: a capture
-      // day is single-valued per image, so whenever `dates.length >= 2` at least two distinct
-      // days are present and no single day's count can equal the total -- canFilter would
-      // already be guaranteed true here, making it redundant.
       filterable: dates.length >= 2 && images.length >= MIN_IMAGES_FOR_DATE_FILTER,
     },
     years: {
@@ -1037,6 +1038,13 @@ export function collectionRefMatchesCriteria(
  * filtering works on collection-dominant pages like /all-collections. Any other
  * non-image block passes through unchanged.
  *
+ * A dated GIF/MP4 participates in the `dates` criterion the same way {@link isDateable}
+ * already lets it participate in chronological sort. An undated GIF keeps passing through
+ * unconditionally -- there is no day to match against. This is an intentional asymmetry
+ * with undated IMAGES, which DO drop out once a day is selected (see filterContent above).
+ *
+ * Other non-image blocks (text, panels, undated GIFs) are structural -- never filtered out.
+ *
  * @param allContent - The full content array (images + non-image blocks)
  * @param allImages - The image subset of `allContent`
  * @param criteria - Filter criteria (from {@link buildCollectionCriteria})
@@ -1052,10 +1060,6 @@ export function applyCollectionFilters(
   return allContent.filter(item => {
     if (isImageContent(item)) return filteredImageIds.has(item.id);
     if (isCollectionRef(item)) return collectionRefMatchesCriteria(item, criteria);
-    // A dated GIF/MP4 participates in the `dates` criterion the same way {@link isDateable}
-    // already lets it participate in chronological sort. An undated GIF keeps passing through
-    // unconditionally -- there is no day to match against. This is an intentional asymmetry
-    // with undated IMAGES, which DO drop out once a day is selected (see filterContent above).
     if (isGifContent(item) && item.captureDate) {
       if (criteria.dates && criteria.dates.length > 0) {
         const day = captureDayKey(item.captureDate);
@@ -1066,7 +1070,6 @@ export function applyCollectionFilters(
         if (year === null || !criteria.years.includes(year)) return false;
       }
     }
-    // Other non-image blocks (text, panels, undated GIFs) are structural -- never filtered out.
     return true;
   });
 }

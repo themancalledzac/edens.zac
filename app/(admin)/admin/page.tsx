@@ -50,9 +50,7 @@ export default async function AdminPage() {
       content={hub.content}
       seed={hub.seed}
       mobileChunkSize={1}
-      serverContentWidth={ssrViewport?.contentWidth}
-      serverViewportHeight={ssrViewport?.viewportHeight}
-      serverIsMobile={ssrViewport?.isMobile}
+      ssrViewport={ssrViewport}
     />
   );
 

@@ -5,7 +5,7 @@
 
 import { render, screen } from '@testing-library/react';
 
-import { MeProvider, useMe } from '@/app/components/auth/MeProvider';
+import { MeProvider, useMe } from '@/app/components/Auth/MeProvider';
 import { type MeResponse } from '@/app/types/Auth';
 
 const me: MeResponse = {

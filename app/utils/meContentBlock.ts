@@ -17,9 +17,6 @@ export const ME_TILE_ID = -1000;
  *
  * `orderIndex` is negative because `processContentBlocks` sorts home content by it and backend
  * children start at 0. The All Collections tile sits at -1 so it follows this one.
- *
- * No `collectionId` — that is what keeps the follow toggle from attaching to a tile
- * that is not a real collection.
  */
 export function buildMeContentBlock(userPage: CollectionModel | null): ContentParallaxImageModel {
   return buildParallaxCard({

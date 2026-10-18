@@ -9,6 +9,7 @@ import {
   AdminPanelSeedProvider,
 } from '@/app/components/ListPanel/AdminPanelSeedContext';
 import { type AnyContentModel } from '@/app/types/Content';
+import { type SsrViewport } from '@/app/utils/ssrViewport';
 
 import { withPanelFootprints } from './adminHubContent';
 
@@ -17,9 +18,7 @@ interface AdminHubClientProps {
   mobileChunkSize: number;
   /** Lists the server already fetched, so a panel paints instead of loading. Omit to seed nothing. */
   seed?: AdminPanelSeed;
-  serverContentWidth?: number;
-  serverViewportHeight?: number;
-  serverIsMobile?: boolean;
+  ssrViewport?: SsrViewport;
 }
 
 const NO_SEED: AdminPanelSeed = {};
@@ -56,9 +55,7 @@ export function AdminHubClient({
   content,
   mobileChunkSize,
   seed,
-  serverContentWidth,
-  serverViewportHeight,
-  serverIsMobile,
+  ssrViewport,
 }: AdminHubClientProps) {
   const [collapsed, setCollapsed] = useState(false);
   const collapse = useMemo(() => ({ collapsed, setCollapsed }), [collapsed]);
@@ -76,9 +73,7 @@ export function AdminHubClient({
           priorityBlockIndex={0}
           enableFullScreenView={false}
           mobileChunkSize={mobileChunkSize}
-          serverContentWidth={serverContentWidth}
-          serverViewportHeight={serverViewportHeight}
-          serverIsMobile={serverIsMobile}
+          ssrViewport={ssrViewport}
         />
       </AdminPanelCollapseProvider>
     </AdminPanelSeedProvider>

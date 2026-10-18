@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { type JSX, useMemo } from 'react';
 
 import { PERSON_ADD_NEW_FIELDS } from '@/app/components/ui/Dropdown/commonAddNewFields';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
@@ -23,7 +23,7 @@ export default function TagsPeopleSection({
   updateStateField,
   availableTags,
   availablePeople,
-}: TagsPeopleSectionProps): React.JSX.Element {
+}: TagsPeopleSectionProps): JSX.Element {
   // People list alphabetical (case-insensitive), matching TagsSelector. Copy before sorting.
   const sortedPeople = useMemo(
     () => [...availablePeople].sort((a, b) => compareNames(a.name, b.name)),

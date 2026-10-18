@@ -25,7 +25,7 @@ jest.mock('@/app/components/ContentCollection/CollectionFilterContext', () => ({
 jest.mock('@/app/components/ui/FilterToolbar/FilterToolbar', () => ({
   FilterToolbar: () => null,
 }));
-jest.mock('@/app/components/auth/MeProvider', () => ({
+jest.mock('@/app/components/Auth/MeProvider', () => ({
   useMe: jest.fn(() => null),
 }));
 jest.mock('@/app/utils/contentRendererUtils', () => {

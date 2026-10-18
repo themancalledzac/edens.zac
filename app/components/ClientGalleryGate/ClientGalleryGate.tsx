@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { type SubmitEvent, useCallback, useEffect, useState } from 'react';
 
 import { Footer } from '@/app/components/Footer/Footer';
 import { Button } from '@/app/components/ui/Button/Button';
@@ -83,7 +83,7 @@ export default function ClientGalleryGate({ collection }: ClientGalleryGateProps
   }, [submitState]);
 
   const handleSubmit = useCallback(
-    async (e: React.FormEvent<HTMLFormElement>) => {
+    async (e: SubmitEvent<HTMLFormElement>) => {
       e.preventDefault();
       if (submitState !== 'idle') return;
       setError(null);

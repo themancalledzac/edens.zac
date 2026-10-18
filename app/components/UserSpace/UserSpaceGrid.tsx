@@ -43,7 +43,7 @@ const COLLECTIONS: TabKey = 'collections';
  * `undefined` stays `undefined`: a section whose read failed has no count, and an unknown number
  * reconciled against anything is still unknown. See {@link ToolbarSection.count}.
  */
-export function reconcileCollectionsCount(
+function reconcileCollectionsCount(
   sections: readonly ToolbarSection[] | undefined,
   grantedCollectionIds: readonly number[],
   clientFollowedIds: ReadonlySet<number> | undefined
@@ -70,7 +70,7 @@ export function reconcileCollectionsCount(
  * Only ever SUBTRACTS. A collection the viewer follows from elsewhere on the page has no block in
  * this render to add, so it appears when the server next assembles the list.
  */
-export function pruneUnfollowed(
+function pruneUnfollowed(
   content: AnyContentModel[],
   grantedCollectionIds: readonly number[],
   clientFollowedIds: ReadonlySet<number> | undefined
@@ -173,9 +173,7 @@ export function UserSpaceGrid({
     <>
       <CollectionPageClient
         collection={sectionCollection}
-        serverContentWidth={ssrViewport?.contentWidth}
-        serverViewportHeight={ssrViewport?.viewportHeight}
-        serverIsMobile={ssrViewport?.isMobile}
+        ssrViewport={ssrViewport ?? undefined}
         me={me}
         initialSavedImageIds={initialSavedImageIds}
         sections={reconcileCollectionsCount(toolbarSections, grantedCollectionIds, followedIds)}

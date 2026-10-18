@@ -6,7 +6,7 @@ import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
 import { Input } from '@/app/components/ui/Field/Input';
 import { Textarea } from '@/app/components/ui/Field/Textarea';
-import { type ContactResult, submitContactMessage } from '@/app/utils/contactApi';
+import { type ContactResult, submitContactMessage } from '@/app/lib/api/messages';
 
 import styles from './ContactForm.module.scss';
 

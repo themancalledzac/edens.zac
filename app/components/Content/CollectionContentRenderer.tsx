@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 
-import { useMe } from '@/app/components/auth/MeProvider';
+import { useMe } from '@/app/components/Auth/MeProvider';
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import { useCollectionExtras } from '@/app/components/ContentCollection/CollectionExtrasContext';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';

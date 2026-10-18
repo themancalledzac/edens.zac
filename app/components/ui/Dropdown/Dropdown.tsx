@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { type KeyboardEvent, type MouseEvent, useCallback, useRef, useState } from 'react';
 
 import { useClickOutsideMultiple } from '@/app/hooks/useClickOutside';
 
@@ -137,7 +137,7 @@ export default function Dropdown<T extends MetadataItem>({
     setIsAddingNew(false);
   };
 
-  const handleDisplayKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleDisplayKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       handleToggleDropdown();
@@ -166,7 +166,7 @@ export default function Dropdown<T extends MetadataItem>({
     }
   };
 
-  const handleRemoveItem = (e: React.MouseEvent | React.KeyboardEvent, item: T) => {
+  const handleRemoveItem = (e: MouseEvent | KeyboardEvent, item: T) => {
     e.stopPropagation();
     if (!multiSelect) return;
     onChange(removeFromSelection(selectedValues, item, getDisplayName));
@@ -194,7 +194,7 @@ export default function Dropdown<T extends MetadataItem>({
     setFormData(prev => ({ ...prev, [fieldName]: value }));
   };
 
-  const handleFieldKeyDown = (e: React.KeyboardEvent) => {
+  const handleFieldKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       if (isAddNewFormValid()) {

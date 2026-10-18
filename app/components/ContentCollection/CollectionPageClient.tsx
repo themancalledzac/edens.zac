@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { MeProvider } from '@/app/components/auth/MeProvider';
+import { MeProvider } from '@/app/components/Auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { SavesProvider } from '@/app/components/Personal/SavesContext';
 import { type ToolbarExtra } from '@/app/components/ui/FilterToolbar/chipWeights';
@@ -54,6 +54,7 @@ import { toggleImageSelection } from '@/app/utils/imageSelection';
 import { logger } from '@/app/utils/logger';
 import { buildPinnedSelects } from '@/app/utils/pinnedSelects';
 import { applySort } from '@/app/utils/sortContent';
+import { type SsrViewport } from '@/app/utils/ssrViewport';
 
 import {
   type ClientGalleryDownloadContextValue,
@@ -90,9 +91,7 @@ interface CollectionPageClientProps {
    */
   mobileChunkSize?: number;
   /** SSR fallback viewport, forwarded to Component. */
-  serverContentWidth?: number;
-  serverViewportHeight?: number;
-  serverIsMobile?: boolean;
+  ssrViewport?: SsrViewport;
   /**
    * When true, mount the consolidated edit experience (EditBar, edit sheet, image/text modals,
    * click-routing) on this light surface via the dynamically imported EditModeLayer. When
@@ -152,9 +151,7 @@ export default function CollectionPageClient({
   collection,
   chunkSize,
   mobileChunkSize,
-  serverContentWidth,
-  serverViewportHeight,
-  serverIsMobile,
+  ssrViewport,
   editMode = false,
   me = null,
   initialSelectedIds = [],
@@ -220,7 +217,7 @@ export default function CollectionPageClient({
   );
 
   const measured = useViewport();
-  const isMobile = measured.width > 0 ? measured.isMobile : (serverIsMobile ?? false);
+  const isMobile = measured.width > 0 ? measured.isMobile : (ssrViewport?.isMobile ?? false);
 
   const mobileDensity = mobileChunkSize ?? toMobileDensity(density);
   const displayDensity = isMobile ? mobileDensity : density;
@@ -663,9 +660,7 @@ export default function CollectionPageClient({
       collectionData={collection}
       forceHeaderRail={hasOptions || canDownload}
       widthCostBaseline={widthCostBaseline}
-      serverContentWidth={serverContentWidth}
-      serverViewportHeight={serverViewportHeight}
-      serverIsMobile={serverIsMobile}
+      ssrViewport={ssrViewport}
       selectedIds={canDownload ? selectedIds : undefined}
       onImageClick={canDownload && isSelectMode ? handleSelectToggle : undefined}
     />

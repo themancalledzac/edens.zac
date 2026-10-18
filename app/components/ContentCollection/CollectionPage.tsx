@@ -1,6 +1,5 @@
 import { type ReactNode } from 'react';
 
-import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { Footer } from '@/app/components/Footer/Footer';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { SiteMenuProvider } from '@/app/components/SiteHeader/SiteMenuContext';
@@ -9,17 +8,13 @@ import { BackLink } from '@/app/components/ui/PageShell/BackLink';
 import { SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
 import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel } from '@/app/types/Collection';
-import { CollectionVisibility } from '@/app/types/CollectionVisibility';
-import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
-import { logger } from '@/app/utils/logger';
-import { buildParallaxCard } from '@/app/utils/parallaxCard';
 import { type SsrViewport } from '@/app/utils/ssrViewport';
 
 import CollectionPageClient from './CollectionPageClient';
 import styles from './ContentCollectionPage.module.scss';
 
 interface ContentCollectionPageProps {
-  collection: CollectionModel | CollectionModel[];
+  collection: CollectionModel;
   /** Desktop row density (1-10). Defaults downstream to `LAYOUT.defaultChunkSize`. */
   chunkSize?: number;
   /**
@@ -27,16 +22,9 @@ interface ContentCollectionPageProps {
    * {@link CollectionPageClient}.
    */
   mobileChunkSize?: number;
-  /**
-   * Opt-in flag to bypass the defense-in-depth strip of cover images on
-   * password-protected entries. Admin-only callers set this true so the admin
-   * can see their own covers. Default false preserves the strip for anonymous
-   * public list views.
-   */
-  showProtectedCovers?: boolean;
   /** UA-derived SSR fallback viewport from {@link resolveSsrViewport}. */
   ssrViewport?: SsrViewport;
-  /** Mounts the admin edit surface in CollectionPageClient (single-collection branch only). */
+  /** Mounts the admin edit surface in CollectionPageClient. */
   editMode?: boolean;
   /** Server-resolved principal (from `meServer()`), forwarded to the gallery client. */
   me?: MeResponse | null;
@@ -44,85 +32,32 @@ interface ContentCollectionPageProps {
   initialSelectedIds?: number[];
   /** The viewer's GLOBAL saved (bookmarked) image ids, seeded server-side. Cross-collection. */
   initialSavedImageIds?: number[];
-  /** Render the site footer after `<main>` in both branches (default true). */
+  /** Render the site footer after `<main>` (default true). */
   withFooter?: boolean;
   /** When set, renders a back link to this href as the first element inside the skip target. */
   backHref?: string;
   /** Destination name in the back link (default 'Admin'). */
   backLabel?: string;
   /**
-   * Visible page header (single-collection branch only), rendered after the back link. It must
+   * Visible page header, rendered after the back link. It must
    * carry the page's h1, because it replaces the visually-hidden one.
    */
   header?: ReactNode;
 }
 
 /**
- * Converts a CollectionModel to ContentParallaxImageModel for unified parallax rendering.
- * Dimensions are clamped to a minimum 4:5 aspect ratio.
- *
- * Tags are deliberately not carried: `CollectionModel.tags` is populated only by the
- * backend's SyntheticCollectionResolver (list views), so real payloads reaching this
- * converter carry none. The `art-gallery` -> "Gallery" badge therefore does not render
- * here; the isBlog -> "Story" badge still does.
- *
- * A password-protected collection renders no coverImage in list views unless the caller opts in
- * via `showProtectedCovers`. Keyed on `isPasswordProtected` alone so a payload missing the kind
- * booleans still strips. The API returns the cover for a protected gallery either way, so this
- * strip is the only thing keeping it off the card.
- *
- * The strip stays HERE rather than in `buildParallaxCard`: it is a display decision about locked
- * galleries, not a shape decision, and burying it in a generic builder is how it gets bypassed.
- * `convertCollectionContentToParallax` carries the same strip for `ContentCollectionModel`.
- *
- * Visibility maps collection-level -> content-block: LISTED (or unknown/undefined) renders;
- * UNLISTED/HIDDEN hides from list views. That mapping is this call site's own, which is why
- * the builder takes an already-resolved boolean.
- */
-export function collectionToContentModel(
-  col: CollectionModel,
-  showProtectedCovers: boolean
-): ContentParallaxImageModel {
-  const isProtected = col.isPasswordProtected === true;
-  if (isProtected && col.isClient === undefined) {
-    logger.warn('CollectionPage', 'Protected collection payload is missing isClient/isBlog', {
-      slug: col.slug,
-    });
-  }
-  const safeCoverImage = isProtected && !showProtectedCovers ? null : col.coverImage;
-
-  return buildParallaxCard({
-    id: col.id,
-    collectionId: col.id,
-    title: col.title,
-    slug: col.slug,
-    isClient: col.isClient,
-    isBlog: col.isBlog,
-    description: col.description ?? null,
-    coverImage: safeCoverImage,
-    orderIndex: 0,
-    visible: col.visibility === undefined ? true : col.visibility === CollectionVisibility.LISTED,
-    createdAt: col.createdAt,
-    updatedAt: col.updatedAt,
-    collectionDate: col.collectionDate,
-  });
-}
-
-/**
  * Content Collection Page
  *
- * Renders either a single collection, delegated to CollectionPageClient for filters and edit
- * mode, or an array of collections as parallax cards in the shared content grid. The single
- * branch emits a visually-hidden <h1>, because the title is only shown as an overlay inside the
- * content tree, unless the caller passes a `header` that carries its own.
+ * Renders a single collection, delegated to CollectionPageClient for filters and edit mode. It
+ * emits a visually-hidden <h1>, because the title is only shown as an overlay inside the content
+ * tree, unless the caller passes a `header` that carries its own.
  *
- * @param collection - Single CollectionModel or array of CollectionModels
+ * @param collection - The CollectionModel to render
  */
 export default function CollectionPage({
   collection,
   chunkSize,
   mobileChunkSize,
-  showProtectedCovers = false,
   ssrViewport,
   editMode = false,
   me,
@@ -133,62 +68,26 @@ export default function CollectionPage({
   backLabel,
   header,
 }: ContentCollectionPageProps) {
-  if (!Array.isArray(collection)) {
-    const headingText = collection.title?.trim() || collection.slug?.trim() || 'Untitled';
-    return (
-      <SiteMenuProvider>
-        <div className={styles.container}>
-          <main className={styles.main}>
-            <SiteHeader isCollectionPage collectionSlug={collection.slug} me={me} />
-            {!editMode && <BottomNav me={me} />}
-            <SkipTarget>
-              {backHref && <BackLink href={backHref} label={backLabel} />}
-              {header ?? <h1 className={styles.srOnly}>{headingText}</h1>}
-              <CollectionPageClient
-                collection={collection}
-                chunkSize={chunkSize}
-                mobileChunkSize={mobileChunkSize}
-                serverContentWidth={ssrViewport?.contentWidth}
-                serverViewportHeight={ssrViewport?.viewportHeight}
-                serverIsMobile={ssrViewport?.isMobile}
-                editMode={editMode}
-                me={me ?? null}
-                initialSelectedIds={initialSelectedIds}
-                initialSavedImageIds={initialSavedImageIds}
-              />
-            </SkipTarget>
-          </main>
-          {withFooter && <Footer />}
-        </div>
-      </SiteMenuProvider>
-    );
-  }
-
-  const contentBlocks: AnyContentModel[] = collection.map(c =>
-    collectionToContentModel(c, showProtectedCovers)
-  );
-
+  const headingText = collection.title?.trim() || collection.slug?.trim() || 'Untitled';
   return (
     <SiteMenuProvider>
       <div className={styles.container}>
         <main className={styles.main}>
-          <SiteHeader me={me} />
-          <BottomNav me={me} />
+          <SiteHeader isCollectionPage collectionSlug={collection.slug} me={me} />
+          {!editMode && <BottomNav me={me} />}
           <SkipTarget>
             {backHref && <BackLink href={backHref} label={backLabel} />}
-            {contentBlocks.length > 0 ? (
-              <ContentBlockWithFullScreen
-                content={contentBlocks}
-                priorityBlockIndex={0}
-                enableFullScreenView
-                initialPageSize={30}
-                chunkSize={chunkSize}
-                mobileChunkSize={mobileChunkSize}
-                serverContentWidth={ssrViewport?.contentWidth}
-                serverViewportHeight={ssrViewport?.viewportHeight}
-                serverIsMobile={ssrViewport?.isMobile}
-              />
-            ) : null}
+            {header ?? <h1 className={styles.srOnly}>{headingText}</h1>}
+            <CollectionPageClient
+              collection={collection}
+              chunkSize={chunkSize}
+              mobileChunkSize={mobileChunkSize}
+              ssrViewport={ssrViewport}
+              editMode={editMode}
+              me={me ?? null}
+              initialSelectedIds={initialSelectedIds}
+              initialSavedImageIds={initialSavedImageIds}
+            />
           </SkipTarget>
         </main>
         {withFooter && <Footer />}

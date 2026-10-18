@@ -8,7 +8,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { type ReactNode } from 'react';
 
-import { MeProvider } from '@/app/components/auth/MeProvider';
+import { MeProvider } from '@/app/components/Auth/MeProvider';
 import { SelectStar } from '@/app/components/Content/SelectStar';
 import { SelectsProvider, useSelects } from '@/app/components/ContentCollection/SelectsContext';
 import { addSelect, removeSelect } from '@/app/lib/api/selects';

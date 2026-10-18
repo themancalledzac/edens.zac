@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { MessageRow } from '@/app/components/messages/MessageRow';
+import { MessageRow } from '@/app/components/Messages/MessageRow';
 import { Button } from '@/app/components/ui/Button/Button';
 import { Input } from '@/app/components/ui/Field/Input';
 import { Select } from '@/app/components/ui/Field/Select';

@@ -1,11 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import { MeProvider } from '@/app/components/auth/MeProvider';
+import { MeProvider } from '@/app/components/Auth/MeProvider';
 import { ContactChip } from '@/app/components/Personal/ContactChip';
+import * as contactApi from '@/app/lib/api/messages';
 import { type MeResponse } from '@/app/types/Auth';
-import * as contactApi from '@/app/utils/contactApi';
 
-jest.mock('@/app/utils/contactApi');
+jest.mock('@/app/lib/api/messages');
 
 const mockSubmit = contactApi.submitContactMessage as jest.MockedFunction<
   typeof contactApi.submitContactMessage

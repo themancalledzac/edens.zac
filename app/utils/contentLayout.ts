@@ -137,6 +137,9 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
  * membership has to be decided against a real width. This is the one production call site
  * that supplies them.
  *
+ * See ProcessContentOptions.widthCostBaseline: keeps a filtered view at the same photos-per-row
+ * as the unfiltered collection. Both means must be > 0 for the ratio to mean anything.
+ *
  * @param content - Array of content blocks to process (should NOT include header items)
  * @param componentWidth - Total available width for display
  * @param chunkSize - Number of normal-width items per row (default: 2)
@@ -171,8 +174,6 @@ export function processContentForDisplay(
       : LAYOUT.mobileSlotWidth
     : Math.round(chunkSize * DENSITY_ROW_WIDTH_MULTIPLIER);
 
-  // See ProcessContentOptions.widthCostBaseline: keeps a filtered view at the same photos-per-row
-  // as the unfiltered collection. Both means must be > 0 for the ratio to mean anything.
   const baseline = options?.widthCostBaseline ?? 0;
   const currentMeanCost = baseline > 0 ? getMeanWidthCost(content) : 0;
   const rowWidth =
@@ -220,7 +221,7 @@ export { clampParallaxDimensions };
  * the other three card call sites do not.
  *
  * The cover of a password-protected collection is replaced with `null` unless the caller opts in
- * via `showProtectedCovers`, matching `collectionToContentModel` on the `CollectionModel` path.
+ * via `showProtectedCovers`.
  * Keyed on `isPasswordProtected` alone rather than on kind, so a payload missing the kind booleans
  * still strips. The API returns the cover for a protected gallery either way, so this strip is the
  * only thing keeping it off the card. Admin manage surfaces opt in — see `processContentBlocks`.
@@ -625,6 +626,11 @@ export interface HeaderRowOptions {
  * - Vertical covers get narrower width (~30-33%), horizontal covers get ~50%
  *
  * Returns null if cover image missing or has no dimensions.
+ *
+ * Metadata is independent of the cover; compute it up front so a cover-less collection
+ * (e.g. the /user page for a user who isn't tagged in any image yet) can still render a
+ * description-only intro instead of no header at all.
+ *
  * @param collection - Collection model with cover image and metadata
  * @param componentWidth - Total available width for the row
  * @param options - See {@link HeaderRowOptions}. Both keys default to `false`, so a caller that
@@ -638,12 +644,8 @@ export function createHeaderRow(
 ): RowWithPatternAndSizes | RowWithPatternAndSizes[] | null {
   const { isMobile = false, forceRail = false } = options;
 
-  // Metadata is independent of the cover; compute it up front so a cover-less collection
-  // (e.g. the /user page for a user who isn't tagged in any image yet) can still render a
-  // description-only intro instead of no header at all.
   const metadataItems = buildMetadataItems(collection);
 
-  // No cover image: render a text-only intro from the metadata, or nothing if there's none.
   if (!collection.coverImage) {
     return createTextOnlyHeaderRow(metadataItems, componentWidth, forceRail);
   }
@@ -656,7 +658,6 @@ export function createHeaderRow(
 
   const coverAspectRatio = coverBlock.imageWidth / coverBlock.imageHeight;
 
-  // Add metadata block if it has content, or if the caller mounts controls into the rail.
   const metadataBlock = createMetadataTextBlock(
     metadataItems,
     coverBlock.imageWidth,
@@ -664,18 +665,13 @@ export function createHeaderRow(
     forceRail
   );
 
-  // Mobile: each header item is its own full-width row
-  // Cover image is sized via calculateSizesFromBoxTree (respects aspect ratio)
-  // Metadata text block only takes the height its content needs
   if (isMobile) {
     const rows: RowWithPatternAndSizes[] = [];
 
-    // Cover image row — sized exactly like a single-item content row
     const coverTree: BoxTree = { type: 'leaf', content: coverBlock };
     const coverItems = calculateSizesFromBoxTree(coverTree, componentWidth, LAYOUT.mobileGridGap);
     rows.push({ rowType: 'header' as const, items: coverItems, boxTree: coverTree });
 
-    // Metadata row — full width, auto height (rendered via text block)
     if (metadataBlock) {
       const metaTree: BoxTree = { type: 'leaf', content: metadataBlock };
       const metaItems: CalculatedContentSize[] = [
@@ -687,33 +683,25 @@ export function createHeaderRow(
     return rows;
   }
 
-  // Desktop: side-by-side layout with height-constrained sizing
   const maxRowHeight = componentWidth * LAYOUT.headerRowHeightRatio;
   const minCoverWidth = componentWidth * LAYOUT.headerCoverMinRatio;
   const maxCoverWidth = componentWidth * LAYOUT.headerCoverMaxRatio;
 
-  // Calculate cover width needed to achieve maxRowHeight
-  // height = width / aspectRatio, so width = height * aspectRatio
   let coverWidth = maxRowHeight * coverAspectRatio;
 
-  // Clamp cover width between min and max ratios
   coverWidth = Math.max(minCoverWidth, Math.min(maxCoverWidth, coverWidth));
 
-  // Calculate actual row height based on clamped cover width
   const rowHeight = coverWidth / coverAspectRatio;
 
-  // Build calculated sizes starting with cover image
   const calculatedSizes: CalculatedContentSize[] = [
     { content: coverBlock, width: coverWidth, height: rowHeight },
   ];
 
   if (metadataBlock) {
-    // Description gets remaining width, same height as cover
     const descWidth = componentWidth - coverWidth - LAYOUT.gridGap;
     calculatedSizes.push({ content: metadataBlock, width: descWidth, height: rowHeight });
   }
 
-  // Create boxTree from the calculated items (cover image + metadata block if present)
   const boxTreeItems = calculatedSizes.map(item => item.content);
 
   return {

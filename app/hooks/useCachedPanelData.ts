@@ -118,21 +118,29 @@ function readStorage(key: PanelCacheKey): string | null {
   }
 }
 
+/**
+ * Persist a serialized entry to localStorage. A quota or private-mode failure is swallowed so the
+ * cache degrades to memory-only.
+ */
 function writeStorage(key: PanelCacheKey, serialized: string): void {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(STORAGE_PREFIX + key, serialized);
   } catch {
-    /* quota/private-mode failures degrade to memory-only caching */
+    return;
   }
 }
 
+/**
+ * Remove one entry from localStorage. A storage failure is swallowed because there is nothing
+ * further to degrade to.
+ */
 function removeStorage(key: PanelCacheKey): void {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.removeItem(STORAGE_PREFIX + key);
   } catch {
-    /* nothing to degrade to */
+    return;
   }
 }
 
@@ -150,7 +158,8 @@ function parseStored<K extends PanelCacheKey>(stored: string): PanelCacheSchema[
  * Remove every `adminPanel:v1:` entry, whatever wrote it. Enumerating storage rather than the
  * memory cache is the point: on a fresh page load the memory cache is empty, so a clear driven by
  * it would leave last session's admin emails and message bodies sitting in localStorage. Collect
- * first, delete second — removing during the index walk shifts the entries still to come.
+ * first, delete second — removing during the index walk shifts the entries still to come. A
+ * storage failure is swallowed because there is nothing further to degrade to.
  */
 function clearAllStorage(): void {
   if (typeof window === 'undefined') return;
@@ -162,7 +171,7 @@ function clearAllStorage(): void {
     }
     for (const storageKey of doomed) window.localStorage.removeItem(storageKey);
   } catch {
-    /* nothing to degrade to */
+    return;
   }
 }
 
@@ -296,6 +305,20 @@ export interface CachedPanelData<T> {
  * Precedence is newest-first: the memory cache (which may hold an optimistic local mutation) beats
  * the seed, and the seed beats localStorage (a request-time list beats one from a past session).
  *
+ * Mount (and key switch): make sure the cache holds whatever is already on screen, then
+ * revalidate — in the foreground only when there is nothing to show.
+ *
+ * The seed is promoted into the cache here rather than in the initializer, because a module-level
+ * write during render would run on the SERVER too, where the cache is a per-process singleton
+ * shared by every request. The initializer only reads it; this effect is client-only, so the seed
+ * becomes cache exactly where a fetched payload would. Promoting it matters beyond tidiness:
+ * `refresh` reads the cache to decide whether a list is on screen (an unpromoted seed would make
+ * a plain refresh blank a correct list), and `revalidate` compares against the cached string to
+ * leave `data`'s reference identity alone when nothing changed.
+ *
+ * No state is set in the seed branch: the initializer above already painted the seed and left
+ * `loading` false, so there is nothing to correct.
+ *
  * @param key - Cache identity for this payload, including any fetch-shaping variant
  * @param fetcher - Loads the payload; may close over props (kept fresh via ref, never re-triggers)
  * @param errorMessage - User-facing message for a foreground load failure; defaults to {@link panelErrorMessage}
@@ -381,21 +404,6 @@ export function useCachedPanelData<K extends PanelCacheKey>(
     [commit, errorMessage]
   );
 
-  /**
-   * Mount (and key switch): make sure the cache holds whatever is already on screen, then
-   * revalidate — in the foreground only when there is nothing to show.
-   *
-   * The seed is promoted into the cache here rather than in the initializer, because a module-level
-   * write during render would run on the SERVER too, where the cache is a per-process singleton
-   * shared by every request. The initializer only reads it; this effect is client-only, so the seed
-   * becomes cache exactly where a fetched payload would. Promoting it matters beyond tidiness:
-   * `refresh` reads the cache to decide whether a list is on screen (an unpromoted seed would make
-   * a plain refresh blank a correct list), and `revalidate` compares against the cached string to
-   * leave `data`'s reference identity alone when nothing changed.
-   *
-   * No state is set in the seed branch: the initializer above already painted the seed and left
-   * `loading` false, so there is nothing to correct.
-   */
   useEffect(() => {
     let seeded = memoryCache[key] !== undefined;
     const seed = initialDataRef.current;

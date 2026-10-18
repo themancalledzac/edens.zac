@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext } from 'react';
+import { createContext, type ReactNode, useContext } from 'react';
 
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { type FilterState } from '@/app/types/GalleryFilter';
@@ -100,7 +100,7 @@ export function CollectionFilterProvider({
   children,
   value,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   value: CollectionFilterContextValue | null;
 }) {
   return <CollectionFilterContext value={value}>{children}</CollectionFilterContext>;

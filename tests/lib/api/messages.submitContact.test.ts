@@ -1,4 +1,4 @@
-import { submitContactMessage } from '@/app/utils/contactApi';
+import { submitContactMessage } from '@/app/lib/api/messages';
 
 const PAYLOAD = { email: 'test@example.com', message: 'Hello' };
 

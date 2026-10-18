@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { type JSX, useState } from 'react';
 
 import Dropdown, { type AddNewField } from '@/app/components/ui/Dropdown/Dropdown';
 import { Checkbox } from '@/app/components/ui/Field/Checkbox';
@@ -109,7 +109,7 @@ export default function CameraSettingsSection({
   availableFilmTypes,
   availableFilmFormats,
   isGif,
-}: CameraSettingsSectionProps): React.JSX.Element {
+}: CameraSettingsSectionProps): JSX.Element {
   // Inline feedback when an eager camera-create fails (the only add-new picker
   // that persists before save — see onAddNew below).
   const [createError, setCreateError] = useState<string | null>(null);
