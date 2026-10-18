@@ -2,7 +2,7 @@
  * Users API — create-user (admin) and invite-flow (public) functions.
  *
  * - `createUser` uses the admin perimeter (BFF secret) via `fetchAdminPostJsonApi`.
- * - `getInvitePreview` is server-side only: hits the backend directly via `getApiBaseUrl`
+ * - `getInvitePreview` is server-side only: hits the backend directly via `getServerApiTarget`
  *   with `cache:'no-store'`; returns `null` on any non-OK response.
  * - `acceptInvite` is client-side: POSTs to the BFF proxy with `credentials:'same-origin'`
  *   so the `Set-Cookie: ezac_session` from the backend is accepted; resolves on 204,
@@ -14,7 +14,7 @@ import {
   fetchAdminGetApi,
   fetchAdminPatchJsonApi,
   fetchAdminPostJsonApi,
-  getApiBaseUrl,
+  getServerApiTarget,
 } from '@/app/lib/api/core';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentImageModel } from '@/app/types/Content';
@@ -156,8 +156,9 @@ export async function updateUser(id: number, body: UserUpdateRequest): Promise<A
  * @param token - Raw URL token from the invite link (will be percent-encoded).
  */
 export async function getInvitePreview(token: string): Promise<InvitePreviewResult> {
-  const url = `${getApiBaseUrl('auth')}/invite/${encodeURIComponent(token)}`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const target = await getServerApiTarget('auth');
+  const url = `${target.baseUrl}/invite/${encodeURIComponent(token)}`;
+  const res = await fetch(url, { cache: 'no-store', headers: target.headers });
   if (res.status === 410) return { status: 'used' };
   if (!res.ok) return { status: 'invalid' };
   return { status: 'ok', preview: (await res.json()) as InvitePreview };
