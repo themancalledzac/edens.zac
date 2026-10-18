@@ -63,16 +63,20 @@ describe('next.config security headers', () => {
     expect(rules[0]?.source).toBe('/:path*');
   });
 
-  it('emits the five headers production was missing', async () => {
+  it('emits the six security headers', async () => {
     const [rule] = await headerRules('production');
     const keys = rule?.headers.map(h => h.key);
-    expect(keys).toEqual([
-      'X-Frame-Options',
-      'X-Content-Type-Options',
-      'Referrer-Policy',
-      'Strict-Transport-Security',
-      CSP_HEADER,
-    ]);
+    expect(keys).toHaveLength(6);
+    expect([...(keys ?? [])].sort()).toEqual(
+      [
+        'X-Frame-Options',
+        'X-Content-Type-Options',
+        'Referrer-Policy',
+        'Strict-Transport-Security',
+        CSP_HEADER,
+        'Permissions-Policy',
+      ].sort()
+    );
   });
 
   it('drops the x-powered-by header', async () => {

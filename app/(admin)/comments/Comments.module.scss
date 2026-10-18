@@ -112,32 +112,6 @@
   padding: var(--space-3);
 }
 
-/*
- * The card's email-badge-timestamp line. It had no rule at all until the Unread badge made it a
- * three-item row, at which point the three ran together as one string. The timestamp is pushed to
- * the end so it sits in the same place whether or not the badge is there.
- */
-.meta {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.time {
-  margin-left: auto;
-  color: var(--color-on-surface-muted);
-  font-size: var(--text-sm);
-}
-
-.unread {
-  color: var(--color-accent);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
 .error {
   color: var(--color-danger-text);
   margin: var(--space-2) 0 0;

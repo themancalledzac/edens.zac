@@ -2,25 +2,10 @@ import { Button } from '@/app/components/ui/Button/Button';
 import { type AdminMessageView } from '@/app/lib/api/messages';
 import { gmailReplyUrl, relative, truncateWords } from '@/app/utils/messageFormat';
 
-/**
- * Class names the message parts read off the caller's CSS module. Each context — the full
- * /comments card, the compact admin-hub row — keeps its own styling by passing its own module
- * under these shared keys.
- *
- * The record is `Partial` because the two contexts arrange the same parts differently and so use
- * different keys: `meta` is the card's email-beside-time line, `identity` the hub row's
- * email-over-body left section. A caller declares the keys its own arrangement reaches for.
- */
-type MessageRowStyles = Partial<
-  Record<
-    'meta' | 'identity' | 'email' | 'time' | 'body' | 'actions' | 'replyButton' | 'unread',
-    string
-  >
->;
+import styles from './MessageRow.module.scss';
 
 interface MessagePartProps {
   message: AdminMessageView;
-  styles: MessageRowStyles;
 }
 
 /**
@@ -31,7 +16,7 @@ interface MessagePartProps {
  * puts it above the actions — so there is no single JSX tree both can share. Sharing the parts is
  * what keeps "what a message shows" in one place regardless.
  */
-function EmailLink({ message, styles }: MessagePartProps) {
+function EmailLink({ message }: MessagePartProps) {
   return (
     <a href={`mailto:${message.email}`} className={styles.email}>
       {message.email}
@@ -39,7 +24,7 @@ function EmailLink({ message, styles }: MessagePartProps) {
   );
 }
 
-function Timestamp({ message, styles }: MessagePartProps) {
+function Timestamp({ message }: MessagePartProps) {
   return (
     <time className={styles.time} dateTime={message.createdAt} title={message.createdAt}>
       {relative(message.createdAt)}
@@ -52,7 +37,7 @@ interface MessageBodyProps extends MessagePartProps {
   excerptWords?: number;
 }
 
-function MessageBody({ message, styles, excerptWords }: MessageBodyProps) {
+function MessageBody({ message, excerptWords }: MessageBodyProps) {
   return (
     <p className={styles.body} title={excerptWords ? message.message : undefined}>
       {excerptWords ? truncateWords(message.message, excerptWords) : message.message}
@@ -74,7 +59,6 @@ interface MessageActionsProps extends MessagePartProps {
 
 function MessageActions({
   message,
-  styles,
   onDelete,
   deleting,
   onToggleRead,
@@ -112,7 +96,7 @@ function MessageActions({
  * The "Unread" badge. Real text rather than a coloured dot, so the state reaches a screen reader
  * without an aria-label doing the work a visible word already does.
  */
-function UnreadBadge({ styles }: { styles: MessageRowStyles }) {
+function UnreadBadge() {
   return <span className={styles.unread}>Unread</span>;
 }
 
@@ -130,7 +114,6 @@ export function MessageRow({
   message,
   onDelete,
   deleting,
-  styles,
   excerptWords,
   onToggleRead,
   togglingRead,
@@ -138,14 +121,13 @@ export function MessageRow({
   return (
     <>
       <div className={styles.meta}>
-        <EmailLink message={message} styles={styles} />
-        {onToggleRead && message.readAt === null && <UnreadBadge styles={styles} />}
-        <Timestamp message={message} styles={styles} />
+        <EmailLink message={message} />
+        {onToggleRead && message.readAt === null && <UnreadBadge />}
+        <Timestamp message={message} />
       </div>
-      <MessageBody message={message} styles={styles} excerptWords={excerptWords} />
+      <MessageBody message={message} excerptWords={excerptWords} />
       <MessageActions
         message={message}
-        styles={styles}
         onDelete={onDelete}
         deleting={deleting}
         onToggleRead={onToggleRead}
@@ -162,11 +144,11 @@ export function MessageRow({
  * inline `<a>` ignores `overflow: hidden`, so without it the email would not ellipsise and a long
  * address would push the right rail off the panel.
  */
-export function MessageRowLeft({ message, styles, excerptWords }: MessageBodyProps) {
+export function MessageRowLeft({ message, excerptWords }: MessageBodyProps) {
   return (
     <div className={styles.identity}>
-      <EmailLink message={message} styles={styles} />
-      <MessageBody message={message} styles={styles} excerptWords={excerptWords} />
+      <EmailLink message={message} />
+      <MessageBody message={message} excerptWords={excerptWords} />
     </div>
   );
 }
@@ -175,11 +157,11 @@ export function MessageRowLeft({ message, styles, excerptWords }: MessageBodyPro
  * A hub row's right section: when it arrived, over what to do about it. Needs no wrapper —
  * `ListPanel`'s `.rowRight` is already the flex column that stacks and right-aligns these two.
  */
-export function MessageRowRight({ message, styles, onDelete, deleting }: MessageActionsProps) {
+export function MessageRowRight({ message, onDelete, deleting }: MessageActionsProps) {
   return (
     <>
-      <Timestamp message={message} styles={styles} />
-      <MessageActions message={message} styles={styles} onDelete={onDelete} deleting={deleting} />
+      <Timestamp message={message} />
+      <MessageActions message={message} onDelete={onDelete} deleting={deleting} />
     </>
   );
 }

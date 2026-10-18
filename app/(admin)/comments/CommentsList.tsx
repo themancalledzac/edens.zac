@@ -174,7 +174,6 @@ export function CommentsList({ initialMessages, initialTotal }: Props) {
                 deleting={deletingId === m.id}
                 onToggleRead={handleToggleRead}
                 togglingRead={togglingId === m.id}
-                styles={styles}
               />
             </li>
           ))}
