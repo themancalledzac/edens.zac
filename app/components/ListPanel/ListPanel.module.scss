@@ -11,34 +11,6 @@
    `overflow: hidden` is what lets the panel shrink below its content size when the box binds and
    hand the overflow to .body's scroll. */
 .panel {
-  /* The --lp-* ramp: shell -> list -> row, plus a hover surface and a row separator. Scoped to
-     this component rather than added to globals.css, following the --sel-* precedent in
-     CollectionListSelector, because the global scale cannot express it. The semantic surface
-     tokens are not an elevation ladder on light — --color-surface-raised (#f8f9fa) is DARKER than
-     the --color-bg (#fff) it is supposed to sit above, so raised/sunken tint in two directions
-     around the page colour and only read as a ladder under [data-surface='dark']. Straightening
-     that out touches tokens the photo grid and collection pages also read; filed as a follow-up
-     rather than put in this branch's path.
-
-     Literal hex, not var() indirection, so the contrast gate in listPanelSurfaces.test.ts can
-     measure what actually ships — a var() only resolves in a browser.
-
-     Shape of the ramp, and why it is not monotonic: the list is a SUNKEN well and each row is a
-     RAISED card inside it. Nesting one step darker every level would end with the densest, most
-     read part of the panel as the darkest block on the page. Every ADJACENT pair still steps
-     clearly (shell/list 1.23:1, list/row 1.41:1, row/hover 1.20:1 on light), which is what the
-     eye actually compares. What this replaces measured 1.054:1 at every boundary, with the list
-     resolving to the same #fff as the page behind the whole panel.
-
-     The list no longer paints --content-frame. That token is pinned to #fff on BOTH surfaces on
-     purpose — it is the gallery-wall mat behind photographs — which is right for a photograph and
-     wrong for a list background, where it gave 1.05:1 on light and a 15.67:1 glare on dark. */
-  --lp-surface-shell: #eef0f2;
-  --lp-surface-list: #d5dae0;
-  --lp-surface-row: #fff;
-  --lp-surface-row-hover: #e8ebef;
-  --lp-border-row: var(--color-border-strong);
-
   /* The `button` slot height from listPanelShape.ts, published so a panel's own stylesheet can
      size a control TO the slot instead of guessing at it. A section may hold something shorter
      than its slot -- the taller sibling governs -- but anything TALLER silently makes the row
@@ -51,30 +23,14 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: var(--lp-surface-shell);
+  background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-1);
-
-  /* The same three steps re-derived around the charcoal page surface, where "raised" means
-     lighter: shell/list 1.27:1, list/row 1.36:1, row/hover 1.19:1. /admin does not currently set
-     this scope (app/(admin)/layout.tsx dropped it), so this block is unreachable today — declared
-     anyway because the ramp is the component's own contract, and a surface-scoped component that
-     only works on one surface is a trap for the next adopter.
-
-     --lp-border-row is absent here on purpose, not forgotten: --color-border-strong already flips
-     to a low-alpha white hairline under this scope, so the separator adapts without a second
-     declaration to keep in step. */
-  [data-surface='dark'] & {
-    --lp-surface-shell: #26262a;
-    --lp-surface-list: #0f0f11;
-    --lp-surface-row: #2b2b2f;
-    --lp-surface-row-hover: #37373c;
-  }
 }
 
 /* One line: [chevron] [title or tabs] [action]. Flex rather than the row grid, because the header
    no longer has three sections to line up with a row's three. What it shares with the rows is the
-   RIGHT RAIL: its inline padding is the same --space-4 that .list insets row content by, so the
+   RIGHT RAIL: its inline padding is the same --space-3 that .list insets row content by, so the
    action ends exactly where the row actions end. subtreeRules.test.ts pins that pairing.
 
    `nowrap` plus a shrinkable tab strip is what keeps this one line at any width: the strip scrolls
@@ -84,7 +40,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-border);
   white-space: nowrap;
 }
@@ -183,31 +139,6 @@
   }
 }
 
-/* Collapsed keeps a strip of the body visible below the header — a closed panel reads as the
-   same molecule minimized, not a bare title bar (Zac's 2026-08-10 review: the empty body shows
-   "as tall as the padding around it, maybe twice as tall"). The BLOCK margin is the body padding
-   it stands in for, wrapping an empty run of the list surface at least one --space-4 tall:
-   32 + 16 = 48px, the COLLAPSED_BODY_SLIVER arithmetic in adminHubContent.ts — change the two
-   together. The inline margin is 0 because the list surface it stands in for is now full-bleed:
-   .body no longer insets horizontally (see the rail note on .list), so an inset sliver would make
-   a panel visibly narrow its own content as it closed.
-
-   A pseudo-element rather than the pair of divs this replaces. The strip is a painted surface with
-   nothing in it, so it has no business in the accessibility tree; as markup it needed an
-   `aria-hidden="true"` to stay out, which is a thing a future edit can drop. `::after` cannot be
-   reached by assistive tech at all, so the guard is structural instead of remembered. It is the
-   panel's last flex item — the Disclosure unmounts its body while closed — so `flex: 1` grows it
-   into the space below the header exactly as the outer div did, with the margin playing the
-   padding's part. */
-.isCollapsed::after {
-  content: '';
-  flex: 1;
-  min-height: var(--space-4);
-  margin: var(--space-4) 0;
-  background: var(--lp-surface-list);
-  border-radius: var(--radius-1);
-}
-
 .title {
   flex: 1 1 auto;
   min-width: 0;
@@ -263,7 +194,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-4) 0;
+  padding: 0;
 }
 
 /* The body's first line: a view's heading on the left, its filters on the right. Inset on the same
@@ -273,7 +204,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 0 var(--space-4) var(--space-2);
+  padding: 0 var(--space-3) var(--space-2);
   font-size: var(--text-sm);
   color: var(--color-on-surface-muted);
   white-space: nowrap;
@@ -299,11 +230,8 @@
 /* The list surface, declared once here instead of once per panel: all three carried a
    byte-identical copy of this rule under a "keep the three in step" comment.
 
-   This level owns the horizontal rail. The inset used to be split three ways — 16px on .body, 8px
-   on .list, 8px on .row — which put row content at 33px from the panel edge against the header's
-   17px, the arithmetic behind the misalignment complaint. Collapsing all of it into one --space-4
-   here lands row content at `1px border + 16px` exactly, the header's own inset, and hands ~32px
-   of width per panel back to the content.
+   This level owns the horizontal rail: the list insets row content by the same --space-3 as the
+   header, so rows land on the header's rail.
 
    Vertical padding stays out of this rule: ROW_PADDING_Y in listPanelShape.ts is the row's own
    --space-2 block padding plus its separator, and a list-level block padding would be height the
@@ -312,10 +240,8 @@
   display: flex;
   flex-direction: column;
   margin: 0;
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-3);
   list-style: none;
-  background: var(--lp-surface-list);
-  border-radius: var(--radius-1);
 }
 
 /* Same three columns as .header, resolved against the same rails. `grid` rather than the old
@@ -323,10 +249,7 @@
    line, which would make the row's height depend on its width and desync the packer's pin.
    A grid row cannot wrap, so the height stays width-independent by construction.
 
-   The block padding is ASYMMETRIC, and deliberately so: the bottom separator already holds this
-   row off the next one, so an equal bottom padding was buying that separation a second time. The
-   top padding has no such partner -- it is the only thing between this row's content and the line
-   above it -- so it keeps its --space-2. 8 + 4 + a 1px rule is ROW_PADDING_Y (13) in
+   The block padding is 8 top and 8 bottom, plus the 1px rule: ROW_PADDING_Y (17) in
    listPanelShape.ts, which the packer reserves BEFORE this renders. Change one and you must change
    the other; they are one number written in two languages. */
 .row {
@@ -334,9 +257,8 @@
   grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) 0 var(--space-1);
-  background: var(--lp-surface-row);
-  border-bottom: 1px solid var(--lp-border-row);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
 
   &:last-child {
     border-bottom: none;
@@ -346,7 +268,7 @@
      because the activation is already declared by ListRow's markup — a parallel flag would be a
      second source of truth for the same fact, and the one that goes stale. */
   &:has(.rowActivate):hover {
-    background: var(--lp-surface-row-hover);
+    background: var(--color-overlay-soft);
   }
 }
 
@@ -395,6 +317,69 @@
   &:hover {
     opacity: 0.85;
   }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-1);
+  }
+}
+
+/* One-line row: leading, primary, a muted secondary after a middle dot, and a small muted fact.
+   The text runs ellipsise so the row never wraps and its height stays width-independent. */
+.rowLine {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.rowLeading {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.rowText {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--text-sm);
+}
+
+.rowPrimary {
+  font-weight: 500;
+  color: var(--color-on-surface);
+}
+
+.rowEmphasis {
+  font-weight: 600;
+}
+
+.rowSecondary {
+  font-weight: 400;
+  color: var(--color-on-surface-muted);
+}
+
+.rowFact {
+  flex: none;
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--color-on-surface-muted);
+}
+
+.rowButton {
+  display: flex;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 
   &:focus-visible {
     outline: 2px solid var(--color-accent);

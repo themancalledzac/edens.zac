@@ -68,7 +68,7 @@ interface ListPanelProps extends ListPanelShell {
  * content. They go on the body's first line through `toolbar`, so a header never carries more than
  * one control besides its tabs.
  *
- * The header and the list inset their content by the same `--space-4`, so the header action and
+ * The header and the list inset their content by the same `--space-3`, so the header action and
  * the row actions under it end on one right-hand rail.
  *
  * Collapsing is opt-in: pass BOTH `collapsed` and `onCollapsedChange`. The header then becomes a
@@ -79,10 +79,6 @@ interface ListPanelProps extends ListPanelShell {
  *
  * Ownership of `collapsed` sits upstream because the panel does not control its own footprint.
  * `AdminPanelRenderer` does, through the width and height the layout packer hands it.
- *
- * `.isCollapsed` makes the shell fill the packer's collapsed bar box, and paints the strip of
- * empty body surface a closed panel keeps showing through an `::after`. That strip is presentation
- * with no content, so it belongs in the stylesheet, where assistive tech cannot reach it.
  */
 export function ListPanel({
   title,
@@ -136,10 +132,7 @@ export function ListPanel({
   );
 
   return (
-    <section
-      className={`${styles.panel} ${isCollapsed ? styles.isCollapsed : ''}`}
-      aria-label={ariaLabel}
-    >
+    <section className={styles.panel} aria-label={ariaLabel}>
       {onCollapsedChange ? (
         <Disclosure
           title={tabs ? <span className={styles.srOnly}>{title}</span> : title}
@@ -274,46 +267,117 @@ export function ListRows({ children }: ListRowsProps) {
   return <ul className={styles.list}>{children}</ul>;
 }
 
-interface ListRowProps {
-  /** The row's identity — a name over an email, a subject over a body. Hugs the left rail. */
-  left: ReactNode;
-  /** Actions and trailing stats. Hugs the right rail, the same one the header's action hugs. */
-  right?: ReactNode;
+interface ListRowBaseProps {
   /**
-   * Makes the left section activate the row. The button wraps the LEFT section only, never the
-   * whole row: the right section holds its own buttons, and nesting those inside a row-level
-   * button would be invalid HTML and a trap where every action click also opened the row.
+   * Makes the row activatable. The one-line form renders the WHOLE row as a single button and holds
+   * no other control; the legacy form wraps only its `left` section, because its `right` section
+   * holds its own buttons.
    */
   onActivate?: () => void;
   /** Accessible name for the activation button. Required in practice whenever `onActivate` is set. */
   ariaLabel?: string;
 }
 
+interface ListRowLineProps extends ListRowBaseProps {
+  /** The row's identity: a name, a subject. Rendered at 500, or 600 with `emphasis`. */
+  primary: ReactNode;
+  /** Muted, after a middle dot. Ellipsises before the fact does. */
+  secondary?: ReactNode;
+  /** A small muted fact on the right rail: a count, a relative time. */
+  fact?: ReactNode;
+  /** Sits before the primary: an avatar, a status dot. */
+  leading?: ReactNode;
+  /** Renders the primary at 600, for an unread message. */
+  emphasis?: boolean;
+  left?: never;
+  right?: never;
+}
+
+interface ListRowLegacyProps extends ListRowBaseProps {
+  /** The row's identity. Hugs the left rail. */
+  left: ReactNode;
+  /** Actions and trailing stats. Hugs the right rail. */
+  right?: ReactNode;
+  primary?: never;
+  secondary?: never;
+  fact?: never;
+  leading?: never;
+  emphasis?: never;
+}
+
+type ListRowProps = ListRowLineProps | ListRowLegacyProps;
+
 /**
- * One row of a {@link ListRows} list: a left, middle and right section on a fixed grid.
+ * One row of a {@link ListRows} list. Given `primary` it is one line: leading, primary, a muted
+ * secondary after a middle dot, and a small muted fact on the right. The dot is `aria-hidden` so a
+ * screen reader reads the two texts and not the punctuation.
+ *
+ * The legacy `left` / `right` form, a left, middle and right section on a fixed grid, is accepted
+ * until r-36.10 so panels that have not moved keep rendering.
  *
  * Height is declared, not measured: `listPanelShape.ts` derives it from the slots each section
- * stacks, and the layout packer reserves that number before the panel ever renders. So a section's
- * content must not change height with the row's width — every text slot inside `left` and `right`
- * is `nowrap` + ellipsis, and no `@media` or `@container` may enter this subtree.
+ * stacks, and the layout packer reserves that number before the panel ever renders. So a row's
+ * content must not change height with the row's width — every text slot is `nowrap` + ellipsis,
+ * and no `@media` or `@container` may enter this subtree.
  */
-export function ListRow({ left, right, onActivate, ariaLabel }: ListRowProps) {
+export function ListRow(props: ListRowProps) {
+  const { onActivate, ariaLabel } = props;
+
+  if (props.primary === undefined) {
+    const { left, right } = props;
+    return (
+      <li className={styles.row}>
+        {onActivate ? (
+          <button
+            type="button"
+            className={styles.rowActivate}
+            onClick={onActivate}
+            aria-label={ariaLabel}
+          >
+            {left}
+          </button>
+        ) : (
+          <div className={styles.rowLeft}>{left}</div>
+        )}
+        <div className={styles.rowMiddle} />
+        <div className={styles.rowRight}>{right}</div>
+      </li>
+    );
+  }
+
+  const { primary, secondary, fact, leading, emphasis } = props;
+  const line = (
+    <>
+      {leading && <span className={styles.rowLeading}>{leading}</span>}
+      <span className={styles.rowText}>
+        <span className={`${styles.rowPrimary} ${emphasis ? styles.rowEmphasis : ''}`}>
+          {primary}
+        </span>
+        {secondary && (
+          <span className={styles.rowSecondary}>
+            <span aria-hidden="true"> · </span>
+            {secondary}
+          </span>
+        )}
+      </span>
+      {fact && <span className={styles.rowFact}>{fact}</span>}
+    </>
+  );
+
   return (
     <li className={styles.row}>
       {onActivate ? (
         <button
           type="button"
-          className={styles.rowActivate}
+          className={`${styles.rowLine} ${styles.rowButton}`}
           onClick={onActivate}
           aria-label={ariaLabel}
         >
-          {left}
+          {line}
         </button>
       ) : (
-        <div className={styles.rowLeft}>{left}</div>
+        <div className={styles.rowLine}>{line}</div>
       )}
-      <div className={styles.rowMiddle} />
-      <div className={styles.rowRight}>{right}</div>
     </li>
   );
 }

@@ -384,3 +384,124 @@ describe('ViewAllLink', () => {
     expect(screen.getByRole('link').className).toBe(screen.getByRole('button').className);
   });
 });
+
+describe('ListRow — one line', () => {
+  it('renders leading, primary, secondary after a middle dot and a fact', () => {
+    const { container } = render(
+      <ListRow
+        leading={<span data-testid="lead">L</span>}
+        primary="Ada Lovelace"
+        secondary="ada@example.com"
+        fact="3d"
+      />,
+      { wrapper: ListRows }
+    );
+    expect(screen.getByTestId('lead')).toBeInTheDocument();
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    expect(screen.getByText('3d')).toBeInTheDocument();
+    expect(container.textContent).toContain('·');
+  });
+
+  it('keeps the middle dot out of the accessible name', () => {
+    render(<ListRow primary="Ada" secondary="ada@example.com" onActivate={() => {}} />, {
+      wrapper: ListRows,
+    });
+    expect(screen.getByRole('button').textContent).toContain('·');
+    expect(screen.getByRole('button', { name: /^Ada\s*ada@example\.com$/ })).toBeInTheDocument();
+  });
+
+  it('renders no dot without a secondary', () => {
+    const { container } = render(<ListRow primary="Ada" fact="1h" />, { wrapper: ListRows });
+    expect(container.textContent).not.toContain('·');
+  });
+
+  it('renders the primary first, then the secondary, then the fact', () => {
+    const { container } = render(<ListRow primary="P1" secondary="S2" fact="F3" />, {
+      wrapper: ListRows,
+    });
+    const text = container.textContent ?? '';
+    expect(text.indexOf('P1')).toBeLessThan(text.indexOf('S2'));
+    expect(text.indexOf('S2')).toBeLessThan(text.indexOf('F3'));
+  });
+
+  it('makes the whole row one button with onActivate and holds no other control', () => {
+    const onActivate = jest.fn();
+    render(
+      <ListRow
+        primary="Ada"
+        secondary="x"
+        fact="3d"
+        leading={<span>L</span>}
+        onActivate={onActivate}
+        ariaLabel="Open Ada"
+      />,
+      { wrapper: ListRows }
+    );
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(1);
+    const button = buttons[0] as HTMLElement;
+    expect(button).toHaveAccessibleName('Open Ada');
+    expect(button).toHaveTextContent('Ada');
+    expect(button).toHaveTextContent('3d');
+    fireEvent.click(screen.getByText('3d'));
+    expect(onActivate).toHaveBeenCalledTimes(1);
+  });
+
+  it('is static without onActivate', () => {
+    render(<ListRow primary="Ada" />, { wrapper: ListRows });
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('renders an emphasised primary differently from a plain one', () => {
+    render(
+      <ListRows>
+        <ListRow primary="Plain" />
+        <ListRow primary="Bold" emphasis />
+      </ListRows>
+    );
+    expect((screen.getByText('Bold') as HTMLElement).className).not.toBe(
+      (screen.getByText('Plain') as HTMLElement).className
+    );
+  });
+});
+
+describe('ListRow — legacy left / right form (S1)', () => {
+  it('still renders left and right together with an activatable left', () => {
+    const onActivate = jest.fn();
+    render(
+      <ListRow
+        left={<span>legacy name</span>}
+        right={<button type="button">Reset</button>}
+        onActivate={onActivate}
+        ariaLabel="Open legacy"
+      />,
+      { wrapper: ListRows }
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Open legacy' }));
+    expect(onActivate).toHaveBeenCalledTimes(1);
+    const reset = screen.getByRole('button', { name: 'Reset' });
+    expect(screen.getByRole('button', { name: 'Open legacy' })).not.toContainElement(reset);
+    fireEvent.click(reset);
+    expect(onActivate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ListPanel — collapse stays controlled (M5)', () => {
+  it('follows the collapsed prop on rerender and holds no state of its own', () => {
+    const onCollapsedChange = jest.fn();
+    const { rerender } = render(
+      <ListPanel title="Users" collapsed={false} onCollapsedChange={onCollapsedChange}>
+        <p>body</p>
+      </ListPanel>
+    );
+    fireEvent.click(screen.getByRole('button', { name: /users/i }));
+    expect(screen.getByText('body')).toBeInTheDocument();
+    rerender(
+      <ListPanel title="Users" collapsed onCollapsedChange={onCollapsedChange}>
+        <p>body</p>
+      </ListPanel>
+    );
+    expect(screen.queryByText('body')).not.toBeInTheDocument();
+  });
+});

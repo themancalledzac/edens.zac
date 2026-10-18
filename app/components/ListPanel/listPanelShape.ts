@@ -81,24 +81,18 @@ export const SLOT_HEIGHT: Record<SlotKind, number> = {
 export const SLOT_GAP = 4;
 
 /**
- * Block padding inside a row (`--space-2` top + `--space-1` bottom), plus its 1px separator.
- *
- * Asymmetric on purpose, and the asymmetry is the density pass: the separator already performs the
- * separation that a row's bottom padding was also performing, so the bottom half was paying twice
- * for one job. Top padding still has to hold the row off the line above it, which nothing else
- * does. 8 + 4 + 1 rather than the 8 + 8 + 1 this replaces -- 4px off every row in every panel.
+ * Block padding inside a row (`--space-2` top and bottom) plus its 1px `--color-border` separator.
  *
  * Must stay in step with `.row`'s `padding` in `ListPanel.module.scss`. This number is the
  * packer's contract: it is reserved before the panel renders, so a change on one side alone
  * reopens the blank-well/clipped-row class of bug the derivation exists to close.
  */
-export const ROW_PADDING_Y = 13;
+export const ROW_PADDING_Y = 17;
 
 /**
  * Fixed height around a panel's list, mirroring `ListPanel.module.scss`. Written as its parts
  * rather than one measured total so a token change is traceable: `.panel` border (1px x 2),
- * `.header` block padding (`--space-3` x 2) plus its bottom rule, and `.body` padding
- * (`--space-4` x 2).
+ * `.header` block padding (`--space-2` x 2) plus its bottom rule, and `.body`, which carries no padding.
  *
  * The header's own content height is no longer a constant here. It used to be a pair --
  * `headerControl` 27 for a header carrying a `Button sm`, `headerTextOnly` 20 for one carrying
@@ -108,9 +102,9 @@ export const ROW_PADDING_Y = 13;
  */
 const PANEL_CHROME = {
   border: 2,
-  headerPadding: 24,
+  headerPadding: 16,
   headerRule: 1,
-  bodyPadding: 32,
+  bodyPadding: 0,
 } as const;
 
 function stackHeight(section: SectionShape | undefined): number {
