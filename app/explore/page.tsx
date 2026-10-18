@@ -3,6 +3,7 @@ import { unstable_rethrow } from 'next/navigation';
 import { Suspense } from 'react';
 
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
+import { CollectionHeader } from '@/app/components/ui/CollectionHeader/CollectionHeader';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { meServer } from '@/app/lib/api/auth';
 import { type MeResponse } from '@/app/types/Auth';
@@ -42,10 +43,8 @@ export default async function ExplorePage() {
 
   return (
     <PageShell me={me}>
-      <header className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Explore</h1>
-        <p className={styles.intro}>Browse the archive by tag or location.</p>
-      </header>
+      <CollectionHeader title="Explore" />
+      <p className={styles.intro}>Browse the archive by tag or location.</p>
 
       <Suspense
         fallback={

@@ -212,7 +212,8 @@ describe('ExplorePage', () => {
 
     render(await ExplorePage());
 
-    expect(screen.getByRole('heading', { name: 'Explore' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 1, name: 'Explore' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Tags' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mountains' })).not.toBeInTheDocument();
   });
