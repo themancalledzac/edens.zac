@@ -1,28 +1,13 @@
-/* Download control for the fullscreen viewer (client galleries). Mirrors the modal's .closeButton
-   styling but sits top-left, opposite the close affordance. */
+/* Download control for the fullscreen viewer (client galleries). Sits top-left, level with and opposite
+   the modal's close button. */
 
 .container {
   position: absolute;
-  top: 20px;
+  top: calc(20px + env(safe-area-inset-top, 0px));
   left: 20px;
   z-index: var(--z-modal-controls);
   display: flex;
   align-items: center;
-}
-
-/* Applied to an <IconButton shape="round" variant="overlay" size="md">, which is already this
-   control's 40px circle, white glyph, background transition, focus ring and coarse-pointer hit
-   area. Only the scrim colours remain: 50% black brightening on hover, matching the viewer's
-   .closeButton rather than the overlay token's 70% black darkening to 90%.
-
-   Class doubled so these outrank IconButton's single-class `.overlay` / `.overlay:hover` rules
-   without depending on which module's stylesheet webpack emits first. */
-.downloadToggle.downloadToggle {
-  background-color: rgb(0, 0, 0, 0.5);
-
-  &:hover:not(:disabled) {
-    background-color: var(--scrim-light-30);
-  }
 }
 
 .icon {
@@ -48,7 +33,7 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-white);
-  background-color: rgb(0, 0, 0, 0.6);
+  background-color: var(--scrim-dark-60);
   border: none;
   border-radius: var(--radius-1);
   cursor: pointer;
@@ -56,7 +41,7 @@
   white-space: nowrap;
 
   &:hover:not(:disabled) {
-    background-color: rgb(0, 0, 0, 0.85);
+    background-color: var(--scrim-dark-90);
   }
 
   &:disabled {

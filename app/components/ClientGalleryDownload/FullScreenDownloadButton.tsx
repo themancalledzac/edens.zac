@@ -75,10 +75,9 @@ export default function FullScreenDownloadButton({ imageId }: FullScreenDownload
       ) : (
         <IconButton
           shape="round"
-          variant="overlay"
+          variant="scrim"
           size="md"
           onClick={handleToggle}
-          className={styles.downloadToggle}
           aria-label="Download image"
         >
           <DownloadIcon className={styles.icon} />
