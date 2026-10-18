@@ -92,6 +92,10 @@ function extractCollectionBlocks(content: unknown): ContentCollectionModel[] {
  * bar's Order and Date controls instead. Ordering reaches these tiles through `applySort`'s
  * collection-card path — the image-only `isDateable` sort does not see them, so a change that
  * routes collection cards back through it silently disables the Order control here.
+ *
+ * Both backend reads rethrow Next control-flow errors through `unstable_rethrow`:
+ * `getScopedAllCollections` calls `notFound()` on a missing parent, and swallowing that would
+ * serve the "try again later" message with HTTP 200 forever.
  */
 export default async function CollectionsPage() {
   let me: MeResponse | null;
@@ -107,9 +111,6 @@ export default async function CollectionsPage() {
   try {
     collection = await getScopedAllCollections(SHOWCASE_PAGE_SIZE);
   } catch (error) {
-    // `getScopedAllCollections` calls `notFound()` on a missing parent, which throws a
-    // control-flow error Next must handle itself — swallowing it would serve a
-    // transient-sounding message with HTTP 200 forever.
     unstable_rethrow(error);
     logger.error('CollectionsPage', 'Failed to load the all-collections showcase', error);
     collection = null;

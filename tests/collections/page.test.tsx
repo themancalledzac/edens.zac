@@ -101,17 +101,13 @@ describe('CollectionsPage', () => {
   });
 
   it('always shows the filter bar, whatever aggregates the payload carries', async () => {
-    // On an index surface the bar is part of the page, not something that appears only when the
-    // backend happens to ship tags or cameras on the child blocks.
     mockGetScopedAllCollections.mockResolvedValue(
       makeParent([createCollectionContent(1, { title: 'Solo', slug: 'solo' })])
     );
     expect(stackProps(await CollectionsPage()).alwaysShowFilterBar).toBe(true);
   });
 
-  it('opens at the shared default density', async () => {
-    // No /collections-only density: the page inherits LAYOUT.defaultChunkSize like every other
-    // collection surface, and the shared slider re-tunes it.
+  it('opens at the shared default density, with no /collections-only chunk size', async () => {
     mockGetScopedAllCollections.mockResolvedValue(
       makeParent([createCollectionContent(1, { title: 'Solo', slug: 'solo' })])
     );
@@ -173,9 +169,6 @@ describe('CollectionsPage', () => {
     expect(mockGetScopedAllCollections).toHaveBeenCalledWith(500);
   });
 
-  // The route absorbed /all-collections, whose only distinguishing behaviour was threading the
-  // principal through. Without this the admin Hidden toggle can never appear on the canonical
-  // browse surface.
   it('threads the resolved principal through so admin-only controls can render', async () => {
     const me = { isAdmin: true } as Awaited<ReturnType<typeof meServer>>;
     mockMeServer.mockResolvedValue(me);
