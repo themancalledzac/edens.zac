@@ -6,7 +6,7 @@
  */
 import '@testing-library/jest-dom';
 
-import { render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import type { AnyContentModel, ContentImageModel } from '@/app/types/Content';
@@ -112,5 +112,41 @@ describe('ContentBlockWithFullScreen — viewable list excludes collection cards
     const [opened, list] = mockShowImage.mock.calls[0] as [ContentImageModel, AnyContentModel[]];
     expect(opened.id).toBe(3);
     expect(list.map(block => block.id)).toEqual([1, 3]);
+  });
+});
+
+describe('ContentBlockWithFullScreen — Load More control', () => {
+  const originalObserver = global.IntersectionObserver;
+
+  beforeEach(() => {
+    global.IntersectionObserver = class {
+      constructor(private readonly callback: IntersectionObserverCallback) {}
+      observe() {
+        this.callback([{ isIntersecting: true } as IntersectionObserverEntry], this as never);
+      }
+      disconnect() {}
+      unobserve() {}
+      takeRecords() {
+        return [];
+      }
+    } as unknown as typeof IntersectionObserver;
+  });
+
+  afterEach(() => {
+    global.IntersectionObserver = originalObserver;
+  });
+
+  it('renders Load More as the primary ui Button and loads the next chunk on click', () => {
+    render(<ContentBlockWithFullScreen content={blocks} initialPageSize={1} />);
+
+    const button = screen.getByRole('button', { name: 'Load More' });
+    expect(button).toHaveClass('button', 'primary', 'md');
+    expect(screen.getByText('Showing 1 of 3 items')).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(button);
+    });
+
+    expect(screen.queryByRole('button', { name: 'Load More' })).not.toBeInTheDocument();
   });
 });

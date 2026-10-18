@@ -49,10 +49,24 @@ describe('InviteForm', () => {
     jest.clearAllMocks();
   });
 
+  it.each([
+    ['Your name', 'Display Name'],
+    [PASSWORD_PLACEHOLDER, 'Password'],
+    [CONFIRM_PLACEHOLDER, 'Confirm Password'],
+  ])(
+    'marks the field "%s" required through Field with no "*" in the label',
+    (placeholder, name) => {
+      renderForm();
+
+      const label = (screen.getByPlaceholderText(placeholder) as HTMLInputElement).labels?.[0];
+      expect(label?.textContent).not.toContain('*');
+      expect(label).toHaveTextContent(new RegExp(`^${name}• \\(required\\)$`));
+    }
+  );
+
   it('shows a validation error and does not submit when the display name is empty', async () => {
     renderForm(null);
 
-    // Display name starts empty (displayName prop is null); fill only the passwords.
     fireEvent.change(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER), {
       target: { value: 'pw123456' },
     });
@@ -126,7 +140,6 @@ describe('InviteForm', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/user');
     });
-    // Passkey was not opted in, so registerPasskey must not run.
     expect(mockRegisterPasskey).not.toHaveBeenCalled();
   });
 
@@ -174,8 +187,6 @@ describe('InviteForm', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/add it later from your account page/i);
     expect(mockPush).not.toHaveBeenCalled();
 
-    // The invite is consumed, so the form must not offer a second submission:
-    // the submit button is replaced by Continue and every input stays disabled.
     expect(screen.queryByRole('button', { name: /create account/i })).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText('Your name')).toBeDisabled();
     expect(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER)).toBeDisabled();

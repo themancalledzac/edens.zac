@@ -109,6 +109,17 @@ describe('ShareChip', () => {
     expect(input).toHaveAttribute('spellcheck', 'false');
   });
 
+  it('renders the recipient field through the ui Field with a visible label', () => {
+    render(<ShareChip read={{ ok: true, settings: settings({ token: 't' }) }} />);
+    openShare();
+    const label = screen.getByText('Send the link to this email address');
+    expect(label.tagName).toBe('LABEL');
+    const input = screen.getByRole('textbox', { name: 'Send the link to this email address' });
+    expect(label).toHaveAttribute('for', input.id);
+    expect(input.id).not.toBe('');
+    expect(input.className).toMatch(/control/);
+  });
+
   it('shows the live link so it can be sent again without a reset', () => {
     render(<ShareChip read={{ ok: true, settings: settings() }} />);
     openShare();

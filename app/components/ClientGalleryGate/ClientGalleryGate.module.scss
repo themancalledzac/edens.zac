@@ -35,46 +35,21 @@
   gap: var(--space-3);
 }
 
-.gateLabel {
-  font-size: var(--text-sm);
-  color: var(--color-on-surface-muted);
-  margin-bottom: var(--space-1);
+.gateField {
+  width: 100%;
+  text-align: left;
 }
 
+/* The field goes `readonly` while verifying rather than `disabled`, so it keeps the focus the
+   user submitted from — see the component docblock. `not-allowed` would be the wrong cursor for
+   it: the text is still selectable and copyable, only editing is off. */
 .gateInput {
-  width: 100%;
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--text-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
   text-align: center;
-  outline: none;
-  transition: border-color var(--duration-base) var(--ease-standard);
-  background-color: var(--color-white);
-  color: var(--color-black);
 
-  &:focus {
-    border-color: var(--color-black);
-  }
-
-  &:focus-visible {
-    outline: var(--focus-ring);
-    outline-offset: 2px;
-  }
-
-  /* The field goes `readonly` while verifying rather than `disabled`, so it keeps the focus the
-     user submitted from — see the component docblock. `not-allowed` would be the wrong cursor for
-     it: the text is still selectable and copyable, only editing is off. */
   &[readonly] {
     opacity: 0.6;
     cursor: default;
   }
-}
-
-.gateError {
-  color: var(--color-error-text);
-  font-size: var(--text-sm);
-  margin: 0;
 }
 
 /* Placement + spinner layout only — colour, size and the live-region semantics come from the

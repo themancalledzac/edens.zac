@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
+import { Checkbox } from '@/app/components/ui/Field/Checkbox';
+import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
+import { Input } from '@/app/components/ui/Field/Input';
 import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { ApiError } from '@/app/lib/api/core';
@@ -70,6 +73,7 @@ export function ShareChip({ read }: ShareChipProps) {
   const [recipient, setRecipient] = useState('');
   const [emailNote, setEmailNote] = useState<string | null>(null);
   const [origin, setOrigin] = useState('');
+  const recipientId = useId();
 
   useEffect(() => setOrigin(window.location.origin), []);
 
@@ -176,18 +180,23 @@ export function ShareChip({ read }: ShareChipProps) {
           </div>
 
           <div className={styles.row}>
-            <input
-              type="email"
-              name="recipientEmail"
-              autoComplete="email"
-              spellCheck={false}
-              className={styles.input}
-              placeholder="name@example.com…"
-              aria-label="Send the link to this email address"
-              value={recipient}
-              onChange={event => setRecipient(event.target.value)}
-              disabled={busy}
-            />
+            <Field
+              label="Send the link to this email address"
+              htmlFor={recipientId}
+              className={styles.emailField}
+            >
+              <Input
+                id={recipientId}
+                type="email"
+                name="recipientEmail"
+                autoComplete="email"
+                spellCheck={false}
+                placeholder="name@example.com…"
+                value={recipient}
+                onChange={event => setRecipient(event.target.value)}
+                disabled={busy}
+              />
+            </Field>
             <Button
               type="button"
               variant="outline"
@@ -217,8 +226,7 @@ export function ShareChip({ read }: ShareChipProps) {
             {settings.candidateCollections.map(collection => (
               <li key={collection.id} className={styles.optInItem}>
                 <label className={styles.optInLabel}>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={optedIn.has(collection.id)}
                     disabled={busy}
                     onChange={event => toggleCollection(collection, event.target.checked)}

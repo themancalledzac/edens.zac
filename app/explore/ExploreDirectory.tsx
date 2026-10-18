@@ -1,4 +1,4 @@
-import { NavLink } from '@/app/components/ui/NavLink/NavLink';
+import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { getAllLocations, getAllTags } from '@/app/lib/api/content';
 
@@ -56,9 +56,7 @@ export async function ExploreDirectory() {
           <ul className={styles.linkList}>
             {locations.map(loc => (
               <li key={loc.id}>
-                <NavLink href={`/location/${loc.slug}`} className={styles.directoryLink}>
-                  {loc.name}
-                </NavLink>
+                <FilterChip label={loc.name} href={`/location/${loc.slug}`} scroll />
               </li>
             ))}
           </ul>
@@ -75,9 +73,7 @@ export async function ExploreDirectory() {
           <ul className={styles.linkList}>
             {tags.map(tag => (
               <li key={tag.id}>
-                <NavLink href={`/tag/${tag.slug}`} className={styles.directoryLink}>
-                  {tag.name}
-                </NavLink>
+                <FilterChip label={tag.name} href={`/tag/${tag.slug}`} scroll />
               </li>
             ))}
           </ul>

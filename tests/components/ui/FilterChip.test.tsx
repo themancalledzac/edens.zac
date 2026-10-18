@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { fireEvent, render, screen } from '@testing-library/react';
 import { createRef, type ReactNode } from 'react';
 
@@ -191,5 +194,50 @@ describe('FilterChip button passthroughs', () => {
     const button = screen.getByRole('button', { name: 'Year' });
     expect(button).not.toHaveAttribute('aria-expanded');
     expect(button).not.toHaveAttribute('aria-haspopup');
+  });
+});
+
+describe('chip skin (stylesheet source)', () => {
+  const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
+  const sheets = [
+    'app/components/ui/FilterChip/FilterChip.module.scss',
+    'app/components/ui/SegmentedChip/SegmentedChip.module.scss',
+  ].map(read);
+  const rolesSheet = read('app/components/UserForm/UserRolesSection.module.scss');
+
+  it.each(sheets)('uses the tight padding, the control border and no muted opacity', sheet => {
+    expect(sheet).toContain('padding: var(--space-1) var(--space-2);');
+    expect(sheet).not.toContain('opacity: 0.7');
+    expect(sheet).not.toContain('opacity: 0.6');
+    expect(sheet).toContain('var(--color-on-surface-muted)');
+    expect(sheet).toContain('var(--color-border-control)');
+  });
+
+  it('collapses an empty trailing slot', () => {
+    expect(sheets[0]).toMatch(/\.trailing:empty\s*{\s*display: none;/);
+  });
+
+  it('skins the role chips with the same padding and border', () => {
+    const chipRule = /\n\.chip {[\S\s]*?\n}/.exec(rolesSheet)?.[0] ?? '';
+    expect(chipRule).toContain('padding: var(--space-1) var(--space-2);');
+    expect(chipRule).toContain('var(--color-border-control)');
+  });
+
+  it('keeps the chip gap: 4px inside a chip, and the 8px (--space-2) row gap in the toolbar', () => {
+    const [chipSheet = '', segmentedSheet = ''] = sheets;
+    expect(/(^|\n)\.chip {[^}]*?gap: 4px;/.test(chipSheet)).toBe(true);
+    expect(/(^|\n)\.segment {[^}]*?gap: 4px;/.test(segmentedSheet)).toBe(true);
+    const toolbar = read('app/components/ui/FilterToolbar/FilterToolbar.module.scss');
+    expect(toolbar).toContain('row-gap: var(--space-2);');
+    expect(toolbar).toContain('gap: var(--space-2);');
+  });
+});
+
+describe('FilterChip empty trailing slot', () => {
+  it('still emits the empty trailing span that the :empty rule collapses', () => {
+    render(<FilterChip label="Order" trailing="" onToggle={jest.fn()} />);
+    const slot = screen.getByRole('button', { name: 'Order' }).querySelector('span');
+    expect(slot).not.toBeNull();
+    expect(slot?.textContent).toBe('');
   });
 });
