@@ -28,20 +28,15 @@ import {
 import { type ContentTagModel } from '@/app/types/Metadata';
 import { logger } from '@/app/utils/logger';
 
-// ============================================================================
-// READ Endpoints (Production - /api/read/content)
-// ============================================================================
-
 /**
  * GET /api/read/content/tags
- * Get all tags (ordered alphabetically)
+ * Every tag, alphabetical, whether or not any public content uses it. The backend's `Records.Tag`
+ * (`id`, `name`, `slug`) is already a `ContentTagModel`, so the body passes through.
  */
 export async function getAllTags(): Promise<ContentTagModel[] | null> {
-  const raw = await fetchPublicRead<Array<{ id: number; tagName: string; slug: string }>>(
-    '/content/tags',
-    { next: { revalidate: TIMING.revalidateCache, tags: ['content-tags'] } }
-  );
-  return raw?.map(t => ({ id: t.id, name: t.tagName, slug: t.slug })) ?? null;
+  return fetchPublicRead<ContentTagModel[]>('/content/tags', {
+    next: { revalidate: TIMING.revalidateCache, tags: ['content-tags'] },
+  });
 }
 
 /**
@@ -140,7 +135,6 @@ export async function searchImages(params: SearchImagesParams): Promise<ContentI
   );
 
   if (result === null) return [];
-  // Handle both array response and paginated wrapper
   if (Array.isArray(result)) return result;
   if ('content' in result && Array.isArray(result.content)) return result.content;
   logger.error('searchImages', 'Unexpected response shape', undefined, {
@@ -151,10 +145,6 @@ export async function searchImages(params: SearchImagesParams): Promise<ContentI
     `[searchImages] Unexpected response shape: expected array or { content: [] }, got ${typeof result}`
   );
 }
-
-// ============================================================================
-// ADMIN Endpoints (Dev only - /api/admin/content)
-// ============================================================================
 
 /**
  * Response shape for image upload operations.

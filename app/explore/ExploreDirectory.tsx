@@ -1,24 +1,33 @@
 import { NavLink } from '@/app/components/ui/NavLink/NavLink';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
-import { getMetadata } from '@/app/lib/api/collections';
+import { getAllLocations, getAllTags } from '@/app/lib/api/content';
 
 import styles from './Explore.module.scss';
 
+/** Both reads, or null when either fails, so a failure never renders half a directory. */
+async function loadDirectory() {
+  try {
+    const [tags, locations] = await Promise.all([getAllTags(), getAllLocations()]);
+    return tags && locations ? { tags, locations } : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The tag and location directory, split out of the route so the page heading can flush before
- * `getMetadata()` resolves. The page owns the header; everything below it lives here.
+ * the reads resolve. The page owns the header; everything below it lives here.
+ *
+ * `/explore` is public, so both reads must stay on the public `/api/read` channel. The admin
+ * channel refuses everyone but admins. The location list holds only locations with public
+ * content, while the tag list holds every tag.
  *
  * A failed read renders the unreachable-directory message rather than an empty state — see
  * `.empty` in Explore.module.scss for why the two are kept apart. Slugless locations are dropped
  * because they cannot form a valid `/location/[slug]` link.
  */
 export async function ExploreDirectory() {
-  let data;
-  try {
-    data = await getMetadata();
-  } catch {
-    data = null;
-  }
+  const data = await loadDirectory();
 
   if (!data) {
     return (

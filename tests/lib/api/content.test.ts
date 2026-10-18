@@ -14,10 +14,8 @@ import {
 } from '@/app/lib/api/content';
 import { logger } from '@/app/utils/logger';
 
-// Mock fetch globally
 global.fetch = jest.fn();
 
-// Mock environment
 jest.mock('@/app/utils/environment', () => ({
   isLocalEnvironment: jest.fn(() => false),
 }));
@@ -35,18 +33,15 @@ describe('Read Endpoints', () => {
   });
 
   describe('getAllTags', () => {
-    it('should fetch and return tags normalized to ContentTagModel', async () => {
-      const rawTags = [
-        { id: 1, tagName: 'landscape', slug: 'landscape' },
-        { id: 2, tagName: 'portrait', slug: 'portrait' },
-      ];
-      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(rawTags));
-
-      const result = await getAllTags();
-      expect(result).toEqual([
+    it('returns tags in the backend Records.Tag shape (id, name, slug)', async () => {
+      const tags = [
         { id: 1, name: 'landscape', slug: 'landscape' },
         { id: 2, name: 'portrait', slug: 'portrait' },
-      ]);
+      ];
+      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(tags));
+
+      const result = await getAllTags();
+      expect(result).toEqual(tags);
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/content/tags'),
         expect.any(Object)

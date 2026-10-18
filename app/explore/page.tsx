@@ -8,8 +8,9 @@ import styles from './Explore.module.scss';
 import { ExploreDirectory } from './ExploreDirectory';
 
 /**
- * Render on every request. `getMetadata()` calls `fetchAdminGetApi`, which can fail mid-build
- * before the proxy is live — same rationale as the taxonomy routes.
+ * Render on every request. The directory reads through the BFF proxy, which can be unreachable
+ * mid-build — same rationale as the taxonomy routes. The reads still use the fetch cache:
+ * `force-dynamic` only turns it off for fetches that set no `revalidate` of their own.
  */
 export const dynamic = 'force-dynamic';
 
