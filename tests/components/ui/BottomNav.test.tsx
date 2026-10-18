@@ -62,12 +62,27 @@ describe('BottomNav', () => {
     expect(screen.getByText('Your space')).toHaveAttribute('href', '/admin');
   });
 
-  it('never shows Log in while me is unresolved for a signed-in visitor', async () => {
-    mockMe.mockResolvedValue(makeMe(false));
+  it('keeps a reserved empty fourth cell and never shows Log in while me is undefined', () => {
     renderBar();
+    const cells = screen.getByRole('navigation').children;
+    expect(cells).toHaveLength(4);
+    expect(cells[3]).toHaveAttribute('aria-hidden', 'true');
+    expect(cells[3]).toBeEmptyDOMElement();
     expect(screen.queryByText('Log in')).not.toBeInTheDocument();
-    expect(await screen.findByText('Your space')).toHaveAttribute('href', '/user');
-    expect(screen.queryByText('Log in')).not.toBeInTheDocument();
+    expect(screen.queryByText('Your space')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['undefined', undefined],
+    ['null', null],
+    ['a value', makeMe(false)],
+  ])('makes no /me request when me is %s', async (_label, me) => {
+    const fetchSpy = jest.fn();
+    global.fetch = fetchSpy as unknown as typeof fetch;
+    renderBar(me);
+    await Promise.resolve();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(mockMe).not.toHaveBeenCalled();
   });
 
   it('marks only the current route with aria-current', () => {

@@ -39,7 +39,9 @@ export interface PageShellProps {
  * cannot live down here.
  *
  * The mobile {@link BottomNav} shares the header's {@link SiteMenuProvider} and is skipped with
- * `hideBottomNav` or when no header renders.
+ * `hideBottomNav` or when no header renders. It receives the same `me` and renders from it alone,
+ * with no request of its own; an omitted `me` leaves its fourth cell reserved and empty. The shell
+ * stays synchronous: callers resolve `me` and pass it in.
  *
  * No `isCollectionPage` prop: nothing the shell wraps is a single collection's page, so its header
  * never shows the admin Update item. The one page that does — `CollectionPage` — renders
