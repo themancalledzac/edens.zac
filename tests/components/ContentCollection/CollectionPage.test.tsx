@@ -397,3 +397,37 @@ describe('CollectionPage — footer', () => {
     expect(container.querySelector('footer')).toBeNull();
   });
 });
+
+/**
+ * F1: the page owns exactly one h1. Without a `header` it is the visually-hidden one; with a
+ * `header` the page renders none of its own and the header (a CollectionHeader) supplies it.
+ */
+describe('CollectionPage — header prop', () => {
+  const headerNode = (
+    <header data-testid="custom-header">
+      <h1>All Images</h1>
+    </header>
+  );
+
+  it('F1: renders the visually-hidden h1 and no header when no header is passed', () => {
+    render(<CollectionPage collection={makeCollection()} />);
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.queryByTestId('custom-header')).toBeNull();
+  });
+
+  it("F1: renders exactly one h1, the header's own, when a header is passed", () => {
+    render(<CollectionPage collection={makeCollection()} header={headerNode} />);
+    const headings = screen.getAllByRole('heading', { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0]).toHaveTextContent('All Images');
+    expect(screen.queryByText('Paris 2025')).toBeNull();
+  });
+
+  it('renders the header after the back link and before the client body', () => {
+    render(<CollectionPage collection={makeCollection()} backHref="/admin" header={headerNode} />);
+    const target = document.getElementById('main-content')!;
+    const link = screen.getByRole('link', { name: 'Admin' });
+    expect(target.firstElementChild).toBe(link);
+    expect(link.nextElementSibling).toBe(screen.getByTestId('custom-header'));
+  });
+});

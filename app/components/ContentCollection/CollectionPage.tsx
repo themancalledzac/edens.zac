@@ -1,3 +1,5 @@
+import { type ReactNode } from 'react';
+
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { Footer } from '@/app/components/Footer/Footer';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
@@ -46,6 +48,11 @@ interface ContentCollectionPageProps {
   backHref?: string;
   /** Destination name in the back link (default 'Admin'). */
   backLabel?: string;
+  /**
+   * Visible page header (single-collection branch only), rendered after the back link. It must
+   * carry the page's h1, because it replaces the visually-hidden one.
+   */
+  header?: ReactNode;
 }
 
 /**
@@ -105,7 +112,7 @@ export function collectionToContentModel(
  * Renders either a single collection, delegated to CollectionPageClient for filters and edit
  * mode, or an array of collections as parallax cards in the shared content grid. The single
  * branch emits a visually-hidden <h1>, because the title is only shown as an overlay inside the
- * content tree.
+ * content tree, unless the caller passes a `header` that carries its own.
  *
  * @param collection - Single CollectionModel or array of CollectionModels
  */
@@ -122,6 +129,7 @@ export default function CollectionPage({
   withFooter = true,
   backHref,
   backLabel,
+  header,
 }: ContentCollectionPageProps) {
   if (!Array.isArray(collection)) {
     const headingText = collection.title?.trim() || collection.slug?.trim() || 'Untitled';
@@ -131,7 +139,7 @@ export default function CollectionPage({
           <SiteHeader isCollectionPage collectionSlug={collection.slug} me={me} />
           <SkipTarget>
             {backHref && <BackLink href={backHref} label={backLabel} />}
-            <h1 className={styles.srOnly}>{headingText}</h1>
+            {header ?? <h1 className={styles.srOnly}>{headingText}</h1>}
             <CollectionPageClient
               collection={collection}
               chunkSize={chunkSize}
