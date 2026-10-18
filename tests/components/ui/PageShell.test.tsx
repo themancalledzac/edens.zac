@@ -2,20 +2,19 @@ import { render, screen } from '@testing-library/react';
 
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 
+const mockSiteHeader = jest.fn();
+
 jest.mock('@/app/components/SiteHeader/SiteHeader', () => {
-  const stub = ({
-    isCollectionPage,
-    collectionSlug,
-  }: {
-    isCollectionPage?: boolean;
-    collectionSlug?: string;
-  }) => (
-    <div
-      data-testid="site-header"
-      data-collection-page={String(Boolean(isCollectionPage))}
-      data-collection-slug={collectionSlug}
-    />
-  );
+  const stub = (props: { isCollectionPage?: boolean; collectionSlug?: string }) => {
+    mockSiteHeader(props);
+    return (
+      <div
+        data-testid="site-header"
+        data-collection-page={String(Boolean(props.isCollectionPage))}
+        data-collection-slug={props.collectionSlug}
+      />
+    );
+  };
   return { __esModule: true, default: stub, SiteHeader: stub };
 });
 
@@ -93,5 +92,39 @@ describe('PageShell', () => {
       render(<PageShell>x</PageShell>);
       expect(screen.queryByRole('link', { name: /skip to main content/i })).not.toBeInTheDocument();
     });
+  });
+});
+
+/**
+ * A16 / A15: the shell forwards the server-resolved `me` to SiteHeader unchanged. Omitted stays
+ * undefined (the menu fetches on first open); null stays null (anonymous, no fetch).
+ */
+describe('PageShell — me forwarding', () => {
+  beforeEach(() => {
+    mockSiteHeader.mockClear();
+  });
+
+  const signedIn = { id: 7, email: 'a@example.com' } as unknown as Parameters<
+    typeof PageShell
+  >[0]['me'];
+
+  it('A16: forwards a signed-in me to SiteHeader as the same object', () => {
+    render(<PageShell me={signedIn}>x</PageShell>);
+    expect(mockSiteHeader.mock.calls[0][0].me).toBe(signedIn);
+  });
+
+  it('A16: forwards null (anonymous) as null', () => {
+    render(<PageShell me={null}>x</PageShell>);
+    expect(mockSiteHeader.mock.calls[0][0].me).toBeNull();
+  });
+
+  it('A16b: an omitted me reaches SiteHeader as undefined, not null', () => {
+    render(<PageShell>x</PageShell>);
+    expect(mockSiteHeader.mock.calls[0][0].me).toBeUndefined();
+  });
+
+  it('A15: an omitted me is not coerced to anonymous, so the menu still fetches on open', () => {
+    render(<PageShell collectionSlug="abc">x</PageShell>);
+    expect(mockSiteHeader.mock.calls[0][0].me).not.toBeNull();
   });
 });

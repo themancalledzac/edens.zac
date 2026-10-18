@@ -108,7 +108,7 @@ export default function CollectionPage({
   showProtectedCovers = false,
   ssrViewport,
   editMode = false,
-  me = null,
+  me,
   initialSelectedIds = [],
   initialSavedImageIds = [],
 }: ContentCollectionPageProps) {
@@ -117,7 +117,7 @@ export default function CollectionPage({
     return (
       <div className={styles.container}>
         <main className={styles.main}>
-          <SiteHeader isCollectionPage collectionSlug={collection.slug} />
+          <SiteHeader isCollectionPage collectionSlug={collection.slug} me={me} />
           <SkipTarget>
             <h1 className={styles.srOnly}>{headingText}</h1>
             <CollectionPageClient
@@ -128,7 +128,7 @@ export default function CollectionPage({
               serverViewportHeight={ssrViewport?.viewportHeight}
               serverIsMobile={ssrViewport?.isMobile}
               editMode={editMode}
-              me={me}
+              me={me ?? null}
               initialSelectedIds={initialSelectedIds}
               initialSavedImageIds={initialSavedImageIds}
             />
@@ -145,7 +145,7 @@ export default function CollectionPage({
   return (
     <div className={styles.container}>
       <main className={styles.main}>
-        <SiteHeader />
+        <SiteHeader me={me} />
         <SkipTarget>
           {contentBlocks.length > 0 ? (
             <ContentBlockWithFullScreen

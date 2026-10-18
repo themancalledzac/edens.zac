@@ -11,6 +11,7 @@ import { render, screen } from '@testing-library/react';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
+import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { collectionPublicLabel } from '@/app/components/ui/Badge/Badge';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
@@ -23,8 +24,8 @@ import { logger } from '@/app/utils/logger';
  */
 jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
   __esModule: true,
-  default: () => null,
-  SiteHeader: () => null,
+  default: jest.fn(() => null),
+  SiteHeader: jest.fn(() => null),
 }));
 
 /**
@@ -47,6 +48,7 @@ jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
 }));
 
 const mockContentBlock = ContentBlockWithFullScreen as unknown as jest.Mock;
+const mockHeader = SiteHeader as unknown as jest.Mock;
 const mockClient = CollectionPageClient as unknown as jest.Mock;
 
 function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
@@ -292,5 +294,48 @@ describe('CollectionPage — skip target', () => {
   ])('renders no skip link of its own on the %s branch', (_name, build) => {
     render(<CollectionPage collection={build()} />);
     expect(screen.queryByRole('link', { name: /skip to main content/i })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * A16 / A15: both branches hand the server-resolved `me` to SiteHeader unchanged. An omitted `me`
+ * must stay undefined (menu fetches on first open); only an explicit null means anonymous.
+ */
+describe('CollectionPage — me forwarding to SiteHeader', () => {
+  beforeEach(() => {
+    mockHeader.mockClear();
+    mockClient.mockClear();
+  });
+
+  const signedIn = { id: 7, email: 'a@example.com' } as unknown as Parameters<
+    typeof CollectionPage
+  >[0]['me'];
+
+  const branches: Array<[string, () => CollectionModel | CollectionModel[]]> = [
+    ['single-collection', () => makeCollection()],
+    ['collection-array', () => [makeCollection()]],
+  ];
+
+  it.each(branches)('A16: forwards a signed-in me on the %s branch', (_n, build) => {
+    render(<CollectionPage collection={build()} me={signedIn} />);
+    expect(mockHeader.mock.calls[0][0].me).toBe(signedIn);
+  });
+
+  it.each(branches)('A16: forwards null (anonymous) as null on the %s branch', (_n, build) => {
+    render(<CollectionPage collection={build()} me={null} />);
+    expect(mockHeader.mock.calls[0][0].me).toBeNull();
+  });
+
+  it.each(branches)(
+    'A16b: an omitted me reaches SiteHeader as undefined on the %s branch',
+    (_n, build) => {
+      render(<CollectionPage collection={build()} />);
+      expect(mockHeader.mock.calls[0][0].me).toBeUndefined();
+    }
+  );
+
+  it('A15: the client body still receives null when me is omitted', () => {
+    render(<CollectionPage collection={makeCollection()} />);
+    expect(mockClient.mock.calls[0][0].me).toBeNull();
   });
 });
