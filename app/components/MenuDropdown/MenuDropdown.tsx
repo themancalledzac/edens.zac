@@ -5,12 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 
 import { About } from '@/app/components/About/About';
-import { ContactForm } from '@/app/components/ContactForm/ContactForm';
 import GitHubIcon from '@/app/components/Icons/GitHubIcon';
 import InstagramIcon from '@/app/components/Icons/InstagramIcon';
+import { ContactModal } from '@/app/components/Personal/ContactChip';
 import { Disclosure } from '@/app/components/ui/Disclosure/Disclosure';
 import { NavLink } from '@/app/components/ui/NavLink/NavLink';
-import { BREAKPOINTS } from '@/app/constants';
 import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { useDialogFocus } from '@/app/hooks/useDialogFocus';
 import { useFetchMe } from '@/app/hooks/useFetchMe';
@@ -62,28 +61,30 @@ interface MenuNavItem {
 /**
  * Menu Dropdown
  *
- * Full-screen navigation overlay with expandable sections for About and Contact.
+ * Navigation overlay: a bottom sheet over a tap-to-close scrim under 768px, a top-right panel
+ * above. It has an expandable About section and a Contact row that closes the menu and opens the
+ * shared `ContactModal`.
  *
  * Destinations are real `NavLink` anchors, so cmd-click / middle-click / open-in-new-tab and
  * Next's route prefetch all work; `onClick={onClose}` only dismisses the overlay. Only genuine
- * actions (log in/out, clear cache, the two disclosures) stay `<button>`s.
+ * actions (log in/out, clear cache, Contact, the About disclosure) stay `<button>`s.
  *
  * Modal semantics are hand-rolled rather than delegated to the shared `Modal`: `Modal` paints a
  * scrim behind its dialog and sizes the dialog to the backdrop, which would darken the page behind
- * this menu and break the desktop-only click-outside-to-close. Those are the only two reasons —
+ * this menu and break click-outside-to-close. Those are the only two reasons —
  * `Modal` does not touch the `fullscreen-open` body class (that is `FullScreenModal`'s, applied
- * outside the primitive). So this owns click-outside itself and gets Escape, body scroll lock,
+ * outside the primitive). So this owns click-outside itself (ignoring mousedowns inside `[data-bottom-nav]`, so the bar's Menu cell toggles instead of reopening) and gets Escape, body scroll lock,
  * focus trap, and focus restore from `useDialogFocus`.
  *
  * Escape ignores `isComposing` keydowns: dismissing an IME candidate list is a cancel inside the
- * ContactForm's inputs, not a request to tear the whole menu down and discard the draft.
+ * About panel, not a request to tear the whole menu down.
  *
- * About and Contact are the shared `Disclosure` primitive, which owns the generated panel id,
+ * About is the shared `Disclosure` primitive, which owns the generated panel id,
  * `aria-expanded`, and the `aria-controls` that is emitted only while the panel is mounted. Its
  * chevron is hidden here (`.disclosureChevron`): the rows are right-aligned display type with no
  * affordance glyph on any other item, and it is `aria-hidden` decoration, so hiding it costs
- * nothing a screen reader can hear. The panel wrappers that carry the ids are `display: contents`,
- * so About/ContactForm stay direct flex children of the scroll container and the layout is
+ * nothing a screen reader can hear. The panel wrapper that carries the id is `display: contents`,
+ * so About stays a direct flex children of the scroll container and the layout is
  * unchanged.
  *
  * Clear Cache renders only in a local environment by product choice: it is a dev workflow tool,
@@ -122,7 +123,7 @@ export function MenuDropdown({
     respectAutoFocus: false,
   });
 
-  const [showContactForm, setShowContactForm] = useState(false);
+  const [showContact, setShowContact] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [isClearing, startClearing] = useTransition();
 
@@ -159,28 +160,21 @@ export function MenuDropdown({
     });
   };
 
-  const handleToggle = {
-    about: (open: boolean) => {
-      setShowAbout(open);
-      setShowContactForm(false);
-    },
-    contact: (open: boolean) => {
-      setShowContactForm(open);
-      setShowAbout(false);
-    },
-  };
-
-  const handleContactSubmit = () => {
+  const handleOpenContact = () => {
+    setShowContact(true);
     onClose();
   };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (isOpen && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        const isDesktop = window.innerWidth >= BREAKPOINTS.mobile;
-        if (isDesktop) {
-          onClose();
-        }
+      const target = event.target as Element;
+      if (
+        isOpen &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target) &&
+        !target.closest('[data-bottom-nav]')
+      ) {
+        onClose();
       }
     };
 
@@ -193,7 +187,6 @@ export function MenuDropdown({
 
   useEffect(() => {
     if (!isOpen) {
-      setShowContactForm(false);
       setShowAbout(false);
     }
   }, [isOpen]);
@@ -205,7 +198,15 @@ export function MenuDropdown({
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  const contactModal = (
+    <ContactModal
+      open={showContact}
+      onClose={() => setShowContact(false)}
+      lockedEmail={me?.email}
+    />
+  );
+
+  if (!isOpen) return contactModal;
 
   const browseNavItems: MenuNavItem[] = [
     { label: 'Explore', href: '/explore', show: true },
@@ -240,106 +241,107 @@ export function MenuDropdown({
       ));
 
   return (
-    <div
-      className={styles.dropdown}
-      ref={dropdownRef}
-      id={id}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Site navigation"
-      tabIndex={-1}
-      onKeyDown={onKeyDown}
-    >
-      <div className={styles.dropdownCloseButtonWrapper}>
-        <button
-          type="button"
-          className={styles.dropdownCloseButtonWrapper_button}
-          onClick={onClose}
-          aria-label="Close navigation menu"
-        >
-          <CircleX className={styles.dropdownCloseIcon} aria-hidden="true" />
-        </button>
-      </div>
-
-      <div className={styles.dropdownMenuOptionsWrapper}>
-        {renderNavItems(browseNavItems)}
-
-        <Disclosure
-          title={<span className={styles.dropdownMenuOptions}>About</span>}
-          open={showAbout}
-          onOpenChange={handleToggle.about}
-          classNames={disclosureClassNames}
-        >
-          <About />
-        </Disclosure>
-
-        <Disclosure
-          title={<span className={styles.dropdownMenuOptions}>Contact</span>}
-          open={showContactForm}
-          onOpenChange={handleToggle.contact}
-          classNames={disclosureClassNames}
-        >
-          <ContactForm onSubmit={handleContactSubmit} />
-        </Disclosure>
-
-        {renderNavItems(adminNavItems)}
-
-        {isLocalEnvironment() && isAdmin && (
-          <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleClearCache}
-              aria-disabled={isClearing || undefined}
-            >
-              <span className={styles.dropdownMenuOptions}>
-                {isClearing ? 'Clearing…' : 'Clear Cache'}
-              </span>
-            </button>
-          </div>
-        )}
-
-        {!meLoading && me && (
-          <div className={styles.dropdownMenuItem}>
-            <button type="button" className={styles.dropdownMenuButton} onClick={handleLogout}>
-              <span className={styles.dropdownMenuOptions}>Log out</span>
-            </button>
-          </div>
-        )}
-
-        {!meLoading && !me && (
-          <div className={styles.dropdownMenuItem}>
-            <button type="button" className={styles.dropdownMenuButton} onClick={handleLogin}>
-              <span className={styles.dropdownMenuOptions}>Log in</span>
-            </button>
-          </div>
-        )}
-      </div>
-
+    <>
+      <div className={styles.scrim} onClick={onClose} aria-hidden="true" />
       <div
-        className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons} ${styles.dropdownSocialIconsWrapper}`}
+        className={`${styles.dropdown} ${styles.sheet}`}
+        ref={dropdownRef}
+        id={id}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Site navigation"
+        tabIndex={-1}
+        onKeyDown={onKeyDown}
       >
-        <a
-          href="https://instagram.com/themancalledzac"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.socialIconButton}
-          onClick={onClose}
-          aria-label="Visit Instagram"
+        <div className={styles.dropdownCloseButtonWrapper}>
+          <button
+            type="button"
+            className={styles.dropdownCloseButtonWrapper_button}
+            onClick={onClose}
+            aria-label="Close navigation menu"
+          >
+            <CircleX className={styles.dropdownCloseIcon} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className={styles.dropdownMenuOptionsWrapper}>
+          {renderNavItems(browseNavItems)}
+
+          <Disclosure
+            title={<span className={styles.dropdownMenuOptions}>About</span>}
+            open={showAbout}
+            onOpenChange={setShowAbout}
+            classNames={disclosureClassNames}
+          >
+            <About />
+          </Disclosure>
+
+          <div className={styles.dropdownMenuItem}>
+            <button type="button" className={styles.dropdownMenuButton} onClick={handleOpenContact}>
+              <span className={styles.dropdownMenuOptions}>Contact</span>
+            </button>
+          </div>
+
+          {renderNavItems(adminNavItems)}
+
+          {isLocalEnvironment() && isAdmin && (
+            <div className={styles.dropdownMenuItem}>
+              <button
+                type="button"
+                className={styles.dropdownMenuButton}
+                onClick={handleClearCache}
+                aria-disabled={isClearing || undefined}
+              >
+                <span className={styles.dropdownMenuOptions}>
+                  {isClearing ? 'Clearing…' : 'Clear Cache'}
+                </span>
+              </button>
+            </div>
+          )}
+
+          {!meLoading && me && (
+            <div className={styles.dropdownMenuItem}>
+              <button type="button" className={styles.dropdownMenuButton} onClick={handleLogout}>
+                <span className={styles.dropdownMenuOptions}>Log out</span>
+              </button>
+            </div>
+          )}
+
+          {!meLoading && !me && (
+            <div className={styles.dropdownMenuItem}>
+              <button type="button" className={styles.dropdownMenuButton} onClick={handleLogin}>
+                <span className={styles.dropdownMenuOptions}>Log in</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div
+          className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons} ${styles.dropdownSocialIconsWrapper}`}
         >
-          <InstagramIcon size={32} aria-hidden="true" />
-        </a>
-        <a
-          href="https://github.com/themancalledzac"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.socialIconButton}
-          onClick={onClose}
-          aria-label="Visit GitHub"
-        >
-          <GitHubIcon size={32} className={styles.githubIcon} aria-hidden="true" />
-        </a>
+          <a
+            href="https://instagram.com/themancalledzac"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.socialIconButton}
+            onClick={onClose}
+            aria-label="Visit Instagram"
+          >
+            <InstagramIcon size={32} aria-hidden="true" />
+          </a>
+          <a
+            href="https://github.com/themancalledzac"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.socialIconButton}
+            onClick={onClose}
+            aria-label="Visit GitHub"
+          >
+            <GitHubIcon size={32} className={styles.githubIcon} aria-hidden="true" />
+          </a>
+        </div>
       </div>
-    </div>
+      {contactModal}
+    </>
   );
 }
