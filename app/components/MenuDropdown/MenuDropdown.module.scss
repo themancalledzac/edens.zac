@@ -13,8 +13,8 @@
 
   /* Mobile: Full screen width, full height */
   width: 100%;
-  height: 100vh;
-  background-color: rgb(255, 255, 255, 0.95);
+  height: 100dvh;
+  background-color: var(--color-bg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -39,7 +39,6 @@
        so the dropdown aligns with the .main container's right edge */
     right: max(0px, calc((100vw - var(--page-max-width)) / 2));
     width: min(400px, calc(100% - var(--default-padding)));
-    background-color: white;
     box-shadow: -8px 0 16px -8px rgb(0, 0, 0, 0.2);
   }
 }
@@ -133,7 +132,10 @@
 .dropdownCloseButtonWrapper_button {
   background: none;
   border: none;
-  padding: 0;
+
+  /* 32px glyph + 6px each side = 44px hit box; the negative margin keeps the glyph where it sat. */
+  padding: 6px;
+  margin: -6px;
   cursor: pointer;
   font: inherit;
   color: inherit;
@@ -143,6 +145,11 @@
   &:focus-visible {
     outline: var(--focus-ring);
     outline-offset: 2px;
+  }
+
+  @media (width >= 768px) {
+    padding: 0;
+    margin: 0;
   }
 }
 
@@ -191,7 +198,10 @@ a.dropdownMenuLink {
 .socialIconButton {
   background: none;
   border: none;
-  padding: 0;
+
+  /* 32px glyph + 6px each side = 44px hit box; the negative margin keeps the glyph where it sat. */
+  padding: 6px;
+  margin: -6px;
   cursor: pointer;
   font: inherit;
   color: inherit;
