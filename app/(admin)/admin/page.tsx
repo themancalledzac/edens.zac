@@ -58,7 +58,7 @@ export default async function AdminPage() {
 
   if (!principal || !data || !share) {
     return (
-      <PageShell>
+      <PageShell me={principal}>
         <h1 className={styles.srOnly}>Admin</h1>
         {principal && !data && (
           <div className={styles.notice}>
@@ -72,6 +72,7 @@ export default async function AdminPage() {
 
   return (
     <PageShell
+      me={principal}
       collectionSlug={isShadowedRouteSlug(data.collection.slug) ? undefined : data.collection.slug}
     >
       <h1 className={styles.srOnly}>Your Space</h1>

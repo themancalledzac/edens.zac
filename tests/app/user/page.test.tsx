@@ -181,6 +181,10 @@ describe('UserPage', () => {
     expect(grid.me).toBe(authedPrincipal);
   });
 
+  it('hands PageShell the principal the page already resolved', async () => {
+    expect(findProps(await renderTab(), PageShell).me).toBe(authedPrincipal);
+  });
+
   it('hands PageShell no collectionSlug, since `user` is shadowed by this route', async () => {
     expect(findProps(await renderTab(), PageShell).collectionSlug).toBeUndefined();
   });
