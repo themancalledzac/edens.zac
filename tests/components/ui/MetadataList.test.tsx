@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
@@ -60,8 +63,6 @@ describe('MetadataList', () => {
 
   it('DELETEs after confirm and removes the row', async () => {
     jest.spyOn(window, 'confirm').mockReturnValue(true);
-    // mockImplementation (not mockResolvedValue(undefined)) to satisfy both tsc — which requires
-    // the resolved value — and eslint's unicorn/no-useless-undefined.
     mockDelete.mockImplementation(() => Promise.resolve());
     render(
       <MetadataList title="Tags" emptyLabel="No tags" items={items} basePath="/metadata/tags" />
@@ -244,5 +245,52 @@ describe('MetadataList', () => {
 
     await waitFor(() => expect(mockRevalidate).toHaveBeenCalledTimes(1));
     expect(screen.queryByText(/failed to update/i)).not.toBeInTheDocument();
+  });
+});
+
+const LIST_DIR = path.join(process.cwd(), 'app/components/ui/MetadataList');
+const LIST_SCSS = readFileSync(path.join(LIST_DIR, 'MetadataList.module.scss'), 'utf8');
+const PAGE_SCSS = readFileSync(
+  path.join(process.cwd(), 'app/components/MetadataPage/MetadataPage.module.scss'),
+  'utf8'
+);
+
+/** The declarations of the first top-level rule for `selector`, as one string. */
+function ruleBody(scss: string, selector: string): string {
+  const match = new RegExp(`^\\${selector}\\s*\\{([\\s\\S]*?)^\\}`, 'm').exec(scss);
+  return match?.[1] ?? '';
+}
+
+/** Lines that open a `//` or JSX comment, which the no-inline-comments rule forbids in a body. */
+function findInlineComments(source: string): string[] {
+  return source.split('\n').filter(line => /^\s*\/\/|{\/\*/.test(line));
+}
+
+describe('MetadataList whole-row height', () => {
+  it('A11: every row is the one fixed row height', () => {
+    expect(ruleBody(LIST_SCSS, '.row')).toMatch(/\bheight:\s*var\(--metadata-row-height\)/);
+  });
+
+  it('A11/S1: the list max height rounds down to whole rows of that height', () => {
+    const list = ruleBody(LIST_SCSS, '.list');
+    expect(list).toMatch(/--metadata-row-height:\s*\d/);
+    expect(list).toMatch(/max-height:[^;]*round\(down,[^;]*var\(--metadata-row-height\)\)/);
+    expect(list).not.toMatch(/max-height:\s*60vh\s*;/);
+  });
+
+  it('A11: the metadata grid leaves a gap above the footer', () => {
+    expect(ruleBody(PAGE_SCSS, '.grid')).toMatch(/margin-bottom:\s*var\(--space-\d\)/);
+  });
+});
+
+describe('MetadataList source hygiene', () => {
+  it('M7: MetadataList.tsx has no inline comments', () => {
+    const source = readFileSync(path.join(LIST_DIR, 'MetadataList.tsx'), 'utf8');
+    expect(findInlineComments(source)).toEqual([]);
+  });
+
+  it('twin of M7: the detector flags an inline comment when one is present', () => {
+    const source = 'function f() {\n  // why\n  return 1;\n}\n';
+    expect(findInlineComments(source)).toEqual(['  // why']);
   });
 });
