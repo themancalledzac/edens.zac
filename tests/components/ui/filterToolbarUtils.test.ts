@@ -20,6 +20,9 @@ import {
   type FilterVisibility,
 } from '@/app/utils/contentFilter';
 
+/**
+ * An empty array is falsy-by-length but the guard is `!avail`, so it falls through to includes.
+ */
 describe('isOptionAvailable', () => {
   it('returns true for every option when no filteredAvailable map is given', () => {
     expect(isOptionAvailable(null, 'selectedTags', 'sunset')).toBe(true);
@@ -41,11 +44,16 @@ describe('isOptionAvailable', () => {
   });
 
   it('treats an empty subset as "all unavailable" for that dimension', () => {
-    // An empty array is falsy-by-length but the guard is `!avail`, so it falls through to includes.
     expect(isOptionAvailable({ selectedTags: [] }, 'selectedTags', 'sunset')).toBe(false);
   });
 });
 
+/**
+ * selectedTags is non-empty but excluded from the scanned keys -> still no active filter.
+ *
+ * CHRONOLOGICAL collections run with the Date sort always engaged (asc/desc, never off);
+ * that structural sort must not count as an active filter or the reset button shows on load.
+ */
 describe('computeHasActiveFilters', () => {
   it('returns false when nothing is filtered', () => {
     expect(computeHasActiveFilters(INITIAL_FILTER_STATE, ARRAY_FILTER_KEYS)).toBe(false);
@@ -78,13 +86,10 @@ describe('computeHasActiveFilters', () => {
 
   it('ignores array dimensions not listed in arrayKeys', () => {
     const state: FilterState = { ...INITIAL_FILTER_STATE, selectedTags: ['sunset'] };
-    // selectedTags is non-empty but excluded from the scanned keys -> still no active filter.
     expect(computeHasActiveFilters(state, ['selectedPeople'])).toBe(false);
   });
 
   it('ignores the always-on date sort in two-state mode', () => {
-    // CHRONOLOGICAL collections run with the Date sort always engaged (asc/desc, never off);
-    // that structural sort must not count as an active filter or the reset button shows on load.
     const state: FilterState = { ...INITIAL_FILTER_STATE, dateSortDirection: 'asc' };
     expect(computeHasActiveFilters(state, ARRAY_FILTER_KEYS, true)).toBe(false);
   });

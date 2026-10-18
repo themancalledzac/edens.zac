@@ -112,6 +112,22 @@ function useLayoutRowLog(rows: RowWithPatternAndSizes[], contentWidth: number): 
  * High-performance content rendering system that processes and displays
  * mixed content (images, text, etc.) in optimized responsive layouts.
  * Features memoized calculations, responsive chunking, and type-safe specialized renderers.
+ *
+ * `EditModeLayer` provides the edit slice above this component; every public caller renders
+ * without a provider, where this is the frozen empty value.
+ *
+ * Download UI is a capability gate (backend authorizes by CLIENT role on any collection), not a
+ * collection-type gate. `useMe()` degrades to null outside a MeProvider → type-only behavior.
+ *
+ * Images whose URL 404s only fail at load time, after the BoxTree slot is allocated. On the
+ * public view we drop the failed image and let the row reflow rather than leaving its slot as a
+ * blank void; manage (currentCollectionId set) keeps it so an admin can open + delete it.
+ *
+ * Note: a failed id is not cleared if `content` is later refetched with a fixed URL — the image
+ * stays hidden until this Component remounts (e.g. navigation). Keying a reset on the `content`
+ * reference would risk a render loop if the parent passes a fresh array each render.
+ *
+ * Must be computed before the early returns to satisfy the Rules of Hooks.
  */
 export default function Component({
   content,
@@ -125,15 +141,11 @@ export default function Component({
   ssrViewport,
   ...shared
 }: ContentComponentProps) {
-  // `EditModeLayer` provides the edit slice above this component; every public caller renders
-  // without a provider, where this is the frozen empty value.
   const edit = useRenderer();
   const { currentCollectionId } = edit;
 
   const measured = useViewport();
 
-  // Download UI is a capability gate (backend authorizes by CLIENT role on any collection), not a
-  // collection-type gate. `useMe()` degrades to null outside a MeProvider → type-only behavior.
   const canDownload = canDownloadCollection(useMe(), collectionData);
 
   const viewport = useMemo(
@@ -150,9 +162,6 @@ export default function Component({
     [measured, ssrViewport]
   );
 
-  // Images whose URL 404s only fail at load time, after the BoxTree slot is allocated. On the
-  // public view we drop the failed image and let the row reflow rather than leaving its slot as a
-  // blank void; manage (currentCollectionId set) keeps it so an admin can open + delete it.
   const isPublicView = currentCollectionId == null;
   const [failedImageIds, setFailedImageIds] = useState<ReadonlySet<number>>(() => new Set());
 
@@ -169,9 +178,6 @@ export default function Component({
     collectionSlug: collectionData?.slug,
   };
 
-  // Note: a failed id is not cleared if `content` is later refetched with a fixed URL — the image
-  // stays hidden until this Component remounts (e.g. navigation). Keying a reset on the `content`
-  // reference would risk a render loop if the parent passes a fresh array each render.
   const displayContent = useMemo(
     () => (isPublicView ? excludeFailedImages(content, failedImageIds) : content),
     [isPublicView, content, failedImageIds]
@@ -201,7 +207,6 @@ export default function Component({
 
   useLayoutRowLog(rows, viewport.contentWidth);
 
-  // Must be computed before the early returns to satisfy the Rules of Hooks.
   const firstNonVisibleRowIndex = useMemo(
     () => computeFirstNonVisibleRowIndex(rows, currentCollectionId),
     [rows, currentCollectionId]
@@ -230,7 +235,6 @@ export default function Component({
     const { rowType, items, boxTree } = row;
     const rowKey = `row-${rowIndex}-${items.map(i => itemKeyFragment(i.content)).join('-')}`;
 
-    // If boxTree is missing (shouldn't happen), create a fallback
     const tree = boxTree || createSimpleBoxTree(items);
 
     const sizesMap = new Map(

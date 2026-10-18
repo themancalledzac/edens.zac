@@ -66,16 +66,14 @@ export function getCommonValues(images: ContentImageModel[]): Partial<ContentIma
   if (images.length === 0) return {};
   if (images.length === 1) return images[0] || {};
 
-  const first = images[0]!; // Safe: already checked length > 1
+  const first = images[0]!;
   const common: Partial<ContentImageModel> = {};
 
-  // String fields - check if all match
   if (areAllEqual(images, img => img.title)) common.title = first.title;
   if (areAllEqual(images, img => img.caption)) common.caption = first.caption;
   if (areAllEqual(images, img => img.alt)) common.alt = first.alt;
   if (areAllEqual(images, img => img.author)) common.author = first.author;
 
-  // Locations: find intersection of location arrays across all images
   {
     const commonLocs = (first.locations ?? []).filter(loc =>
       images.every(img => (img.locations ?? []).some(l => l.id === loc.id))
@@ -85,7 +83,6 @@ export function getCommonValues(images: ContentImageModel[]): Partial<ContentIma
     }
   }
 
-  // Camera settings
   if (areAllEqual(images, img => img.camera?.id)) common.camera = first.camera;
   if (areAllEqual(images, img => img.lens?.id)) common.lens = first.lens;
   if (areAllEqual(images, img => img.iso)) common.iso = first.iso;
@@ -93,7 +90,6 @@ export function getCommonValues(images: ContentImageModel[]): Partial<ContentIma
   if (areAllEqual(images, img => img.shutterSpeed)) common.shutterSpeed = first.shutterSpeed;
   if (areAllEqual(images, img => img.focalLength)) common.focalLength = first.focalLength;
 
-  // Booleans - only if ALL true
   if (areAllEqual(images, img => img.blackAndWhite) && first.blackAndWhite === true) {
     common.blackAndWhite = true;
   }
@@ -101,14 +97,11 @@ export function getCommonValues(images: ContentImageModel[]): Partial<ContentIma
     common.isFilm = true;
   }
 
-  // Film settings
   if (areAllEqual(images, img => img.filmType)) common.filmType = first.filmType;
   if (areAllEqual(images, img => img.filmFormat)) common.filmFormat = first.filmFormat;
 
-  // Rating
   if (areAllEqual(images, img => img.rating)) common.rating = first.rating;
 
-  // Arrays - intersection (tags/people/collections present in ALL images)
   common.tags = getCommonArrayItems(
     images.map(img => img.tags || []),
     'id'
@@ -161,6 +154,9 @@ export function computeCameraSelectionUpdate(
 /**
  * Build diff for simple fields (string, number, boolean)
  * Only includes field if value has changed AND was explicitly provided in updateState
+ *
+ * Compare values directly (null !== undefined, so they're considered different)
+ * But normalize undefined to null in the output
  */
 function buildSimpleFieldDiff(
   field: keyof ContentImageModel,
@@ -169,13 +165,10 @@ function buildSimpleFieldDiff(
   diff: ContentImageUpdateRequest,
   fieldExistsInUpdateState: boolean
 ): void {
-  // Only process if the field was explicitly provided in updateState
   if (!fieldExistsInUpdateState) {
     return;
   }
 
-  // Compare values directly (null !== undefined, so they're considered different)
-  // But normalize undefined to null in the output
   if (updateValue !== currentValue) {
     (diff as unknown as Record<string, unknown>)[field] =
       updateValue === undefined ? null : (updateValue ?? null);
@@ -244,6 +237,11 @@ function buildLocationsDiffField(
 /**
  * Build diff for filmType field using prev/newValue/remove pattern
  *
+ * Existing film type - use prev pattern, otherwise use newValue pattern for new film type
+ *
+ * No availableFilmTypes provided - assume it's a new film type
+ * This is a fallback for when availableFilmTypes is not available
+ *
  * @param updateFilmType - Film type name from updateState (string or null)
  * @param currentFilmType - Film type name from currentState (string or null)
  * @param updateIso - ISO value from updateState (used for new film types)
@@ -261,12 +259,10 @@ function buildFilmTypeDiff(
     if (!updateFilmType) {
       diff.filmType = { remove: true };
     } else if (availableFilmTypes) {
-      // Check if this film type exists in available types
       const existingFilmType = availableFilmTypes.find(
         f => f.name === updateFilmType || f.filmTypeName === updateFilmType
       );
 
-      // Existing film type - use prev pattern, otherwise use newValue pattern for new film type
       diff.filmType = existingFilmType
         ? { prev: existingFilmType.id }
         : {
@@ -276,8 +272,6 @@ function buildFilmTypeDiff(
             },
           };
     } else {
-      // No availableFilmTypes provided - assume it's a new film type
-      // This is a fallback for when availableFilmTypes is not available
       diff.filmType = {
         newValue: {
           filmTypeName: updateFilmType,
@@ -335,6 +329,13 @@ function buildAssociationDiff<T extends { id?: number; name: string }>(
 
 /**
  * Build diff for collections field using prev/newValue/remove pattern
+ *
+ * NOTE: We intentionally exclude orderIndex from this check - orderIndex should only
+ * be updated via explicit reordering operations, not when adding collections or changing visibility
+ *
+ * Exclude orderIndex from modified collections - only send visibility changes
+ *
+ * Exclude orderIndex from new collections - only send collectionId, name, and visible
  */
 function buildCollectionsDiff(
   updateCollections: ContentImageModel['collections'],
@@ -344,31 +345,23 @@ function buildCollectionsDiff(
   const updateCollectionsArray = updateCollections || [];
   const currentCollectionsArray = currentCollections || [];
 
-  // Build maps for easier lookup
   const currentCollectionsMap = new Map(currentCollectionsArray.map(c => [c.collectionId, c]));
   const updateCollectionsMap = new Map(updateCollectionsArray.map(c => [c.collectionId, c]));
 
-  // Find collections that are new (in update but not in current)
   const newCollections = updateCollectionsArray.filter(
     uc => !currentCollectionsMap.has(uc.collectionId)
   );
 
-  // Find collections that are removed (in current but not in update)
   const removedCollectionIds = currentCollectionsArray
     .filter(cc => !updateCollectionsMap.has(cc.collectionId))
     .map(cc => cc.collectionId);
 
-  // Find collections that are modified (same collectionId but different visible)
-  // NOTE: We intentionally exclude orderIndex from this check - orderIndex should only
-  // be updated via explicit reordering operations, not when adding collections or changing visibility
   const modifiedCollections = updateCollectionsArray.filter(uc => {
     const current = currentCollectionsMap.get(uc.collectionId);
-    if (!current) return false; // Already handled as new
-    // Only check visibility changes, NOT orderIndex changes
+    if (!current) return false;
     return uc.visible !== current.visible;
   });
 
-  // Only include collections update if there are actual changes
   if (
     newCollections.length > 0 ||
     removedCollectionIds.length > 0 ||
@@ -376,21 +369,17 @@ function buildCollectionsDiff(
   ) {
     diff.collections = {};
     if (modifiedCollections.length > 0) {
-      // Exclude orderIndex from modified collections - only send visibility changes
       diff.collections.prev = modifiedCollections.map(uc => ({
         collectionId: uc.collectionId,
         name: uc.name,
         visible: uc.visible,
-        // Explicitly exclude orderIndex
       }));
     }
     if (newCollections.length > 0) {
-      // Exclude orderIndex from new collections - only send collectionId, name, and visible
       diff.collections.newValue = newCollections.map(uc => ({
         collectionId: uc.collectionId,
         name: uc.name,
         visible: uc.visible,
-        // Explicitly exclude orderIndex
       }));
     }
     if (removedCollectionIds.length > 0) {
@@ -416,7 +405,6 @@ export function buildImageUpdateDiff(
 ): ContentImageUpdateRequest {
   const diff: ContentImageUpdateRequest = { id: updateState.id };
 
-  // Simple field comparisons
   const simpleFields: Array<keyof ContentImageModel> = [
     'title',
     'caption',
@@ -443,7 +431,6 @@ export function buildImageUpdateDiff(
     );
   }
 
-  // Handle complex fields using specialized builders
   buildCameraDiff(updateState.camera, currentState.camera, diff);
   buildLensDiff(updateState.lens, currentState.lens, diff);
 
@@ -540,7 +527,6 @@ export function buildGifUpdatePayload(
     payload.captureDate = updateState.captureDate ?? null;
   }
 
-  // Collections: newValue/remove built from originalCollectionIds vs the current selection.
   const currentCollectionIds = new Set((updateState.collections || []).map(c => c.collectionId));
   const add = (updateState.collections || []).filter(
     c => !originalCollectionIds.has(c.collectionId)
@@ -556,7 +542,6 @@ export function buildGifUpdatePayload(
     };
   }
 
-  // People + locations: reuse the exact prev/newValue/remove builders the image path uses.
   const { people, locations } = buildContentPeopleLocationsDiff(updateState, original);
   if (people !== undefined) {
     payload.people = people;
@@ -607,6 +592,9 @@ export function buildRemoveFromCollectionDiffs(
  * Build image updates for bulk edit mode
  * Creates a diff for each selected image by comparing updateState (common values) against each image's current state
  *
+ * For bulk edit, merge updateState.people and updateState.tags with image-specific items
+ * This preserves image-specific items while allowing additions/removals of common items
+ *
  * @param updateState - Common update state containing shared values to apply to all images
  * @param selectedImages - Array of all selected images to update
  * @param selectedIds - Array of image IDs to update (must match selectedImages)
@@ -622,7 +610,6 @@ export function buildImageUpdatesForBulkEdit(
   selectedIds: number[],
   availableFilmTypes?: Array<{ id: number; name: string; filmTypeName?: string }>
 ): ContentImageUpdateRequest[] {
-  // Get original common values to identify which people/tags were originally common
   const originalCommon = getCommonValues(selectedImages);
   const originalCommonPeopleIds = new Set(
     (originalCommon.people || [])
@@ -641,47 +628,37 @@ export function buildImageUpdatesForBulkEdit(
   );
 
   return selectedIds.map(imageId => {
-    // Find the current image state
     const currentImage = selectedImages.find(img => img.id === imageId);
     if (!currentImage) {
       throw new Error(`Image ${imageId} not found in selectedImages`);
     }
 
-    // For bulk edit, merge updateState.people and updateState.tags with image-specific items
-    // This preserves image-specific items while allowing additions/removals of common items
     const mergedUpdateState = { ...updateState, id: imageId };
 
     if (updateState.people !== undefined) {
-      // Get image-specific people (people in current image but not in original common set)
       const imageSpecificPeople = (currentImage.people || []).filter(
         p => p.id && p.id > 0 && !originalCommonPeopleIds.has(p.id)
       );
 
-      // Merge: updateState people (common + new) + image-specific people
       mergedUpdateState.people = [...updateState.people, ...imageSpecificPeople];
     }
 
     if (updateState.tags !== undefined) {
-      // Get image-specific tags (tags in current image but not in original common set)
       const imageSpecificTags = (currentImage.tags || []).filter(
         t => t.id && t.id > 0 && !originalCommonTagIds.has(t.id)
       );
 
-      // Merge: updateState tags (common + new) + image-specific tags
       mergedUpdateState.tags = [...updateState.tags, ...imageSpecificTags];
     }
 
     if (updateState.locations !== undefined) {
-      // Get image-specific locations (locations in current image but not in original common set)
       const imageSpecificLocations = (currentImage.locations || []).filter(
         l => l.id && l.id > 0 && !originalCommonLocationIds.has(l.id)
       );
 
-      // Merge: updateState locations (common + new) + image-specific locations
       mergedUpdateState.locations = [...updateState.locations, ...imageSpecificLocations];
     }
 
-    // Build diff: merged updateState against currentImage (individual state)
     return buildImageUpdateDiff(mergedUpdateState, currentImage, availableFilmTypes);
   });
 }
@@ -689,6 +666,8 @@ export function buildImageUpdatesForBulkEdit(
 /**
  * Map backend update response to frontend ContentImageUpdateResponse format
  * Converts backend field names (tagName, personName, etc.) to frontend format (name)
+ *
+ * updateImages doesn't return errors in the same format
  *
  * @param response - Backend response from updateImages API
  * @returns ContentImageUpdateResponse with properly formatted metadata
@@ -732,6 +711,6 @@ export function mapUpdateResponseToFrontend(response: {
           })),
         }
       : {},
-    errors: undefined, // updateImages doesn't return errors in the same format
+    errors: undefined,
   };
 }

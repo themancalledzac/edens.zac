@@ -1,3 +1,4 @@
+/* eslint-disable no-empty -- the control-tap branch deliberately does nothing */
 'use client';
 
 import {
@@ -70,6 +71,56 @@ function buildSearchWithoutImage(): string {
   return qs ? `?${qs}` : '';
 }
 
+/**
+ * State and gesture handling for the full-screen image viewer.
+ *
+ * Gesture state lives in refs and the live transform is written imperatively to `zoomTargetRef`,
+ * which avoids a React re-render per touchmove frame. `isZoomed` mirrors scale > 1 as state only
+ * because it gates render-affecting behaviour (swipe navigation, tap-to-close). `showMetadata` and
+ * `immersiveRef` are mirrored into refs because the touch handlers do not re-bind on change and
+ * must read the current value synchronously; `requestFullscreen` in particular has to run inside
+ * the gesture to satisfy the user-activation requirement.
+ *
+ * Immersive mode: a stationary tap at 1× hides all chrome for an image-only view and, where the
+ * browser supports it, requests native fullscreen to reclaim the address-bar height. The tap
+ * handler is touch-only, so desktop mouse clicks keep their close-on-click behaviour. Where a tap
+ * lands decides its action: a control runs that control, the framed photo toggles immersive
+ * (shared with the desktop click path in FullScreenModal), and the black letterbox dismisses.
+ * Toggling immersive swallows the synthetic click the tap produces so it does not toggle twice.
+ *
+ * A stationary touch while zoomed must reach double-tap detection rather than be eaten as a pan,
+ * so a pan only counts when the finger actually moved.
+ *
+ * URL sync: `?image=<id>` is kept on the URL so the open viewer is deep-linkable. Opening has
+ * three cases, distinguished so Back behaves correctly. A deep-link restore replaces in place and
+ * leaves `pushedHistoryRef` false, because no collection entry sits behind it to pop back to. A
+ * fresh open from a click pushes one entry, so Back fires popstate, the param disappears and the
+ * modal closes instead of leaving the page. A re-open while this hook already owns a pushed entry
+ * replaces, so a single session never stacks entries. On close, an owned entry is popped after
+ * the ref is flipped, so the popstate handler sees a clean slate and does not double-handle; a
+ * deep-linked open just strips the param in place. Swiping or arrowing syncs the param with
+ * `replaceState` from an effect, never a push, so Back closes the viewer instead of stepping
+ * through images; it lives in an effect because Next.js patches `history.replaceState` to set
+ * state on its Router, which would fire during render. On browser Back the hook closes the modal
+ * in place without touching history, since the URL has already moved and touching it would feed
+ * back into popstate.
+ *
+ * GIF/MP4 blocks are marked loaded as soon as they become the current item. They render as
+ * `<video>`, not `<img>`, so the modal's `onLoad` never fires for them and its loaded-state UI
+ * would stall waiting for an image that never appears. Images are deliberately not handled here:
+ * an earlier fallback searched for `img[src="<raw CloudFront URL>"]`, which could never match
+ * because the modal renders `next/image` without `unoptimized`, so the DOM `src` is a
+ * `/_next/image?url=…` rewrite. The modal's own `onLoad` is the live path. That effect is keyed to
+ * `currentIndex` only, deliberately: it should re-run when the viewer moves to a different item,
+ * not on every `fullScreenState` mutation such as a scroll-position change, and the stable
+ * `setLoadedImageIds` dispatcher does not need listing.
+ *
+ * If the user leaves native fullscreen through the browser's own UI while the hook still thinks it
+ * is immersive, it drops back to the chromed view so the user is not stranded without controls.
+ * Pinching re-clamps the pan offsets, because zooming out can push a previously valid pan past the
+ * new, smaller bound. At 1× a swipe down closes the metadata panel if open and otherwise closes
+ * the viewer, and a swipe up reveals metadata.
+ */
 export function useFullScreenImage(): {
   fullScreenState: FullScreenState;
   loadedImageIds: Set<number>;
@@ -94,8 +145,6 @@ export function useFullScreenImage(): {
 } {
   const [fullScreenState, setFullScreenState] = useState<FullScreenState>(null);
   const [showMetadata, setShowMetadata] = useState(false);
-  // Mirror showMetadata into a ref so the touch handlers (which don't re-bind on metadata changes)
-  // can read the current value synchronously inside a gesture.
   const showMetadataRef = useRef<boolean>(false);
   const [loadedImageIds, setLoadedImageIds] = useState<Set<number>>(new Set());
   const touchStartX = useRef<number>(0);
@@ -103,29 +152,16 @@ export function useFullScreenImage(): {
   const modalRef = useRef<HTMLDivElement>(null);
   const isSwiping = useRef<boolean>(false);
 
-  // --- Pinch-zoom / pan gesture state -------------------------------------------------
-  // The live transform lives in refs and is written imperatively to zoomTargetRef during a
-  // gesture (avoids a React re-render per touchmove frame). `isZoomed` mirrors scale > 1 as
-  // state because it gates *render-affecting* behavior (swipe-nav, tap-to-close).
   const zoomTargetRef = useRef<HTMLDivElement>(null);
   const scaleRef = useRef<number>(1);
   const txRef = useRef<number>(0);
   const tyRef = useRef<number>(0);
   const [isZoomed, setIsZoomed] = useState<boolean>(false);
-  // Immersive mode: a stationary tap (touch, at 1×) hides all chrome for an image-only view and,
-  // where the browser supports it, requests native fullscreen to reclaim the address-bar height.
-  // `immersiveRef` mirrors the state so the touch handlers can read/flip it synchronously inside
-  // the gesture, where requestFullscreen must run to satisfy the user-activation requirement.
   const [immersive, setImmersive] = useState<boolean>(false);
   const immersiveRef = useRef<boolean>(false);
-  // Two-finger pinch in progress: starting finger gap + scale to derive the live scale from.
   const pinchRef = useRef<{ startDist: number; startScale: number } | null>(null);
-  // One-finger pan in progress (only while zoomed): last seen finger position.
   const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
-  // Whether the finger actually moved this gesture — separates a real pan from a
-  // stationary tap (which, while zoomed, must reach double-tap detection, not be eaten as a pan).
   const didMoveRef = useRef<boolean>(false);
-  // Last tap (time + position) for double-tap-to-reset detection.
   const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
 
   const resetZoom = useCallback(() => {
@@ -156,8 +192,6 @@ export function useFullScreenImage(): {
     }
   }, []);
 
-  // Tracks whether *we* pushed a history entry for the open modal, so hideImage
-  // pops exactly one entry and popstate (Back) is distinguished from our own pop.
   const pushedHistoryRef = useRef<boolean>(false);
 
   /**
@@ -178,18 +212,6 @@ export function useFullScreenImage(): {
       currentIndex: index === -1 ? 0 : index,
     });
 
-    // Sync ?image=<id> onto the URL so the open viewer is deep-linkable.
-    //
-    // Three cases, distinguished so Back behaves correctly:
-    //  1. Deep-link restore — the page already loaded with this exact ?image=<id>.
-    //     We must NOT push (there's no collection entry behind us to pop back to);
-    //     just REPLACE in place and leave pushedHistoryRef=false so hideImage strips
-    //     the param rather than calling history.back().
-    //  2. Fresh open from a click — no pushed entry yet. PUSH one entry so the
-    //     collection page stays the prior history entry; Back then fires popstate,
-    //     the param disappears, and the modal closes instead of leaving the page.
-    //  3. Re-open while we already own a pushed entry — REPLACE so we never stack
-    //     multiple entries for a single open session.
     if (typeof window !== 'undefined') {
       const url = `${window.location.pathname}${buildImageSearch(image.id)}`;
       const alreadyDeepLinked =
@@ -209,20 +231,15 @@ export function useFullScreenImage(): {
     setFullScreenState(null);
     setShowMetadata(false);
     setLoadedImageIds(new Set());
-    // Leave immersive mode and native fullscreen on close so the next open starts chromed.
     immersiveRef.current = false;
     setImmersive(false);
     void exitFullscreen();
 
     if (typeof window !== 'undefined') {
       if (pushedHistoryRef.current) {
-        // We own one pushed entry — pop it so the URL + history return to the
-        // collection. Flip the ref BEFORE history.back() so the popstate handler
-        // (which also fires) sees a clean slate and doesn't double-handle.
         pushedHistoryRef.current = false;
         window.history.back();
       } else {
-        // Opened from a deep link (no pushed entry): just strip ?image in place.
         window.history.replaceState(
           {},
           '',
@@ -247,10 +264,6 @@ export function useFullScreenImage(): {
   const navigateToNext = useCallback(() => navigate('next'), [navigate]);
   const navigateToPrevious = useCallback(() => navigate('previous'), [navigate]);
 
-  // Sync ?image=<id> on swipe/arrow via replaceState (never push) so Back closes
-  // the viewer instead of stepping through images. Lives in an effect — not the
-  // setState updater — because Next.js patches history.replaceState to setState
-  // on its Router, which would fire during render.
   useEffect(() => {
     if (!fullScreenState || typeof window === 'undefined') return;
     const current = fullScreenState.images[fullScreenState.currentIndex];
@@ -263,22 +276,6 @@ export function useFullScreenImage(): {
     );
   }, [fullScreenState]);
 
-  /**
-   * Marks GIF/MP4 blocks as loaded as soon as they become the current item. They render as
-   * `<video>`, not `<img>`, so the modal's `onLoad` never fires for them and its loaded-state UI
-   * would stall forever waiting for an image that never appears.
-   *
-   * Images are deliberately not handled here. This effect used to carry a fallback that looked up
-   * `img[src="<raw CloudFront URL>"]` and marked the image loaded when it was already `complete`.
-   * That selector could never match: the modal renders `next/image` without `unoptimized`, so the
-   * DOM `src` is a `/_next/image?url=…` rewrite rather than the raw URL it searched for. The
-   * modal's own `onLoad` is the live path, and always was.
-   *
-   * Keyed to `currentIndex` only, deliberately. It re-runs when the viewer moves to a different
-   * item, not on every `fullScreenState` mutation such as a scroll-position change. It reads the
-   * current item through `fullScreenState` and calls the stable `setLoadedImageIds` dispatcher, so
-   * listing either would only cause redundant re-runs.
-   */
   useEffect(() => {
     const currentImage = fullScreenState?.images[fullScreenState.currentIndex];
     if (currentImage?.contentType !== 'GIF') return;
@@ -318,11 +315,6 @@ export function useFullScreenImage(): {
     };
   }, [isOpen, navigateToNext, navigateToPrevious]);
 
-  // Browser Back: when the user navigates back and the `image` param is gone,
-  // close the modal in place. We do NOT push/replace history here — the URL has
-  // already moved, so touching it would feed back into popstate. Resetting
-  // pushedHistoryRef here means a later hideImage strips the param via
-  // replaceState instead of popping a second time (no double-Back).
   useEffect(() => {
     const handlePopState = () => {
       const hasImageParam = new URLSearchParams(window.location.search).has('image');
@@ -340,9 +332,6 @@ export function useFullScreenImage(): {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Keep immersive state honest when the user leaves native fullscreen through the browser's own UI
-  // (system gesture / Esc). If the document is no longer fullscreen but we still think we're
-  // immersive, drop back to the chromed view so controls return and the user isn't stranded.
   useEffect(() => {
     if (!isOpen) return;
     return onFullscreenChange(() => {
@@ -364,8 +353,6 @@ export function useFullScreenImage(): {
     );
   }, []);
 
-  // Zoom is per-image: reset to 1× whenever the viewer moves to a different photo so the
-  // next one never opens pre-zoomed or pre-panned.
   useEffect(() => {
     resetZoom();
   }, [fullScreenState?.currentIndex, resetZoom]);
@@ -380,21 +367,15 @@ export function useFullScreenImage(): {
       if (el) el.style.transform = buildTransform(scaleRef.current, txRef.current, tyRef.current);
     };
 
-    // Unscaled size of the media along each axis — the bound for pan clamping.
     const zoomSize = (): { w: number; h: number } => {
       const el = zoomTargetRef.current;
       return el ? { w: el.clientWidth, h: el.clientHeight } : { w: 0, h: 0 };
     };
 
-    // Mark that a gesture (pinch/pan/double-tap) just ended so the synthetic click it
-    // produces doesn't also fire tap-to-close. Cleared on the next touchstart.
     const suppressTapClose = () => {
       isSwiping.current = true;
     };
 
-    // Where a stationary tap lands decides its action. A tap on a control (nav arrows, close,
-    // download, or the metadata UI) runs that control. A tap on the framed photo toggles immersive.
-    // A tap on the black letterbox outside the photo dismisses the viewer.
     const isControlTap = (target: EventTarget | null): boolean =>
       target instanceof HTMLElement && !!target.closest(`button, a, .${styles.metadataOverlay}`);
     const isImageTap = (target: EventTarget | null): boolean =>
@@ -404,7 +385,6 @@ export function useFullScreenImage(): {
       isSwiping.current = false;
       didMoveRef.current = false;
 
-      // Two fingers → start a pinch (overrides any swipe/pan).
       if (e.touches.length === 2 && e.touches[0] && e.touches[1]) {
         pinchRef.current = {
           startDist: touchDistance(e.touches[0], e.touches[1]),
@@ -419,13 +399,10 @@ export function useFullScreenImage(): {
       if (!t) return;
       touchStartX.current = t.clientX;
       touchStartY.current = t.clientY;
-      // While zoomed, a single finger pans the image instead of navigating.
       panRef.current = scaleRef.current > 1 ? { lastX: t.clientX, lastY: t.clientY } : null;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      // Pinch: scale relative to the gap at pinch-start, then re-clamp the pan offsets
-      // (zooming out can push a previously-valid pan past the new, smaller bound).
       if (pinchRef.current && e.touches.length === 2 && e.touches[0] && e.touches[1]) {
         const dist = touchDistance(e.touches[0], e.touches[1]);
         const next = clampScale(pinchRef.current.startScale * (dist / pinchRef.current.startDist));
@@ -439,7 +416,6 @@ export function useFullScreenImage(): {
         return;
       }
 
-      // Pan: only while zoomed and dragging a single finger.
       if (panRef.current && scaleRef.current > 1 && e.touches.length === 1 && e.touches[0]) {
         const t = e.touches[0];
         const dx = t.clientX - panRef.current.lastX;
@@ -454,9 +430,6 @@ export function useFullScreenImage(): {
         return;
       }
 
-      // Swipe gestures: only at 1× (zoomed gestures pan, not navigate). Horizontal → navigate;
-      // vertical → metadata reveal / dismiss. Either way mark isSwiping so the ending touch isn't
-      // also treated as a tap, and take over the gesture from any native scroll.
       if (scaleRef.current === 1 && e.touches[0]) {
         const deltaX = e.touches[0].clientX - touchStartX.current;
         const deltaY = e.touches[0].clientY - touchStartY.current;
@@ -472,20 +445,16 @@ export function useFullScreenImage(): {
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-      // A pinch finished (dropped below two fingers).
       if (pinchRef.current && e.touches.length < 2) {
         pinchRef.current = null;
         setIsZoomed(scaleRef.current > 1);
         suppressTapClose();
-        // A finger still down after the pinch → hand off to panning from here.
         if (e.touches[0] && scaleRef.current > 1) {
           panRef.current = { lastX: e.touches[0].clientX, lastY: e.touches[0].clientY };
         }
         return;
       }
 
-      // A pan finished. Only a gesture that actually MOVED counts as a pan — a stationary
-      // touch while zoomed falls through so two of them can register as a double-tap reset.
       if (panRef.current && e.touches.length === 0) {
         panRef.current = null;
         if (didMoveRef.current) {
@@ -497,7 +466,6 @@ export function useFullScreenImage(): {
       const changed = e.changedTouches[0];
       if (!changed) return;
 
-      // Double-tap to reset: two quick taps near the same spot while zoomed → back to 1×.
       if (!isSwiping.current && e.touches.length === 0) {
         const last = lastTapRef.current;
         if (
@@ -520,8 +488,6 @@ export function useFullScreenImage(): {
         lastTapRef.current = { time: e.timeStamp, x: changed.clientX, y: changed.clientY };
       }
 
-      // At 1×, a touch-end is a horizontal swipe (navigate), a vertical swipe (metadata / dismiss),
-      // or a stationary tap (toggle immersive / dismiss, depending where it lands).
       if (scaleRef.current === 1) {
         const deltaX = changed.clientX - touchStartX.current;
         const deltaY = changed.clientY - touchStartY.current;
@@ -539,35 +505,25 @@ export function useFullScreenImage(): {
           }
         } else if (verticalSwipe) {
           if (deltaY > 0) {
-            // Swipe DOWN — metadata first, then dismiss: close the metadata panel if it's open,
-            // otherwise close the whole viewer (which also leaves immersive + native fullscreen).
             if (showMetadataRef.current) {
               setShowMetadata(false);
             } else {
               hideImage();
             }
           } else if (!showMetadataRef.current) {
-            // Swipe UP — reveal the metadata panel (works in both chromed and immersive views).
             setShowMetadata(true);
           }
         } else if (
-          // Stationary tap. This lives in the touch handler, so it is inherently touch-only:
-          // desktop mouse clicks keep their close-on-click behavior.
           !didMoveRef.current &&
           !isSwiping.current &&
           absX < TAP_SLOP &&
           absY < TAP_SLOP
         ) {
           if (isControlTap(e.target)) {
-            // The control's own onClick handles it; nothing to do here.
           } else if (isImageTap(e.target)) {
-            // Tap on the framed photo → toggle immersive (hide/show all chrome). Shared with the
-            // desktop click path in FullScreenModal, so both pointer types behave identically.
             toggleImmersive();
-            // Swallow the synthetic click this tap produces so it doesn't also toggle a second time.
             suppressTapClose();
           } else {
-            // Tap on the black letterbox outside the photo → dismiss the viewer.
             hideImage();
             suppressTapClose();
           }
