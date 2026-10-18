@@ -42,6 +42,7 @@ jest.mock('@/app/lib/api/users', () => ({ listUsers: jest.fn().mockResolvedValue
 jest.mock('@/app/lib/api/roles', () => ({ listRoles: jest.fn().mockResolvedValue([]) }));
 jest.mock('@/app/lib/api/messages', () => ({
   getAdminMessages: jest.fn().mockResolvedValue({ total: 0, items: [] }),
+  submitContactMessage: jest.fn(),
 }));
 jest.mock('@/app/(admin)/admin/AdminHubClient', () => ({ AdminHubClient: () => 'AdminHubClient' }));
 

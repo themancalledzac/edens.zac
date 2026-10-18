@@ -1,9 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { ContactForm } from '@/app/components/ContactForm/ContactForm';
-import * as contactApi from '@/app/utils/contactApi';
+import * as contactApi from '@/app/lib/api/messages';
 
-jest.mock('@/app/utils/contactApi');
+jest.mock('@/app/lib/api/messages');
 
 const mockSubmit = contactApi.submitContactMessage as jest.MockedFunction<
   typeof contactApi.submitContactMessage

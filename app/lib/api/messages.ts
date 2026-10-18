@@ -1,4 +1,4 @@
-import { fetchAdminDeleteApi, fetchAdminGetApi, fetchAdminPatchJsonApi } from './core';
+import { ApiError, fetchAdminDeleteApi, fetchAdminGetApi, fetchAdminPatchJsonApi } from './core';
 
 export interface AdminMessageView {
   id: number;
@@ -61,4 +61,64 @@ export async function markMessageRead(id: number, read: boolean): Promise<void> 
 
 export async function deleteAdminMessage(id: number): Promise<void> {
   await fetchAdminDeleteApi<void>(`/messages/${id}`);
+}
+
+export interface ContactPayload {
+  email: string;
+  message: string;
+}
+
+export type ContactResult =
+  | { ok: true; id: number; createdAt: string }
+  | { ok: false; code: 'rate-limit' | 'validation' | 'server' | 'network'; message: string };
+
+const SERVER_ERROR_MESSAGE = 'Something went wrong. Please try again in a bit.';
+const NETWORK_ERROR_MESSAGE = "Couldn't reach the server. Please try again in a bit.";
+const RATE_LIMIT_MESSAGE =
+  'Whoa — too many messages from your network in the last hour. Please try again later.';
+
+const CONTACT_ENDPOINT = '/api/proxy/api/public/messages';
+
+/**
+ * Submit the public contact form and fold every outcome into a `ContactResult`.
+ *
+ * Non-201 responses are raised as `ApiError` inside the try and mapped back to a result by status:
+ * 429 is `rate-limit`, 400 is `validation` carrying the backend's message, anything else is
+ * `server`. A 201 with a malformed body is `server`; a thrown fetch or an unparseable JSON body is
+ * `network`.
+ */
+export async function submitContactMessage(payload: ContactPayload): Promise<ContactResult> {
+  try {
+    const res = await fetch(CONTACT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.status === 201) {
+      const data = (await res.json()) as { id: number; createdAt: string };
+      if (typeof data.id !== 'number' || typeof data.createdAt !== 'string') {
+        return { ok: false, code: 'server', message: SERVER_ERROR_MESSAGE };
+      }
+      return { ok: true, id: data.id, createdAt: data.createdAt };
+    }
+
+    if (res.status === 400) {
+      const data = (await res.json()) as { message?: string };
+      throw new ApiError(data.message ?? 'Invalid submission.', 400);
+    }
+
+    throw new ApiError(res.status === 429 ? RATE_LIMIT_MESSAGE : SERVER_ERROR_MESSAGE, res.status);
+  } catch (error: unknown) {
+    if (error instanceof ApiError) {
+      if (error.status === 429) {
+        return { ok: false, code: 'rate-limit', message: error.message };
+      }
+      if (error.status === 400) {
+        return { ok: false, code: 'validation', message: error.message };
+      }
+      return { ok: false, code: 'server', message: error.message };
+    }
+    return { ok: false, code: 'network', message: NETWORK_ERROR_MESSAGE };
+  }
 }
