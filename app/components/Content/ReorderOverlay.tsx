@@ -1,5 +1,7 @@
 'use client';
 
+import { IconButton } from '@/app/components/ui/IconButton/IconButton';
+
 import styles from './ReorderOverlay.module.scss';
 
 interface ReorderOverlayProps {
@@ -32,29 +34,31 @@ export default function ReorderOverlay({
       className={`${styles.overlay} ${isPickedUp ? styles.pickedUp : ''} ${hasMoved && !isPickedUp ? styles.moved : ''}`}
     >
       <div className={styles.topRow}>
-        <button
-          type="button"
+        <IconButton
+          size="sm"
           className={styles.pickUpButton}
+          aria-label={isPickedUp ? 'Cancel pick up' : 'Pick up to place elsewhere'}
           onClick={e => {
             e.stopPropagation();
             onPickUp();
           }}
           title={isPickedUp ? 'Cancel pick up' : 'Pick up to place elsewhere'}
         >
-          {isPickedUp ? '...' : '\u21C4'}
-        </button>
+          <span aria-hidden="true">{isPickedUp ? '...' : '\u21C4'}</span>
+        </IconButton>
         {hasMoved && (
-          <button
-            type="button"
+          <IconButton
+            size="sm"
             className={styles.cancelButton}
+            aria-label="Cancel this image's moves"
             onClick={e => {
               e.stopPropagation();
               onCancel();
             }}
             title="Cancel this image's moves"
           >
-            {'\u2715'}
-          </button>
+            <span aria-hidden="true">{'\u2715'}</span>
+          </IconButton>
         )}
       </div>
 

@@ -34,16 +34,8 @@
 
 .pickUpButton,
 .cancelButton {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
+  color: white;
   font-size: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity var(--duration-fast) var(--ease-standard);
   opacity: 0.8;
 
   &:hover {
@@ -51,14 +43,14 @@
   }
 }
 
-.pickUpButton {
+.topRow .pickUpButton,
+.topRow .pickUpButton:hover:not(:disabled) {
   background: var(--color-accent);
-  color: white;
 }
 
-.cancelButton {
+.topRow .cancelButton,
+.topRow .cancelButton:hover:not(:disabled) {
   background: var(--color-danger);
-  color: white;
 }
 
 // Arrow buttons centered vertically on left/right edges

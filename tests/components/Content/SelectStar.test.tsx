@@ -63,6 +63,13 @@ describe('SelectStar', () => {
     expect(button).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('renders as a named button element', () => {
+    wrap(<SelectStar contentId={42} />, client);
+    const button = screen.getByRole('button', { name: /your selects/i });
+    expect(button.tagName).toBe('BUTTON');
+    expect(button).toHaveAttribute('type', 'button');
+  });
+
   it('toggles selection on click', () => {
     function Probe() {
       const selects = useSelects();

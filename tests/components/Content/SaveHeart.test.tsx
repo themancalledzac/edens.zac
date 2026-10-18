@@ -97,10 +97,10 @@ describe('SaveHeart stylesheet', () => {
   const baseRule = scss.slice(scss.indexOf('.saveHeart {'), scss.indexOf('.saveHeartIcon {'));
   const coarse = scss.slice(scss.indexOf('(pointer: coarse)'));
 
-  it('draws a 32px square box with a 45% scrim and an 18px glyph', () => {
+  it('draws a 32px square box with the scrim-dark-50 scrim and an 18px glyph', () => {
     expect(baseRule).toContain('width: var(--space-6)');
     expect(baseRule).toContain('height: var(--space-6)');
-    expect(baseRule).toContain('rgb(0 0 0 / 45%)');
+    expect(baseRule).toContain('var(--scrim-dark-50)');
     expect(scss).toMatch(/\.saveHeartIcon {\s*width: 18px;\s*height: 18px;/);
   });
 
