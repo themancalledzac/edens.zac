@@ -630,3 +630,49 @@ describe('BFF proxy /api/proxy/[...path] — non-api path reject', () => {
     expect(url).toBe('http://backend.test/api/read/collections');
   });
 });
+
+describe('BFF proxy /api/proxy/[...path] — www.zacedens.com origin', () => {
+  const ORIGINAL_ENV = process.env;
+
+  beforeEach(() => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      INTERNAL_API_SECRET: 'test-secret',
+      API_URL: 'http://backend.test',
+      NEXT_PUBLIC_APP_URL: 'https://example.com',
+      NODE_ENV: 'production',
+    };
+    jest.spyOn(global, 'fetch').mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+  });
+
+  afterEach(() => {
+    process.env = ORIGINAL_ENV;
+    jest.restoreAllMocks();
+  });
+
+  async function postFrom(origin: string): Promise<number> {
+    const req = new NextRequest('http://localhost:3000/api/proxy/api/read/messages', {
+      method: 'POST',
+      body: JSON.stringify({ msg: 'hi' }),
+      headers: { 'content-type': 'application/json', origin },
+    });
+    const res = await POST(req, {
+      params: Promise.resolve({ path: ['api', 'read', 'messages'] }),
+    } as never);
+    return res.status;
+  }
+
+  it('A8: allows a write from https://www.zacedens.com', async () => {
+    expect(await postFrom('https://www.zacedens.com')).toBe(200);
+  });
+
+  it('M2: still allows the configured app origin', async () => {
+    expect(await postFrom('https://example.com')).toBe(200);
+  });
+
+  it('A9: rejects www near misses with 403', async () => {
+    expect(await postFrom('https://www.zacedens.com/')).toBe(403);
+    expect(await postFrom('http://www.zacedens.com')).toBe(403);
+    expect(await postFrom('https://www.zacedens.com.evil.example')).toBe(403);
+  });
+});
