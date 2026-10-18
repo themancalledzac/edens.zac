@@ -35,6 +35,9 @@ export function ContactForm({ onSubmit, lockedEmail, embedded = false }: Contact
     null
   );
 
+  /**
+   * Sends the message. A locked email persists across sends; a typed one clears for the next message.
+   */
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setStatus('submitting');
@@ -43,7 +46,6 @@ export function ContactForm({ onSubmit, lockedEmail, embedded = false }: Contact
     const result = await submitContactMessage({ email, message });
 
     if (result.ok) {
-      // A locked email persists across sends; a typed one clears for the next message.
       setEmail(lockedEmail ?? '');
       setMessage('');
       setStatus('success');
@@ -96,17 +98,14 @@ export function ContactForm({ onSubmit, lockedEmail, embedded = false }: Contact
               required
             />
           </Field>
-          <small
-            className={`${styles.charCounter} ${message.length > 4500 ? styles.charCounterWarn : ''}`}
-          >
-            {message.length} / 5000
-          </small>
-          <Button
-            type="submit"
-            variant="primary"
-            loading={status === 'submitting'}
-            disabled={message.length === 0 || message.length > 5000}
-          >
+          {message.length >= 4500 && (
+            <small
+              className={`${styles.charCounter} ${message.length > 4500 ? styles.charCounterWarn : ''}`}
+            >
+              {message.length} / 5000
+            </small>
+          )}
+          <Button type="submit" variant="primary" loading={status === 'submitting'}>
             {status === 'submitting' ? 'Sending…' : 'Send'}
           </Button>
         </form>

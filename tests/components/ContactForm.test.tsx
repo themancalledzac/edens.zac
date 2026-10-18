@@ -207,39 +207,35 @@ describe('ContactForm', () => {
     });
   });
 
-  it('renders character counter showing length under 4500', () => {
+  it('hides the character counter below 4500 characters', () => {
     render(<ContactForm {...defaultProps} />);
     fireEvent.change(screen.getByPlaceholderText('Your message'), {
       target: { value: 'x'.repeat(4499) },
     });
-    expect(screen.getByText('4499 / 5000')).toBeInTheDocument();
-    const counter = screen.getByText('4499 / 5000');
-    expect(counter).not.toHaveClass('charCounterWarn');
+    expect(screen.queryByText('4499 / 5000')).not.toBeInTheDocument();
   });
 
-  it('character counter goes red at 4500+ chars', () => {
+  it('shows the character counter at 4500 characters', () => {
+    render(<ContactForm {...defaultProps} />);
+    fireEvent.change(screen.getByPlaceholderText('Your message'), {
+      target: { value: 'x'.repeat(4500) },
+    });
+    expect(screen.getByText('4500 / 5000')).toBeInTheDocument();
+  });
+
+  it('character counter goes red above 4500 chars', () => {
     render(<ContactForm {...defaultProps} />);
     fireEvent.change(screen.getByPlaceholderText('Your message'), {
       target: { value: 'x'.repeat(4501) },
     });
-    expect(screen.getByText('4501 / 5000')).toBeInTheDocument();
-    const counter = screen.getByText('4501 / 5000');
-    expect(counter).toHaveClass('charCounterWarn');
+    expect(screen.getByText('4501 / 5000')).toHaveClass('charCounterWarn');
   });
 
-  it('submit button disabled when message is empty', () => {
+  it('keeps Send enabled when the message is empty and marks the message required', () => {
     render(<ContactForm {...defaultProps} />);
-    const button = screen.getByRole('button', { name: /^send$/i });
-    expect(button).toBeDisabled();
-  });
-
-  it('submit button disabled when message exceeds 5000', () => {
-    render(<ContactForm {...defaultProps} />);
-    fireEvent.change(screen.getByPlaceholderText('Your message'), {
-      target: { value: 'x'.repeat(5001) },
-    });
-    const button = screen.getByRole('button', { name: /^send$/i });
-    expect(button).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^send$/i })).toBeEnabled();
+    expect(screen.getByPlaceholderText('Your message')).toBeRequired();
+    expect(screen.getByPlaceholderText('Your email')).toBeRequired();
   });
 
   it('textarea has maxLength=5000', () => {
