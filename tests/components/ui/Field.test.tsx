@@ -19,6 +19,26 @@ describe('Field', () => {
     expect(input).toHaveAttribute('id', 'email');
   });
 
+  it('marks the label as required without a literal asterisk', () => {
+    render(
+      <Field label="Email" htmlFor="r" required>
+        <Input id="r" />
+      </Field>
+    );
+    expect(screen.getByText(/\(required\)/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email/)).toHaveAttribute('id', 'r');
+    expect(screen.getByText('Email', { selector: 'label' }).textContent).not.toContain('*');
+  });
+
+  it('renders nothing extra when not required', () => {
+    render(
+      <Field label="Email" htmlFor="n">
+        <Input id="n" />
+      </Field>
+    );
+    expect(screen.queryByText(/required/)).not.toBeInTheDocument();
+  });
+
   it('renders hint text when provided', () => {
     render(
       <Field label="Email" htmlFor="e" hint="We never share your email">

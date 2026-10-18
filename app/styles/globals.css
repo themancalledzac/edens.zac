@@ -6,6 +6,7 @@ html,
 
   /* Colors */
   --color-border: #e5e5e5;
+  --color-border-control: #767676; /* 4.5:1 on white, for form control borders */
   --color-border-strong: #adb5bd; /* stronger border hover step (was --color-border-dark) */
   --color-overlay-strong: rgb(0, 0, 0, 0.7);
   --color-overlay-soft: rgb(0, 0, 0, 0.1);
@@ -150,6 +151,7 @@ html,
      was deleted too: zero call sites, same reasoning as the --scrim-dark-* ramp
      above — reintroduce on first real need rather than carrying it on spec.) */
   --color-danger-text: #b91c1c; /* tailwind red-700 — 6.5:1 on white, 6.1:1 on raised, 4.7:1 on -subtle */
+  --color-success-text: #15803d; /* tailwind green-700 */
 
   /* Danger background wash. An alpha tint rather than a fixed color, so it
      composites correctly on either surface (pale pink over white, dark maroon
@@ -211,6 +213,7 @@ html,
   /* Low-alpha white hairline so borders read on dark without harsh lines. */
   --color-border: rgb(255 255 255 / 14%);
   --color-border-strong: rgb(255 255 255 / 28%);
+  --color-border-control: rgb(255 255 255 / 50%);
 
   /* Hover/active surface tint flips to low-alpha WHITE so it lifts on dark instead
      of the near-invisible black wash the :root rgb(0 0 0 / 10%) would give. Drives
@@ -229,6 +232,7 @@ html,
      token itself is deliberately NOT re-declared — like --color-heart/--color-star,
      the brand red must read as the same color on both surfaces. */
   --color-danger-text: rgb(252, 165, 165); /* tailwind red-300 */
+  --color-success-text: rgb(134, 239, 172); /* tailwind green-300 */
 }
 
 /* Desktop heading sizes */
