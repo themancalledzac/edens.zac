@@ -83,6 +83,21 @@ const nextConfig = {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
   /**
+   * Sends `/home` to `/` unless the `manage=1` query is present. Done here rather than only in
+   * the page because the page-level redirect in `app/[slug]/page.tsx` cannot set a status once
+   * `loading.tsx` has streamed, so it would answer 200 instead of a real redirect.
+   */
+  async redirects() {
+    return [
+      {
+        source: '/home',
+        destination: '/',
+        permanent: false,
+        missing: [{ type: 'query', key: 'manage', value: '1' }],
+      },
+    ];
+  },
+  /**
    * LAN origins allowed to reach the dev server's internal endpoints (HMR, client-side
    * navigation / RSC), so the site is testable from a phone over Wi-Fi. Dev-only; ignored in
    * production. Update with your machine's LAN IP(s) if they change.

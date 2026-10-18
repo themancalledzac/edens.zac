@@ -15,10 +15,17 @@ type NodeEnv = 'development' | 'production';
 
 type HeaderEntry = { key: string; value: string };
 type HeaderRule = { source: string; headers: HeaderEntry[] };
+type RedirectRule = {
+  source: string;
+  destination: string;
+  permanent: boolean;
+  missing?: { type: string; key: string; value?: string }[];
+};
 type LoadedConfig = {
   poweredByHeader?: boolean;
   images?: { remotePatterns?: { protocol?: string; hostname?: string }[] };
   headers?: () => Promise<HeaderRule[]>;
+  redirects?: () => Promise<RedirectRule[]>;
 };
 
 /**
@@ -163,5 +170,20 @@ describe('next.config CSP — dev relaxations stay in dev', () => {
       expect(csp).toContain("script-src 'self' 'unsafe-inline'");
       expect(csp).toContain("style-src 'self' 'unsafe-inline'");
     }
+  });
+});
+
+describe('next.config redirects', () => {
+  it('redirects /home to / temporarily unless the manage=1 query is present', async () => {
+    const config = await loadConfig('production');
+    if (!config.redirects) throw new Error('next.config.js exposes no redirects() block');
+    const rules = await config.redirects();
+    expect(rules).toHaveLength(1);
+    expect(rules[0]).toEqual({
+      source: '/home',
+      destination: '/',
+      permanent: false,
+      missing: [{ type: 'query', key: 'manage', value: '1' }],
+    });
   });
 });
