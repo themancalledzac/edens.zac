@@ -1,14 +1,17 @@
-import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 
 import styles from './loading.module.scss';
 
+/**
+ * Route fallback. Renders the real page frame (site header, no footer) around a shimmer body that
+ * stretches into the frame's existing full-viewport space, so it carries no height of its own and
+ * the handoff to the loaded page does not shift. The footer is omitted so it cannot paint before
+ * the content and jump on hydration.
+ */
 export default function Loading() {
-  // Reserve the full viewport while the route's data is fetched so the page
-  // doesn't collapse to a bare spinner (which let the footer render first and
-  // jump on hydration). color="dark" keeps the spinner visible on the surface.
   return (
-    <div className={styles.loading}>
-      <LoadingSpinner size="large" color="dark" />
-    </div>
+    <PageShell withFooter={false} className={styles.fill}>
+      <div className={styles.body} aria-hidden="true" />
+    </PageShell>
   );
 }

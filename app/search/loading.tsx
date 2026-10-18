@@ -8,7 +8,7 @@ import { SearchLoadingBody } from './SearchLoadingBody';
  */
 export default function SearchLoading() {
   return (
-    <PageShell>
+    <PageShell withFooter={false}>
       <SearchLoadingBody />
     </PageShell>
   );
