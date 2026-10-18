@@ -117,6 +117,29 @@ describe('ExploreDirectory', () => {
     );
   });
 
+  it('renders every directory link as a FilterChip link', async () => {
+    serveDirectory({
+      tags: [{ id: 1, name: 'Mountains', slug: 'mountains' }],
+      locations: [wireLocation(3, 'Patagonia', 'patagonia')],
+    });
+
+    render(await ExploreDirectory());
+
+    const links = screen.getAllByRole('link');
+    expect(links).toHaveLength(2);
+    for (const link of links) {
+      expect(link.className).toMatch(/chip/);
+    }
+    expect(screen.getByRole('link', { name: 'Mountains' })).toHaveAttribute(
+      'href',
+      '/tag/mountains'
+    );
+    expect(screen.getByRole('link', { name: 'Patagonia' })).toHaveAttribute(
+      'href',
+      '/location/patagonia'
+    );
+  });
+
   it('renders a link for every tag and location', async () => {
     serveDirectory({
       tags: [
