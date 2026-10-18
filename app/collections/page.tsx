@@ -6,6 +6,7 @@ import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { meServer } from '@/app/lib/api/auth';
 import { getScopedAllCollections } from '@/app/lib/api/collections';
+import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentCollectionModel } from '@/app/types/Content';
 import { BROWSE_EXCLUDED_SLUGS, isShadowedRouteSlug } from '@/app/utils/collectionSlugs';
@@ -93,6 +94,15 @@ function extractCollectionBlocks(content: unknown): ContentCollectionModel[] {
  * routes collection cards back through it silently disables the Order control here.
  */
 export default async function CollectionsPage() {
+  let me: MeResponse | null;
+  try {
+    me = await meServer();
+  } catch (error) {
+    unstable_rethrow(error);
+    logger.warn('CollectionsPage', 'Failed to resolve the principal', { error });
+    me = null;
+  }
+
   let collection: CollectionModel | null;
   try {
     collection = await getScopedAllCollections(SHOWCASE_PAGE_SIZE);
@@ -107,7 +117,7 @@ export default async function CollectionsPage() {
 
   if (!collection) {
     return (
-      <PageShell>
+      <PageShell me={me}>
         <header className={styles.pageHeader}>
           <h1 className={styles.pageTitle}>Collections</h1>
         </header>
@@ -119,10 +129,10 @@ export default async function CollectionsPage() {
   }
 
   const blocks = extractCollectionBlocks(collection.content);
-  const [ssrViewport, me] = await Promise.all([resolveSsrViewport(), meServer()]);
+  const ssrViewport = await resolveSsrViewport();
 
   return (
-    <PageShell>
+    <PageShell me={me}>
       <h1 className={styles.srOnly}>Collections</h1>
 
       <CollectionPageClient

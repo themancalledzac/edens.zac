@@ -19,12 +19,13 @@ jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => ({
 }));
 jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
   __esModule: true,
-  PageShell: ({ children }: { children: ReactNode }) => children,
+  PageShell: jest.fn(({ children }: { children: ReactNode }) => children),
   default: ({ children }: { children: ReactNode }) => children,
 }));
 
 import CollectionsPage from '@/app/collections/page';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { meServer } from '@/app/lib/api/auth';
 import { getScopedAllCollections } from '@/app/lib/api/collections';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
@@ -187,6 +188,36 @@ describe('CollectionsPage', () => {
 
   it('still renders for an anonymous viewer with no principal', async () => {
     mockMeServer.mockResolvedValue(null);
+    mockGetScopedAllCollections.mockResolvedValue(makeParent([createCollectionContent(1)]));
+
+    const result = await CollectionsPage();
+
+    expect(stackProps(result).me).toBeNull();
+  });
+
+  it('passes the resolved principal to the shell on the success render', async () => {
+    const me = { isAdmin: true } as Awaited<ReturnType<typeof meServer>>;
+    mockMeServer.mockResolvedValue(me);
+    mockGetScopedAllCollections.mockResolvedValue(makeParent([createCollectionContent(1)]));
+
+    const result = (await CollectionsPage()) as { type: unknown; props: { me: unknown } };
+
+    expect(result.type).toBe(PageShell);
+    expect(result.props.me).toBe(me);
+  });
+
+  it('passes the resolved principal to the shell on the fallback render', async () => {
+    const me = { isAdmin: false } as Awaited<ReturnType<typeof meServer>>;
+    mockMeServer.mockResolvedValue(me);
+    mockGetScopedAllCollections.mockRejectedValue(new Error('upstream down'));
+
+    const result = (await CollectionsPage()) as { props: { me: unknown } };
+
+    expect(result.props.me).toBe(me);
+  });
+
+  it('renders with a null principal when the principal read fails', async () => {
+    mockMeServer.mockRejectedValue(new Error('boom'));
     mockGetScopedAllCollections.mockResolvedValue(makeParent([createCollectionContent(1)]));
 
     const result = await CollectionsPage();

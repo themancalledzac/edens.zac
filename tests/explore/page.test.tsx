@@ -13,10 +13,18 @@ import { type ReactNode } from 'react';
 
 import { ExploreDirectory } from '@/app/explore/ExploreDirectory';
 import ExplorePage from '@/app/explore/page';
+import { meServer } from '@/app/lib/api/auth';
+import { type MeResponse } from '@/app/types/Auth';
+
+jest.mock('@/app/lib/api/auth', () => ({
+  meServer: jest.fn(() => Promise.resolve(null)),
+}));
 
 jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
   __esModule: true,
-  PageShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PageShell: ({ children, me }: { children: ReactNode; me?: { email: string } | null }) => (
+    <div data-me={me === undefined ? 'unresolved' : (me?.email ?? 'anonymous')}>{children}</div>
+  ),
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
@@ -199,13 +207,31 @@ describe('ExploreDirectory', () => {
  * paint while the directory is still suspended.
  */
 describe('ExplorePage', () => {
-  it('paints the heading while the directory is still suspended', () => {
+  it('paints the heading while the directory is still suspended', async () => {
     serveDirectory({ tags: [{ id: 1, name: 'Mountains', slug: 'mountains' }] });
 
-    render(<ExplorePage />);
+    render(await ExplorePage());
 
     expect(screen.getByRole('heading', { name: 'Explore' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Tags' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mountains' })).not.toBeInTheDocument();
+  });
+
+  it('passes the server-resolved principal to the shell', async () => {
+    serveDirectory();
+    jest.mocked(meServer).mockResolvedValueOnce({ email: 'a@b.c' } as MeResponse);
+
+    const { container } = render(await ExplorePage());
+
+    expect(container.querySelector('[data-me]')).toHaveAttribute('data-me', 'a@b.c');
+  });
+
+  it('falls back to an anonymous shell when the principal read fails', async () => {
+    serveDirectory();
+    jest.mocked(meServer).mockRejectedValueOnce(new Error('boom'));
+
+    const { container } = render(await ExplorePage());
+
+    expect(container.querySelector('[data-me]')).toHaveAttribute('data-me', 'anonymous');
   });
 });
