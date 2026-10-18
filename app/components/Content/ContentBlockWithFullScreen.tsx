@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { Button } from '@/app/components/ui/Button/Button';
 import { useFullScreenImage } from '@/app/hooks/useFullScreenImage';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel } from '@/app/types/Collection';
@@ -187,9 +188,9 @@ export default function ContentBlockWithFullScreen({
           <div ref={sentinelRef} className={styles.sentinel} />
           {showButton && (
             <div className={styles.loadMoreContainer}>
-              <button type="button" onClick={handleLoadMore} className={styles.loadMoreButton}>
+              <Button variant="primary" size="md" onClick={handleLoadMore}>
                 Load More
-              </button>
+              </Button>
               <div className={styles.paginationInfo}>
                 Showing {visibleCount} of {allBlocks.length} items
               </div>

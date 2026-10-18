@@ -9,27 +9,6 @@
   max-width: var(--page-max-width);
 }
 
-.loadMoreButton {
-  padding: 0.75rem 2rem;
-  background: var(--color-primary);
-  color: var(--color-white);
-  border: none;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  font-size: var(--text-md);
-  font-weight: 500;
-
-  &:hover:not(:disabled) {
-    background: var(--color-on-surface);
-  }
-
-  &:disabled {
-    background: var(--color-disabled);
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
-}
-
 .paginationInfo {
   color: var(--color-on-surface-muted);
   font-size: var(--text-sm);
