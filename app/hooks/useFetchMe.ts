@@ -10,26 +10,38 @@ export interface UseFetchMeResult {
   loading: boolean;
 }
 
+export interface UseFetchMeOptions {
+  /** Server-resolved principal; `undefined` means unresolved, `null` means anonymous. */
+  initialMe?: MeResponse | null;
+  /** Gates the first request when `initialMe` is undefined. */
+  enabled?: boolean;
+}
+
 /**
- * Fetch the current principal via `me()` on mount, and refetch whenever
- * `AUTH_CHANGED_EVENT` fires on `window` (dispatched by `login()`/`loginWithPasskey()`/
- * `logout()` in `app/lib/api/auth`) — so always-mounted consumers update on auth
- * changes without a remount. `loading` is true only until the FIRST resolution;
- * refetches never flip it back, so consumers don't flash their loading state during
- * logout/login. `me` is null when logged out (or before the first resolution).
+ * Resolve the current principal for surfaces that cannot rely on `MeProvider`.
  *
- * This is the client-FETCH counterpart to `MeProvider`/`useMe`, which exposes the
- * server-resolved principal via context. Use this hook for surfaces rendered OUTSIDE
- * that provider — e.g. the always-mounted nav menu (`MenuDropdown`).
+ * With `initialMe` supplied (value or `null`) the hook starts from it, reports `loading: false`,
+ * makes no request on mount, and follows `initialMe` when it changes (a `router.refresh()` after
+ * login or logout). With `initialMe` undefined it makes no request until `enabled` is true, then
+ * exactly one, and `loading` stays true until that first resolution.
+ *
+ * In both modes `AUTH_CHANGED_EVENT` on `window` (dispatched by `login()`/`loginWithPasskey()`/
+ * `logout()` in `app/lib/api/auth`) refetches while mounted, and only the newest in-flight
+ * response may apply state, so a stale response from a rapid logout/login pair never overwrites a
+ * newer one. Refetches never flip `loading` back to true.
  */
-export function useFetchMe(): UseFetchMeResult {
-  const [me, setMe] = useState<MeResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+export function useFetchMe(options: UseFetchMeOptions = {}): UseFetchMeResult {
+  const { initialMe, enabled = false } = options;
+  const seeded = initialMe !== undefined;
+  const [me, setMe] = useState<MeResponse | null>(initialMe ?? null);
+  const [loading, setLoading] = useState(!seeded);
+
+  useEffect(() => {
+    if (initialMe !== undefined) setMe(initialMe);
+  }, [initialMe]);
 
   useEffect(() => {
     let active = true;
-    // Monotonic token: only the newest in-flight request may apply state, so a
-    // stale response from a rapid logout/login pair can never overwrite a newer one.
     let latestRequest = 0;
 
     const run = () => {
@@ -47,13 +59,13 @@ export function useFetchMe(): UseFetchMeResult {
         });
     };
 
-    run();
+    if (!seeded && enabled) run();
     window.addEventListener(AUTH_CHANGED_EVENT, run);
     return () => {
       active = false;
       window.removeEventListener(AUTH_CHANGED_EVENT, run);
     };
-  }, []);
+  }, [seeded, enabled]);
 
-  return { me, loading };
+  return { me, loading: seeded ? false : loading };
 }

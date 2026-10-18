@@ -1,7 +1,7 @@
 'use client';
 
 import { CircleX } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { type KeyboardEvent, useEffect, useRef, useState, useTransition } from 'react';
 
 import { About } from '@/app/components/About/About';
@@ -17,6 +17,7 @@ import { useFetchMe } from '@/app/hooks/useFetchMe';
 import { clearCacheAction } from '@/app/lib/actions/clearCache';
 import { logout } from '@/app/lib/api/auth';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
+import { type MeResponse } from '@/app/types/Auth';
 import { isLocalEnvironment } from '@/app/utils/environment';
 import { manageHref } from '@/app/utils/manageUrl';
 
@@ -30,6 +31,8 @@ interface MenuDropdownProps {
   collectionSlug?: string;
   /** Applied to the overlay root so the trigger can point `aria-controls` at it. */
   id?: string;
+  /** Server-resolved principal: undefined fetches on first open, null is anonymous. */
+  me?: MeResponse | null;
 }
 
 /** Elements the focus trap treats as tabbable (mirrors the shared `Modal`). */
@@ -134,17 +137,20 @@ export function MenuDropdown({
   isCollectionPage = false,
   collectionSlug,
   id,
+  me: initialMe,
 }: MenuDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const router = useRouter();
-  const pathname = usePathname();
 
   const [showContactForm, setShowContactForm] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [isClearing, startClearing] = useTransition();
 
-  const { me, loading: meLoading } = useFetchMe();
+  const [hasOpened, setHasOpened] = useState(isOpen);
+  if (isOpen && !hasOpened) setHasOpened(true);
+
+  const { me, loading: meLoading } = useFetchMe({ initialMe, enabled: hasOpened });
   const isAdmin = me?.isAdmin ?? false;
 
   const handleLogin = () => {
@@ -277,14 +283,17 @@ export function MenuDropdown({
 
   if (!isOpen) return null;
 
-  const primaryNavItems: MenuNavItem[] = [
-    { label: 'Home', href: '/', show: pathname !== '/' },
-    { label: 'Me', href: '/user', show: !meLoading && Boolean(me) },
-  ];
-
-  const secondaryNavItems: MenuNavItem[] = [
+  const browseNavItems: MenuNavItem[] = [
     { label: 'Explore', href: '/explore', show: true },
     { label: 'Collections', href: '/collections', show: true },
+    {
+      label: 'Your space',
+      href: me?.isAdmin ? '/admin' : '/user',
+      show: !meLoading && Boolean(me),
+    },
+  ];
+
+  const adminNavItems: MenuNavItem[] = [
     { label: 'Create', href: '/collection/manage', show: isAdmin },
     {
       label: 'Update',
@@ -329,23 +338,7 @@ export function MenuDropdown({
       </div>
 
       <div className={styles.dropdownMenuOptionsWrapper}>
-        {renderNavItems(primaryNavItems)}
-
-        {!meLoading && me && (
-          <div className={styles.dropdownMenuItem}>
-            <button type="button" className={styles.dropdownMenuButton} onClick={handleLogout}>
-              <span className={styles.dropdownMenuOptions}>Log out</span>
-            </button>
-          </div>
-        )}
-
-        {!meLoading && !me && (
-          <div className={styles.dropdownMenuItem}>
-            <button type="button" className={styles.dropdownMenuButton} onClick={handleLogin}>
-              <span className={styles.dropdownMenuOptions}>Log in</span>
-            </button>
-          </div>
-        )}
+        {renderNavItems(browseNavItems)}
 
         <Disclosure
           title={<span className={styles.dropdownMenuOptions}>About</span>}
@@ -365,9 +358,9 @@ export function MenuDropdown({
           <ContactForm onSubmit={handleContactSubmit} />
         </Disclosure>
 
-        {renderNavItems(secondaryNavItems)}
+        {renderNavItems(adminNavItems)}
 
-        {isLocalEnvironment() && (
+        {isLocalEnvironment() && isAdmin && (
           <div className={styles.dropdownMenuItem}>
             <button
               type="button"
@@ -378,6 +371,22 @@ export function MenuDropdown({
               <span className={styles.dropdownMenuOptions}>
                 {isClearing ? 'Clearing…' : 'Clear Cache'}
               </span>
+            </button>
+          </div>
+        )}
+
+        {!meLoading && me && (
+          <div className={styles.dropdownMenuItem}>
+            <button type="button" className={styles.dropdownMenuButton} onClick={handleLogout}>
+              <span className={styles.dropdownMenuOptions}>Log out</span>
+            </button>
+          </div>
+        )}
+
+        {!meLoading && !me && (
+          <div className={styles.dropdownMenuItem}>
+            <button type="button" className={styles.dropdownMenuButton} onClick={handleLogin}>
+              <span className={styles.dropdownMenuOptions}>Log in</span>
             </button>
           </div>
         )}

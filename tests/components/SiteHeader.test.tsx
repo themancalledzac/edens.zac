@@ -90,4 +90,24 @@ describe('SiteHeader — menu toggle accessibility', () => {
 
     expect(toggle()).toHaveFocus();
   });
+
+  it('A15: a public page load with the menu closed makes zero /auth/me requests', async () => {
+    render(<SiteHeader />);
+    await Promise.resolve();
+
+    expect(mockMe).not.toHaveBeenCalled();
+  });
+
+  it('A15: the first open fetches /auth/me once and later toggles do not refetch', async () => {
+    render(<SiteHeader />);
+
+    fireEvent.click(toggle());
+    await screen.findByRole('button', { name: /log in/i });
+    expect(mockMe).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(toggle());
+    fireEvent.click(toggle());
+    await screen.findByRole('button', { name: /log in/i });
+    expect(mockMe).toHaveBeenCalledTimes(1);
+  });
 });

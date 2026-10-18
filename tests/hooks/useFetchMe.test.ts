@@ -34,7 +34,7 @@ describe('useFetchMe', () => {
   it('starts loading, then resolves the principal', async () => {
     mockMe.mockResolvedValue(principal);
 
-    const { result } = renderHook(() => useFetchMe());
+    const { result } = renderHook(() => useFetchMe({ enabled: true }));
     expect(result.current.loading).toBe(true);
     expect(result.current.me).toBeNull();
 
@@ -45,7 +45,7 @@ describe('useFetchMe', () => {
   it('resolves to null when logged out (me() returns null)', async () => {
     mockMe.mockResolvedValue(null);
 
-    const { result } = renderHook(() => useFetchMe());
+    const { result } = renderHook(() => useFetchMe({ enabled: true }));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.me).toBeNull();
   });
@@ -53,7 +53,7 @@ describe('useFetchMe', () => {
   it('resolves to null when me() throws', async () => {
     mockMe.mockRejectedValue(new Error('network'));
 
-    const { result } = renderHook(() => useFetchMe());
+    const { result } = renderHook(() => useFetchMe({ enabled: true }));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.me).toBeNull();
   });
@@ -67,7 +67,7 @@ describe('useFetchMe', () => {
         })
     );
 
-    const { result } = renderHook(() => useFetchMe());
+    const { result } = renderHook(() => useFetchMe({ enabled: true }));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.me).toEqual(principal);
 
@@ -102,7 +102,7 @@ describe('useFetchMe', () => {
           })
       );
 
-    const { result } = renderHook(() => useFetchMe());
+    const { result } = renderHook(() => useFetchMe({ enabled: true }));
     await waitFor(() => expect(result.current.me).toEqual(principal));
 
     dispatchAuthChanged(); // e.g. logout
@@ -135,7 +135,7 @@ describe('useFetchMe', () => {
           })
       );
 
-    const { result } = renderHook(() => useFetchMe());
+    const { result } = renderHook(() => useFetchMe({ enabled: true }));
     expect(result.current.loading).toBe(true);
 
     dispatchAuthChanged(); // mount fetch still in flight
@@ -162,7 +162,7 @@ describe('useFetchMe', () => {
   it('removes the auth-changed listener on unmount', async () => {
     mockMe.mockResolvedValue(null);
 
-    const { result, unmount } = renderHook(() => useFetchMe());
+    const { result, unmount } = renderHook(() => useFetchMe({ enabled: true }));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(mockMe).toHaveBeenCalledTimes(1);
 
@@ -170,5 +170,140 @@ describe('useFetchMe', () => {
     window.dispatchEvent(new Event(authApi.AUTH_CHANGED_EVENT));
 
     expect(mockMe).toHaveBeenCalledTimes(1);
+  });
+
+  it('makes no request while enabled is false and stays loading', () => {
+    const { result } = renderHook(() => useFetchMe({ enabled: false }));
+
+    expect(mockMe).not.toHaveBeenCalled();
+    expect(result.current.loading).toBe(true);
+    expect(result.current.me).toBeNull();
+  });
+
+  it('makes no request with no options at all', () => {
+    renderHook(() => useFetchMe());
+
+    expect(mockMe).not.toHaveBeenCalled();
+  });
+
+  it('makes exactly one request once enabled flips to true, however often it rerenders', async () => {
+    mockMe.mockResolvedValue(principal);
+
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) => useFetchMe({ enabled }),
+      { initialProps: { enabled: false } }
+    );
+    expect(mockMe).not.toHaveBeenCalled();
+
+    rerender({ enabled: true });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    rerender({ enabled: true });
+    rerender({ enabled: true });
+
+    expect(mockMe).toHaveBeenCalledTimes(1);
+    expect(result.current.me).toEqual(principal);
+  });
+
+  it('starts from initialMe with loading false and no request on mount', () => {
+    const { result } = renderHook(() => useFetchMe({ initialMe: principal, enabled: true }));
+
+    expect(result.current.me).toEqual(principal);
+    expect(result.current.loading).toBe(false);
+    expect(mockMe).not.toHaveBeenCalled();
+  });
+
+  it('treats initialMe null as a resolved anonymous viewer, not as unresolved', () => {
+    const { result } = renderHook(() => useFetchMe({ initialMe: null, enabled: true }));
+
+    expect(result.current.me).toBeNull();
+    expect(result.current.loading).toBe(false);
+    expect(mockMe).not.toHaveBeenCalled();
+  });
+
+  it('follows initialMe when it changes', () => {
+    const { result, rerender } = renderHook(
+      ({ initialMe }: { initialMe: MeResponse | null }) => useFetchMe({ initialMe }),
+      { initialProps: { initialMe: null as MeResponse | null } }
+    );
+    expect(result.current.me).toBeNull();
+
+    rerender({ initialMe: principal });
+    expect(result.current.me).toEqual(principal);
+
+    rerender({ initialMe: null });
+    expect(result.current.me).toBeNull();
+    expect(result.current.loading).toBe(false);
+    expect(mockMe).not.toHaveBeenCalled();
+  });
+
+  it('refetches on auth-changed even when seeded with initialMe', async () => {
+    mockMe.mockResolvedValue(null);
+
+    const { result } = renderHook(() => useFetchMe({ initialMe: principal }));
+    expect(mockMe).not.toHaveBeenCalled();
+
+    dispatchAuthChanged();
+    expect(mockMe).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(result.current.me).toBeNull());
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('applies only the newest response when seeded with initialMe', async () => {
+    let resolveFirst!: (value: MeResponse | null) => void;
+    let resolveSecond!: (value: MeResponse | null) => void;
+    mockMe
+      .mockImplementationOnce(
+        () =>
+          new Promise<MeResponse | null>(resolve => {
+            resolveFirst = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<MeResponse | null>(resolve => {
+            resolveSecond = resolve;
+          })
+      );
+
+    const { result } = renderHook(() => useFetchMe({ initialMe: null }));
+    dispatchAuthChanged();
+    dispatchAuthChanged();
+
+    await act(async () => {
+      resolveSecond(principal);
+    });
+    await act(async () => {
+      resolveFirst(null);
+    });
+    expect(result.current.me).toEqual(principal);
+  });
+
+  it('refetches on auth-changed while lazy and not yet enabled', async () => {
+    mockMe.mockResolvedValue(principal);
+
+    const { result } = renderHook(() => useFetchMe({ enabled: false }));
+    dispatchAuthChanged();
+
+    await waitFor(() => expect(result.current.me).toEqual(principal));
+    expect(mockMe).toHaveBeenCalledTimes(1);
+  });
+
+  it('twin: the auth-changed refetch does not happen when the event name no longer matches', () => {
+    mockMe.mockResolvedValue(principal);
+    const realName = authApi.AUTH_CHANGED_EVENT;
+    jest.replaceProperty(
+      jest.requireMock<{ AUTH_CHANGED_EVENT: string }>('@/app/lib/api/auth'),
+      'AUTH_CHANGED_EVENT',
+      'something-else'
+    );
+    const { result } = renderHook(() => useFetchMe({ initialMe: null }));
+
+    act(() => {
+      window.dispatchEvent(new Event(realName));
+    });
+
+    expect(mockMe).not.toHaveBeenCalled();
+    expect(result.current.me).toBeNull();
+    jest.restoreAllMocks();
   });
 });
