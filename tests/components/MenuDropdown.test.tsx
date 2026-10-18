@@ -258,7 +258,7 @@ describe('MenuDropdown — destinations are links, actions are buttons', () => {
   });
 });
 
-describe('MenuDropdown — About/Contact disclosures', () => {
+describe('MenuDropdown — About disclosure and Contact row', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPathname = '/some-collection';
@@ -282,40 +282,79 @@ describe('MenuDropdown — About/Contact disclosures', () => {
     expect(document.getElementById(panelId!)).not.toBeNull();
   });
 
-  it('exposes aria-expanded on Contact and wires aria-controls to the panel once open', async () => {
-    mockMe.mockResolvedValue(null);
+  it('opens the contact dialog from the Contact row, closes the menu and locks the email', async () => {
+    mockMe.mockResolvedValue(principal);
+    const onClose = jest.fn();
 
-    render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i });
+    render(<MenuDropdown isOpen onClose={onClose} />);
+    await screen.findByRole('button', { name: /log out/i });
 
-    const contact = screen.getByRole('button', { name: 'Contact' });
-    expect(contact).toHaveAttribute('aria-expanded', 'false');
-    expect(contact).not.toHaveAttribute('aria-controls');
+    expect(screen.queryByPlaceholderText('Your message')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Contact' }));
 
-    fireEvent.click(contact);
-
-    expect(contact).toHaveAttribute('aria-expanded', 'true');
-    const panelId = contact.getAttribute('aria-controls');
-    expect(panelId).toBeTruthy();
-    expect(document.getElementById(panelId!)).not.toBeNull();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('heading', { name: 'Contact the Photographer' })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Your message')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Your email')).not.toBeInTheDocument();
   });
 
-  it('collapses the other disclosure, resetting its aria-expanded', async () => {
+  it('keeps the contact dialog mounted after the menu closes', async () => {
     mockMe.mockResolvedValue(null);
 
-    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    const { rerender } = render(<MenuDropdown isOpen onClose={jest.fn()} />);
     await screen.findByRole('button', { name: /log in/i });
+    fireEvent.click(screen.getByRole('button', { name: 'Contact' }));
+    rerender(<MenuDropdown isOpen={false} onClose={jest.fn()} />);
 
-    const about = screen.getByRole('button', { name: 'About' });
-    const contact = screen.getByRole('button', { name: 'Contact' });
+    expect(screen.getByRole('heading', { name: 'Contact the Photographer' })).toBeInTheDocument();
+  });
+});
 
-    fireEvent.click(about);
-    expect(about).toHaveAttribute('aria-expanded', 'true');
+describe('MenuDropdown — click outside and scrim', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPathname = '/some-collection';
+  });
 
-    fireEvent.click(contact);
-    expect(contact).toHaveAttribute('aria-expanded', 'true');
-    expect(about).toHaveAttribute('aria-expanded', 'false');
-    expect(about).not.toHaveAttribute('aria-controls');
+  it('closes on a mousedown outside at any width', async () => {
+    mockMe.mockResolvedValue(null);
+    const onClose = jest.fn();
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 400 });
+
+    render(<MenuDropdown isOpen onClose={onClose} />);
+    await screen.findByRole('button', { name: /log in/i });
+    fireEvent.mouseDown(document.body);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a mousedown inside the bottom bar', async () => {
+    mockMe.mockResolvedValue(null);
+    const onClose = jest.fn();
+
+    render(
+      <>
+        <nav data-bottom-nav>
+          <button type="button">Bar Menu</button>
+        </nav>
+        <MenuDropdown isOpen onClose={onClose} />
+      </>
+    );
+    await screen.findByRole('button', { name: /log in/i });
+    fireEvent.mouseDown(screen.getByRole('button', { name: 'Bar Menu' }));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('closes when the scrim is clicked', async () => {
+    mockMe.mockResolvedValue(null);
+    const onClose = jest.fn();
+
+    const { container } = render(<MenuDropdown isOpen onClose={onClose} />);
+    await screen.findByRole('button', { name: /log in/i });
+    fireEvent.click(container.querySelector('[aria-hidden="true"]')!);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
 

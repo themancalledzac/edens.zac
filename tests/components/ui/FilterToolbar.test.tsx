@@ -1009,4 +1009,61 @@ describe('FilterToolbar — film stock', () => {
       expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
     });
   });
+
+  describe('mobile sheet', () => {
+    const originalWidth = window.innerWidth;
+    const tags = { selectedTags: { label: 'Tags', options: ['sunset', 'forest'] } };
+
+    beforeEach(() => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 500 });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+    });
+
+    it('opens the options in a dialog labelled by a heading carrying the dimension label', () => {
+      renderToolbar({ dimensions: tags });
+      fireEvent.click(screen.getByRole('button', { name: /^Tags/ }));
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toHaveAccessibleName('Tags');
+      expect(within(dialog).getByRole('heading', { name: 'Tags' })).toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: 'sunset' })).toBeInTheDocument();
+    });
+
+    it('applies the selected option and closes the sheet, returning focus to the chip', () => {
+      const { onFilterChange } = renderToolbar({ dimensions: tags });
+      const trigger = screen.getByRole('button', { name: /^Tags/ });
+      fireEvent.click(trigger);
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'sunset' }));
+      expect(onFilterChange).toHaveBeenCalledWith({ selectedTags: ['sunset'] });
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(trigger).toHaveFocus();
+    });
+
+    it('closes on Escape and on a backdrop tap, returning focus to the chip', () => {
+      renderToolbar({ dimensions: tags });
+      const trigger = screen.getByRole('button', { name: /^Tags/ });
+      fireEvent.click(trigger);
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(trigger).toHaveFocus();
+
+      fireEvent.click(trigger);
+      fireEvent.click(screen.getByRole('dialog').parentElement as HTMLElement);
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(trigger).toHaveFocus();
+    });
+
+    it('does not close the sheet on a press inside it before the tap lands', () => {
+      const { onFilterChange } = renderToolbar({ dimensions: tags });
+      fireEvent.click(screen.getByRole('button', { name: /^Tags/ }));
+      const option = within(screen.getByRole('dialog')).getByRole('button', { name: 'forest' });
+      fireEvent.mouseDown(option);
+      fireEvent.touchStart(option);
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      fireEvent.click(option);
+      expect(onFilterChange).toHaveBeenCalledWith({ selectedTags: ['forest'] });
+    });
+  });
 });

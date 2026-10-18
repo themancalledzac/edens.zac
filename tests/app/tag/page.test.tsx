@@ -40,6 +40,12 @@ jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
   SiteHeader: () => null,
 }));
 
+jest.mock('@/app/components/ui/BottomNav/BottomNav', () => ({
+  __esModule: true,
+  default: () => null,
+  BottomNav: () => null,
+}));
+
 const mockGetAllTags = getAllTags as jest.Mock;
 const mockSearchImages = searchImages as jest.Mock;
 const mockResolveSsrViewport = resolveSsrViewport as jest.Mock;

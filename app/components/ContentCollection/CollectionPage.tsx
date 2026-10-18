@@ -3,6 +3,8 @@ import { type ReactNode } from 'react';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { Footer } from '@/app/components/Footer/Footer';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
+import { SiteMenuProvider } from '@/app/components/SiteHeader/SiteMenuContext';
+import { BottomNav } from '@/app/components/ui/BottomNav/BottomNav';
 import { BackLink } from '@/app/components/ui/PageShell/BackLink';
 import { SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
 import { type MeResponse } from '@/app/types/Auth';
@@ -134,28 +136,31 @@ export default function CollectionPage({
   if (!Array.isArray(collection)) {
     const headingText = collection.title?.trim() || collection.slug?.trim() || 'Untitled';
     return (
-      <div className={styles.container}>
-        <main className={styles.main}>
-          <SiteHeader isCollectionPage collectionSlug={collection.slug} me={me} />
-          <SkipTarget>
-            {backHref && <BackLink href={backHref} label={backLabel} />}
-            {header ?? <h1 className={styles.srOnly}>{headingText}</h1>}
-            <CollectionPageClient
-              collection={collection}
-              chunkSize={chunkSize}
-              mobileChunkSize={mobileChunkSize}
-              serverContentWidth={ssrViewport?.contentWidth}
-              serverViewportHeight={ssrViewport?.viewportHeight}
-              serverIsMobile={ssrViewport?.isMobile}
-              editMode={editMode}
-              me={me ?? null}
-              initialSelectedIds={initialSelectedIds}
-              initialSavedImageIds={initialSavedImageIds}
-            />
-          </SkipTarget>
-        </main>
-        {withFooter && <Footer />}
-      </div>
+      <SiteMenuProvider>
+        <div className={styles.container}>
+          <main className={styles.main}>
+            <SiteHeader isCollectionPage collectionSlug={collection.slug} me={me} />
+            {!editMode && <BottomNav me={me} />}
+            <SkipTarget>
+              {backHref && <BackLink href={backHref} label={backLabel} />}
+              {header ?? <h1 className={styles.srOnly}>{headingText}</h1>}
+              <CollectionPageClient
+                collection={collection}
+                chunkSize={chunkSize}
+                mobileChunkSize={mobileChunkSize}
+                serverContentWidth={ssrViewport?.contentWidth}
+                serverViewportHeight={ssrViewport?.viewportHeight}
+                serverIsMobile={ssrViewport?.isMobile}
+                editMode={editMode}
+                me={me ?? null}
+                initialSelectedIds={initialSelectedIds}
+                initialSavedImageIds={initialSavedImageIds}
+              />
+            </SkipTarget>
+          </main>
+          {withFooter && <Footer />}
+        </div>
+      </SiteMenuProvider>
     );
   }
 
@@ -164,27 +169,30 @@ export default function CollectionPage({
   );
 
   return (
-    <div className={styles.container}>
-      <main className={styles.main}>
-        <SiteHeader me={me} />
-        <SkipTarget>
-          {backHref && <BackLink href={backHref} label={backLabel} />}
-          {contentBlocks.length > 0 ? (
-            <ContentBlockWithFullScreen
-              content={contentBlocks}
-              priorityBlockIndex={0}
-              enableFullScreenView
-              initialPageSize={30}
-              chunkSize={chunkSize}
-              mobileChunkSize={mobileChunkSize}
-              serverContentWidth={ssrViewport?.contentWidth}
-              serverViewportHeight={ssrViewport?.viewportHeight}
-              serverIsMobile={ssrViewport?.isMobile}
-            />
-          ) : null}
-        </SkipTarget>
-      </main>
-      {withFooter && <Footer />}
-    </div>
+    <SiteMenuProvider>
+      <div className={styles.container}>
+        <main className={styles.main}>
+          <SiteHeader me={me} />
+          <BottomNav me={me} />
+          <SkipTarget>
+            {backHref && <BackLink href={backHref} label={backLabel} />}
+            {contentBlocks.length > 0 ? (
+              <ContentBlockWithFullScreen
+                content={contentBlocks}
+                priorityBlockIndex={0}
+                enableFullScreenView
+                initialPageSize={30}
+                chunkSize={chunkSize}
+                mobileChunkSize={mobileChunkSize}
+                serverContentWidth={ssrViewport?.contentWidth}
+                serverViewportHeight={ssrViewport?.viewportHeight}
+                serverIsMobile={ssrViewport?.isMobile}
+              />
+            ) : null}
+          </SkipTarget>
+        </main>
+        {withFooter && <Footer />}
+      </div>
+    </SiteMenuProvider>
   );
 }

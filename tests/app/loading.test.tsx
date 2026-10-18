@@ -14,6 +14,12 @@ jest.mock('@/app/components/SiteHeader/SiteHeader', () => {
   return { __esModule: true, default: stub, SiteHeader: stub };
 });
 
+jest.mock('@/app/components/ui/BottomNav/BottomNav', () => ({
+  __esModule: true,
+  default: () => null,
+  BottomNav: () => null,
+}));
+
 describe.each([
   ['root', Loading],
   ['search', SearchLoading],

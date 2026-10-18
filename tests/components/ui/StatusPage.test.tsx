@@ -8,6 +8,12 @@ jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
   SiteHeader: () => <div data-testid="site-header" />,
 }));
 
+jest.mock('@/app/components/ui/BottomNav/BottomNav', () => ({
+  __esModule: true,
+  default: () => null,
+  BottomNav: () => null,
+}));
+
 describe('StatusPage', () => {
   it('renders the title as an h1 and the message', () => {
     render(<StatusPage title="404 — Not Found" message="That page doesn't exist." />);

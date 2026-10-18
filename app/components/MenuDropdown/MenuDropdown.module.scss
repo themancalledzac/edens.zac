@@ -43,6 +43,64 @@
   }
 }
 
+.scrim {
+  display: none;
+
+  @media (width < 768px) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-sticky) + 1);
+    background-color: rgb(0, 0, 0, 0.4);
+  }
+}
+
+/* Phone bottom sheet, applied alongside .dropdown. Placed above the bottom bar when one is
+   rendered. The close button moves to the last row with `order` only, so DOM and Tab order stay
+   put, and the bar's destinations are hidden with CSS only. Kept under its own class so the
+   desktop panel's declarations stay the only ones on .dropdown. */
+@media (width < 768px) {
+  .sheet {
+    top: auto;
+    bottom: 0;
+    height: auto;
+    max-height: 85dvh;
+    z-index: calc(var(--z-sticky) + 2);
+    border-radius: 16px 16px 0 0;
+  }
+
+  body:has([data-bottom-nav]) .sheet {
+    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+    max-height: calc(85dvh - var(--bottom-nav-height));
+  }
+
+  .sheet .dropdownMenuOptionsWrapper {
+    order: 1;
+  }
+
+  .sheet .dropdownSocialIconsWrapper {
+    order: 2;
+  }
+
+  .sheet .dropdownCloseButtonWrapper {
+    order: 3;
+    min-height: 0;
+    padding: var(--space-2) var(--page-padding-mobile);
+    border-top: 1px solid rgb(0, 0, 0, 0.1);
+  }
+
+  body:has([data-bottom-nav])
+    .sheet
+    .dropdownMenuItem:has(
+      a[href='/explore'],
+      a[href='/collections'],
+      a[href='/user'],
+      a[href='/admin']
+    ) {
+    display: none;
+  }
+}
+
 /* Carries the aria-controls target id for the About/Contact disclosures without becoming a box —
    the panels stay direct flex children of .dropdownMenuOptionsWrapper, so shrink/scroll behaviour
    is identical to rendering them unwrapped. */

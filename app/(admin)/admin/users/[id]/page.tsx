@@ -126,7 +126,7 @@ export default async function AdminUserDetailPage({ params }: AdminUserDetailPag
   ]);
 
   return (
-    <PageShell className={styles.page}>
+    <PageShell className={styles.page} hideBottomNav>
       <div className={styles.header}>
         <Link href="/admin" className={styles.back}>
           <span aria-hidden="true">←</span> Admin

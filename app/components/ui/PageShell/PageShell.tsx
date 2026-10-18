@@ -2,6 +2,8 @@ import { type ReactNode } from 'react';
 
 import { Footer } from '@/app/components/Footer/Footer';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
+import { SiteMenuProvider } from '@/app/components/SiteHeader/SiteMenuContext';
+import { BottomNav } from '@/app/components/ui/BottomNav/BottomNav';
 import { SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
 import { type MeResponse } from '@/app/types/Auth';
 
@@ -22,6 +24,8 @@ export interface PageShellProps {
   backHref?: string;
   /** Destination name in the back link (default 'Admin'). */
   backLabel?: string;
+  /** Leave out the mobile bottom bar (default false). Pages that mount their own fixed bar pass true. */
+  hideBottomNav?: boolean;
 }
 
 /**
@@ -33,6 +37,9 @@ export interface PageShellProps {
  * `withHeader={false}`, because the link itself is now unconditional. The link is rendered once
  * from the root layout, above the route's Suspense boundary; see {@link SkipLink} for why it
  * cannot live down here.
+ *
+ * The mobile {@link BottomNav} shares the header's {@link SiteMenuProvider} and is skipped with
+ * `hideBottomNav` or when no header renders.
  *
  * No `isCollectionPage` prop: nothing the shell wraps is a single collection's page, so its header
  * never shows the admin Update item. The one page that does — `CollectionPage` — renders
@@ -47,18 +54,22 @@ export function PageShell({
   me,
   backHref,
   backLabel,
+  hideBottomNav = false,
 }: PageShellProps) {
   const mainClasses = [styles.main, className].filter(Boolean).join(' ');
   return (
-    <div className={styles.container}>
-      <main className={mainClasses}>
-        {withHeader && <SiteHeader collectionSlug={collectionSlug} me={me} />}
-        <SkipTarget>
-          {backHref && <BackLink href={backHref} label={backLabel} />}
-          {children}
-        </SkipTarget>
-      </main>
-      {withFooter && <Footer />}
-    </div>
+    <SiteMenuProvider>
+      <div className={styles.container}>
+        <main className={mainClasses}>
+          {withHeader && <SiteHeader collectionSlug={collectionSlug} me={me} />}
+          {withHeader && !hideBottomNav && <BottomNav me={me} />}
+          <SkipTarget>
+            {backHref && <BackLink href={backHref} label={backLabel} />}
+            {children}
+          </SkipTarget>
+        </main>
+        {withFooter && <Footer />}
+      </div>
+    </SiteMenuProvider>
   );
 }
