@@ -21,8 +21,22 @@ import { type PagedImages } from '@/app/lib/api/content';
 // it for these focused integration tests.
 jest.mock('@/app/components/ContentCollection/CollectionPage', () => ({
   __esModule: true,
-  default: ({ collection }: { collection: { content: unknown[] } }) => (
-    <div data-testid="collection-page">Items: {collection.content.length}</div>
+  default: ({
+    collection,
+    withFooter,
+    backHref,
+  }: {
+    collection: { content: unknown[] };
+    withFooter?: boolean;
+    backHref?: string;
+  }) => (
+    <div
+      data-testid="collection-page"
+      data-with-footer={String(withFooter)}
+      data-back-href={backHref}
+    >
+      Items: {collection.content.length}
+    </div>
   ),
 }));
 
@@ -124,5 +138,28 @@ describe('AllImagesClient', () => {
     const retry = screen.getByRole('button', { name: /retry/i });
     fireEvent.click(retry);
     expect(loadNext).toHaveBeenCalled();
+  });
+
+  it('opts CollectionPage out of its footer and links back to /admin', () => {
+    render(<AllImagesClient initial={initial} />);
+    const page = screen.getByTestId('collection-page');
+    expect(page).toHaveAttribute('data-with-footer', 'false');
+    expect(page).toHaveAttribute('data-back-href', '/admin');
+  });
+
+  it('renders exactly one footer, after the sentinel and the loading text', () => {
+    mockUseImageBrowser.mockReturnValue({ ...baseHookResult, isLoading: true });
+    const { container } = render(<AllImagesClient initial={initial} />);
+    const footers = container.querySelectorAll('footer');
+    expect(footers).toHaveLength(1);
+    const sentinel = container.querySelector('[aria-hidden="true"]');
+    const loading = screen.getByText(/loading more/i);
+    expect(sentinel).not.toBeNull();
+    expect(
+      sentinel!.compareDocumentPosition(footers[0]!) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      loading.compareDocumentPosition(footers[0]!) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 });

@@ -128,6 +128,8 @@ describe('proxy middleware — (admin) group session gate (non-local)', () => {
     '/admin/users/1',
     '/all-images',
     '/all-images/foo',
+    '/all-client-galleries',
+    '/all-client-galleries/x',
     '/comments',
     '/comments/foo',
     '/metadata',
@@ -151,7 +153,14 @@ describe('proxy middleware — (admin) group session gate (non-local)', () => {
 describe('proxy middleware — (admin) group passthrough (localhost)', () => {
   beforeEach(() => setLocal());
 
-  const adminRoutes = ['/admin', '/all-images', '/comments', '/metadata', '/collection/manage'];
+  const adminRoutes = [
+    '/admin',
+    '/all-images',
+    '/all-client-galleries',
+    '/comments',
+    '/metadata',
+    '/collection/manage',
+  ];
 
   it.each(adminRoutes)('passes %s through on localhost (no session needed)', pathname => {
     const res = proxy(makeRequest(pathname));
@@ -207,6 +216,8 @@ describe('proxy middleware — config.matcher', () => {
       '/comments',
       '/metadata',
       '/all-images',
+      '/all-client-galleries',
+      '/all-client-galleries/:path*',
     ];
     for (const entry of gated) {
       expect(config.matcher).toContain(entry);

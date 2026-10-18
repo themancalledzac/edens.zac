@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 
 import ManageCollectionPage from '@/app/(admin)/collection/manage/[[...slug]]/page';
 
@@ -12,6 +13,14 @@ jest.mock('next/navigation', () => ({
 jest.mock('@/app/(admin)/collection/manage/[[...slug]]/CreateCollectionForm', () => ({
   __esModule: true,
   default: () => <div data-testid="create-collection-form" />,
+}));
+
+jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
+  PageShell: ({ backHref, children }: { backHref?: string; children: ReactNode }) => (
+    <div data-testid="page-shell" data-back-href={backHref}>
+      {children}
+    </div>
+  ),
 }));
 
 describe('ManageCollectionPage', () => {
@@ -33,6 +42,10 @@ describe('ManageCollectionPage', () => {
 
     expect(mockRedirect).not.toHaveBeenCalled();
     expect(screen.getByTestId('create-collection-form')).toBeInTheDocument();
+    expect(screen.getByTestId('page-shell')).toHaveAttribute('data-back-href', '/admin');
+    expect(screen.getByTestId('page-shell')).toContainElement(
+      screen.getByTestId('create-collection-form')
+    );
   });
 
   it('renders CreateCollectionForm when the slug array is empty', async () => {

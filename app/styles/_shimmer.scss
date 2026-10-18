@@ -1,0 +1,30 @@
+// Shared loading shimmer: a token-driven gradient that sweeps across a placeholder surface.
+// Reach it with a RELATIVE `@use` — `@use '../styles/shimmer'` — never a bare specifier, because
+// Turbopack ignores `sassOptions.includePaths`. Include `shimmer.surface` on the element; it
+// stops animating under prefers-reduced-motion. Keep comments here silent (`//`); a loud
+// `/* */` comment in a partial is emitted into every stylesheet that `@use`s it.
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@mixin surface {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-raised) 25%,
+    var(--color-surface-sunken) 37%,
+    var(--color-surface-raised) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}

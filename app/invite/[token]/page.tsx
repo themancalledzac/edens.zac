@@ -1,7 +1,7 @@
 import { type Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 
-import { skipTargetProps } from '@/app/components/ui/SkipLink/SkipLink';
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { meServer } from '@/app/lib/api/auth';
 import { getInvitePreview } from '@/app/lib/api/users';
 import styles from '@/app/styles/auth-card.module.scss';
@@ -39,9 +39,9 @@ interface InvitePageProps {
  * The interactive portion is delegated to `InviteForm` (a Client Component). The token-in-URL
  * referrer mitigation is handled by the exported `metadata` above.
  *
- * `<main>` carries the skip link's landing zone directly: the site-wide link is rendered
- * unconditionally from the root layout, and this page has no header inside `<main>` for a nested
- * target to exclude.
+ * Rendered through `PageShell` with `me={null}`: a signed-in visitor was redirected above, so the
+ * header never needs the principal resolved. The shell supplies the header, the footer's anchor and
+ * the skip target.
  */
 export default async function InvitePage({ params }: InvitePageProps) {
   const { token } = await params;
@@ -54,15 +54,17 @@ export default async function InvitePage({ params }: InvitePageProps) {
   if (result.status === 'invalid') notFound();
 
   return (
-    <main className={styles.page} {...skipTargetProps}>
-      <div className={styles.card}>
-        <h1 className={styles.heading}>Set up your account</h1>
-        <InviteForm
-          token={token}
-          email={result.preview.email}
-          displayName={result.preview.displayName}
-        />
+    <PageShell className={styles.shell} me={null}>
+      <div className={styles.page}>
+        <div className={styles.card}>
+          <h1 className={styles.heading}>Set up your account</h1>
+          <InviteForm
+            token={token}
+            email={result.preview.email}
+            displayName={result.preview.displayName}
+          />
+        </div>
       </div>
-    </main>
+    </PageShell>
   );
 }

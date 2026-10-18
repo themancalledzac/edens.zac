@@ -11,12 +11,15 @@ import { isCollectionCard } from '@/app/utils/contentRatingUtils';
 
 import Component from './Component';
 import styles from './ContentBlockWithFullScreen.module.scss';
+import { FullScreenModalBoundary } from './FullScreenModalBoundary';
 import { type SharedRendererProps } from './RendererContext';
 
-const FullScreenModal = dynamic(() =>
-  import('@/app/components/FullScreenModal/FullScreenModal').then(m => ({
-    default: m.FullScreenModal,
-  }))
+const FullScreenModal = dynamic(
+  () =>
+    import('@/app/components/FullScreenModal/FullScreenModal').then(m => ({
+      default: m.FullScreenModal,
+    })),
+  { loading: () => null }
 );
 
 const LOAD_MORE_THRESHOLD = '400px';
@@ -196,23 +199,25 @@ export default function ContentBlockWithFullScreen({
       )}
 
       {mounted && (
-        <FullScreenModal
-          fullScreenState={fullScreenState}
-          loadedImageIds={loadedImageIds}
-          setLoadedImageIds={setLoadedImageIds}
-          modalRef={modalRef}
-          zoomTargetRef={zoomTargetRef}
-          isZoomed={isZoomed}
-          immersive={immersive}
-          toggleImmersive={toggleImmersive}
-          hideImage={hideImage}
-          isSwiping={isSwiping}
-          showMetadata={showMetadata}
-          toggleMetadata={toggleMetadata}
-          collectionData={collectionData}
-          navigateToNext={navigateToNext}
-          navigateToPrevious={navigateToPrevious}
-        />
+        <FullScreenModalBoundary>
+          <FullScreenModal
+            fullScreenState={fullScreenState}
+            loadedImageIds={loadedImageIds}
+            setLoadedImageIds={setLoadedImageIds}
+            modalRef={modalRef}
+            zoomTargetRef={zoomTargetRef}
+            isZoomed={isZoomed}
+            immersive={immersive}
+            toggleImmersive={toggleImmersive}
+            hideImage={hideImage}
+            isSwiping={isSwiping}
+            showMetadata={showMetadata}
+            toggleMetadata={toggleMetadata}
+            collectionData={collectionData}
+            navigateToNext={navigateToNext}
+            navigateToPrevious={navigateToPrevious}
+          />
+        </FullScreenModalBoundary>
       )}
     </>
   );

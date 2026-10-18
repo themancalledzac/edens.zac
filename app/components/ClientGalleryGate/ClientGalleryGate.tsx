@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
+import { Footer } from '@/app/components/Footer/Footer';
 import { Button } from '@/app/components/ui/Button/Button';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
@@ -133,45 +134,48 @@ export default function ClientGalleryGate({ collection }: ClientGalleryGateProps
   const isUnlocking = submitState === 'unlocking';
 
   return (
-    <Modal open onClose={() => {}} variant="overlay" labelledBy="gate-title">
-      <div className={styles.gateCard}>
-        <h1 id="gate-title" className={styles.gateTitle}>
-          {collection.title}
-        </h1>
-        <p className={styles.gateSubtitle}>Client Gallery</p>
+    <>
+      <Modal open onClose={() => {}} variant="overlay" labelledBy="gate-title">
+        <div className={styles.gateCard}>
+          <h1 id="gate-title" className={styles.gateTitle}>
+            {collection.title}
+          </h1>
+          <p className={styles.gateSubtitle}>Client Gallery</p>
 
-        {!isUnlocking && (
-          <form onSubmit={handleSubmit} className={styles.gateForm}>
-            <label htmlFor="gallery-password" className={styles.gateLabel}>
-              Enter the password to view this gallery
-            </label>
-            <input
-              id="gallery-password"
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className={styles.gateInput}
-              placeholder="Gallery password"
-              autoFocus
-              autoComplete="off"
-              readOnly={isVerifying}
-            />
-            {error && <p className={styles.gateError}>{error}</p>}
-            <Button
-              type="submit"
-              className={styles.gateButton}
-              aria-disabled={isVerifying || undefined}
-            >
-              {isVerifying ? 'Verifying…' : 'Enter Gallery'}
-            </Button>
-          </form>
-        )}
+          {!isUnlocking && (
+            <form onSubmit={handleSubmit} className={styles.gateForm}>
+              <label htmlFor="gallery-password" className={styles.gateLabel}>
+                Enter the password to view this gallery
+              </label>
+              <input
+                id="gallery-password"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className={styles.gateInput}
+                placeholder="Gallery password"
+                autoFocus
+                autoComplete="off"
+                readOnly={isVerifying}
+              />
+              {error && <p className={styles.gateError}>{error}</p>}
+              <Button
+                type="submit"
+                className={styles.gateButton}
+                aria-disabled={isVerifying || undefined}
+              >
+                {isVerifying ? 'Verifying…' : 'Enter Gallery'}
+              </Button>
+            </form>
+          )}
 
-        <LoadingText isLoading={isUnlocking} className={styles.gateLoading}>
-          <span className={styles.gateSpinner} aria-hidden="true" />
-          Loading gallery…
-        </LoadingText>
-      </div>
-    </Modal>
+          <LoadingText isLoading={isUnlocking} className={styles.gateLoading}>
+            <span className={styles.gateSpinner} aria-hidden="true" />
+            Loading gallery…
+          </LoadingText>
+        </div>
+      </Modal>
+      <Footer />
+    </>
   );
 }

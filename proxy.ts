@@ -50,7 +50,9 @@ export function proxy(request: NextRequest) {
     pathname === '/metadata' ||
     pathname.startsWith('/metadata/') ||
     pathname === '/all-images' ||
-    pathname.startsWith('/all-images/');
+    pathname.startsWith('/all-images/') ||
+    pathname === '/all-client-galleries' ||
+    pathname.startsWith('/all-client-galleries/');
 
   if (!isAdminRoute) {
     return NextResponse.next();
@@ -90,5 +92,7 @@ export const config = {
     '/metadata/:path*',
     '/all-images',
     '/all-images/:path*',
+    '/all-client-galleries',
+    '/all-client-galleries/:path*',
   ],
 };

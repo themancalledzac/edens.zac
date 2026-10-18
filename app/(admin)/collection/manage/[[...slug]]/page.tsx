@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { manageHref } from '@/app/utils/manageUrl';
 
 import CreateCollectionForm from './CreateCollectionForm';
@@ -20,5 +21,9 @@ export default async function ManageCollectionPage({ params }: ManageCollectionP
     redirect(manageHref(slug));
   }
 
-  return <CreateCollectionForm />;
+  return (
+    <PageShell backHref="/admin">
+      <CreateCollectionForm />
+    </PageShell>
+  );
 }

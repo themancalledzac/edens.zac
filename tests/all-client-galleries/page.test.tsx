@@ -1,4 +1,4 @@
-import AllClientGalleriesPage, { metadata } from '@/app/all-client-galleries/page';
+import AllClientGalleriesPage, { metadata } from '@/app/(admin)/all-client-galleries/page';
 import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
 
 jest.mock('@/app/components/ContentCollection/CollectionPageWrapper', () => ({

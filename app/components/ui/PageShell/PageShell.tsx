@@ -1,9 +1,11 @@
 import { type ReactNode } from 'react';
 
+import { Footer } from '@/app/components/Footer/Footer';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
 import { type MeResponse } from '@/app/types/Auth';
 
+import { BackLink } from './BackLink';
 import styles from './PageShell.module.scss';
 
 export interface PageShellProps {
@@ -11,9 +13,15 @@ export interface PageShellProps {
   collectionSlug?: string;
   /** Render the site header (default true). Status pages pass false. */
   withHeader?: boolean;
+  /** Render the site footer after `<main>` (default true). */
+  withFooter?: boolean;
   className?: string;
   /** Server-resolved principal forwarded unchanged to {@link SiteHeader}; omitted means unresolved. */
   me?: MeResponse | null;
+  /** When set, renders a back link to this href as the first element inside the skip target. */
+  backHref?: string;
+  /** Destination name in the back link (default 'Admin'). */
+  backLabel?: string;
 }
 
 /**
@@ -34,16 +42,23 @@ export function PageShell({
   children,
   collectionSlug,
   withHeader = true,
+  withFooter = true,
   className,
   me,
+  backHref,
+  backLabel,
 }: PageShellProps) {
   const mainClasses = [styles.main, className].filter(Boolean).join(' ');
   return (
     <div className={styles.container}>
       <main className={mainClasses}>
         {withHeader && <SiteHeader collectionSlug={collectionSlug} me={me} />}
-        <SkipTarget>{children}</SkipTarget>
+        <SkipTarget>
+          {backHref && <BackLink href={backHref} label={backLabel} />}
+          {children}
+        </SkipTarget>
       </main>
+      {withFooter && <Footer />}
     </div>
   );
 }

@@ -1,6 +1,18 @@
-.loading {
+@use './styles/shimmer';
+
+.fill {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100dvh;
+  flex-direction: column;
+
+  > #main-content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+}
+
+.body {
+  flex: 1;
+
+  @include shimmer.surface;
 }

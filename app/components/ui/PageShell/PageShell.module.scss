@@ -1,6 +1,6 @@
 .container {
   /* Match the route loading fallback (app/loading.module.scss, 100dvh) so the
-     site-wide <Footer> — rendered after this container in the root layout —
+     <Footer> — rendered by PageShell as the last child of this container —
      keeps a constant anchor across the loading -> loaded handoff. 100vh > 100dvh
      on mobile, so a mismatch shifts the footer down when content arrives. */
   min-height: 100dvh;

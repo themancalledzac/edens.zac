@@ -36,6 +36,7 @@ jest.mock('@/app/invite/[token]/InviteForm', () => ({
   default: ({ token, email }: { token: string; email: string }) => `InviteForm:${token}:${email}`,
 }));
 
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import InvitePage from '@/app/invite/[token]/page';
 import { meServer } from '@/app/lib/api/auth';
 import { getInvitePreview } from '@/app/lib/api/users';
@@ -54,7 +55,6 @@ describe('InvitePage', () => {
     );
 
     expect(redirect).toHaveBeenCalledWith('/');
-    // The session gate runs first, so a signed-in visitor costs no backend round-trip.
     expect(getInvitePreview).not.toHaveBeenCalled();
     expect(notFound).not.toHaveBeenCalled();
   });
@@ -78,7 +78,6 @@ describe('InvitePage', () => {
     );
 
     expect(notFound).toHaveBeenCalled();
-    // A dead link must not be silently swept to the home page.
     expect(redirect).not.toHaveBeenCalled();
   });
 
@@ -91,6 +90,8 @@ describe('InvitePage', () => {
     const result = await InvitePage({ params: Promise.resolve({ token: 'good-token' }) });
 
     expect(result).toBeTruthy();
+    expect(result.type).toBe(PageShell);
+    expect(result.props.me).toBeNull();
     expect(redirect).not.toHaveBeenCalled();
     expect(notFound).not.toHaveBeenCalled();
   });

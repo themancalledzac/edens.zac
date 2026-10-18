@@ -116,7 +116,6 @@ export default function LoginForm() {
           type="password"
           value={password}
           onChange={e => setPassword(e.target.value)}
-          placeholder="Your password"
           autoComplete="current-password"
           disabled={submitting}
         />
@@ -133,10 +132,16 @@ export default function LoginForm() {
         variant="outline"
         onClick={handlePasskeySignIn}
         disabled={submitting || !email.trim()}
+        aria-describedby={email.trim() ? undefined : 'login-passkey-hint'}
         className={styles.passkeyButton}
       >
         Sign in with Face / Touch ID
       </Button>
+      {!email.trim() && (
+        <p id="login-passkey-hint" className={styles.passkeyHint}>
+          Enter your email first to use Face / Touch ID.
+        </p>
+      )}
     </form>
   );
 }
