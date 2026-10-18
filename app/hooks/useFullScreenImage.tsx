@@ -1,4 +1,3 @@
-/* eslint-disable no-empty -- the control-tap branch deliberately does nothing */
 'use client';
 
 import {
@@ -517,10 +516,10 @@ export function useFullScreenImage(): {
           !didMoveRef.current &&
           !isSwiping.current &&
           absX < TAP_SLOP &&
-          absY < TAP_SLOP
+          absY < TAP_SLOP &&
+          !isControlTap(e.target)
         ) {
-          if (isControlTap(e.target)) {
-          } else if (isImageTap(e.target)) {
+          if (isImageTap(e.target)) {
             toggleImmersive();
             suppressTapClose();
           } else {

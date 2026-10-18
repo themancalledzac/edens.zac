@@ -1,4 +1,3 @@
-/* eslint-disable no-empty -- empty catch blocks deliberately swallow storage failures */
 import {
   type Dispatch,
   type SetStateAction,
@@ -127,7 +126,9 @@ function writeStorage(key: PanelCacheKey, serialized: string): void {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(STORAGE_PREFIX + key, serialized);
-  } catch {}
+  } catch {
+    return;
+  }
 }
 
 /**
@@ -138,7 +139,9 @@ function removeStorage(key: PanelCacheKey): void {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.removeItem(STORAGE_PREFIX + key);
-  } catch {}
+  } catch {
+    return;
+  }
 }
 
 /**
@@ -167,7 +170,9 @@ function clearAllStorage(): void {
       if (storageKey !== null && storageKey.startsWith(STORAGE_PREFIX)) doomed.push(storageKey);
     }
     for (const storageKey of doomed) window.localStorage.removeItem(storageKey);
-  } catch {}
+  } catch {
+    return;
+  }
 }
 
 /**
