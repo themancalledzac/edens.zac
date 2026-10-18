@@ -2,7 +2,7 @@
 
 import { CircleX } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { type KeyboardEvent, useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 
 import { About } from '@/app/components/About/About';
 import { ContactForm } from '@/app/components/ContactForm/ContactForm';
@@ -11,8 +11,8 @@ import InstagramIcon from '@/app/components/Icons/InstagramIcon';
 import { Disclosure } from '@/app/components/ui/Disclosure/Disclosure';
 import { NavLink } from '@/app/components/ui/NavLink/NavLink';
 import { BREAKPOINTS } from '@/app/constants';
-import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
+import { useDialogFocus } from '@/app/hooks/useDialogFocus';
 import { useFetchMe } from '@/app/hooks/useFetchMe';
 import { clearCacheAction } from '@/app/lib/actions/clearCache';
 import { logout } from '@/app/lib/api/auth';
@@ -34,10 +34,6 @@ interface MenuDropdownProps {
   /** Server-resolved principal: undefined fetches on first open, null is anonymous. */
   me?: MeResponse | null;
 }
-
-/** Elements the focus trap treats as tabbable (mirrors the shared `Modal`). */
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * Skin for the two `Disclosure` rows. No `headingLevel`: these are menu items inside a labelled
@@ -64,26 +60,6 @@ interface MenuNavItem {
 }
 
 /**
- * Hands focus back when the overlay closes.
- *
- * The element that opened the menu is preferred, but `.focus()` on a node that has left the
- * document is a silent no-op that leaves focus on `<body>` — one Tab from there restarts the whole
- * page. So when the trigger unmounted while the menu was open (a route change that remounts the
- * header, say), fall back to the first control in the page header: the same corner of the page the
- * trigger lived in, so the tab order resumes roughly where the user left it.
- *
- * If the document has no header either, there is genuinely nothing to restore to and this does
- * nothing rather than inventing a target.
- */
-function restoreFocus(previous: HTMLElement | null) {
-  if (previous?.isConnected) {
-    previous.focus();
-    return;
-  }
-  document.querySelector('header')?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
-}
-
-/**
  * Menu Dropdown
  *
  * Full-screen navigation overlay with expandable sections for About and Contact.
@@ -96,8 +72,8 @@ function restoreFocus(previous: HTMLElement | null) {
  * scrim behind its dialog and sizes the dialog to the backdrop, which would darken the page behind
  * this menu and break the desktop-only click-outside-to-close. Those are the only two reasons —
  * `Modal` does not touch the `fullscreen-open` body class (that is `FullScreenModal`'s, applied
- * outside the primitive). So this owns Escape, body scroll lock, click-outside, focus trap, and
- * focus restore directly.
+ * outside the primitive). So this owns click-outside itself and gets Escape, body scroll lock,
+ * focus trap, and focus restore from `useDialogFocus`.
  *
  * Escape ignores `isComposing` keydowns: dismissing an IME candidate list is a cancel inside the
  * ContactForm's inputs, not a request to tear the whole menu down and discard the draft.
@@ -140,8 +116,11 @@ export function MenuDropdown({
   me: initialMe,
 }: MenuDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const router = useRouter();
+  const { onKeyDown } = useDialogFocus(dropdownRef, isOpen, onClose, {
+    escape: 'document',
+    respectAutoFocus: false,
+  });
 
   const [showContactForm, setShowContactForm] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -195,33 +174,6 @@ export function MenuDropdown({
     onClose();
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'Tab') return;
-
-    const node = dropdownRef.current;
-    if (!node) return;
-
-    const focusable = [...node.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)];
-    if (focusable.length === 0) {
-      event.preventDefault();
-      return;
-    }
-
-    const first = focusable[0]!;
-    const last = focusable[focusable.length - 1]!;
-    const active = document.activeElement;
-
-    if (event.shiftKey) {
-      if (active === first || active === node || !node.contains(active)) {
-        event.preventDefault();
-        last.focus();
-      }
-    } else if (active === last || !node.contains(active)) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isOpen && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -238,34 +190,6 @@ export function MenuDropdown({
 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, onClose]);
-
-  useEffect(() => {
-    const handleEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape' && !event.isComposing && isOpen) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-    }
-
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
-
-  useBodyScrollLock(isOpen);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const active = document.activeElement;
-    previouslyFocusedRef.current = active instanceof HTMLElement ? active : null;
-    dropdownRef.current?.focus();
-
-    return () => {
-      restoreFocus(previouslyFocusedRef.current);
-    };
-  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -324,7 +248,7 @@ export function MenuDropdown({
       aria-modal="true"
       aria-label="Site navigation"
       tabIndex={-1}
-      onKeyDown={handleKeyDown}
+      onKeyDown={onKeyDown}
     >
       <div className={styles.dropdownCloseButtonWrapper}>
         <button
