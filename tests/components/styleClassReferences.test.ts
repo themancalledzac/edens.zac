@@ -106,7 +106,38 @@ describe('components only reference classes their stylesheet defines', () => {
 
 type ReadSource = (file: string) => string;
 
-const STYLES_PROP_PATTERN = /<([A-Z]\w*)\b[^>]*?\bstyles={(\w+)}/g;
+const STYLES_PROP_PATTERN = /<([A-Z]\w*)\b(?:=>|[^<>])*?\bstyles={(\w+)}/g;
+
+const IMPORT_STATEMENT = /^import\s+([^"';]+?)\s+from\s+'([^']+)'/gm;
+
+/**
+ * Maps every local binding an import statement introduces, default or named, to its specifier.
+ * `type` modifiers are skipped and `a as b` binds `b`.
+ */
+function importedBindings(source: string): Map<string, string> {
+  const bindings = new Map<string, string>();
+  for (const m of source.matchAll(IMPORT_STATEMENT)) {
+    const [, clause, specifier] = m;
+    if (!clause || !specifier) continue;
+    const named = /{([^}]*)}/.exec(clause);
+    const defaultPart = clause
+      .replace(/{[^}]*}/, '')
+      .replace(/,/g, ' ')
+      .trim();
+    const names = [
+      ...(defaultPart && !defaultPart.startsWith('*') && defaultPart !== 'type'
+        ? [defaultPart.replace(/^type\s+/, '')]
+        : []),
+      ...(named?.[1] ?? '')
+        .split(',')
+        .map(part => part.trim().replace(/^type\s+/, ''))
+        .filter(Boolean)
+        .map(part => part.split(/\s+as\s+/).pop() ?? part),
+    ];
+    for (const name of names) bindings.set(name, specifier);
+  }
+  return bindings;
+}
 
 /**
  * Classes `callerSource` hands to a component through `styles={<binding>}` that the component reads
@@ -121,12 +152,7 @@ function propPassedMissing(
   readSource: ReadSource,
   defined: (stylesheet: string) => Set<string> | null
 ): string[] {
-  const imports = new Map<string, string>();
-  for (const m of callerSource.matchAll(
-    /^import\s+(?:{\s*)?([A-Za-z]\w*)[\s,}]*[^']*from\s+'([^']+)'/gm
-  )) {
-    if (m[1] && m[2]) imports.set(m[1], m[2]);
-  }
+  const imports = importedBindings(callerSource);
   const missing: string[] = [];
   for (const m of callerSource.matchAll(STYLES_PROP_PATTERN)) {
     const [, component, binding] = m;
@@ -218,6 +244,73 @@ describe('classes read off a styles prop are checked against the passing file st
       if (missing.length > 0) failures.push(`${label}: ${missing.join(', ')}`);
     }
     expect(failures).toEqual([]);
+  });
+});
+
+const HUB_CALLER = [
+  "import { ListPanel, ListRow, ListRows } from './ListPanel';",
+  "import { MessageRowLeft, MessageRowRight } from './MessageRow';",
+  "import styles from './MessagesPanel.module.scss';",
+  'export const Hub = () => (',
+  '  <ListRows>',
+  '    <ListRow',
+  '      key={m.id}',
+  '      left={<MessageRowLeft message={m} styles={styles} excerptWords={10} />}',
+  '      right={',
+  '        <MessageRowRight',
+  '          message={m}',
+  '          styles={styles}',
+  '        />',
+  '      }',
+  '    />',
+  '  </ListRows>',
+  ');',
+].join('\n');
+
+const HUB_SOURCES: Record<string, string> = {
+  '/virtual/ListPanel': 'export const ListRow = ({ left }) => left;',
+  '/virtual/MessageRow':
+    'export const MessageRowLeft = ({ styles }) => <a className={styles.email} />;\n' +
+    'export const MessageRowRight = ({ styles }) => <p className={styles.body} />;',
+};
+
+const readHub: ReadSource = file => HUB_SOURCES[file] ?? '';
+
+const hubDefined = (stylesheet: string): Set<string> | null =>
+  stylesheet.endsWith('MessagesPanel.module.scss') ? new Set(['error', 'body']) : null;
+
+describe('A12: the b1164134 MessagesPanel shape (nested left, two named imports)', () => {
+  it('maps every specifier of a named import, not only the first', () => {
+    const bindings = importedBindings(HUB_CALLER);
+    expect(bindings.get('MessageRowLeft')).toBe('./MessageRow');
+    expect(bindings.get('MessageRowRight')).toBe('./MessageRow');
+    expect(bindings.get('ListRow')).toBe('./ListPanel');
+    expect(bindings.get('styles')).toBe('./MessagesPanel.module.scss');
+  });
+
+  it('attributes a nested styles prop to the inner component, not the outer ListRow', () => {
+    const matches = [...HUB_CALLER.matchAll(STYLES_PROP_PATTERN)].map(m => m[1]);
+    expect(matches).toEqual(['MessageRowLeft', 'MessageRowRight']);
+  });
+
+  it('reports email missing from a stylesheet without it', () => {
+    const missing = propPassedMissing(HUB_CALLER, '/virtual', readHub, hubDefined);
+    expect(missing).toEqual(['email']);
+  });
+
+  it('skips type modifiers and aliases in named imports', () => {
+    const bindings = importedBindings("import { type A, B as C } from './x';");
+    expect([...bindings.keys()].sort()).toEqual(['A', 'C']);
+  });
+
+  it('twin: with the stylesheet check let everything through the hub shape goes unreported', () => {
+    const missing = propPassedMissing(
+      HUB_CALLER,
+      '/virtual',
+      readHub,
+      () => new Set(['email', 'body', 'error'])
+    );
+    expect(missing).toEqual([]);
   });
 });
 
