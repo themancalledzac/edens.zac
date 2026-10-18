@@ -1,7 +1,7 @@
 import { type Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
-import { skipTargetProps } from '@/app/components/ui/SkipLink/SkipLink';
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { meServer } from '@/app/lib/api/auth';
 import styles from '@/app/styles/auth-card.module.scss';
 
@@ -15,20 +15,22 @@ export const metadata: Metadata = { title: 'Sign in' };
  * Returning-user sign-in page. If a valid session already resolves, redirect to
  * the personal `/user` page instead of showing the form.
  *
- * `<main>` carries the skip link's landing zone directly: the site-wide link is rendered
- * unconditionally from the root layout, and this page has no header inside `<main>` for a nested
- * target to exclude.
+ * Rendered through `PageShell` with `me={null}`: a signed-in visitor was redirected above, so the
+ * header never needs the principal resolved. The shell supplies the header, the footer's anchor and
+ * the skip target.
  */
 export default async function LoginPage() {
   const principal = await meServer();
   if (principal) redirect('/user');
 
   return (
-    <main className={styles.page} {...skipTargetProps}>
-      <div className={styles.card}>
-        <h1 className={styles.heading}>Sign in</h1>
-        <LoginForm />
+    <PageShell className={styles.shell} me={null}>
+      <div className={styles.page}>
+        <div className={styles.card}>
+          <h1 className={styles.heading}>Sign in</h1>
+          <LoginForm />
+        </div>
       </div>
-    </main>
+    </PageShell>
   );
 }

@@ -1,12 +1,25 @@
 /* Shared auth-card shell — the centered card used by the /login and /invite/[token] landing pages.
-   Both pages render the same <main class=page><div class=card><h1 class=heading> structure, so the
-   rules live here rather than in two identical per-route page.module.scss files. */
+   Both pages render <PageShell className=shell><div class=page><div class=card><h1 class=heading>,
+   so the rules live here rather than in two identical per-route page.module.scss files. The shell
+   turns PageShell's <main> into a column whose last child (the skip target) fills the space below
+   the header, and .page centres the card in it. */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+
+  > :last-child {
+    flex: 1;
+    display: flex;
+  }
+}
 
 .page {
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: var(--space-6) var(--space-4);
 }
 
