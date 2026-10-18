@@ -4,9 +4,9 @@
  * `"(max-width: 768px) 100vw, NaNpx"`, which is not a valid media condition — the browser discards
  * it and falls back to picking the largest candidate in the srcset.
  *
- * The recovery (`resolveValidDimensions`) is now hoisted above `imageProps` and `sizes` uses
- * `validWidth`. Nothing else in the render path reads the raw width, so this attribute is the whole
- * observable surface of that bug.
+ * The recovery (`resolveValidDimensions`) is hoisted above `imageProps` and `sizes` uses
+ * `validWidth`. Grid tile `sizes` is the single value `${Math.round(validWidth)}px` on every
+ * viewport, with no `(max-width: 768px) 100vw` arm.
  */
 
 import '@testing-library/jest-dom';
@@ -14,6 +14,7 @@ import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 
 import CollectionContentRenderer from '@/app/components/Content/CollectionContentRenderer';
+import * as contentRendererUtils from '@/app/utils/contentRendererUtils';
 import { logger } from '@/app/utils/logger';
 
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
@@ -27,6 +28,10 @@ jest.mock('@/app/components/ui/FilterToolbar/FilterToolbar', () => ({
 jest.mock('@/app/components/auth/MeProvider', () => ({
   useMe: jest.fn(() => null),
 }));
+jest.mock('@/app/utils/contentRendererUtils', () => {
+  const actual = jest.requireActual('@/app/utils/contentRendererUtils');
+  return { ...actual, resolveValidDimensions: jest.fn(actual.resolveValidDimensions) };
+});
 jest.mock('@/app/utils/logger', () => ({
   logger: { debug: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
@@ -66,13 +71,53 @@ describe('CollectionContentRenderer — sizes attribute with NaN dimensions', ()
   it('should size from the recovered width, not a placeholder', () => {
     render(<CollectionContentRenderer {...imageProps} width={Number.NaN} height={400} />);
 
-    expect(screen.getByRole('img').getAttribute('sizes')).toBe('(max-width: 768px) 100vw, 711px');
+    expect(screen.getByRole('img').getAttribute('sizes')).toBe('711px');
+  });
+
+  it('A1 should emit a single px value with no viewport arm', () => {
+    render(<CollectionContentRenderer {...imageProps} width={640.4} height={360} />);
+
+    const sizes = screen.getByRole('img').getAttribute('sizes');
+
+    expect(sizes).toBe('640px');
+    expect(sizes).not.toContain('100vw');
+    expect(sizes).not.toContain('max-width');
+  });
+
+  it('A1b twin: NaNpx reaches sizes when dimension recovery is switched off', () => {
+    const resolve = contentRendererUtils.resolveValidDimensions as jest.Mock;
+    resolve.mockImplementationOnce(({ width, height }) => ({ width, height }));
+
+    render(<CollectionContentRenderer {...imageProps} width={Number.NaN} height={400} />);
+
+    expect(screen.getByRole('img').getAttribute('sizes')).toBe('NaNpx');
+  });
+
+  it('A2 should keep fetchpriority high on the priority hero', () => {
+    render(<CollectionContentRenderer {...imageProps} width={640} height={360} priority />);
+
+    const img = screen.getByRole('img');
+
+    expect(img.getAttribute('fetchpriority')).toBe('high');
+    expect(img.getAttribute('loading')).not.toBe('lazy');
+  });
+
+  it('A2 should not set fetchpriority high on a non-priority tile', () => {
+    render(<CollectionContentRenderer {...imageProps} width={640} height={360} />);
+
+    expect(screen.getByRole('img').getAttribute('fetchpriority')).not.toBe('high');
+  });
+
+  it('A2 twin: fetchpriority high is absent when the priority flag is off', () => {
+    render(<CollectionContentRenderer {...imageProps} width={640} height={360} priority={false} />);
+
+    expect(screen.getByRole('img').getAttribute('fetchpriority')).toBeNull();
   });
 
   it('should leave a finite width untouched', () => {
     render(<CollectionContentRenderer {...imageProps} width={640} height={360} />);
 
-    expect(screen.getByRole('img').getAttribute('sizes')).toBe('(max-width: 768px) 100vw, 640px');
+    expect(screen.getByRole('img').getAttribute('sizes')).toBe('640px');
   });
 });
 
