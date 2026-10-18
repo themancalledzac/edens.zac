@@ -189,6 +189,25 @@ export function clearCachedPanelData(key?: PanelCacheKey): void {
   removeStorage(key);
 }
 
+/**
+ * The default user-facing message for a failed foreground load of `key`. `users:base` and
+ * `users:people` are one list to the admin, so both read as "users"; any other key names itself.
+ */
+export function panelErrorMessage(key: PanelCacheKey): string {
+  const label = key === 'users:base' || key === 'users:people' ? 'users' : key;
+  return `Could not load ${label}. Retry, or check that the backend is running.`;
+}
+
+/**
+ * Message resolution held on an object so a test can replace it: the caller's message wins, and the
+ * key-derived one fills in when the caller gave none.
+ */
+export const panelDataGuards = {
+  resolveErrorMessage(key: PanelCacheKey, errorMessage?: string): string {
+    return errorMessage ?? panelErrorMessage(key);
+  },
+};
+
 export interface CachedPanelData<T> {
   /** The cached-or-fetched payload; `null` only before the first successful load ever. */
   data: T | null;
@@ -279,13 +298,13 @@ export interface CachedPanelData<T> {
  *
  * @param key - Cache identity for this payload, including any fetch-shaping variant
  * @param fetcher - Loads the payload; may close over props (kept fresh via ref, never re-triggers)
- * @param errorMessage - User-facing message for a foreground load failure
+ * @param errorMessage - User-facing message for a foreground load failure; defaults to {@link panelErrorMessage}
  * @param initialData - Server-fetched payload for `key`; `null`/omitted when the server has none
  */
 export function useCachedPanelData<K extends PanelCacheKey>(
   key: K,
   fetcher: () => Promise<PanelCacheSchema[K]>,
-  errorMessage: string,
+  errorMessage?: string,
   initialData?: PanelCacheSchema[K] | null
 ): CachedPanelData<PanelCacheSchema[K]> {
   const [data, setDataState] = useState<PanelCacheSchema[K] | null>(
@@ -354,7 +373,7 @@ export function useCachedPanelData<K extends PanelCacheKey>(
         if (keyRef.current !== forKey || !isCurrentGeneration(forKey, generation)) return;
         logger.error('useCachedPanelData', `Failed to load "${forKey}"`, error);
         setRevalidationFailed(true);
-        if (reportErrors) setLoadError(errorMessage);
+        if (reportErrors) setLoadError(panelDataGuards.resolveErrorMessage(forKey, errorMessage));
       } finally {
         if (keyRef.current === forKey && latestFetchRef.current === generation) setLoading(false);
       }

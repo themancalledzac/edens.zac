@@ -11,7 +11,12 @@
 import { act, render, renderHook, waitFor } from '@testing-library/react';
 import { type Dispatch, type SetStateAction, useState } from 'react';
 
-import { clearCachedPanelData, useCachedPanelData } from '@/app/hooks/useCachedPanelData';
+import {
+  clearCachedPanelData,
+  panelDataGuards,
+  panelErrorMessage,
+  useCachedPanelData,
+} from '@/app/hooks/useCachedPanelData';
 import { type RoleSummary } from '@/app/types/Role';
 import { type AdminUserSummary } from '@/app/types/User';
 
@@ -548,5 +553,74 @@ describe('useCachedPanelData', () => {
     const second = renderHook(() => useCachedPanelData('roles', fetcher, 'failed'));
     expect(second.result.current.loading).toBe(true);
     await waitFor(() => expect(second.result.current.loading).toBe(false));
+  });
+});
+
+/**
+ * Default error message (A10) and caller-message precedence (S1).
+ *
+ * The guard `panelDataGuards.resolveErrorMessage(key, errorMessage)` in
+ * app/hooks/useCachedPanelData.ts returns `errorMessage` when given, else `panelErrorMessage(key)`.
+ * The hook must call it through the exported object so the twins can replace it.
+ */
+describe('useCachedPanelData error message', () => {
+  beforeEach(() => {
+    clearCachedPanelData();
+    window.localStorage.clear();
+    jest.restoreAllMocks();
+  });
+
+  const failing = () =>
+    jest.fn(async (): Promise<AdminUserSummary[]> => Promise.reject(new Error('x')));
+
+  it('A10: panelErrorMessage labels users:base and users:people as users', () => {
+    expect(panelErrorMessage('users:base')).toBe(
+      'Could not load users. Retry, or check that the backend is running.'
+    );
+    expect(panelErrorMessage('users:people')).toBe(
+      'Could not load users. Retry, or check that the backend is running.'
+    );
+  });
+
+  it('A10: panelErrorMessage uses the key itself for other keys', () => {
+    expect(panelErrorMessage('roles')).toBe(
+      'Could not load roles. Retry, or check that the backend is running.'
+    );
+  });
+
+  it('A10: a foreground failure with no errorMessage reports the derived message', async () => {
+    const { result } = renderHook(() => useCachedPanelData('users:base', failing()));
+    await waitFor(() =>
+      expect(result.current.loadError).toBe(
+        'Could not load users. Retry, or check that the backend is running.'
+      )
+    );
+  });
+
+  it('S1: a caller errorMessage is kept exactly', async () => {
+    const { result } = renderHook(() =>
+      useCachedPanelData('users:people', failing(), 'Custom failure text')
+    );
+    await waitFor(() => expect(result.current.loadError).toBe('Custom failure text'));
+  });
+
+  it('twin A10: with the derivation off the derived message no longer appears', async () => {
+    jest.spyOn(panelDataGuards, 'resolveErrorMessage').mockImplementation(() => 'plain');
+    const { result } = renderHook(() => useCachedPanelData('users:base', failing()));
+    await waitFor(() => expect(result.current.loadError).not.toBeNull());
+    expect(result.current.loadError).not.toBe(
+      'Could not load users. Retry, or check that the backend is running.'
+    );
+  });
+
+  it('twin S1: with precedence off the caller message is lost', async () => {
+    jest
+      .spyOn(panelDataGuards, 'resolveErrorMessage')
+      .mockImplementation(key => panelErrorMessage(key));
+    const { result } = renderHook(() =>
+      useCachedPanelData('users:people', failing(), 'Custom failure text')
+    );
+    await waitFor(() => expect(result.current.loadError).not.toBeNull());
+    expect(result.current.loadError).not.toBe('Custom failure text');
   });
 });
