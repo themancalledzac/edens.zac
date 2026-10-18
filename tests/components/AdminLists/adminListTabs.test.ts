@@ -8,9 +8,22 @@ import {
 const params = (search: string) => new URLSearchParams(search);
 
 describe('adminListTabs', () => {
-  it('lists the four tabs in strip order, the default first', () => {
-    expect(ADMIN_LIST_TABS.map(t => t.id)).toEqual(['users', 'messages', 'roles', 'collections']);
+  it('S1: lists the four tabs as messages, users, collections, roles, the default first', () => {
+    expect(ADMIN_LIST_TABS.map(t => t.id)).toEqual(['messages', 'users', 'collections', 'roles']);
     expect(ADMIN_LIST_TABS[0]?.id).toBe(DEFAULT_ADMIN_LIST_TAB);
+  });
+
+  it('A6: labels the tabs Messages, Users, Collections, Roles', () => {
+    expect(ADMIN_LIST_TABS.map(t => t.label)).toEqual([
+      'Messages',
+      'Users',
+      'Collections',
+      'Roles',
+    ]);
+  });
+
+  it('S1: the default tab is messages', () => {
+    expect(DEFAULT_ADMIN_LIST_TAB).toBe('messages');
   });
 
   it('recognises only known tab ids', () => {
@@ -20,15 +33,15 @@ describe('adminListTabs', () => {
   });
 
   describe('resolveAdminListTab', () => {
-    it('defaults to users', () => {
-      expect(resolveAdminListTab(params(''))).toBe('users');
+    it('A6: defaults to messages when ?list= is absent', () => {
+      expect(resolveAdminListTab(params(''))).toBe('messages');
     });
 
     it('reads ?list=', () => {
       expect(resolveAdminListTab(params('list=collections'))).toBe('collections');
     });
 
-    it('opens Roles for a ?role= link', () => {
+    it('S1: opens Roles for a ?role= link with no ?list=', () => {
       expect(resolveAdminListTab(params('role=3'))).toBe('roles');
     });
 
@@ -37,7 +50,7 @@ describe('adminListTabs', () => {
     });
 
     it('ignores an unknown ?list= value', () => {
-      expect(resolveAdminListTab(params('list=nope'))).toBe('users');
+      expect(resolveAdminListTab(params('list=nope'))).toBe('messages');
     });
   });
 });

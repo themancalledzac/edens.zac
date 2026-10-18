@@ -1,6 +1,6 @@
 /**
- * Builds the AnyContentModel[] for the admin hub. Array order: the one tabbed list panel first,
- * then the nav tiles.
+ * Builds the AnyContentModel[] for the admin hub. Array order: the nav tiles first,
+ * then the one tabbed list panel.
  *
  * The panel's HEIGHT is content-derived, not shape-derived: `chrome + rowCount × rowHeight` for its
  * TALLEST tab, declared to the layout engine as `minHeight === maxHeight` — a pin. The sizer models
@@ -223,7 +223,7 @@ const PANEL_ID = 1001;
 
 /**
  * The panel's `orderIndex`, clear of the nav tiles' `0..n-1` run. Nothing on the admin path sorts
- * by it -- `buildAdminHubContent` puts the panel first in the array itself -- so it only has to stay
+ * by it -- `buildAdminHubContent` puts the panel last in the array itself -- so it only has to stay
  * unique.
  */
 const PANEL_ORDER_INDEX = 100;
@@ -293,7 +293,7 @@ export function buildAdminHubContent(
     visible: true,
   };
 
-  return [panel, ...tileModels];
+  return [...tileModels, panel];
 }
 
 /**

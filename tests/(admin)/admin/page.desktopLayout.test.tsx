@@ -45,9 +45,9 @@ const coverCases: [string, AdminHomeTileApi[]][] = [
 ];
 
 describe('admin hub desktop layout', () => {
-  it.each(coverCases)('puts the panel in the first row — %s', (_label, tiles) => {
-    const [firstRow] = layout(tiles);
-    const panels = (firstRow?.items ?? []).filter(item => item.content.contentType === 'PANEL');
+  it.each(coverCases)('puts the panel in the last row — %s', (_label, tiles) => {
+    const lastRow = layout(tiles).at(-1);
+    const panels = (lastRow?.items ?? []).filter(item => item.content.contentType === 'PANEL');
 
     expect(panels).toHaveLength(PANEL_COUNT);
   });

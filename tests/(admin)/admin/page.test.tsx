@@ -132,6 +132,7 @@ describe('AdminHubPage', () => {
     mockListUsers.mockResolvedValue([ADA]);
     mockListRoles.mockResolvedValue([{ id: 1, name: 'editor' }]);
 
+    mockSearch = 'list=users';
     const ui = await renderPage();
     const { unmount } = render(ui);
 
@@ -157,13 +158,18 @@ describe('AdminHubPage', () => {
     mockGetTiles.mockResolvedValue([]);
     mockListUsers.mockRejectedValue(new Error('backend down'));
 
-    const ui = await renderPage();
-    render(ui);
+    mockSearch = 'list=users';
+    try {
+      const ui = await renderPage();
+      render(ui);
 
-    expect(screen.getByText('Loading users…')).toBeInTheDocument();
-    expect(screen.queryByText(/no users yet/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Loading users…')).toBeInTheDocument();
+      expect(screen.queryByText(/no users yet/i)).not.toBeInTheDocument();
 
-    await act(async () => {});
+      await act(async () => {});
+    } finally {
+      mockSearch = '';
+    }
   });
 
   it('falls back gracefully when the API throws', async () => {

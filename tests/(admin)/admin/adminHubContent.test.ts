@@ -22,8 +22,14 @@ function makeTile(tileKey: string, overrides: Partial<AdminHomeTileApi> = {}): A
   };
 }
 
-/** The one tabbed list panel (Users, Messages, Roles, Collections) the hub puts ahead of the tiles. */
+/** The one tabbed list panel (Messages, Users, Collections, Roles) the hub puts after the tiles. */
 const PANEL_COUNT = 1;
+
+const panelsOf = (content: ReturnType<typeof buildAdminHubContent>) =>
+  content.filter(item => item.contentType === 'PANEL') as ContentPanelModel[];
+
+const tilesOf = (content: ReturnType<typeof buildAdminHubContent>) =>
+  content.filter(item => item.contentType !== 'PANEL');
 
 describe('buildAdminHubContent', () => {
   const apiTiles: AdminHomeTileApi[] = ADMIN_TILES.map(c => makeTile(c.tileKey));
@@ -33,35 +39,44 @@ describe('buildAdminHubContent', () => {
     expect(result).toHaveLength(ADMIN_TILES.length + PANEL_COUNT);
   });
 
-  it('the panel comes first', () => {
-    for (const panel of result.slice(0, PANEL_COUNT)) {
-      expect(panel.contentType).toBe('PANEL');
+  it('A6: the nav tiles come before the list panel, the panel last', () => {
+    expect(result.at(-1)?.contentType).toBe('PANEL');
+    expect(result.slice(0, -PANEL_COUNT)).toHaveLength(ADMIN_TILES.length);
+    for (const tile of result.slice(0, -PANEL_COUNT)) {
+      expect(tile.contentType).toBe('IMAGE');
     }
+    expect(result.map(item => item.id)).toEqual([...ADMIN_TILES.map((_, i) => i + 1), 1001]);
+  });
+
+  it('A6: with no tiles from the api the panel is still last', () => {
+    const res = buildAdminHubContent([]);
+    expect(res.at(-1)?.contentType).toBe('PANEL');
+    expect(res[0]?.contentType).toBe('IMAGE');
   });
 
   it('tile models all have contentType IMAGE', () => {
-    const tiles = result.slice(PANEL_COUNT);
+    const tiles = tilesOf(result);
     for (const tile of tiles) {
       expect(tile.contentType).toBe('IMAGE');
     }
   });
 
   it('tile models all have enableParallax true', () => {
-    const tiles = result.slice(PANEL_COUNT) as ContentParallaxImageModel[];
+    const tiles = tilesOf(result) as ContentParallaxImageModel[];
     for (const tile of tiles) {
       expect(tile.enableParallax).toBe(true);
     }
   });
 
   it('tile models do not have collectionType', () => {
-    const tiles = result.slice(PANEL_COUNT) as ContentParallaxImageModel[];
+    const tiles = tilesOf(result) as ContentParallaxImageModel[];
     for (const tile of tiles) {
       expect('collectionType' in tile).toBe(false);
     }
   });
 
   it('carries each tile config rating through to its model', () => {
-    const tiles = result.slice(PANEL_COUNT) as ContentParallaxImageModel[];
+    const tiles = tilesOf(result) as ContentParallaxImageModel[];
     expect(tiles.length).toBe(ADMIN_TILES.length);
     for (const [i, tile] of tiles.entries()) {
       expect(tile.rating).toBe(ADMIN_TILES[i]?.rating);
@@ -69,14 +84,14 @@ describe('buildAdminHubContent', () => {
   });
 
   it('gives every tile a non-empty slug so isSlugNav can link it', () => {
-    const tiles = result.slice(PANEL_COUNT) as ContentParallaxImageModel[];
+    const tiles = tilesOf(result) as ContentParallaxImageModel[];
     for (const tile of tiles) {
       expect(tile.slug).toBeTruthy();
     }
   });
 
   it('slug maps so /slug equals config.href', () => {
-    const tiles = result.slice(PANEL_COUNT) as ContentParallaxImageModel[];
+    const tiles = tilesOf(result) as ContentParallaxImageModel[];
     for (let i = 0; i < ADMIN_TILES.length; i++) {
       const config = ADMIN_TILES[i];
       const tile = tiles[i];
@@ -89,7 +104,7 @@ describe('buildAdminHubContent', () => {
       makeTile(c.tileKey, { coverImageWidth: 1200, coverImageHeight: 800 })
     );
     const res = buildAdminHubContent(tilesWithDims);
-    const firstTile = res[PANEL_COUNT] as ContentParallaxImageModel;
+    const firstTile = res[0] as ContentParallaxImageModel;
     expect(firstTile.imageWidth).toBeGreaterThan(0);
     expect(firstTile.imageHeight).toBeGreaterThan(0);
   });
@@ -99,14 +114,14 @@ describe('buildAdminHubContent', () => {
       makeTile(c.tileKey, { coverImageUrl: null, coverImageWidth: null, coverImageHeight: null })
     );
     const res = buildAdminHubContent(tilesNoCover);
-    const tiles = res.slice(PANEL_COUNT) as ContentParallaxImageModel[];
+    const tiles = tilesOf(res) as ContentParallaxImageModel[];
     for (const tile of tiles) {
       expect(tile.imageUrl).toBe('');
     }
   });
 
   it('declares one panel, rated 5, with a fixed id and orderIndex', () => {
-    const [panel] = result as ContentPanelModel[];
+    const [panel] = panelsOf(result);
     expect(panel?.contentType).toBe('PANEL');
     expect(panel?.rating).toBe(5);
     expect(panel?.id).toBe(1001);
@@ -119,13 +134,13 @@ describe('buildAdminHubContent', () => {
    * range belongs to which.
    */
   it('keeps panel ids above every tile id', () => {
-    const panelIds = result.slice(0, PANEL_COUNT).map(item => item.id);
-    const tileIds = result.slice(PANEL_COUNT).map(item => item.id);
+    const panelIds = panelsOf(result).map(item => item.id);
+    const tileIds = tilesOf(result).map(item => item.id);
     expect(Math.min(...panelIds)).toBeGreaterThan(Math.max(...tileIds));
   });
 
   it('panels have vertical AR (width < height)', () => {
-    const panels = result.slice(0, PANEL_COUNT) as ContentPanelModel[];
+    const panels = panelsOf(result) as ContentPanelModel[];
     for (const panel of panels) {
       expect((panel.width ?? 0) < (panel.height ?? 0)).toBe(true);
     }
@@ -137,7 +152,7 @@ describe('buildAdminHubContent', () => {
    * steps from 1.0 to 1.4, which re-solves width allocation for the whole hub.
    */
   it('keeps every panel strictly under the 1:2 extremeness ramp', () => {
-    const panels = result.slice(0, PANEL_COUNT) as ContentPanelModel[];
+    const panels = panelsOf(result) as ContentPanelModel[];
     for (const panel of panels) {
       expect((panel.height ?? 0) / (panel.width ?? 1)).toBeLessThan(2);
     }
@@ -151,7 +166,7 @@ describe('buildAdminHubContent', () => {
   it('works with an empty tiles array', () => {
     const res = buildAdminHubContent([]);
     expect(res).toHaveLength(ADMIN_TILES.length + PANEL_COUNT);
-    const tiles = res.slice(PANEL_COUNT) as ContentParallaxImageModel[];
+    const tiles = tilesOf(res) as ContentParallaxImageModel[];
     for (const tile of tiles) {
       expect(tile.imageUrl).toBe('');
     }
@@ -166,7 +181,7 @@ describe('withPanelFootprints', () => {
   });
 
   it('gives the collapsed panel the bar footprint', () => {
-    const [panel] = withPanelFootprints(content, true) as ContentPanelModel[];
+    const [panel] = panelsOf(withPanelFootprints(content, true));
 
     expect(panel?.width).toBe(COLLAPSED_PANEL_SIZE.width);
     expect(panel?.height).toBe(COLLAPSED_PANEL_SIZE.height);
@@ -179,7 +194,7 @@ describe('withPanelFootprints', () => {
 
   it('leaves non-panel blocks untouched', () => {
     const collapsed = withPanelFootprints(content, true);
-    expect(collapsed.slice(PANEL_COUNT)).toEqual(content.slice(PANEL_COUNT));
+    expect(tilesOf(collapsed)).toEqual(tilesOf(content));
   });
 
   /**
@@ -190,12 +205,12 @@ describe('withPanelFootprints', () => {
    * row composition like any other item.
    */
   it('a collapsed panel stays under the solo-hero gates, so it composes like any block', () => {
-    const [panel] = withPanelFootprints(content, true);
+    const [panel] = panelsOf(withPanelFootprints(content, true));
     expect(isSoloHero(panel!, LAYOUT.defaultChunkSize)).toBe(false);
   });
 
   it('an expanded panel does NOT solo — it shares its row', () => {
-    const [panel] = withPanelFootprints(content, false);
+    const [panel] = panelsOf(withPanelFootprints(content, false));
     expect(isSoloHero(panel!, LAYOUT.defaultChunkSize)).toBe(false);
   });
 
@@ -208,8 +223,8 @@ describe('withPanelFootprints', () => {
    * (oscillating re-pack → remount → refetch storm).
    */
   it('hands an expanded panel back exactly as declared, pin included', () => {
-    const [panel] = withPanelFootprints(content, false) as ContentPanelModel[];
-    const [declared] = content as ContentPanelModel[];
+    const [panel] = panelsOf(withPanelFootprints(content, false));
+    const [declared] = panelsOf(content);
 
     expect(panel?.width).toBe(600);
     expect(panel?.height).toBe(1100);
@@ -227,18 +242,22 @@ describe('tabbed panel height', () => {
    * width-independent height) and it has to MOVE with the counts.
    */
   it('pins the panel to a height that grows with its row counts', () => {
-    const [lean] = buildAdminHubContent([], {
-      users: 2,
-      messages: 2,
-      roles: 2,
-      collections: 2,
-    }) as ContentPanelModel[];
-    const [full] = buildAdminHubContent([], {
-      users: 9,
-      messages: 9,
-      roles: 9,
-      collections: 9,
-    }) as ContentPanelModel[];
+    const [lean] = panelsOf(
+      buildAdminHubContent([], {
+        users: 2,
+        messages: 2,
+        roles: 2,
+        collections: 2,
+      })
+    );
+    const [full] = panelsOf(
+      buildAdminHubContent([], {
+        users: 9,
+        messages: 9,
+        roles: 9,
+        collections: 9,
+      })
+    );
 
     expect(lean?.minHeight).toBe(lean?.maxHeight);
     expect(full?.minHeight).toBe(full?.maxHeight);
@@ -255,7 +274,7 @@ describe('tabbed panel height', () => {
     tab => {
       const counts = { ...NONE, [tab]: 8 };
       expect(tabbedPanelHeight(counts)).toBe(panelContentHeight(tab, 8));
-      const [panel] = buildAdminHubContent([], counts) as ContentPanelModel[];
+      const [panel] = panelsOf(buildAdminHubContent([], counts));
       expect(panel?.minHeight).toBe(panelContentHeight(tab, 8));
     }
   );
@@ -269,8 +288,8 @@ describe('tabbed panel height', () => {
   });
 
   it('floors an empty panel and caps a runaway one, so neither breaks the row', () => {
-    const [empty] = buildAdminHubContent([], NONE) as ContentPanelModel[];
-    const [huge] = buildAdminHubContent([], { ...NONE, users: 500 }) as ContentPanelModel[];
+    const [empty] = panelsOf(buildAdminHubContent([], NONE));
+    const [huge] = panelsOf(buildAdminHubContent([], { ...NONE, users: 500 }));
 
     expect(empty?.minHeight).toBe(192);
     expect(huge?.minHeight).toBe(1000);
