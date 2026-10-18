@@ -6,7 +6,7 @@ Dated one-liners: answered decisions, parked and rejected items. Open work is in
 
 - 2026-10-17: The refactor and feature boards ran #254 to #437 and were deleted; open rows moved to `docs/backlog.md`, answers to this file.
 - 2026-10-17: Git history and PR bodies are the changelog; no hand-kept changelog, no session logs.
-- 2026-10-17: The review round of 2026-10-17 is tracked in `docs/reviews/2026-10-17/04-orch-plan.md`.
+- 2026-10-18: The 2026-10-17 review round ran #440 to #454 and edens.zac.backend#334. Its open items moved to `docs/backlog.md` and its review docs were deleted; they are in git at commit `558f5bce`.
 - 2026-10-18: CI's audit runs on production dependencies only, `npm audit --omit=dev --audit-level=high` (PR #441), because `braces` has no fixed version.
 
 ## Answered, feature board
