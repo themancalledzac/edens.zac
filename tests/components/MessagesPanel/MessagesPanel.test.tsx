@@ -6,7 +6,7 @@ import { type ReactNode } from 'react';
 import ts from 'typescript';
 
 import * as panelBodyModule from '@/app/components/ListPanel/PanelBody';
-import type * as messageRowModule from '@/app/components/messages/MessageRow';
+import type * as messageRowModule from '@/app/components/Messages/MessageRow';
 import * as messagesPanelModule from '@/app/components/MessagesPanel/MessagesPanel';
 import { MessagesPanel } from '@/app/components/MessagesPanel/MessagesPanel';
 import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
@@ -50,7 +50,7 @@ const mockDelete = messagesApi.deleteAdminMessage as jest.MockedFunction<
 >;
 
 const messageRowActual = jest.requireActual<typeof messageRowModule>(
-  '@/app/components/messages/MessageRow'
+  '@/app/components/Messages/MessageRow'
 );
 
 const mockMarkRead = messagesApi.markMessageRead as jest.MockedFunction<
@@ -372,16 +372,16 @@ describe('MessagesPanel', () => {
   it('A12 twin: with the card stylesheet resolving no classes the email link and body lose them', () => {
     const view = makeMessage(1, 'alice@example.com', 'Hello world', '2024-01-01T10:00:00Z');
     jest.isolateModules(() => {
-      jest.doMock('@/app/components/messages/MessageRow.module.scss', () => ({
+      jest.doMock('@/app/components/Messages/MessageRow.module.scss', () => ({
         __esModule: true,
         default: {},
       }));
       const { MessageRow } = jest.requireActual<typeof messageRowModule>(
-        '@/app/components/messages/MessageRow'
+        '@/app/components/Messages/MessageRow'
       );
       render(<MessageRow message={view} onDelete={jest.fn()} deleting={false} />);
     });
-    jest.dontMock('@/app/components/messages/MessageRow.module.scss');
+    jest.dontMock('@/app/components/Messages/MessageRow.module.scss');
 
     expect(screen.getByText('alice@example.com').closest('a')).not.toHaveClass('email');
     expect(screen.getByText('Hello world')).not.toHaveClass('body');

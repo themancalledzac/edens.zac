@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { fireEvent, render, screen } from '@testing-library/react';
 
-import { MessageRow } from '@/app/components/messages/MessageRow';
+import { MessageRow } from '@/app/components/Messages/MessageRow';
 import type { AdminMessageView } from '@/app/lib/api/messages';
 
 const message: AdminMessageView = {
@@ -182,7 +182,7 @@ describe('MessageRow — own stylesheet (A10)', () => {
   });
 
   it('defines every class in MessageRow.module.scss', () => {
-    const scss = read('app/components/messages/MessageRow.module.scss');
+    const scss = read('app/components/Messages/MessageRow.module.scss');
     for (const name of ['email', 'body', 'time', 'actions', 'replyButton', 'meta', 'unread']) {
       expect(scss).toMatch(new RegExp(`\\.${name}\\b`));
     }
@@ -195,17 +195,17 @@ describe('MessageRow — own stylesheet (A10)', () => {
  */
 describe('MessageRow — guard twin (A10-guard)', () => {
   afterEach(() => {
-    jest.dontMock('@/app/components/messages/MessageRow.module.scss');
+    jest.dontMock('@/app/components/Messages/MessageRow.module.scss');
     jest.resetModules();
   });
 
   it('twin: email link and body have no class when the stylesheet exports nothing', () => {
     jest.resetModules();
-    jest.doMock('@/app/components/messages/MessageRow.module.scss', () => ({
+    jest.doMock('@/app/components/Messages/MessageRow.module.scss', () => ({
       __esModule: true,
       default: {},
     }));
-    const { MessageRow: Bare } = jest.requireActual('@/app/components/messages/MessageRow');
+    const { MessageRow: Bare } = jest.requireActual('@/app/components/Messages/MessageRow');
     render(<Bare message={message} onDelete={jest.fn()} deleting={false} />);
     expect(screen.getByRole('link', { name: /alice@example\.com/ })).not.toHaveClass('email');
     expect(screen.getByText(message.message)).not.toHaveClass('body');
@@ -217,7 +217,7 @@ describe('MessageRow — guard twin (A10-guard)', () => {
  */
 describe('MessageRow — no styles prop (A11)', () => {
   it('MessageRow.tsx imports its own stylesheet and declares no styles prop', () => {
-    const src = read('app/components/messages/MessageRow.tsx');
+    const src = read('app/components/Messages/MessageRow.tsx');
     expect(src).toMatch(/from '\.\/MessageRow\.module\.scss'/);
     expect(src).not.toMatch(/styles\s*:\s*MessageRowStyles/);
     expect(src).not.toMatch(/\bstyles={styles}/);
@@ -236,7 +236,7 @@ describe('MessageRow — no styles prop (A11)', () => {
   });
 
   it('this test file passes no styles prop', () => {
-    expect(read('tests/components/messages/MessageRow.test.tsx')).not.toMatch(/\bstyles={/);
+    expect(read('tests/components/Messages/MessageRow.test.tsx')).not.toMatch(/\bstyles={/);
   });
 });
 
@@ -245,7 +245,7 @@ describe('MessageRow — no styles prop (A11)', () => {
  */
 describe('MessageRow.tsx — comments (M5)', () => {
   it('has no inline // comments', () => {
-    const lines = read('app/components/messages/MessageRow.tsx').split('\n');
+    const lines = read('app/components/Messages/MessageRow.tsx').split('\n');
     const inline = lines.filter(l => /(^|\s)\/\/(?!.*["'`]\s*$)/.test(l) && !l.includes('://'));
     expect(inline).toEqual([]);
   });
