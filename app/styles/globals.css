@@ -12,6 +12,7 @@ html,
   --color-overlay-soft: rgb(0, 0, 0, 0.1);
   --color-white: #fff;
   --color-black: #111;
+  --color-letterbox: #000; /* pure black behind the fullscreen photo */
   --color-bg: var(--color-white);
   --color-fg: var(--color-black);
 
@@ -125,6 +126,7 @@ html,
   --color-error-bg: #fee;
   --color-error-border: #fcc;
   --color-error-text: #c33;
+  --color-success-bg: #f0fdf4;
   --color-primary: #212226;
   --color-primary-dark: #1a1b1e;
   --color-primary-hover: var(
@@ -225,7 +227,7 @@ body.scroll-locked {
    NOTE: intentionally scoped to fullscreen-open, NOT scroll-locked — the menu dropdown also
    locks scroll but must not darken the html canvas. */
 html:has(body.fullscreen-open) {
-  background-color: #000;
+  background-color: var(--color-letterbox);
 }
 
 /* …and the <body> box itself. body is explicitly white (--color-bg) and sits behind the
@@ -233,7 +235,7 @@ html:has(body.fullscreen-open) {
    fixed overlay can't reach. Forcing it dark while the modal is open makes the fix independent
    of whether the exposed surface is the html canvas or the body box. Reverts on close. */
 body.fullscreen-open {
-  background-color: #000;
+  background-color: var(--color-letterbox);
 }
 
 /* Universal scrollbar hiding for all elements */

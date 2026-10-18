@@ -223,10 +223,10 @@ describe('chip skin (stylesheet source)', () => {
     expect(chipRule).toContain('var(--color-border-control)');
   });
 
-  it('keeps the chip gap: 4px inside a chip, and the 8px (--space-2) row gap in the toolbar', () => {
+  it('keeps the chip gap: --space-1 inside a chip, and the 8px (--space-2) row gap in the toolbar', () => {
     const [chipSheet = '', segmentedSheet = ''] = sheets;
-    expect(/(^|\n)\.chip {[^}]*?gap: 4px;/.test(chipSheet)).toBe(true);
-    expect(/(^|\n)\.segment {[^}]*?gap: 4px;/.test(segmentedSheet)).toBe(true);
+    expect(/(^|\n)\.chip {[^}]*?gap: var\(--space-1\);/.test(chipSheet)).toBe(true);
+    expect(/(^|\n)\.segment {[^}]*?gap: var\(--space-1\);/.test(segmentedSheet)).toBe(true);
     const toolbar = read('app/components/ui/FilterToolbar/FilterToolbar.module.scss');
     expect(toolbar).toContain('row-gap: var(--space-2);');
     expect(toolbar).toContain('gap: var(--space-2);');

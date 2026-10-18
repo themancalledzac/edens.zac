@@ -124,7 +124,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 5px;
+  padding: var(--space-1);
   margin: 0;
   /* Ensure serif font and typography are maintained */
   font-family: var(--font-serif), serif;
@@ -192,7 +192,7 @@
   font-size: var(--collection-title);
   font-weight: 700;
   text-align: center;
-  padding: 5px;
+  padding: var(--space-1);
   overflow-wrap: break-word;
   pointer-events: none;
   z-index: var(--z-content); /* Ensure text overlay appears above parallax image (z-index: base) */
@@ -702,7 +702,7 @@
 .separatorLine {
   flex: 1;
   height: 1px;
-  background-color: var(--color-border, #e5e5e5);
+  background-color: var(--color-border);
   max-width: 200px;
 }
 
@@ -726,9 +726,9 @@
 .imagePlaceholder {
   box-sizing: border-box;
   position: relative;
-  background-color: #e0e0e0;
+  background-color: var(--color-surface-sunken-strong);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #757575;
+  color: var(--color-on-surface-muted);
 }

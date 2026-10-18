@@ -29,7 +29,7 @@
   // When the immersive toggle requests native fullscreen, THIS wrapper becomes the fullscreen root,
   // so the dark <body>/backdrop behind it no longer paints. Give the letterbox its own black.
   &:fullscreen {
-    background: #000;
+    background: var(--color-letterbox);
   }
 }
 
@@ -44,7 +44,7 @@
 // Modal's 0.9 backdrop would otherwise let the page bleed through at 10%. Paint the whole viewer
 // solid black so the framed photo (and its white matte) is the only thing visible.
 .immersive {
-  background: #000;
+  background: var(--color-letterbox);
 }
 
 .overlayContainer {
@@ -217,7 +217,7 @@
   width: 100%;
   background: var(--scrim-dark-80);
   border-radius: 0;
-  padding: 12px 48px 12px 12px;
+  padding: var(--space-3) calc(var(--space-4) * 3) var(--space-3) var(--space-3);
   color: white;
   font-size: var(--text-sm);
   line-height: 1.5;
@@ -229,7 +229,7 @@
   margin-right: 0;
 
   @media (width >= 768px) and (height >= 600px) {
-    padding: 16px 56px 16px 16px;
+    padding: var(--space-4) calc(var(--space-4) * 3.5) var(--space-4) var(--space-4);
     max-height: 60vh;
   }
 }
@@ -248,21 +248,21 @@
 .metadataTitle {
   font-size: var(--text-md);
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   color: white;
 
   @media (width >= 768px) and (height >= 600px) {
     font-size: var(--text-md);
-    margin-bottom: 10px;
+    margin-bottom: var(--space-3);
   }
 }
 
 .metadataItem {
-  margin-bottom: 6px;
+  margin-bottom: var(--space-2);
   color: var(--scrim-light-90);
 
   @media (width >= 768px) and (height >= 600px) {
-    margin-bottom: 8px;
+    margin-bottom: var(--space-2);
   }
 }
 
@@ -291,48 +291,48 @@
 // Sits directly under the title. Italic and slightly dimmed so a sentence of prose reads as
 // the photographer's note rather than another metadata field.
 .metadataCaption {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   color: var(--scrim-light-70);
   font-style: italic;
   line-height: 1.4;
 
   @media (width >= 768px) and (height >= 600px) {
-    margin-bottom: 10px;
+    margin-bottom: var(--space-3);
   }
 }
 
 .metadataSeparator {
   color: var(--scrim-light-50);
-  margin: 0 4px;
+  margin: 0 var(--space-1);
 }
 
 .metadataSettingsRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 12px;
-  padding-top: 8px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--scrim-light-20);
 
   @media (width >= 768px) and (height >= 600px) {
-    gap: 16px;
-    margin-bottom: 16px;
-    padding-top: 10px;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+    padding-top: var(--space-3);
   }
 
   span {
-    color: rgb(255, 255, 255, 0.85);
+    color: color-mix(in srgb, var(--color-white) 85%, transparent);
   }
 }
 
 .metadataSection {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
   border-top: 1px solid var(--scrim-light-20);
 
   @media (width >= 768px) and (height >= 600px) {
-    margin-top: 16px;
-    padding-top: 16px;
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
   }
 }
 
@@ -340,10 +340,10 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 
   @media (width >= 768px) and (height >= 600px) {
-    gap: 10px;
+    gap: var(--space-3);
   }
 }
 
@@ -367,16 +367,16 @@
   list-style: none;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
 
   @media (width >= 768px) and (height >= 600px) {
-    gap: 10px;
+    gap: var(--space-3);
   }
 }
 
 .metadataSectionItem {
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   background: var(--scrim-light-10);
   border-radius: var(--radius-1);
   font-size: var(--text-xs);
@@ -384,7 +384,7 @@
   user-select: none;
 
   @media (width >= 768px) and (height >= 600px) {
-    padding: 6px 10px;
+    padding: var(--space-2) var(--space-3);
   }
 }
 
@@ -422,7 +422,7 @@
 
   &:active {
     transform: scale(0.98);
-    background-color: rgb(255, 255, 255, 0.25);
+    background-color: color-mix(in srgb, var(--color-white) 25%, transparent);
   }
 
   &:focus-visible {
@@ -448,7 +448,8 @@
   height: 56px;
   border: none;
   background: transparent;
-  color: rgb(255, 255, 255, 0.55);
+  color: color-mix(in srgb, var(--color-white) 55%, transparent);
+  // stylelint-disable-next-line declaration-property-value-disallowed-list -- glyph sized to its chevron box, not body text
   font-size: 26px;
   text-shadow: 0 1px 3px var(--scrim-dark-50);
   line-height: 1;
@@ -480,6 +481,7 @@
   @media (width >= 768px) and (height >= 600px) {
     width: 56px;
     height: 80px;
+    // stylelint-disable-next-line declaration-property-value-disallowed-list -- glyph sized to its chevron box, not body text
     font-size: 44px;
     background: var(--scrim-dark-40);
     color: white;

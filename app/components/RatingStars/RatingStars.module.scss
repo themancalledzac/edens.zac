@@ -14,7 +14,7 @@
   color: var(--color-on-surface-muted);
 
   &.filled {
-    color: var(--color-warning, #f4b400);
+    color: var(--color-warning);
   }
 
   /* The stars stay focusable through a write and carry aria-disabled instead of the real

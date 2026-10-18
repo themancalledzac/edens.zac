@@ -66,7 +66,7 @@
     height: auto;
     max-height: 85dvh;
     z-index: calc(var(--z-sticky) + 2);
-    border-radius: 16px 16px 0 0;
+    border-radius: calc(var(--radius-2) * 2) calc(var(--radius-2) * 2) 0 0;
   }
 
   body:has([data-bottom-nav]) .sheet {
@@ -127,7 +127,8 @@
      The navBarWrapper is sized by the title's line-height (--header-1 at ~1.2x)
      and vertically centers the icon within it via align-items:center.
      We replicate that by setting the same top padding and matching the wrapper height. */
-  padding: var(--page-padding-mobile) var(--page-padding-mobile) 16px var(--page-padding-mobile);
+  padding: var(--page-padding-mobile) var(--page-padding-mobile) var(--space-4)
+    var(--page-padding-mobile);
   /* Title line-height drives the navBarWrapper height; icon is centered within it */
   min-height: calc(var(--page-padding-mobile) + var(--header-1) * 1.2);
 
@@ -175,7 +176,7 @@
   align-items: center;
   justify-content: flex-end;
   height: var(--menu-item-height);
-  padding-bottom: 5px;
+  padding-bottom: var(--space-1);
   cursor: pointer;
   border-bottom: 1px solid var(--color-border);
 
@@ -193,7 +194,7 @@
   border: none;
 
   /* 32px glyph + 6px each side = 44px hit box; the negative margin keeps the glyph where it sat. */
-  padding: 6px;
+  padding: var(--space-2);
   margin: -6px;
   cursor: pointer;
   font: inherit;
@@ -259,7 +260,7 @@ a.dropdownMenuLink {
   border: none;
 
   /* 32px glyph + 6px each side = 44px hit box; the negative margin keeps the glyph where it sat. */
-  padding: 6px;
+  padding: var(--space-2);
   margin: -6px;
   cursor: pointer;
   font: inherit;

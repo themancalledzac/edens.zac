@@ -37,7 +37,7 @@
 }
 
 .replyButton {
-  padding: 2px var(--space-2);
+  padding: calc(var(--space-1) / 2) var(--space-2);
   font-size: var(--text-xs);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-1);

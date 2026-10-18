@@ -103,7 +103,7 @@
   padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
   background-color: var(--color-surface-raised);
   border-top: 1px solid var(--color-border);
-  box-shadow: 0 -2px 4px rgb(0, 0, 0, 0.1);
+  box-shadow: 0 -2px var(--space-1) var(--scrim-dark-10);
 }
 
 .barCount {
