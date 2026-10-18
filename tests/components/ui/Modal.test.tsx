@@ -227,4 +227,28 @@ describe('Modal', () => {
       expect(() => rerender(<Bare open={false} withTrigger={false} />)).not.toThrow();
     });
   });
+
+  describe('variants', () => {
+    it('applies the sheet-bottom class to the backdrop that wraps the dialog', () => {
+      render(
+        <Modal open onClose={jest.fn()} variant="sheet-bottom">
+          <button type="button">Only</button>
+        </Modal>
+      );
+      const backdrop = screen.getByRole('dialog').parentElement as HTMLElement;
+      expect(backdrop.className).toContain('sheetBottom');
+      expect(backdrop.className).not.toContain('overlay');
+    });
+
+    it('keeps the overlay class as the default variant', () => {
+      render(
+        <Modal open onClose={jest.fn()}>
+          <button type="button">Only</button>
+        </Modal>
+      );
+      const backdrop = screen.getByRole('dialog').parentElement as HTMLElement;
+      expect(backdrop.className).toContain('overlay');
+      expect(backdrop.className).not.toContain('sheetBottom');
+    });
+  });
 });

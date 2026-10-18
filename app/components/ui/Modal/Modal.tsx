@@ -7,7 +7,15 @@ import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 
 import styles from './Modal.module.scss';
 
-export type ModalVariant = 'overlay' | 'sheet' | 'fullscreen';
+export type ModalVariant = 'overlay' | 'sheet' | 'fullscreen' | 'sheet-bottom';
+
+/** Variant → CSS module class key, for variants whose name is not a valid class key. */
+const VARIANT_CLASS: Record<ModalVariant, string> = {
+  overlay: 'overlay',
+  sheet: 'sheet',
+  fullscreen: 'fullscreen',
+  'sheet-bottom': 'sheetBottom',
+};
 
 export interface ModalProps {
   open: boolean;
@@ -127,7 +135,7 @@ export function Modal({ open, onClose, variant = 'overlay', labelledBy, children
       <span ref={sentinelRef} hidden aria-hidden="true" />
       {createPortal(
         <div
-          className={`${styles.backdrop} ${styles[variant]}`}
+          className={`${styles.backdrop} ${styles[VARIANT_CLASS[variant]]}`}
           data-surface={surface ?? undefined}
           onClick={event => {
             if (event.target === event.currentTarget) onClose();
