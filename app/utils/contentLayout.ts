@@ -8,6 +8,7 @@ import {
   type ContentTextModel,
   type TextBlockItem,
 } from '@/app/types/Content';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 import { getMeanWidthCost } from '@/app/utils/contentRatingUtils';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { formatDateRange } from '@/app/utils/formatDateRange';
@@ -431,7 +432,14 @@ export function processContentBlocks(
 
 /**
  * Build metadata items array from collection fields (date, location, description, tags, and
- * related collections — both siblings and parents).
+ * related collections — both parents and siblings).
+ *
+ * "Related" collections are the parent collections this one belongs to, followed by its curated
+ * siblings (peers). Both share the CollectionListModel shape and render identically — a cover
+ * card when coverImageUrl is present (shipped by the backend), a plain text link otherwise.
+ * Dedup by slug so a collection that is both a parent and a sibling isn't listed — or
+ * React-keyed — twice; parents win the slot since they come first. The home collection links
+ * to `/` because `/home` is not a route.
  */
 function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
   const items: TextBlockItem[] = [];
@@ -460,12 +468,7 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
     });
   }
 
-  // "Related" collections: curated siblings (peers) followed by the parent collections this
-  // one belongs to. Both share the CollectionListModel shape and render identically — a cover
-  // card when coverImageUrl is present (shipped by the backend), a plain text link otherwise.
-  // Dedup by slug so a collection that is both a sibling and a parent isn't listed — or
-  // React-keyed — twice; siblings win the slot since they come first.
-  const relatedCollections = [...(collection.siblings ?? []), ...(collection.parents ?? [])];
+  const relatedCollections = [...(collection.parents ?? []), ...(collection.siblings ?? [])];
   const seenRelatedSlugs = new Set<string>();
   for (const related of relatedCollections) {
     if (!related.slug || seenRelatedSlugs.has(related.slug)) continue;
@@ -473,7 +476,7 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
     const relatedItem: TextBlockItem = {
       type: 'collection',
       value: related.name,
-      slug: `/${related.slug}`,
+      slug: related.slug === HOME_SLUG ? '/' : `/${related.slug}`,
     };
     if (related.coverImageUrl) {
       relatedItem.coverImageUrl = related.coverImageUrl;

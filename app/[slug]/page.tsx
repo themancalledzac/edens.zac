@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
 import { CollectionJsonLd } from '@/app/components/StructuredData/CollectionJsonLd';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
 import { requireAdmin } from '@/app/utils/admin';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 import { logger } from '@/app/utils/logger';
 import { AUTHOR_NAME } from '@/app/utils/structuredData';
 
@@ -81,6 +82,9 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
  * Route handler for individual collections by slug (e.g. /film, /portfolio-work).
  * Renders via the shared CollectionPageWrapper.
  *
+ * A public `/home` redirects (temporary) to `/`, the canonical home URL; only `/home?manage=1`
+ * stays reachable, to open the home edit view.
+ *
  * `?manage=1` enters the in-place edit surface. Authorization is enforced by
  * {@link requireAdmin} below (redirects anonymous/non-admin viewers to /login) — a
  * real `isAdmin` principal, not an environment check, is what gates this in prod.
@@ -101,6 +105,10 @@ export default async function CollectionPage({ params, searchParams }: Collectio
 
   const resolvedSearchParams = await searchParams;
   const editMode = resolvedSearchParams?.manage === '1';
+
+  if (slug === HOME_SLUG && !editMode) {
+    redirect('/');
+  }
 
   if (editMode) {
     await requireAdmin();

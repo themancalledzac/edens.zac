@@ -11,11 +11,14 @@
  * asserted here.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { type ReactNode } from 'react';
 
 import AllImagesClient from '@/app/components/Admin/AllImagesClient';
 import { useInViewport } from '@/app/hooks/inViewport';
 import { useImageBrowser } from '@/app/hooks/useImageBrowser';
 import { type PagedImages } from '@/app/lib/api/content';
+
+const mockCollectionSeen = jest.fn();
 
 // CollectionPage has heavy downstream rendering (full BoxTree pipeline). Stub
 // it for these focused integration tests.
@@ -25,19 +28,25 @@ jest.mock('@/app/components/ContentCollection/CollectionPage', () => ({
     collection,
     withFooter,
     backHref,
+    header,
   }: {
     collection: { content: unknown[] };
     withFooter?: boolean;
     backHref?: string;
-  }) => (
-    <div
-      data-testid="collection-page"
-      data-with-footer={String(withFooter)}
-      data-back-href={backHref}
-    >
-      Items: {collection.content.length}
-    </div>
-  ),
+    header?: ReactNode;
+  }) => {
+    mockCollectionSeen(collection);
+    return (
+      <div
+        data-testid="collection-page"
+        data-with-footer={String(withFooter)}
+        data-back-href={backHref}
+      >
+        {header}
+        Items: {collection.content.length}
+      </div>
+    );
+  },
 }));
 
 jest.mock('@/app/hooks/useImageBrowser', () => ({
@@ -161,5 +170,28 @@ describe('AllImagesClient', () => {
     expect(
       loading.compareDocumentPosition(footers[0]!) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
+  });
+
+  it('A10: shows "All Images" and the initial.totalElements count through CollectionHeader', () => {
+    render(<AllImagesClient initial={initial} />);
+    expect(screen.getByRole('heading', { level: 1, name: 'All Images' })).toBeInTheDocument();
+    expect(screen.getByText('200 photos')).toBeInTheDocument();
+  });
+
+  it('F2: the header count follows initial.totalElements, not the loaded item count', () => {
+    render(<AllImagesClient initial={{ ...initial, totalElements: 1234 }} />);
+    expect(screen.getByText('1234 photos')).toBeInTheDocument();
+    expect(screen.queryByText('200 photos')).toBeNull();
+    expect(screen.queryByText('1 photo')).toBeNull();
+  });
+
+  it('A10: the synthesized collection carries no description and stays ORDERED', () => {
+    render(<AllImagesClient initial={initial} />);
+    const seen = mockCollectionSeen.mock.calls.at(-1)![0] as {
+      description?: string;
+      displayMode?: string;
+    };
+    expect(seen.description).toBeUndefined();
+    expect(seen.displayMode).toBe('ORDERED');
   });
 });

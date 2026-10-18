@@ -130,6 +130,11 @@ export interface FilterToolbarProps {
   density?: number;
   /** Upper bound of the fine slider. Defaults to 10 (desktop scale). */
   densityMax?: number;
+  /**
+   * Most distinct days the Date dimension keeps as flat chips before collapsing into the dropdown.
+   * Defaults to {@link MAX_FLAT_DATE_CHIPS}; narrow rails pass a smaller cap.
+   */
+  flatDateLimit?: number;
   onDensityChange?: (value: number) => void;
   /**
    * Which density affordance to render. Visitors get `tiers` (three photo-size presets); edit mode
@@ -216,6 +221,7 @@ export function FilterToolbar({
   showFilm = false,
   density,
   densityMax = 10,
+  flatDateLimit = MAX_FLAT_DATE_CHIPS,
   onDensityChange,
   densityVariant = 'tiers',
   densityTiers,
@@ -265,7 +271,7 @@ export function FilterToolbar({
     closeAll();
   };
 
-  const flatDates = flatDimension(dimensions.selectedDates, MAX_FLAT_DATE_CHIPS);
+  const flatDates = flatDimension(dimensions.selectedDates, flatDateLimit);
   const flatYears = flatDimension(dimensions.selectedYears, MAX_FLAT_YEAR_CHIPS);
 
   const activeBadges = collectActiveFilterBadges(filterState, dimensions, ARRAY_FILTER_KEYS, [

@@ -11,6 +11,7 @@ import type {
   ContentParallaxImageModel,
   ContentTextModel,
 } from '@/app/types/Content';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 import {
   clampParallaxDimensions,
   convertCollectionContentToParallax,
@@ -1094,7 +1095,7 @@ describe('createHeaderRow', () => {
     });
   });
 
-  describe('Parent collection items (related = siblings + parents)', () => {
+  describe('Parent collection items (related = parents + siblings)', () => {
     it('appends a collection item per parent', () => {
       const collection = createCollectionModel(1, {
         parents: [
@@ -1111,7 +1112,7 @@ describe('createHeaderRow', () => {
       ]);
     });
 
-    it('lists siblings first, then parents', () => {
+    it('A4: lists parents first, then siblings', () => {
       const collection = createCollectionModel(1, {
         siblings: [{ id: 50, name: 'Dolomites Film', slug: 'dolomites-film' }],
         parents: [{ id: 80, name: 'Italy', slug: 'italy' }],
@@ -1119,19 +1120,72 @@ describe('createHeaderRow', () => {
       const result = asSingleRow(createHeaderRow(collection, componentWidth));
       const metadataBlock = result?.items[1]?.content as ContentTextModel;
       const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
-      expect(collectionItems.map(item => item.value)).toEqual(['Dolomites Film', 'Italy']);
+      expect(collectionItems.map(item => item.value)).toEqual(['Italy', 'Dolomites Film']);
     });
 
-    it('dedups a collection that is both a sibling and a parent (sibling wins the slot)', () => {
+    it('A4/F1: a collection that is both parent and sibling keeps the parent slot', () => {
       const collection = createCollectionModel(1, {
-        siblings: [{ id: 50, name: 'Shared', slug: 'shared' }],
-        parents: [{ id: 50, name: 'Shared', slug: 'shared' }],
+        siblings: [
+          { id: 49, name: 'Other Sibling', slug: 'other-sibling' },
+          { id: 50, name: 'Shared Sibling Name', slug: 'shared' },
+        ],
+        parents: [
+          { id: 79, name: 'First Parent', slug: 'first-parent' },
+          { id: 50, name: 'Shared Parent Name', slug: 'shared' },
+        ],
       });
       const result = asSingleRow(createHeaderRow(collection, componentWidth));
       const metadataBlock = result?.items[1]?.content as ContentTextModel;
       const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
-      expect(collectionItems).toHaveLength(1);
-      expect(collectionItems[0]?.slug).toBe('/shared');
+      expect(collectionItems.map(item => item.value)).toEqual([
+        'First Parent',
+        'Shared Parent Name',
+        'Other Sibling',
+      ]);
+      expect(collectionItems.filter(item => item.slug === '/shared')).toHaveLength(1);
+    });
+
+    it('A8/F1: a home parent links to / and other parents keep /slug', () => {
+      const collection = createCollectionModel(1, {
+        parents: [
+          { id: 1, name: 'Home', slug: HOME_SLUG },
+          { id: 80, name: 'Italy', slug: 'italy' },
+        ],
+      });
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
+      const metadataBlock = result?.items[1]?.content as ContentTextModel;
+      const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
+      expect(collectionItems.map(item => item.slug)).toEqual(['/', '/italy']);
+    });
+
+    it('A8: a home sibling links to /', () => {
+      const collection = createCollectionModel(1, {
+        siblings: [{ id: 1, name: 'Home', slug: HOME_SLUG }],
+      });
+      const result = asSingleRow(createHeaderRow(collection, componentWidth));
+      const metadataBlock = result?.items[1]?.content as ContentTextModel;
+      const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
+      expect(collectionItems.map(item => item.slug)).toEqual(['/']);
+    });
+
+    it('twin of A8: with HOME_SLUG no longer matching, the home parent links to /home', () => {
+      jest.isolateModules(() => {
+        jest.doMock('@/app/utils/collectionSlugs', () => ({
+          ...jest.requireActual<object>('@/app/utils/collectionSlugs'),
+          HOME_SLUG: '__no_home__',
+        }));
+        const layout = jest.requireActual<{ createHeaderRow: typeof createHeaderRow }>(
+          '@/app/utils/contentLayout'
+        );
+        const collection = createCollectionModel(1, {
+          parents: [{ id: 1, name: 'Home', slug: 'home' }],
+        });
+        const result = asSingleRow(layout.createHeaderRow(collection, componentWidth));
+        const metadataBlock = result?.items[1]?.content as ContentTextModel;
+        const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
+        expect(collectionItems.map(item => item.slug)).toEqual(['/home']);
+      });
+      jest.dontMock('@/app/utils/collectionSlugs');
     });
 
     it('skips parents without a slug and threads coverImageUrl when present', () => {

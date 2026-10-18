@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { Footer } from '@/app/components/Footer/Footer';
+import { CollectionHeader } from '@/app/components/ui/CollectionHeader/CollectionHeader';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { useInViewport } from '@/app/hooks/inViewport';
 import { useImageBrowser } from '@/app/hooks/useImageBrowser';
@@ -21,7 +22,8 @@ interface AllImagesClientProps {
 
 /**
  * Client wrapper for /all-images. Renders through the standard
- * {@link CollectionPage} pipeline by synthesizing a {@link CollectionModel}.
+ * {@link CollectionPage} pipeline by synthesizing a {@link CollectionModel}, with a
+ * {@link CollectionHeader} showing the title and `initial.totalElements` as the count.
  *
  * Pagination: {@link useImageBrowser} owns the growing items array; an
  * IntersectionObserver sentinel triggers {@code loadNext()} as the user
@@ -30,6 +32,7 @@ interface AllImagesClientProps {
  * same live region rather than inserting a new one — this is the adopter that
  * benefits most, since a long scroll runs the transition dozens of times. The
  * text is static per fetch, so `polite` still means one announcement per page.
+ * The hook's own in-flight and done guards make a repeated sentinel trigger safe.
  *
  * Order preservation: the BE returns images in {@code capture_date ASC}
  * order. We assign a sequential {@code orderIndex} per array position and
@@ -46,8 +49,6 @@ export default function AllImagesClient({ initial, ssrViewport }: AllImagesClien
     rootMargin: '100% 0px',
   });
 
-  // Bridge the IO state to the hook's loadNext call. The hook's internal
-  // fetchingRef and isDone guards make duplicate triggers safe.
   useEffect(() => {
     if (sentinelVisible && !isLoading && !isDone) {
       loadNext();
@@ -66,7 +67,6 @@ export default function AllImagesClient({ initial, ssrViewport }: AllImagesClien
       isBlog: false,
       title: 'All Images',
       slug: 'all-images',
-      description: 'All images ordered by capture date ascending (oldest first)',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       visibility: CollectionVisibility.LISTED,
@@ -87,6 +87,7 @@ export default function AllImagesClient({ initial, ssrViewport }: AllImagesClien
         ssrViewport={ssrViewport}
         withFooter={false}
         backHref="/admin"
+        header={<CollectionHeader title="All Images" count={initial.totalElements} />}
       />
 
       <div ref={sentinelRef} className={styles.sentinel} aria-hidden />

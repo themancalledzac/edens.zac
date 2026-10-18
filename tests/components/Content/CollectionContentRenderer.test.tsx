@@ -20,14 +20,21 @@ const pushMock = jest.fn();
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: pushMock }) }));
 jest.mock('@/app/hooks/useParallax', () => ({ useParallax: () => ({ current: null }) }));
 
-/** No test here switches on the collection filter context, so it always resolves to null (public, non-filter-bar rendering). */
+const mockFilterValue: { current: unknown } = { current: null };
+const mockToolbarProps = jest.fn();
+
+/** The filter context resolves to null (public, non-filter-bar rendering) unless a test sets mockFilterValue. */
 jest.mock('@/app/components/ContentCollection/CollectionFilterContext', () => ({
-  useCollectionFilter: () => null,
+  useCollectionFilter: () => mockFilterValue.current,
 }));
 
-/** The FilterToolbar pulls in a deep dependency tree irrelevant to these tests; stub it. */
+/** The FilterToolbar pulls in a deep dependency tree irrelevant to these tests; stub it and record its props. */
 jest.mock('@/app/components/ui/FilterToolbar/FilterToolbar', () => ({
-  FilterToolbar: () => null,
+  FilterToolbar: (props: unknown) => {
+    mockToolbarProps(props);
+    return null;
+  },
+  MAX_FLAT_DATE_CHIPS: 5,
 }));
 jest.mock('@/app/components/auth/MeProvider', () => ({
   useMe: jest.fn(() => null),
@@ -1142,5 +1149,97 @@ describe('CollectionContentRenderer — reorder overlay gates', () => {
     render(<CollectionContentRenderer {...imageProps} isReorderMode {...reorderHandlers} />);
     fireEvent.click(screen.getByLabelText('Move right'));
     expect(reorderHandlers.onArrowMove).toHaveBeenCalledWith(imageProps.contentId, 1);
+  });
+});
+
+const emptyDimension = { values: [], filterable: false };
+const filterContextValue = {
+  filterState: {},
+  filterOptions: {
+    people: emptyDimension,
+    cameras: emptyDimension,
+    lenses: emptyDimension,
+    locations: emptyDimension,
+    dates: emptyDimension,
+    years: emptyDimension,
+    showHighlyRated: false,
+    showDateSort: false,
+    showHiddenToggle: false,
+    hiddenCount: 0,
+    showFollowingToggle: false,
+    followingCount: 0,
+  },
+  filteredAvailable: null,
+  onFilterChange: jest.fn(),
+  sections: null,
+  activeSectionKey: null,
+  onSectionSelect: null,
+  dateTwoState: false,
+  density: 5,
+  densityMax: 10,
+  densityVariant: 'tiers',
+  densityTiers: [],
+};
+
+describe('CollectionContentRenderer — info rail tightening (r-35.1)', () => {
+  afterEach(() => {
+    mockFilterValue.current = null;
+    mockToolbarProps.mockClear();
+  });
+
+  const siblingItems: TextBlockItem[] = [
+    { type: 'date', value: 'Jul 2026' },
+    { type: 'collection', value: 'Dolomites Film', slug: '/dolomites-film' },
+  ];
+
+  it('A2: passes flatDateLimit 2 to the toolbar on mobile', () => {
+    mockFilterValue.current = filterContextValue;
+    render(<CollectionContentRenderer {...baseProps} isMobile textItems={siblingItems} />);
+    expect(mockToolbarProps).toHaveBeenCalledWith(expect.objectContaining({ flatDateLimit: 2 }));
+  });
+
+  it('A2: passes MAX_FLAT_DATE_CHIPS to the toolbar on desktop', () => {
+    mockFilterValue.current = filterContextValue;
+    render(<CollectionContentRenderer {...baseProps} textItems={siblingItems} />);
+    expect(mockToolbarProps).toHaveBeenCalledWith(expect.objectContaining({ flatDateLimit: 5 }));
+  });
+
+  it('F2/A3: the Related label comes before the description container in DOM order', () => {
+    const { container } = render(
+      <CollectionContentRenderer {...baseProps} textItems={siblingItems} />
+    );
+    const related = screen.getByText('Related');
+    const description = container.querySelector('[class*="metadataDescriptionContainer"]');
+    expect(description).not.toBeNull();
+    expect(
+      related.compareDocumentPosition(description as Element) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('F2/A13: the description container renders on desktop when there is no description', () => {
+    const { container } = render(
+      <CollectionContentRenderer {...baseProps} textItems={siblingItems} />
+    );
+    const description = container.querySelector('[class*="metadataDescriptionContainer"]');
+    expect(description).not.toBeNull();
+    expect(description).toBeEmptyDOMElement();
+  });
+
+  it('A3: the Related block follows the date/location row directly', () => {
+    const items: TextBlockItem[] = [
+      ...siblingItems,
+      { type: 'location', value: 'Dolomites', slug: 'dolomites' },
+      { type: 'description', value: 'A trip' },
+    ];
+    const { container } = render(<CollectionContentRenderer {...baseProps} textItems={items} />);
+    const row = container.querySelector('[class*="metadataHeaderRow"]');
+    const related = screen.getByText('Related');
+    const description = container.querySelector('[class*="metadataDescriptionContainer"]');
+    expect(row).not.toBeNull();
+    expect(row?.compareDocumentPosition(related) ?? 0).toBeTruthy();
+    expect(row?.compareDocumentPosition(related)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(related.compareDocumentPosition(description as Element)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
   });
 });
