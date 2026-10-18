@@ -47,6 +47,16 @@ jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
   default: jest.fn(() => null),
 }));
 
+const mockBottomNav = jest.fn();
+
+jest.mock('@/app/components/ui/BottomNav/BottomNav', () => ({
+  __esModule: true,
+  BottomNav: (props: { me?: unknown }) => {
+    mockBottomNav(props);
+    return <nav data-testid="bottom-nav" />;
+  },
+}));
+
 const mockContentBlock = ContentBlockWithFullScreen as unknown as jest.Mock;
 const mockHeader = SiteHeader as unknown as jest.Mock;
 const mockClient = CollectionPageClient as unknown as jest.Mock;
@@ -429,5 +439,47 @@ describe('CollectionPage — header prop', () => {
     const link = screen.getByRole('link', { name: 'Admin' });
     expect(target.firstElementChild).toBe(link);
     expect(link.nextElementSibling).toBe(screen.getByTestId('custom-header'));
+  });
+});
+
+/**
+ * The mobile bottom bar renders in both branches with the same `me` the header gets, and is left
+ * out of the single-collection branch in edit mode.
+ */
+describe('CollectionPage — bottom nav', () => {
+  beforeEach(() => {
+    mockBottomNav.mockClear();
+  });
+
+  it('renders the bar on the single branch', () => {
+    render(<CollectionPage collection={makeCollection()} />);
+    expect(screen.getByTestId('bottom-nav')).toBeInTheDocument();
+  });
+
+  it('renders the bar on the array branch', () => {
+    render(<CollectionPage collection={[makeCollection()]} />);
+    expect(screen.getByTestId('bottom-nav')).toBeInTheDocument();
+  });
+
+  it('omits the bar when editMode is true', () => {
+    render(<CollectionPage collection={makeCollection()} editMode />);
+    expect(screen.queryByTestId('bottom-nav')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['single', makeCollection()],
+    ['array', [makeCollection()]],
+  ])('S1: passes me through unchanged on the %s branch', (_label, collection) => {
+    const me = { id: 7 } as unknown as Parameters<typeof CollectionPage>[0]['me'];
+    const first = render(<CollectionPage collection={collection} me={me} />);
+    expect(mockBottomNav.mock.calls[0][0].me).toBe(me);
+    first.unmount();
+    mockBottomNav.mockClear();
+    const second = render(<CollectionPage collection={collection} me={null} />);
+    expect(mockBottomNav.mock.calls[0][0].me).toBeNull();
+    second.unmount();
+    mockBottomNav.mockClear();
+    render(<CollectionPage collection={collection} />);
+    expect(mockBottomNav.mock.calls[0][0].me).toBeUndefined();
   });
 });

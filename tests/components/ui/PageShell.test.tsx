@@ -18,6 +18,16 @@ jest.mock('@/app/components/SiteHeader/SiteHeader', () => {
   return { __esModule: true, default: stub, SiteHeader: stub };
 });
 
+const mockBottomNav = jest.fn();
+
+jest.mock('@/app/components/ui/BottomNav/BottomNav', () => ({
+  __esModule: true,
+  BottomNav: (props: { me?: unknown }) => {
+    mockBottomNav(props);
+    return <nav data-testid="bottom-nav" />;
+  },
+}));
+
 describe('PageShell', () => {
   it('renders SiteHeader, a <main>, and its children', () => {
     render(
@@ -187,5 +197,45 @@ describe('PageShell — back link', () => {
     expect(
       link.compareDocumentPosition(screen.getByText('page body')) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
+  });
+});
+
+/**
+ * The mobile bottom bar renders beside the header and takes the same `me`. It is left out when the
+ * caller hides it or when the shell renders no header.
+ */
+describe('PageShell — bottom nav', () => {
+  beforeEach(() => {
+    mockBottomNav.mockClear();
+  });
+
+  it('renders the bar by default', () => {
+    render(<PageShell>x</PageShell>);
+    expect(screen.getByTestId('bottom-nav')).toBeInTheDocument();
+  });
+
+  it('omits the bar with hideBottomNav', () => {
+    render(<PageShell hideBottomNav>x</PageShell>);
+    expect(screen.queryByTestId('bottom-nav')).not.toBeInTheDocument();
+    expect(screen.getByTestId('site-header')).toBeInTheDocument();
+  });
+
+  it('omits the bar with withHeader={false}', () => {
+    render(<PageShell withHeader={false}>x</PageShell>);
+    expect(screen.queryByTestId('bottom-nav')).not.toBeInTheDocument();
+  });
+
+  it('S1: passes the same me object, null and undefined through', () => {
+    const me = { id: 7 } as unknown as Parameters<typeof PageShell>[0]['me'];
+    const { unmount } = render(<PageShell me={me}>x</PageShell>);
+    expect(mockBottomNav.mock.calls[0][0].me).toBe(me);
+    unmount();
+    mockBottomNav.mockClear();
+    const second = render(<PageShell me={null}>x</PageShell>);
+    expect(mockBottomNav.mock.calls[0][0].me).toBeNull();
+    second.unmount();
+    mockBottomNav.mockClear();
+    render(<PageShell>x</PageShell>);
+    expect(mockBottomNav.mock.calls[0][0].me).toBeUndefined();
   });
 });
