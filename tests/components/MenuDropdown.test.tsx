@@ -3,6 +3,9 @@
  * nav link) before asserting, so the fetch has settled and nothing races the assertions.
  */
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Link from 'next/link';
 
@@ -75,7 +78,7 @@ describe('MenuDropdown — auth actions', () => {
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
 
     const btn = await screen.findByRole('button', { name: /log out/i });
-    expect(screen.queryByRole('button', { name: /log in/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /log in/i })).not.toBeInTheDocument();
 
     fireEvent.click(btn);
     await waitFor(() => expect(mockLogout).toHaveBeenCalled());
@@ -130,25 +133,34 @@ describe('MenuDropdown — auth actions', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /log out/i }));
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.getByRole('link', { name: /log in/i })).toBeInTheDocument());
     expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
     expect(mockMe).toHaveBeenCalledTimes(2);
     expect(mockPush).toHaveBeenCalledWith('/');
     expect(mockRefresh).toHaveBeenCalled();
   });
 
-  it('shows "Log in" when logged out and navigates to /login', async () => {
+  it('shows "Log in" as a link to /login that closes the menu', async () => {
     mockMe.mockResolvedValue(null);
+    const onClose = jest.fn();
 
-    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    render(<MenuDropdown isOpen onClose={onClose} />);
 
-    const btn = await screen.findByRole('button', { name: /log in/i });
+    const link = await screen.findByRole('link', { name: /log in/i });
+    expect(link).toHaveAttribute('href', '/login');
+    expect(screen.queryByRole('button', { name: /log in/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
 
-    fireEvent.click(btn);
-    expect(mockPush).toHaveBeenCalledWith('/login');
+    fireEvent.click(link);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('hides the /login row in the phone sheet selector list', () => {
+    const scss = readFileSync(
+      join(process.cwd(), 'app/components/MenuDropdown/MenuDropdown.module.scss'),
+      'utf8'
+    );
+    expect(scss).toContain("a[href='/login']");
   });
 
   it('shows neither auth button while me() is still resolving', () => {
@@ -156,7 +168,7 @@ describe('MenuDropdown — auth actions', () => {
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
 
-    expect(screen.queryByRole('button', { name: /log in/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /log in/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
   });
 });
@@ -171,7 +183,7 @@ describe('MenuDropdown — destinations are links, actions are buttons', () => {
     mockMe.mockResolvedValue(null);
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Explore' })).toHaveAttribute('href', '/explore');
@@ -217,7 +229,7 @@ describe('MenuDropdown — destinations are links, actions are buttons', () => {
     const onClose = jest.fn();
 
     render(<MenuDropdown isOpen onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     fireEvent.click(screen.getByRole('link', { name: 'Collections' }));
     expect(onClose).toHaveBeenCalled();
@@ -241,7 +253,7 @@ describe('MenuDropdown — destinations are links, actions are buttons', () => {
     const onClose = jest.fn();
 
     render(<MenuDropdown isOpen onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     const instagram = screen.getByRole('link', { name: 'Visit Instagram' });
     const github = screen.getByRole('link', { name: 'Visit GitHub' });
@@ -268,7 +280,7 @@ describe('MenuDropdown — About disclosure and Contact row', () => {
     mockMe.mockResolvedValue(null);
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     const about = screen.getByRole('button', { name: 'About' });
     expect(about).toHaveAttribute('aria-expanded', 'false');
@@ -302,7 +314,7 @@ describe('MenuDropdown — About disclosure and Contact row', () => {
     mockMe.mockResolvedValue(null);
 
     const { rerender } = render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
     fireEvent.click(screen.getByRole('button', { name: 'Contact' }));
     rerender(<MenuDropdown isOpen={false} onClose={jest.fn()} />);
 
@@ -322,7 +334,7 @@ describe('MenuDropdown — click outside and scrim', () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 400 });
 
     render(<MenuDropdown isOpen onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
     fireEvent.mouseDown(document.body);
 
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -340,7 +352,7 @@ describe('MenuDropdown — click outside and scrim', () => {
         <MenuDropdown isOpen onClose={onClose} />
       </>
     );
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
     fireEvent.mouseDown(screen.getByRole('button', { name: 'Bar Menu' }));
 
     expect(onClose).not.toHaveBeenCalled();
@@ -351,7 +363,7 @@ describe('MenuDropdown — click outside and scrim', () => {
     const onClose = jest.fn();
 
     const { container } = render(<MenuDropdown isOpen onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
     fireEvent.click(container.querySelector('[aria-hidden="true"]')!);
 
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -378,7 +390,7 @@ describe('MenuDropdown — focus management', () => {
 
   it('is a labelled modal dialog', async () => {
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
@@ -392,7 +404,7 @@ describe('MenuDropdown — focus management', () => {
     expect(trigger).toHaveFocus();
 
     rerender(<Harness open onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     expect(screen.getByRole('dialog')).toHaveFocus();
   });
@@ -403,7 +415,7 @@ describe('MenuDropdown — focus management', () => {
     trigger.focus();
 
     rerender(<Harness open onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
     expect(screen.getByRole('dialog')).toHaveFocus();
 
     rerender(<Harness open={false} onClose={jest.fn()} />);
@@ -412,7 +424,7 @@ describe('MenuDropdown — focus management', () => {
 
   it('traps Tab at the end of the overlay and Shift+Tab at the start', async () => {
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     const dialog = screen.getByRole('dialog');
     const close = screen.getByRole('button', { name: /close navigation menu/i });
@@ -429,7 +441,7 @@ describe('MenuDropdown — focus management', () => {
 
   it('traps Shift+Tab when focus is still on the overlay container (post-open state)', async () => {
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     const dialog = screen.getByRole('dialog');
     const github = screen.getByRole('link', { name: 'Visit GitHub' });
@@ -441,7 +453,7 @@ describe('MenuDropdown — focus management', () => {
 
   it('applies the id it is handed so a trigger can reference it', async () => {
     render(<MenuDropdown isOpen onClose={jest.fn()} id="site-menu" />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     expect(screen.getByRole('dialog')).toHaveAttribute('id', 'site-menu');
   });
@@ -506,7 +518,7 @@ describe('MenuDropdown — admin item gating (isAdmin, not isLocalEnvironment)',
     render(
       <MenuDropdown isOpen onClose={jest.fn()} isCollectionPage collectionSlug="my-gallery" />
     );
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     expect(screen.getByRole('link', { name: 'Explore' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Create' })).not.toBeInTheDocument();
@@ -585,7 +597,7 @@ describe('MenuDropdown — Escape', () => {
     trigger.focus();
 
     rerender(<Harness open onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
     expect(screen.getByRole('dialog')).toHaveFocus();
 
     fireEvent.keyDown(document, { key: 'Escape' });
@@ -598,7 +610,7 @@ describe('MenuDropdown — Escape', () => {
   it('ignores Escape while an IME composition is open, so cancelling a candidate keeps the draft', async () => {
     const onClose = jest.fn();
     render(<MenuDropdown isOpen onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     fireEvent.keyDown(document, { key: 'Escape', isComposing: true });
     expect(onClose).not.toHaveBeenCalled();
@@ -610,7 +622,7 @@ describe('MenuDropdown — Escape', () => {
   it('leaves other keys alone', async () => {
     const onClose = jest.fn();
     render(<MenuDropdown isOpen onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     fireEvent.keyDown(document, { key: 'Enter' });
     fireEvent.keyDown(document, { key: 'Esc' });
@@ -706,7 +718,7 @@ describe('MenuDropdown — focus restore when the trigger is gone', () => {
     screen.getByTestId('trigger').focus();
 
     rerender(<Harness open withTrigger />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     rerender(<Harness open withTrigger={false} />);
     rerender(<Harness open={false} withTrigger={false} />);
@@ -742,7 +754,7 @@ describe('MenuDropdown — focus restore when the trigger is gone', () => {
     screen.getByTestId('trigger').focus();
 
     rerender(<Bare open withTrigger />);
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
 
     rerender(<Bare open withTrigger={false} />);
     expect(() => rerender(<Bare open={false} withTrigger={false} />)).not.toThrow();
@@ -970,7 +982,7 @@ describe('MenuDropdown — A15 no /auth/me on page load', () => {
     rerender(<MenuDropdown isOpen onClose={jest.fn()} me={null} />);
 
     expect(mockMe).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /log in/i })).toBeInTheDocument();
   });
 
   it('A15b: with me undefined the first open makes exactly one request, and later opens make none', async () => {
@@ -1019,7 +1031,7 @@ describe('MenuDropdown — A14 AUTH_CHANGED_EVENT refetch', () => {
       window.dispatchEvent(new Event(authApi.AUTH_CHANGED_EVENT));
     });
 
-    expect(await screen.findByRole('button', { name: /log in/i })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /log in/i })).toBeInTheDocument();
     expect(mockMe).toHaveBeenCalledTimes(1);
   });
 
@@ -1032,7 +1044,7 @@ describe('MenuDropdown — A14 AUTH_CHANGED_EVENT refetch', () => {
       window.dispatchEvent(new Event(authApi.AUTH_CHANGED_EVENT));
     });
 
-    expect(await screen.findByRole('button', { name: /log in/i })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /log in/i })).toBeInTheDocument();
     expect(mockMe).toHaveBeenCalledTimes(2);
   });
 
@@ -1063,7 +1075,7 @@ describe('MenuDropdown — A15c me prop changes', () => {
 
   it('A15c: shows the new value when me goes from anonymous to signed in', () => {
     const { rerender } = render(<MenuDropdown isOpen onClose={jest.fn()} me={null} />);
-    expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /log in/i })).toBeInTheDocument();
 
     rerender(<MenuDropdown isOpen onClose={jest.fn()} me={adminPrincipal} />);
 
@@ -1078,7 +1090,7 @@ describe('MenuDropdown — A15c me prop changes', () => {
 
     rerender(<MenuDropdown isOpen onClose={jest.fn()} me={null} />);
 
-    expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /log in/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Your space' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Create' })).not.toBeInTheDocument();
   });

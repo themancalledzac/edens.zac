@@ -103,12 +103,12 @@ describe('SiteHeader — menu toggle accessibility', () => {
     render(<SiteHeader />);
 
     fireEvent.click(toggle());
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
     expect(mockMe).toHaveBeenCalledTimes(1);
 
     fireEvent.click(toggle());
     fireEvent.click(toggle());
-    await screen.findByRole('button', { name: /log in/i });
+    await screen.findByRole('link', { name: /log in/i });
     expect(mockMe).toHaveBeenCalledTimes(1);
   });
 });
