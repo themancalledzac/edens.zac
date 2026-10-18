@@ -220,7 +220,7 @@ export { clampParallaxDimensions };
  * the other three card call sites do not.
  *
  * The cover of a password-protected collection is replaced with `null` unless the caller opts in
- * via `showProtectedCovers`, matching `collectionToContentModel` on the `CollectionModel` path.
+ * via `showProtectedCovers`.
  * Keyed on `isPasswordProtected` alone rather than on kind, so a payload missing the kind booleans
  * still strips. The API returns the cover for a protected gallery either way, so this strip is the
  * only thing keeping it off the card. Admin manage surfaces opt in — see `processContentBlocks`.

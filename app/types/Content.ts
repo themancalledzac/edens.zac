@@ -204,7 +204,7 @@ export interface ContentParallaxImageModel extends Omit<ContentImageModel, 'cont
   parallaxSpeed?: number;
   /**
    * Set only when this block was converted from a collection (see
-   * `convertCollectionContentToParallax` / `collectionToContentModel`). It is also the
+   * `convertCollectionContentToParallax`). It is also the
    * live discriminant for "is this a collection card": {@link isCollectionCard} keys on
    * slug presence, and `normalizeContentToRendererProps` uses the same key to decide
    * whether the block gets a public badge.
