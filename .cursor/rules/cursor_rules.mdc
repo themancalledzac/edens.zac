@@ -58,11 +58,6 @@ Import order:
 5. **Caching**: Use Next.js cache tags and revalidation for API responses
 6. **Content Processing**: Use utilities in `app/utils/contentLayout.ts` for content transformation
 
-## For More Details
-
-// | topic | Reference File |
-// | **code templates** | `ai_guidelines/{etc}` |
-
 ## Project Structure
 
 Root:
@@ -97,16 +92,4 @@ app/
 
 ## For More Details
 
-For specific topics, refer to the modular guideline files in `ai_guidelines/`:
-
-| Topic                                                 | Reference File                        |
-| ----------------------------------------------------- | ------------------------------------- |
-| **Core principles & critical rules**                  | `ai_guidelines/ai_main.md`            |
-| **Quick reference** (file naming, imports, structure) | `ai_guidelines/ai_quick_reference.md` |
-| **Testing strategy & patterns**                       | `ai_guidelines/ai_test.md`            |
-| **ESLint & code quality**                             | `ai_guidelines/ai_lint.md`            |
-| **AI interaction & communication**                    | `ai_guidelines/ai_interaction.md`     |
-| **API patterns & backend integration**                | `ai_guidelines/ai_api.md`             |
-| **TypeScript guidelines**                             | `ai_guidelines/ai_typescript.md`      |
-
-**Note**: These files are modular and can be imported when needed, rather than always being part of the cursor rules.
+`CLAUDE.md` holds the full rules for this repo, including testing, linting, API patterns and TypeScript. Read it before making changes.

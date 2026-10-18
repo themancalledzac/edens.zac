@@ -3,7 +3,7 @@
  *
  * One type on one route today: `ImageGallery` for a collection page. Adding a second type means
  * deciding how the nodes relate (a `@graph`, or independent scripts), which is a larger question
- * than this file answers — see PF8 in docs/spikes/2026-features/pf-performance-platform.md.
+ * than this file answers — see PR #367.
  */
 
 import { type CollectionModel } from '@/app/types/Collection';

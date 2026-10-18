@@ -8,8 +8,6 @@
 
 A full-stack photography portfolio and content management platform. Built for performance, type safety, and visual impact.
 
-![Screenshot](docs/screenshot-home.png)
-
 ---
 
 ## Tech Stack
@@ -86,18 +84,13 @@ A full-stack photography portfolio and content management platform. Built for pe
 
 ### BoxTree Layout Algorithm
 
-The layout engine uses a recursive binary tree (BoxTree) to arrange images into visually balanced rows. Each leaf node is a content item; combined nodes specify horizontal or vertical arrangement. The algorithm:
+A recursive binary tree (BoxTree) arranges images into visually balanced rows: greedy row fill, a point-balance split, then enumeration of every horizontal/vertical assignment scored on aspect ratio and equity.
 
-1. **Greedy row fill** -- Items are added sequentially until the row reaches 90-115% capacity, measured in slot units derived from each image's effective rating.
-2. **Point-balance split** -- Within a row, the tree is built by splitting at the adjacent boundary that best halves the row's prominence (effective-rating) points, so items group when their combined weight matches the other side's. No templates -- structure follows the ratings.
-3. **Direction enumeration** -- Every horizontal/vertical assignment of that tree is enumerated and scored against a hard aspect-ratio floor (a row is never taller than it is wide) plus closeness to the target AR (1.5 for desktop); among acceptable candidates, the most equitable one (leaf areas tracking each image's weight) wins.
-4. **Boundary optimization** -- A post-pass shifts items between adjacent rows to maximize fill quality across the entire layout.
-
-This produces layouts where a single 5-star panoramic gets a full-width hero row, while four 2-star verticals stack efficiently into a compact grid -- all without manual configuration.
+See [`app/utils/rowCombination.md`](app/utils/rowCombination.md).
 
 ### Effective Rating System
 
-Images are classified by a rating (0-5 stars) that directly controls their visual prominence. The rating is orientation-agnostic: a vertical 5-star and a horizontal 5-star carry the same effective rating, and directionality is expressed downstream by aspect-ratio extremeness (width cost for horizontals, height demand for verticals) rather than by demoting the rating. Collection cards rate as 4; non-image content as 1. (The earlier "vertical −1 penalty" was retired in the directional-prominence rewrite, PR #182/#183.)
+Images are classified by a rating (0-5 stars) that directly controls their visual prominence. The rating is orientation-agnostic: a vertical 5-star and a horizontal 5-star carry the same effective rating, and directionality is expressed downstream by aspect-ratio extremeness (width cost for horizontals, height demand for verticals) rather than by demoting the rating. Collection cards rate as 4; non-image content as 1.
 
 ### Server Components
 
@@ -109,33 +102,26 @@ The application defaults to Server Components. Data fetching, layout calculation
 
 ```
 app/
-  layout.tsx, page.tsx            Root layout and home page (Server Components)
-  (admin)/                        Admin routes (collection manager, image browser, admin panel)
-    collection/manage/[[...slug]]/  Collection editor with drag-and-drop
-    all-images/                     Image browser and metadata editor
-    admin/users/                    User management
-  [slug]/page.tsx                 Dynamic collection pages (real collections and tag views)
-  all-collections/                Collection list and management
-  explore/                        Taxonomy entry point
-  tag/[slug]/, location/[slug]/   Cross-collection taxonomy pages
-  api/                            Next.js API routes (proxy to Spring Boot)
-  components/
-    Content/                      BoxRenderer, image/text/gif renderers
-    ContentCollection/            Collection page layout
-    ImageMetadata/                Metadata editing forms
-    SiteHeader/                   Navigation and site header
-    FullScreenModal/              Lightbox image viewer
-  hooks/                          useCollectionData, useParallax, useViewport
-  lib/
-    api/                          Typed API client (collections, content, core)
-    components/                   Shared UI components
-  types/                          TypeScript definitions (Collection, Content, etc.)
-  utils/                          Layout algorithms, rating utilities, type guards
-  constants/                      Layout breakpoints, image config, grid settings
-  styles/                         Global styles, SCSS variables
-tests/                            Jest tests mirroring app/ structure
-docs/                             Feature specs, spikes, handoff docs
-ai_guidelines/                    Modular AI development guidelines
+  layout.tsx, page.tsx            Root layout and home page
+  (admin)/                        Admin routes
+    admin/, admin/users/            Admin hub and user management
+    all-images/                     Image browser
+    collection/manage/              Collection editor
+    metadata/                       Metadata editing page
+  [slug]/                         Collection pages
+  collections/, all-client-galleries/  Collection lists
+  explore/, search/               Discovery
+  tag/[slug]/, location/[slug]/   Taxonomy pages
+  s/[token]/, invite/[token]/     Share and invite links
+  login/, user/                   Sign-in and the user's own space
+  api/                            proxy, revalidate, csp-report, client-errors
+  components/                     UI components (Content/, Metadata/, SiteHeader/, ...)
+  hooks/                          useParallax, useViewport, useFetchMe, useImageBrowser, ...
+  lib/                            api/ (typed client), actions/, storage/
+  types/, utils/, constants/, styles/
+proxy.ts                          Request proxy (admin and auth routing)
+tests/                            Jest tests mirroring app/; e2e/ holds Playwright specs
+docs/                             backlog.md and decisions.md
 ```
 
 ---
@@ -181,16 +167,13 @@ npm install
 Create a `.env.local` file in the project root:
 
 ```bash
-# Backend API
-NEXT_PUBLIC_API_URL=http://localhost:8080
 API_URL=http://localhost:8080
-
-# AWS CloudFront (image CDN)
-NEXT_PUBLIC_CLOUDFRONT_URL=https://your-distribution.cloudfront.net
-
-# Next.js
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_ENV=local
+INTERNAL_API_SECRET=
 ```
+
+`API_URL` is the backend, `INTERNAL_API_SECRET` is sent to it as `X-Internal-Secret`, and `NEXT_PUBLIC_ENV=local` turns on the local admin shell. Never set it in a deploy.
 
 ### Development
 
@@ -218,23 +201,11 @@ Next's default port.
 
 ### Working on admin pages
 
-`/admin` and the other `(admin)` routes render anonymously in local dev, but **the backend does
-not**: since backend #243, `/api/admin/**` requires an admin role in every profile. The symptom is
-the admin panels sitting on "Loading users…" forever with 401s in the console. That is expected,
-and it is not a frontend gate to loosen.
+`/admin` and the other `(admin)` routes render anonymously in local dev. On 2026-10-18 an anonymous `GET localhost:8080/api/admin/users` returned 200: the dev-profile `DevLocalAdminFilter` answers it as the bootstrap admin, and a bootstrap login with `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD` works. Backend PR edens.zac.backend#334 (merged 2026-10-18) limits that anonymous admin to loopback callers plus addresses in `DEV_LOCAL_ADMIN_EXTRA_ADDRESSES`. The local backend runs in Docker, so a Docker user sets that variable to the Docker gateway address or logs in at `http://localhost:3000/login`.
 
-To get real data, sign in at `http://localhost:3000/login` with your own email and password. That
-is the whole procedure — the dev profile sets `app.auth.cookie-secure=false` so the session cookie
-works over plain http, and the BFF forwards `Set-Cookie` back to the browser. The session lasts 60
-days.
+> **The local backend writes to production.** The backend container's datasource is `host.docker.internal:5432`, an SSH tunnel to the production EC2 database. Every admin mutation you make against localhost edits live rows.
 
-`ADMIN_BOOTSTRAP_PASSWORD` does not help. It only seeds a user that does not exist yet, so once the
-admin account exists it is ignored.
-
-> **The local backend writes to production.** There is no local Postgres. The backend container's
-> datasource is `host.docker.internal:5432`, which is an SSH tunnel to the production EC2 database.
-> Every admin mutation you make against localhost edits live rows — real users, real collections.
-> Treat local admin as production admin.
+Open work lives in [`docs/backlog.md`](docs/backlog.md) and past decisions in [`docs/decisions.md`](docs/decisions.md).
 
 ---
 
@@ -247,18 +218,6 @@ The frontend communicates with a Spring Boot backend through a typed API client 
 - **Content endpoints**: `/api/admin/content/*` -- content CRUD operations
 
 API functions in `app/lib/api/` use Next.js cache tags for ISR and on-demand revalidation.
-
----
-
-## Screenshots
-
-| Home Page                         | Collection Page                               |
-| --------------------------------- | --------------------------------------------- |
-| ![Home](docs/screenshot-home.png) | ![Collection](docs/screenshot-collection.png) |
-
-| Admin Panel                         | Mobile View                           |
-| ----------------------------------- | ------------------------------------- |
-| ![Admin](docs/screenshot-admin.png) | ![Mobile](docs/screenshot-mobile.png) |
 
 ---
 

@@ -19,12 +19,11 @@ import type { ImageUpdateState } from '../hooks/useMetadataState';
 import modalStyles from '../MetadataModal.module.scss';
 import { computeCameraSelectionUpdate } from '../metadataUtils';
 
-// ---------------------------------------------------------------------------
-// Static add-new-field schemas. Hoisted out of the render path because they
-// don't reference any component-scope identifier (props / state / closures).
-// Per the project's "inline JSX config" rule (ai_guidelines/ai_quick_reference.md).
-// ---------------------------------------------------------------------------
-
+/**
+ * Static add-new-field schema, hoisted out of the render path because it references no
+ * component-scope identifier (props, state or closures). Follows the inline JSX config rule in
+ * CLAUDE.md.
+ */
 const LENS_ADD_NEW_FIELDS: AddNewField[] = [
   {
     name: 'name',

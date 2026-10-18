@@ -3,7 +3,8 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * Local-only: attaches to the running dev server on 3000 and the docker-compose backend. CI does
  * not run this; it has no backend. `E2E_EMAIL` / `E2E_PASSWORD` are the backend's
- * ADMIN_BOOTSTRAP_* values.
+ * ADMIN_BOOTSTRAP_* values. The e2e backend must point at a local Postgres, never the production
+ * tunnel on 5432.
  */
 export default defineConfig({
   testDir: 'tests/e2e',
