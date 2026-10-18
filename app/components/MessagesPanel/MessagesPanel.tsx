@@ -17,6 +17,7 @@ import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
 import { type AdminMessagesPayload, useCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { useMessageDelete } from '@/app/hooks/useMessageDelete';
 import { type AdminMessageView, getAdminMessages } from '@/app/lib/api/messages';
+import { sortByDate } from '@/app/utils/sortByDate';
 
 import styles from './MessagesPanel.module.scss';
 
@@ -57,10 +58,7 @@ const EMPTY_PAYLOAD: AdminMessagesPayload = { messages: [], total: 0 };
 async function fetchMessages(): Promise<AdminMessagesPayload> {
   const result = await getAdminMessages(100, 0);
   if (!result) return EMPTY_PAYLOAD;
-  const sorted = [...result.messages].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-  return { messages: sorted, total: result.total };
+  return { messages: sortByDate(result.messages, 'desc'), total: result.total };
 }
 
 export function MessagesPanel({ shell }: MessagesPanelProps) {
