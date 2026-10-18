@@ -5,6 +5,7 @@
 
 import { render, screen } from '@testing-library/react';
 
+import TaxonomyPage from '@/app/components/TaxonomyPage/TaxonomyPage';
 import { getAllTags, searchImages } from '@/app/lib/api/content';
 import TagPageRoute from '@/app/tag/[slug]/page';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
@@ -13,6 +14,10 @@ jest.mock('next/navigation', () => ({
   notFound: jest.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
   }),
+}));
+
+jest.mock('@/app/lib/api/auth', () => ({
+  meServer: jest.fn(() => Promise.resolve(null)),
 }));
 
 jest.mock('@/app/lib/api/content', () => ({
@@ -50,6 +55,11 @@ const mockGetAllTags = getAllTags as jest.Mock;
 const mockSearchImages = searchImages as jest.Mock;
 const mockResolveSsrViewport = resolveSsrViewport as jest.Mock;
 
+const renderRoute = async (slug: string) => {
+  const element = await TagPageRoute({ params: Promise.resolve({ slug }) });
+  return render(await TaxonomyPage(element.props));
+};
+
 const viewport = { contentWidth: 900, viewportHeight: 700, isMobile: false };
 
 const image = {
@@ -69,7 +79,7 @@ beforeEach(() => {
 describe('TagPageRoute', () => {
   it('renders the tag name as the h1', async () => {
     mockGetAllTags.mockResolvedValue([{ id: 7, name: 'alpine', slug: 'alpine' }]);
-    render(await TagPageRoute({ params: Promise.resolve({ slug: 'alpine' }) }));
+    await renderRoute('alpine');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('alpine');
   });
 
@@ -90,7 +100,7 @@ describe('TagPageRoute', () => {
 
   it('threads the SSR viewport into the content block', async () => {
     mockGetAllTags.mockResolvedValue([{ id: 7, name: 'alpine', slug: 'alpine' }]);
-    render(await TagPageRoute({ params: Promise.resolve({ slug: 'alpine' }) }));
+    await renderRoute('alpine');
     expect(contentBlockProps).toHaveBeenCalledWith(
       expect.objectContaining({
         serverContentWidth: 900,
