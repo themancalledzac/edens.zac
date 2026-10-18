@@ -84,3 +84,10 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+.bodyFull {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
