@@ -254,3 +254,22 @@
   font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.sheetHeading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.sheetOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

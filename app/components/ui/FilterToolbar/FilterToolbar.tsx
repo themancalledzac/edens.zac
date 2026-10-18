@@ -1,14 +1,16 @@
 'use client';
 
-import { Fragment, useCallback, useRef, useState } from 'react';
+import { Fragment, useCallback, useId, useRef, useState } from 'react';
 
 import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
 import {
   type DensityTier,
   DensityTierControl,
 } from '@/app/components/ui/FilterToolbar/DensityTierControl';
+import { Modal } from '@/app/components/ui/Modal/Modal';
 import { SegmentedChip } from '@/app/components/ui/SegmentedChip/SegmentedChip';
 import { useClickOutside } from '@/app/hooks/useClickOutside';
+import { useViewport } from '@/app/hooks/useViewport';
 import {
   ARRAY_FILTER_KEYS,
   type ArrayFilterKey,
@@ -202,6 +204,11 @@ function flatDimension(dim: ToolbarDimension | undefined, cap: number): ToolbarD
  * The Order chip stays lit in that mode for the same reason. And the admin Hidden chip reads
  * inverted from the others: lit means the non-public collections ARE on screen, which is an
  * admin's default, and switching it off previews the list as the general audience sees it.
+ *
+ * Under 768px a dropdown's options open in the shared bottom-sheet {@link Modal} instead of the
+ * inline panel. The sheet is portaled outside the bar, so the bar's click-outside is switched off
+ * while it is mobile: it would otherwise close the sheet on the press that precedes the tap.
+ * Escape, backdrop and selection all close through {@link closeAll}, which returns focus to the chip.
  */
 export function FilterToolbar({
   filterState,
@@ -230,6 +237,8 @@ export function FilterToolbar({
 }: FilterToolbarProps) {
   const [openDropdown, setOpenDropdown] = useState<ArrayFilterKey | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
+  const { isMobile } = useViewport();
+  const sheetHeadingId = useId();
   /**
    * The trigger that opened the current panel. Selecting an option unmounts the focused chip, which
    * would otherwise drop focus to `document.body` on every single selection; restoring it here
@@ -241,7 +250,7 @@ export function FilterToolbar({
     if (openDropdown !== null) triggerRefs.current[openDropdown]?.focus();
     setOpenDropdown(null);
   }, [openDropdown]);
-  useClickOutside(barRef, openDropdown !== null, closeAll);
+  useClickOutside(barRef, openDropdown !== null && !isMobile, closeAll);
 
   const toggleOpen = (key: ArrayFilterKey) => setOpenDropdown(prev => (prev === key ? null : key));
 
@@ -408,6 +417,24 @@ export function FilterToolbar({
             if (!dim || dim.options.length === 0) return null;
             const selected = filterState[key] as readonly string[];
             const isOpen = openDropdown === key;
+            const renderOptions = () =>
+              dim.options.map(option => {
+                const isSelected = selected.includes(option);
+                const available = isSelected || isOptionAvailable(filteredAvailable, key, option);
+                return (
+                  <FilterChip
+                    key={`${key}-${option}`}
+                    label={dim.optionLabels?.[option] ?? option}
+                    count={dim.counts?.[option]}
+                    active={isSelected}
+                    state={available ? 'available' : 'unavailable'}
+                    onToggle={() => {
+                      toggleArrayFilter(filterState, onFilterChange, key, option);
+                      closeAll();
+                    }}
+                  />
+                );
+              });
             return (
               <div key={key} className={styles.dropdown}>
                 <FilterChip
@@ -421,27 +448,16 @@ export function FilterToolbar({
                   ariaHasPopup="true"
                   onToggle={() => toggleOpen(key)}
                 />
-                {isOpen && (
-                  <div className={styles.panel}>
-                    {dim.options.map(option => {
-                      const isSelected = selected.includes(option);
-                      const available =
-                        isSelected || isOptionAvailable(filteredAvailable, key, option);
-                      return (
-                        <FilterChip
-                          key={`${key}-${option}`}
-                          label={dim.optionLabels?.[option] ?? option}
-                          count={dim.counts?.[option]}
-                          active={isSelected}
-                          state={available ? 'available' : 'unavailable'}
-                          onToggle={() => {
-                            toggleArrayFilter(filterState, onFilterChange, key, option);
-                            closeAll();
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
+                {isOpen && !isMobile && <div className={styles.panel}>{renderOptions()}</div>}
+                {isOpen && isMobile && (
+                  <Modal open onClose={closeAll} variant="sheet-bottom" labelledBy={sheetHeadingId}>
+                    <div className={styles.sheet}>
+                      <h2 id={sheetHeadingId} className={styles.sheetHeading}>
+                        {dim.label}
+                      </h2>
+                      <div className={styles.sheetOptions}>{renderOptions()}</div>
+                    </div>
+                  </Modal>
                 )}
               </div>
             );
