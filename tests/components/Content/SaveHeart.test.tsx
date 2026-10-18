@@ -4,6 +4,9 @@
  * SavesProvider. `wrap` mounts MeProvider over a SavesProvider.
  */
 
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { fireEvent, render, screen } from '@testing-library/react';
 import { type ReactNode } from 'react';
 
@@ -83,5 +86,27 @@ describe('SaveHeart', () => {
     fireEvent.click(screen.getByRole('button', { name: /remove from your space/i }));
     expect(screen.getByTestId('ids')).toHaveTextContent('');
     expect(removeSave).toHaveBeenCalledWith(42);
+  });
+});
+
+describe('SaveHeart stylesheet', () => {
+  const scss = readFileSync(
+    path.join(process.cwd(), 'app/components/Content/SaveHeart.module.scss'),
+    'utf8'
+  );
+  const baseRule = scss.slice(scss.indexOf('.saveHeart {'), scss.indexOf('.saveHeartIcon {'));
+  const coarse = scss.slice(scss.indexOf('(pointer: coarse)'));
+
+  it('draws a 32px square box with a 45% scrim and an 18px glyph', () => {
+    expect(baseRule).toContain('width: var(--space-6)');
+    expect(baseRule).toContain('height: var(--space-6)');
+    expect(baseRule).toContain('rgb(0 0 0 / 45%)');
+    expect(scss).toMatch(/\.saveHeartIcon {\s*width: 18px;\s*height: 18px;/);
+  });
+
+  it('adds an invisible 44px top-right overlay and a 0.6 idle opacity on coarse pointers', () => {
+    expect(coarse).toMatch(/\.saveHeart::after {[^}]*width: 44px;[^}]*height: 44px;/);
+    expect(coarse).toMatch(/top: 0;[^}]*right: 0;/);
+    expect(coarse).toMatch(/\.saveHeart {[^}]*opacity: 0\.6;/);
   });
 });
