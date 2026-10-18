@@ -73,19 +73,16 @@ interface MenuNavItem {
  * scrim behind its dialog and sizes the dialog to the backdrop, which would darken the page behind
  * this menu and break click-outside-to-close. Those are the only two reasons —
  * `Modal` does not touch the `fullscreen-open` body class (that is `FullScreenModal`'s, applied
- * outside the primitive). So this owns click-outside itself (ignoring mousedowns inside `[data-bottom-nav]`, so the bar's Menu cell toggles instead of reopening) and gets Escape, body scroll lock,
- * focus trap, and focus restore from `useDialogFocus`.
- *
- * Escape ignores `isComposing` keydowns: dismissing an IME candidate list is a cancel inside the
- * About panel, not a request to tear the whole menu down.
+ * outside the primitive). So this owns click-outside itself and gets Escape, body scroll lock,
+ * focus trap, and focus restore from `useDialogFocus`. Click-outside ignores mousedowns inside
+ * `[data-bottom-nav]`, so the bar's Menu cell toggles the menu instead of reopening it.
  *
  * About is the shared `Disclosure` primitive, which owns the generated panel id,
  * `aria-expanded`, and the `aria-controls` that is emitted only while the panel is mounted. Its
  * chevron is hidden here (`.disclosureChevron`): the rows are right-aligned display type with no
  * affordance glyph on any other item, and it is `aria-hidden` decoration, so hiding it costs
  * nothing a screen reader can hear. The panel wrapper that carries the id is `display: contents`,
- * so About stays a direct flex children of the scroll container and the layout is
- * unchanged.
+ * so About stays a direct flex child of the scroll container and the layout is unchanged.
  *
  * Clear Cache renders only in a local environment by product choice: it is a dev workflow tool,
  * not something for every prod page, though the endpoint exists in every profile. It goes
