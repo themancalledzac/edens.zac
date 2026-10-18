@@ -108,11 +108,10 @@ export function MessagesPanel({ shell }: MessagesPanelProps) {
             {messages.map(m => (
               <ListRow
                 key={m.id}
-                left={<MessageRowLeft message={m} styles={styles} excerptWords={10} />}
+                left={<MessageRowLeft message={m} excerptWords={10} />}
                 right={
                   <MessageRowRight
                     message={m}
-                    styles={styles}
                     onDelete={handleDelete}
                     deleting={deletingId === m.id}
                   />

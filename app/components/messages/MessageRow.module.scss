@@ -1,0 +1,86 @@
+/* MessageRow — the message parts' own styling, shared by the /comments card and the compact
+   admin-hub row. The card arranges email, badge and time on .meta; the hub row stacks the sender
+   over an excerpt in .identity. */
+
+/* Flex rather than a plain block because it has to blockify the `<a>` inside it — an inline `<a>`
+   ignores the `overflow: hidden` on .email below, and a long address would then push the right
+   rail off the panel instead of ellipsising. */
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.email {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-on-surface);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.time {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--color-on-surface-muted);
+}
+
+.body {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.replyButton {
+  padding: 2px var(--space-2);
+  font-size: var(--text-xs);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--color-on-surface);
+  text-decoration: none;
+  line-height: 1.4;
+
+  &:hover {
+    background: var(--color-surface-raised);
+    border-color: var(--color-on-surface);
+  }
+}
+
+/* The card's email-badge-timestamp line. The timestamp is pushed to the end so it sits in the same
+   place whether or not the badge is there. */
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+
+  .time {
+    margin-left: auto;
+    font-size: var(--text-sm);
+  }
+}
+
+.unread {
+  color: var(--color-accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
