@@ -44,6 +44,7 @@ export default async function UserPage({ searchParams }: UserPageProps) {
 
   return (
     <PageShell
+      me={principal}
       collectionSlug={isShadowedRouteSlug(data.collection.slug) ? undefined : data.collection.slug}
     >
       <h1 className={styles.srOnly}>Your Space</h1>

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { useSiteMenu } from '@/app/components/SiteHeader/SiteMenuContext';
-import { useFetchMe } from '@/app/hooks/useFetchMe';
 import { type MeResponse } from '@/app/types/Auth';
 
 import styles from './BottomNav.module.scss';
@@ -23,14 +22,15 @@ function isCurrent(pathname: string | null, href: string) {
  * Bottom Nav
  *
  * Mobile-only fixed bar with Menu, Explore, Collections and a fourth Log in / Your space cell.
- * The Menu cell drives the shared site menu from {@link SiteMenuProvider}. While `me` is
- * unresolved the fourth cell is reserved but empty, so a signed-in visitor never sees "Log in".
+ * The Menu cell drives the shared site menu from {@link SiteMenuProvider}. Renders from the
+ * server-resolved `me` prop only and never requests `/me`: a value gives "Your space" (`/admin`
+ * for admins, `/user` otherwise), `null` gives "Log in", and `undefined` (unresolved) reserves an
+ * empty fourth cell, so a signed-in visitor never sees "Log in".
  * The bar is hidden at 768px and up in CSS.
  */
-export function BottomNav({ me: initialMe }: BottomNavProps) {
+export function BottomNav({ me }: BottomNavProps) {
   const pathname = usePathname();
   const menu = useSiteMenu();
-  const { me, loading } = useFetchMe({ initialMe, enabled: true });
 
   const isOpen = menu?.isOpen ?? false;
   const closeMenu = menu?.close;
@@ -39,10 +39,8 @@ export function BottomNav({ me: initialMe }: BottomNavProps) {
     { href: '/explore', label: 'Explore' },
     { href: '/collections', label: 'Collections' },
   ];
-  if (!loading) {
-    if (me) links.push({ href: me.isAdmin ? '/admin' : '/user', label: 'Your space' });
-    else links.push({ href: '/login', label: 'Log in' });
-  }
+  if (me) links.push({ href: me.isAdmin ? '/admin' : '/user', label: 'Your space' });
+  else if (me === null) links.push({ href: '/login', label: 'Log in' });
 
   return (
     <nav className={styles.bar} aria-label="Primary" data-bottom-nav>
@@ -71,7 +69,7 @@ export function BottomNav({ me: initialMe }: BottomNavProps) {
           </Link>
         );
       })}
-      {loading && <span className={styles.cell} aria-hidden="true" />}
+      {me === undefined && <span className={styles.cell} aria-hidden="true" />}
     </nav>
   );
 }

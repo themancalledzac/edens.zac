@@ -130,11 +130,6 @@ export function MenuDropdown({
   const { me, loading: meLoading } = useFetchMe({ initialMe, enabled: hasOpened });
   const isAdmin = me?.isAdmin ?? false;
 
-  const handleLogin = () => {
-    router.push('/login');
-    onClose();
-  };
-
   const handleLogout = () => {
     void (async () => {
       await logout().catch(() => {});
@@ -306,9 +301,9 @@ export function MenuDropdown({
 
           {!meLoading && !me && (
             <div className={styles.dropdownMenuItem}>
-              <button type="button" className={styles.dropdownMenuButton} onClick={handleLogin}>
+              <NavLink href="/login" className={styles.dropdownMenuLink} onClick={onClose}>
                 <span className={styles.dropdownMenuOptions}>Log in</span>
-              </button>
+              </NavLink>
             </div>
           )}
         </div>

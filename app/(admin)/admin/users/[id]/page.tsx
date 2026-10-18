@@ -11,6 +11,7 @@ import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { UserRolesSection } from '@/app/components/UserForm/UserRolesSection';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
+import { meServer } from '@/app/lib/api/auth';
 import { ApiError } from '@/app/lib/api/core';
 import { getAdminUser } from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
@@ -95,8 +96,9 @@ export default async function AdminUserDetailPage({ params }: AdminUserDetailPag
   if (!user) notFound();
 
   if (user.status === 'PERSON') {
+    const me = await meServer().catch(() => null);
     return (
-      <PageShell className={styles.page}>
+      <PageShell className={styles.page} me={me}>
         <div className={styles.header}>
           <Link href="/admin" className={styles.back}>
             <span aria-hidden="true">←</span> Admin

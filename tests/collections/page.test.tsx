@@ -19,12 +19,13 @@ jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => ({
 }));
 jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
   __esModule: true,
-  PageShell: ({ children }: { children: ReactNode }) => children,
+  PageShell: jest.fn(({ children }: { children: ReactNode }) => children),
   default: ({ children }: { children: ReactNode }) => children,
 }));
 
 import CollectionsPage from '@/app/collections/page';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { meServer } from '@/app/lib/api/auth';
 import { getScopedAllCollections } from '@/app/lib/api/collections';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
@@ -100,17 +101,13 @@ describe('CollectionsPage', () => {
   });
 
   it('always shows the filter bar, whatever aggregates the payload carries', async () => {
-    // On an index surface the bar is part of the page, not something that appears only when the
-    // backend happens to ship tags or cameras on the child blocks.
     mockGetScopedAllCollections.mockResolvedValue(
       makeParent([createCollectionContent(1, { title: 'Solo', slug: 'solo' })])
     );
     expect(stackProps(await CollectionsPage()).alwaysShowFilterBar).toBe(true);
   });
 
-  it('opens at the shared default density', async () => {
-    // No /collections-only density: the page inherits LAYOUT.defaultChunkSize like every other
-    // collection surface, and the shared slider re-tunes it.
+  it('opens at the shared default density, with no /collections-only chunk size', async () => {
     mockGetScopedAllCollections.mockResolvedValue(
       makeParent([createCollectionContent(1, { title: 'Solo', slug: 'solo' })])
     );
@@ -172,9 +169,6 @@ describe('CollectionsPage', () => {
     expect(mockGetScopedAllCollections).toHaveBeenCalledWith(500);
   });
 
-  // The route absorbed /all-collections, whose only distinguishing behaviour was threading the
-  // principal through. Without this the admin Hidden toggle can never appear on the canonical
-  // browse surface.
   it('threads the resolved principal through so admin-only controls can render', async () => {
     const me = { isAdmin: true } as Awaited<ReturnType<typeof meServer>>;
     mockMeServer.mockResolvedValue(me);
@@ -187,6 +181,36 @@ describe('CollectionsPage', () => {
 
   it('still renders for an anonymous viewer with no principal', async () => {
     mockMeServer.mockResolvedValue(null);
+    mockGetScopedAllCollections.mockResolvedValue(makeParent([createCollectionContent(1)]));
+
+    const result = await CollectionsPage();
+
+    expect(stackProps(result).me).toBeNull();
+  });
+
+  it('passes the resolved principal to the shell on the success render', async () => {
+    const me = { isAdmin: true } as Awaited<ReturnType<typeof meServer>>;
+    mockMeServer.mockResolvedValue(me);
+    mockGetScopedAllCollections.mockResolvedValue(makeParent([createCollectionContent(1)]));
+
+    const result = (await CollectionsPage()) as { type: unknown; props: { me: unknown } };
+
+    expect(result.type).toBe(PageShell);
+    expect(result.props.me).toBe(me);
+  });
+
+  it('passes the resolved principal to the shell on the fallback render', async () => {
+    const me = { isAdmin: false } as Awaited<ReturnType<typeof meServer>>;
+    mockMeServer.mockResolvedValue(me);
+    mockGetScopedAllCollections.mockRejectedValue(new Error('upstream down'));
+
+    const result = (await CollectionsPage()) as { props: { me: unknown } };
+
+    expect(result.props.me).toBe(me);
+  });
+
+  it('renders with a null principal when the principal read fails', async () => {
+    mockMeServer.mockRejectedValue(new Error('boom'));
     mockGetScopedAllCollections.mockResolvedValue(makeParent([createCollectionContent(1)]));
 
     const result = await CollectionsPage();

@@ -1,10 +1,13 @@
 import { type Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, unstable_rethrow } from 'next/navigation';
 
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
+import { meServer } from '@/app/lib/api/auth';
+import { type MeResponse } from '@/app/types/Auth';
 import { isShadowedRouteSlug } from '@/app/utils/collectionSlugs';
+import { logger } from '@/app/utils/logger';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import styles from './page.module.scss';
@@ -39,11 +42,23 @@ interface SharePageProps {
  * what we know. A hand-edited `?tab=saved` on a shared link is clamped back to Collections by
  * `UserSpaceGrid`, rather than 404ing — a stale query string should land on the page.
  *
+ * The shell's own `me` is resolved server-side so the navigation reflects the viewer's session; a
+ * failed principal read other than a Next control-flow throw degrades to an anonymous shell.
+ *
  * A dead link (unknown or reset) is a 404. The backend cannot tell those apart by design — a reset
  * leaves no trace of the old token — and neither should this page.
  */
 export default async function SharePage({ params }: SharePageProps) {
   const { token } = await params;
+
+  let me: MeResponse | null;
+  try {
+    me = await meServer();
+  } catch (error) {
+    unstable_rethrow(error);
+    logger.warn('SharePage', 'Failed to resolve the principal', { error });
+    me = null;
+  }
 
   const [data, ssrViewport] = await Promise.all([
     loadUserSpace({ mode: 'share', token }),
@@ -53,6 +68,7 @@ export default async function SharePage({ params }: SharePageProps) {
 
   return (
     <PageShell
+      me={me}
       collectionSlug={isShadowedRouteSlug(data.collection.slug) ? undefined : data.collection.slug}
     >
       <ShareSession token={token} />

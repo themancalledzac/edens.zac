@@ -40,7 +40,7 @@ export default async function LocationPage({
   );
 
   return (
-    <PageShell>
+    <PageShell me={me}>
       <CollectionHeader
         title={locationName}
         count={images.length}

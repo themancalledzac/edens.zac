@@ -1,8 +1,12 @@
 import { type Metadata } from 'next';
+import { unstable_rethrow } from 'next/navigation';
 import { Suspense } from 'react';
 
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
+import { meServer } from '@/app/lib/api/auth';
+import { type MeResponse } from '@/app/types/Auth';
+import { logger } from '@/app/utils/logger';
 
 import styles from './Explore.module.scss';
 import { ExploreDirectory } from './ExploreDirectory';
@@ -22,13 +26,22 @@ export const metadata: Metadata = {
 /**
  * The tag/location directory route.
  *
- * The page itself awaits nothing, so the shell and heading reach the browser in the first flush
- * while {@link ExploreDirectory} streams in behind a Suspense boundary. Before the split, one
- * backend read held the entire response — including the site header — for its whole duration.
+ * The page awaits only the cached principal read, so the shell and heading reach the browser in
+ * the first flush while {@link ExploreDirectory} streams in behind a Suspense boundary. A failed
+ * principal read other than a Next control-flow throw degrades to an anonymous shell.
  */
-export default function ExplorePage() {
+export default async function ExplorePage() {
+  let me: MeResponse | null;
+  try {
+    me = await meServer();
+  } catch (error) {
+    unstable_rethrow(error);
+    logger.warn('ExplorePage', 'Failed to resolve the principal', { error });
+    me = null;
+  }
+
   return (
-    <PageShell>
+    <PageShell me={me}>
       <header className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Explore</h1>
         <p className={styles.intro}>Browse the archive by tag or location.</p>

@@ -170,6 +170,15 @@ describe("AdminPage as the admin's own space", () => {
     expect(gridProps(await renderAdmin()).basePath).toBe('/admin');
   });
 
+  it('hands PageShell the principal the page already resolved', async () => {
+    expect(findProps(await renderAdmin(), PageShell).me).toBe(adminPrincipal);
+  });
+
+  it('hands PageShell a null me when meServer fails', async () => {
+    (meServer as jest.Mock).mockRejectedValue(new Error('boom'));
+    expect(findProps(await renderAdmin(), PageShell).me).toBeNull();
+  });
+
   it('hands PageShell no collectionSlug, since `user` is shadowed by a route', async () => {
     expect(findProps(await renderAdmin(), PageShell).collectionSlug).toBeUndefined();
   });
