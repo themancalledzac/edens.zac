@@ -28,7 +28,8 @@
  * What a single slot holds. Determines its contribution to its section's stack height.
  *
  * The three text kinds are the type ramp's three steps, not free-form sizes -- `header` is
- * `--text-md`, `subheader` is `--text-sm`, `meta` is `--text-xs`. A row that wants a size outside
+ * the row title line (`--text-sm`, as `.rowText` renders it), `subheader` is `--text-sm`, `meta` is
+ * `--text-xs`. A row that wants a size outside
  * them is asking for a ramp step this codebase does not have.
  */
 export type SlotKind = 'header' | 'subheader' | 'meta' | 'button';
@@ -51,12 +52,10 @@ export interface RowShape {
  * Rendered height of one slot, in CSS px, against the live Inter font.
  *
  * Every value below is a Chrome measurement of the real component, not a number fitted to a total:
- * - `header` 20 -- a `--text-md` (16px) line box, which measures 19.5. Held at 20 because that is
- *   what `PANEL_CHROME.headerTextOnly` reserved before this model existed, and it is the number the
- *   Messages panel's text-only header still reserves. The 0.5 is an over-reservation, and the only
- *   place it can be observed is that header: in all three ROWS the right section is taller, so the
- *   `max()` discards it. Dropping it to 19.5 would be more exact and would move
- *   `panelChromeHeight` and `COLLAPSED_PANEL_HEIGHT` for no visible gain.
+ * - `header` 17 -- the line a row's title renders in, a `--text-sm` (14px) line box that measures
+ *   17.0. A one-line row is therefore 17 + {@link ROW_PADDING_Y} = 34, the height Chrome renders.
+ *   It was declared 20 (the 16px `--text-md` box, 19.5 measured), which reserved 3px more than a
+ *   one-line row renders.
  * - `subheader` 17 -- a `--text-sm` (14px) line box. Measured 17.0 exactly.
  * - `meta` 14.5 -- a `--text-xs` (12px) line box. Measured 14.5 exactly. This is the timestamp
  *   step: the Messages row stacks its relative `<time>` above its actions, and reading that line
@@ -71,7 +70,7 @@ export interface RowShape {
  * why the glyph is now pinned to the button slot's height in CSS (`--lp-slot-button`).
  */
 export const SLOT_HEIGHT: Record<SlotKind, number> = {
-  header: 20,
+  header: 17,
   subheader: 17,
   meta: 14.5,
   button: 27,
@@ -85,7 +84,8 @@ export const SLOT_GAP = 4;
  *
  * Must stay in step with `.row`'s `padding` in `ListPanel.module.scss`. This number is the
  * packer's contract: it is reserved before the panel renders, so a change on one side alone
- * reopens the blank-well/clipped-row class of bug the derivation exists to close.
+ * reopens the blank-well/clipped-row class of bug the derivation exists to close. A one-line row
+ * is the 17px header slot plus this 17: 34px, as rendered.
  */
 export const ROW_PADDING_Y = 17;
 
@@ -95,7 +95,7 @@ export const ROW_PADDING_Y = 17;
  * `.header` block padding (`--space-2` x 2) plus its bottom rule, and `.body`, which carries no padding.
  *
  * The header's own content height is no longer a constant here. It used to be a pair --
- * `headerControl` 27 for a header carrying a `Button sm`, `headerTextOnly` 20 for one carrying
+ * `headerControl` 27 for a header carrying a `Button sm`, `headerTextOnly` for one carrying
  * only a text link -- selected by a hand-maintained `PANEL_HAS_HEADER_BUTTON` map. Both numbers
  * now live in {@link SLOT_HEIGHT} and the choice between them falls out of the header's declared
  * shape, so a header that gains a button cannot forget to grow.
