@@ -9,6 +9,35 @@
      took the taps that landed there. Tightening this again means lowering --touch-target-min to
      match — see the docblock on .segment. */
   gap: var(--space-2);
+
+  /* Below 768px the segments join the way SegmentedChip's do: one outer border on the group,
+     dividers between segments, no gap. Adjacent 44px overlays then overlap by about 6px, which
+     SegmentedChip already accepts. This shrinks the group from 115px to about 97px so it shares
+     the bottom chip row (see FilterToolbar's .toolbar). */
+  @media (width < 768px) {
+    gap: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-1);
+
+    .segment {
+      border: none;
+      border-radius: 0;
+
+      & + .segment {
+        border-left: 1px solid var(--color-border);
+      }
+
+      &:first-child {
+        border-top-left-radius: calc(var(--radius-1) - 1px);
+        border-bottom-left-radius: calc(var(--radius-1) - 1px);
+      }
+
+      &:last-child {
+        border-top-right-radius: calc(var(--radius-1) - 1px);
+        border-bottom-right-radius: calc(var(--radius-1) - 1px);
+      }
+    }
+  }
 }
 
 /* Sized from the same tokens as FilterChip so a segment's box is identical to a chip's: same

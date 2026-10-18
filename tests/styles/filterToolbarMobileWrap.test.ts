@@ -6,7 +6,7 @@
  * that rule starved the chips instead: `.trailing` never shrinks, so at 375px `.controls` was left
  * 126.3px — narrower than one "Highly Rated" chip — and all six chips took a row each.
  *
- * Wrapping fixes that only while `.controls` also carries `flex: 1 0 240px`. The threshold decides
+ * Wrapping fixes that only while `.controls` also carries `flex: 1 0 180px`. The threshold decides
  * per width whether `.trailing` shares the anchored bottom row or takes a line of its own, and the
  * `0` is the half that carries the weight: with shrink enabled, flex squeezes `.controls` under the
  * threshold and shares anyway, which put the slider variant at one chip per line. jsdom computes no
@@ -52,7 +52,7 @@ describe('FilterToolbar mobile wrap', () => {
     const branch = mobileBranch(scss);
 
     expect(branch).toContain('.controls');
-    expect(branch).toContain('flex: 1 0 240px');
+    expect(branch).toContain('flex: 1 0 180px');
   });
 
   /**
@@ -68,11 +68,42 @@ describe('FilterToolbar mobile wrap', () => {
    * the row anyway, which is the one-chip-per-line layout the threshold is meant to rule out.
    */
   it('should keep flex-shrink at 0 so the threshold forces a wrap rather than a squeeze', () => {
-    expect(mobileBranch(scss)).toMatch(/flex:\s*1\s+0\s+240px/);
+    expect(mobileBranch(scss)).toMatch(/flex:\s*1\s+0\s+180px/);
+  });
+
+  it('should open the row gap to --space-2 below 768px so the density overlays clear the chip row above', () => {
+    expect(mobileBranch(scss)).toMatch(/row-gap:\s*var\(--space-2\)/);
+  });
+
+  it('should leave the desktop column gap and the 8px chip gap alone', () => {
+    expect(scss).toMatch(/\.toolbar {[^@]*?gap: var\(--space-1\);/);
+    expect(scss).toMatch(/\.controls {[^}]*?gap: var\(--space-2\);/);
   });
 
   it('should keep the trailing group right-pinned rather than pinning it per-branch', () => {
     expect(scss).toContain('margin-left: auto');
     expect(mobileBranch(scss)).not.toContain('margin-left');
+  });
+});
+
+describe('DensityTierControl joined segments', () => {
+  const density = readFileSync(
+    join(process.cwd(), 'app/components/ui/FilterToolbar/DensityTierControl.module.scss'),
+    'utf8'
+  );
+  const branch = mobileBranch(density);
+
+  it('should draw one outer border on the group below 768px', () => {
+    expect(branch).toMatch(/gap:\s*0;\s*border:\s*1px solid var\(--color-border\)/);
+  });
+
+  it('should divide the segments with a border-left on siblings', () => {
+    expect(branch).toMatch(
+      /&\s*\+\s*\.segment\s*{[^}]*border-left:\s*1px solid var\(--color-border\)/
+    );
+  });
+
+  it('should keep the coarse-pointer overlay', () => {
+    expect(density).toMatch(/@media \(pointer: coarse\)[\S\s]*&::after/);
   });
 });
