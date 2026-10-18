@@ -36,7 +36,8 @@ interface SearchPageClientProps {
  *
  * Surfaces every image-derived dimension, gated by {@link computeFilterVisibility} so a dimension
  * that cannot narrow anything is hidden. Filters client-side over the corpus the route fetched.
- * `ssrViewport` lets the grid lay out on the server. The empty corpus and empty result states are separate on purpose — they need different fixes.
+ * `ssrViewport` lets the grid lay out on the server. The empty corpus and empty result states
+ * are separate on purpose, because they need different fixes.
  */
 export default function SearchPageClient({ images, ssrViewport }: SearchPageClientProps) {
   const {
