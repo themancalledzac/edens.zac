@@ -1,6 +1,7 @@
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { Footer } from '@/app/components/Footer/Footer';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
+import { BackLink } from '@/app/components/ui/PageShell/BackLink';
 import { SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
 import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel } from '@/app/types/Collection';
@@ -41,6 +42,10 @@ interface ContentCollectionPageProps {
   initialSavedImageIds?: number[];
   /** Render the site footer after `<main>` in both branches (default true). */
   withFooter?: boolean;
+  /** When set, renders a back link to this href as the first element inside the skip target. */
+  backHref?: string;
+  /** Destination name in the back link (default 'Admin'). */
+  backLabel?: string;
 }
 
 /**
@@ -115,6 +120,8 @@ export default function CollectionPage({
   initialSelectedIds = [],
   initialSavedImageIds = [],
   withFooter = true,
+  backHref,
+  backLabel,
 }: ContentCollectionPageProps) {
   if (!Array.isArray(collection)) {
     const headingText = collection.title?.trim() || collection.slug?.trim() || 'Untitled';
@@ -123,6 +130,7 @@ export default function CollectionPage({
         <main className={styles.main}>
           <SiteHeader isCollectionPage collectionSlug={collection.slug} me={me} />
           <SkipTarget>
+            {backHref && <BackLink href={backHref} label={backLabel} />}
             <h1 className={styles.srOnly}>{headingText}</h1>
             <CollectionPageClient
               collection={collection}
@@ -152,6 +160,7 @@ export default function CollectionPage({
       <main className={styles.main}>
         <SiteHeader me={me} />
         <SkipTarget>
+          {backHref && <BackLink href={backHref} label={backLabel} />}
           {contentBlocks.length > 0 ? (
             <ContentBlockWithFullScreen
               content={contentBlocks}

@@ -147,3 +147,45 @@ describe('PageShell — me forwarding', () => {
     expect(mockSiteHeader.mock.calls[0][0].me).not.toBeNull();
   });
 });
+
+/**
+ * `backHref` opts a page into a "← Admin" link as the first element inside the skip target. Unset
+ * renders nothing extra.
+ */
+describe('PageShell — back link', () => {
+  it('renders no link when backHref is unset', () => {
+    const { container } = render(<PageShell>x</PageShell>);
+    expect(container.querySelector('#main-content')!.querySelector('a')).toBeNull();
+  });
+
+  it('renders a link to backHref reading "← Admin" with the arrow aria-hidden', () => {
+    render(<PageShell backHref="/admin">x</PageShell>);
+    const link = screen.getByRole('link', { name: 'Admin' });
+    expect(link).toHaveAttribute('href', '/admin');
+    expect(link).toHaveTextContent('← Admin');
+    expect(link.querySelector('span')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('uses backLabel when given', () => {
+    render(
+      <PageShell backHref="/admin/users" backLabel="Users">
+        x
+      </PageShell>
+    );
+    expect(screen.getByRole('link', { name: 'Users' })).toHaveTextContent('← Users');
+  });
+
+  it('places the link first inside the skip target, before the children', () => {
+    const { container } = render(
+      <PageShell backHref="/admin">
+        <p>page body</p>
+      </PageShell>
+    );
+    const target = container.querySelector('#main-content')!;
+    const link = screen.getByRole('link', { name: 'Admin' });
+    expect(target.firstElementChild).toBe(link);
+    expect(
+      link.compareDocumentPosition(screen.getByText('page body')) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+});

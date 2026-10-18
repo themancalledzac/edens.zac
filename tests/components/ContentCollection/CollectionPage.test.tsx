@@ -339,3 +339,36 @@ describe('CollectionPage — me forwarding to SiteHeader', () => {
     expect(mockClient.mock.calls[0][0].me).toBeNull();
   });
 });
+
+/**
+ * `backHref` renders a "← Admin" link as the first element inside the skip target on both
+ * branches, and nothing extra when unset.
+ */
+describe('CollectionPage — back link', () => {
+  const builds: [string, () => CollectionModel | CollectionModel[]][] = [
+    ['single-collection', () => makeCollection({ id: 1, slug: 'dolomites' })],
+    ['collection-array', () => [makeCollection({ id: 1, slug: 'dolomites' })]],
+  ];
+
+  it.each(builds)('renders no link when backHref is unset on the %s branch', (_name, build) => {
+    render(<CollectionPage collection={build()} />);
+    expect(document.getElementById('main-content')!.querySelector('a')).toBeNull();
+  });
+
+  it.each(builds)(
+    'renders "← Admin" first inside the skip target on the %s branch',
+    (_name, build) => {
+      render(<CollectionPage collection={build()} backHref="/admin" />);
+      const link = screen.getByRole('link', { name: 'Admin' });
+      expect(link).toHaveAttribute('href', '/admin');
+      expect(link).toHaveTextContent('← Admin');
+      expect(link.querySelector('span')).toHaveAttribute('aria-hidden', 'true');
+      expect(document.getElementById('main-content')!.firstElementChild).toBe(link);
+    }
+  );
+
+  it.each(builds)('uses backLabel on the %s branch', (_name, build) => {
+    render(<CollectionPage collection={build()} backHref="/admin" backLabel="Users" />);
+    expect(screen.getByRole('link', { name: 'Users' })).toHaveTextContent('← Users');
+  });
+});
