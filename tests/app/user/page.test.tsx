@@ -45,7 +45,7 @@ jest.mock('@/app/components/Personal/FollowsContext', () => ({
 
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { MeProvider } from '@/app/components/auth/MeProvider';
+import { MeProvider } from '@/app/components/Auth/MeProvider';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { UserSpaceGrid } from '@/app/components/UserSpace/UserSpaceGrid';

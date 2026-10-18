@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { MeProvider } from '@/app/components/auth/MeProvider';
+import { MeProvider } from '@/app/components/Auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { SavesProvider } from '@/app/components/Personal/SavesContext';
 import { type ToolbarExtra } from '@/app/components/ui/FilterToolbar/chipWeights';

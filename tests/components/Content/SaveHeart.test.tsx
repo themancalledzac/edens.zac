@@ -10,7 +10,7 @@ import path from 'node:path';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { type ReactNode } from 'react';
 
-import { MeProvider } from '@/app/components/auth/MeProvider';
+import { MeProvider } from '@/app/components/Auth/MeProvider';
 import { SaveHeart } from '@/app/components/Content/SaveHeart';
 import { SavesProvider, useSaves } from '@/app/components/Personal/SavesContext';
 import { addSave, removeSave } from '@/app/lib/api/personal';

@@ -11,7 +11,7 @@ import {
   useId,
 } from 'react';
 
-import { useMe } from '@/app/components/auth/MeProvider';
+import { useMe } from '@/app/components/Auth/MeProvider';
 import FullScreenDownloadButton from '@/app/components/ClientGalleryDownload/FullScreenDownloadButton';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
 import { IconButton } from '@/app/components/ui/IconButton/IconButton';

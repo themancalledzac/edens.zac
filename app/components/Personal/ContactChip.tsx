@@ -2,7 +2,7 @@
 
 import { useId, useState } from 'react';
 
-import { useMe } from '@/app/components/auth/MeProvider';
+import { useMe } from '@/app/components/Auth/MeProvider';
 import { ContactForm } from '@/app/components/ContactForm/ContactForm';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
 import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
