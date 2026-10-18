@@ -53,6 +53,7 @@ import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { UserSpaceGrid } from '@/app/components/UserSpace/UserSpaceGrid';
 import { meServer } from '@/app/lib/api/auth';
 import { getAllCollections } from '@/app/lib/api/collections';
+import { getAdminMessages } from '@/app/lib/api/messages';
 import {
   getUserPage,
   listFollowedCollectionIdsServer,
@@ -128,6 +129,14 @@ function seedApis() {
 
 const renderAdmin = () => AdminPage();
 
+const seedUnread = (unread: number | Error) =>
+  (getAdminMessages as jest.Mock).mockImplementation(
+    (_limit: number, _offset: number, filter?: { unread?: boolean }) =>
+      filter?.unread === true && unread instanceof Error
+        ? Promise.reject(unread)
+        : Promise.resolve({ total: filter?.unread === true ? unread : 9, items: [] })
+  );
+
 describe("AdminPage as the admin's own space", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -200,5 +209,31 @@ describe("AdminPage as the admin's own space", () => {
     expect(findProps(result, FormError).children).toMatch(/could not be loaded/i);
     expect(error).toHaveBeenCalledWith('admin', expect.stringMatching(/space/i), expect.any(Error));
     error.mockRestore();
+  });
+
+  it('A7: hands the grid the unread count as adminCount when above 0', async () => {
+    seedUnread(4);
+    expect(gridProps(await renderAdmin()).adminCount).toBe(4);
+  });
+
+  it('A7: hands the grid no adminCount when the unread total is 0', async () => {
+    seedUnread(0);
+    expect(gridProps(await renderAdmin()).adminCount).toBeUndefined();
+  });
+
+  it('A7: hands the grid no adminCount when the unread read fails', async () => {
+    seedUnread(new Error('down'));
+    expect(gridProps(await renderAdmin()).adminCount).toBeUndefined();
+  });
+
+  it('M6: the upper chip tier still gets only the own-space chips', async () => {
+    seedUnread(4);
+    const props = gridProps(await renderAdmin());
+    expect(props.toolbarExtras.map((e: { key: string }) => e.key)).toEqual([
+      'share',
+      'contact',
+      'passkey',
+    ]);
+    expect(Object.keys(props.sections)).toEqual(['collections', 'images', 'saved']);
   });
 });

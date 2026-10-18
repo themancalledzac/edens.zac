@@ -82,6 +82,7 @@ export default async function AdminPage() {
           me={principal}
           ssrViewport={ssrViewport}
           adminHub={hubNode}
+          adminCount={hub.unreadMessages}
           toolbarExtras={ownSpaceExtras(principal, share)}
         />
       </div>

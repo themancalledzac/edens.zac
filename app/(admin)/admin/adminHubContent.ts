@@ -361,3 +361,11 @@ export function withPanelFootprints(
   if (!collapsed) return content;
   return content.map(item => (isPanelContent(item) ? { ...item, ...COLLAPSED_PANEL_SIZE } : item));
 }
+
+/**
+ * The Admin segment's count from the unread messages read: the total when above 0, otherwise
+ * `undefined`, so a failed read (`null`) and an empty inbox both show no count.
+ */
+export function toUnreadCount(unread: { total: number } | null): number | undefined {
+  return unread !== null && unread.total > 0 ? unread.total : undefined;
+}

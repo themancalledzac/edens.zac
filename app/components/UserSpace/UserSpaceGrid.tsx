@@ -105,6 +105,8 @@ export interface UserSpaceGridProps {
   toolbarExtras?: readonly ToolbarExtra[];
   /** The Admin section's content, built as an element by `/admin`, the only page that passes it. */
   adminHub?: ReactNode;
+  /** The Admin segment's count; absent shows none. */
+  adminCount?: number;
 }
 
 /**
@@ -126,6 +128,7 @@ export function UserSpaceGrid({
   railExtras = null,
   toolbarExtras,
   adminHub,
+  adminCount,
 }: UserSpaceGridProps) {
   const follows = useFollows();
   const followedIds = follows?.followedIds;
@@ -144,7 +147,9 @@ export function UserSpaceGrid({
   }, []);
 
   const toolbarSections: ToolbarSection[] = [
-    ...(hasAdminHub ? [{ key: 'admin', label: 'Admin', href: `${basePath}?tab=admin` }] : []),
+    ...(hasAdminHub
+      ? [{ key: 'admin', label: 'Admin', count: adminCount, href: `${basePath}?tab=admin` }]
+      : []),
     ...visibleKeys.map(key => {
       const section = sections[key];
       return {
