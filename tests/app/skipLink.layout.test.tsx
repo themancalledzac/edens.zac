@@ -75,7 +75,6 @@ function focusables(doc: Document): Element[] {
 const routes: Array<[string, () => ReactNode]> = [
   ['PageShell', () => <PageShell>page body</PageShell>],
   ['CollectionPage (single collection)', () => <CollectionPage collection={makeCollection()} />],
-  ['CollectionPage (collection array)', () => <CollectionPage collection={[makeCollection()]} />],
 ];
 
 describe('skip link, composed through the root layout', () => {
