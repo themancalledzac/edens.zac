@@ -16,16 +16,35 @@ jest.mock('@/app/(admin)/collection/manage/[[...slug]]/CreateCollectionForm', ()
 }));
 
 jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
-  PageShell: ({ backHref, children }: { backHref?: string; children: ReactNode }) => (
-    <div data-testid="page-shell" data-back-href={backHref}>
+  PageShell: ({
+    backHref,
+    me,
+    children,
+  }: {
+    backHref?: string;
+    me?: { email: string } | null;
+    children: ReactNode;
+  }) => (
+    <div
+      data-testid="page-shell"
+      data-back-href={backHref}
+      data-me={me === undefined ? 'undefined' : (me?.email ?? 'null')}
+    >
       {children}
     </div>
   ),
 }));
 
+const mockMeServer = jest.fn();
+
+jest.mock('@/app/lib/api/auth', () => ({
+  meServer: () => mockMeServer(),
+}));
+
 describe('ManageCollectionPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockMeServer.mockResolvedValue(null);
   });
 
   it('calls redirect to /<slug>?manage=1 when a slug is present', async () => {
@@ -63,5 +82,20 @@ describe('ManageCollectionPage', () => {
     if (ui) render(ui);
 
     expect(mockRedirect).toHaveBeenCalledWith('/first-slug?manage=1');
+  });
+
+  it('hands PageShell the server-resolved principal', async () => {
+    mockMeServer.mockResolvedValue({ email: 'admin@example.com', isAdmin: true });
+    render(await ManageCollectionPage({ params: Promise.resolve({ slug: undefined }) }));
+
+    expect(screen.getByTestId('page-shell')).toHaveAttribute('data-me', 'admin@example.com');
+  });
+
+  it('falls back to a null principal when meServer fails', async () => {
+    mockMeServer.mockRejectedValue(new Error('Service Unavailable'));
+    render(await ManageCollectionPage({ params: Promise.resolve({ slug: undefined }) }));
+
+    expect(screen.getByTestId('page-shell')).toHaveAttribute('data-me', 'null');
+    expect(screen.getByTestId('create-collection-form')).toBeInTheDocument();
   });
 });
