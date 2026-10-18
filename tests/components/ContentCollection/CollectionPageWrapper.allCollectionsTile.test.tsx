@@ -66,7 +66,7 @@ describe('CollectionPageWrapper — All-Collections tile injection', () => {
     jest.clearAllMocks();
   });
 
-  it('injects the All-Collections tile at index 2, after the Me tile, for a logged-in viewer', async () => {
+  it('injects the All-Collections tile second, right after the Me tile, for a logged-in viewer', async () => {
     mockMeServer.mockResolvedValue({
       email: 'a@b.com',
       isAdmin: false,
@@ -81,12 +81,13 @@ describe('CollectionPageWrapper — All-Collections tile injection', () => {
 
     const content = element.props.collection.content;
     expect(content).toHaveLength(4);
-    expect(content[1].id).toBe(ME_TILE_ID);
-    expect(content[2].id).toBe(ALL_COLLECTIONS_TILE_ID);
-    expect(content[2].slug).toBe('collections');
+    expect(content[0].id).toBe(ME_TILE_ID);
+    expect(content[1].id).toBe(ALL_COLLECTIONS_TILE_ID);
+    expect(content[1].slug).toBe('collections');
+    expect(content[1].orderIndex).toBeLessThan(content[2].orderIndex);
   });
 
-  it('injects the All-Collections tile at index 1 for an anonymous viewer (no Me tile)', async () => {
+  it('injects the All-Collections tile first for an anonymous viewer (no Me tile)', async () => {
     mockMeServer.mockResolvedValue(null);
     mockGetCollectionBySlug.mockResolvedValue(homeCollection());
 
@@ -94,7 +95,7 @@ describe('CollectionPageWrapper — All-Collections tile injection', () => {
 
     const content = element.props.collection.content;
     expect(content).toHaveLength(3);
-    expect(content[1].id).toBe(ALL_COLLECTIONS_TILE_ID);
+    expect(content[0].id).toBe(ALL_COLLECTIONS_TILE_ID);
     expect(content.some((b: { id: number }) => b.id === ME_TILE_ID)).toBe(false);
   });
 

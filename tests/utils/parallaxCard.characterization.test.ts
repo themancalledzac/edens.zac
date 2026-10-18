@@ -33,8 +33,10 @@ import { convertCollectionContentToParallax } from '@/app/utils/contentLayout';
 import { isCollectionCard } from '@/app/utils/contentRatingUtils';
 import { buildMeContentBlock, ME_TILE_ID } from '@/app/utils/meContentBlock';
 
-// CollectionPage transitively pulls next/cache (SiteHeader -> MenuDropdown -> clearCacheAction),
-// which needs a request runtime this suite does not have.
+/**
+ * CollectionPage transitively pulls next/cache (SiteHeader -> MenuDropdown -> clearCacheAction),
+ * which needs a request runtime this suite does not have.
+ */
 jest.mock('@/app/lib/actions/clearCache', () => ({ clearCacheAction: jest.fn() }));
 
 function cover(overrides: Partial<ContentImageModel> = {}): ContentImageModel {
@@ -316,7 +318,7 @@ describe('parallax-card builders - characterization', () => {
         imageHeight: 1000,
         width: 1200,
         height: 1000,
-        orderIndex: 1,
+        orderIndex: -2,
         visible: true,
         locations: [],
       });
@@ -364,7 +366,7 @@ describe('parallax-card builders - characterization', () => {
         imageHeight: undefined,
         width: undefined,
         height: undefined,
-        orderIndex: 1,
+        orderIndex: -1,
         visible: true,
         locations: [],
       });

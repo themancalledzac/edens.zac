@@ -14,7 +14,13 @@ import styles from './ContentCollectionPage.module.scss';
 
 interface ContentCollectionPageProps {
   collection: CollectionModel | CollectionModel[];
-  chunkSize?: number; // Number of images per row (default: 2)
+  /** Desktop row density (1-10). Defaults downstream to `LAYOUT.defaultChunkSize`. */
+  chunkSize?: number;
+  /**
+   * Mobile row budget (1-5) that replaces the one derived from `chunkSize`. See the same prop on
+   * {@link CollectionPageClient}.
+   */
+  mobileChunkSize?: number;
   /**
    * Opt-in flag to bypass the defense-in-depth strip of cover images on
    * password-protected entries. Admin-only callers set this true so the admin
@@ -88,23 +94,17 @@ export function collectionToContentModel(
 /**
  * Content Collection Page
  *
- * Unified component that displays content using ContentComponent with intelligent chunking.
- * Handles both:
- * - Array of CollectionModel: Converts to ParallaxImageContentModel and displays as cards
- * - Single CollectionModel: Extracts and displays content blocks from collection.content
- *
- * Uses ContentBlockWithFullScreen for:
- * - Intelligent chunking based on image dimensions (groups items in chunks of 2, or 1 for wide shots)
- * - Fullscreen image viewing
- * - Parallax support for both collections and content (all collections are now Parallax type)
- * - Mixed content support (collections + images + text + etc.)
+ * Renders either a single collection, delegated to CollectionPageClient for filters and edit
+ * mode, or an array of collections as parallax cards in the shared content grid. The single
+ * branch emits a visually-hidden <h1>, because the title is only shown as an overlay inside the
+ * content tree.
  *
  * @param collection - Single CollectionModel or array of CollectionModels
- * @returns Server component displaying unified collection content
  */
 export default function CollectionPage({
   collection,
   chunkSize,
+  mobileChunkSize,
   showProtectedCovers = false,
   ssrViewport,
   editMode = false,
@@ -112,10 +112,7 @@ export default function CollectionPage({
   initialSelectedIds = [],
   initialSavedImageIds = [],
 }: ContentCollectionPageProps) {
-  // Single collection: delegate to client component for filter support
   if (!Array.isArray(collection)) {
-    // The collection title is shown visually as an overlay inside the content
-    // tree, so emit the page's real <h1> visually-hidden for SEO + screen readers.
     const headingText = collection.title?.trim() || collection.slug?.trim() || 'Untitled';
     return (
       <div className={styles.container}>
@@ -126,6 +123,7 @@ export default function CollectionPage({
             <CollectionPageClient
               collection={collection}
               chunkSize={chunkSize}
+              mobileChunkSize={mobileChunkSize}
               serverContentWidth={ssrViewport?.contentWidth}
               serverViewportHeight={ssrViewport?.viewportHeight}
               serverIsMobile={ssrViewport?.isMobile}
@@ -140,7 +138,6 @@ export default function CollectionPage({
     );
   }
 
-  // Array of collections: server-rendered grid (no filters)
   const contentBlocks: AnyContentModel[] = collection.map(c =>
     collectionToContentModel(c, showProtectedCovers)
   );
@@ -157,6 +154,7 @@ export default function CollectionPage({
               enableFullScreenView
               initialPageSize={30}
               chunkSize={chunkSize}
+              mobileChunkSize={mobileChunkSize}
               serverContentWidth={ssrViewport?.contentWidth}
               serverViewportHeight={ssrViewport?.viewportHeight}
               serverIsMobile={ssrViewport?.isMobile}

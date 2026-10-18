@@ -25,6 +25,13 @@ export const LAYOUT = {
 
   defaultChunkSize: 4,
 
+  /**
+   * Mobile row budget pinned for the home page in place of the half-of-saved-density mapping
+   * `toMobileDensity` applies everywhere else: home is saved at density 2, which would put one
+   * tile per row on a phone.
+   */
+  homeMobileChunkSize: 2,
+
   minDensity: 1,
   maxDensityDesktop: 10,
   maxDensityMobile: 5,

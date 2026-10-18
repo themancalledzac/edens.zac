@@ -1,5 +1,7 @@
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
+import { type ContentImageModel } from '@/app/types/Content';
+import { processContentBlocks } from '@/app/utils/contentLayout';
 import { buildMeContentBlock, ME_TILE_ID } from '@/app/utils/meContentBlock';
 
 function makeUserPage(overrides: Partial<CollectionModel> = {}): CollectionModel {
@@ -49,5 +51,31 @@ describe('buildMeContentBlock', () => {
     expect(block.imageUrl).toBe('');
     expect(block.overlayText).toBe('You');
     expect(block.id).toBe(ME_TILE_ID);
+  });
+
+  /**
+   * The public path sorts by `orderIndex` after filtering, so the tile leads the home page only
+   * because its index is below every backend child's, not because the wrapper listed it first.
+   */
+  it('sorts ahead of a backend child at orderIndex 0 on the public path', () => {
+    const child: ContentImageModel = {
+      id: 10,
+      contentType: 'IMAGE',
+      orderIndex: 0,
+      imageUrl: 'https://cdn.example.com/child.jpg',
+      imageWidth: 1600,
+      imageHeight: 1000,
+      visible: true,
+      locations: [],
+    };
+
+    const processed = processContentBlocks(
+      [child, buildMeContentBlock(makeUserPage())],
+      true,
+      34,
+      'ORDERED'
+    );
+
+    expect(processed.map(item => item.id)).toEqual([ME_TILE_ID, 10]);
   });
 });

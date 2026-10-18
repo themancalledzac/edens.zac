@@ -31,8 +31,25 @@ interface CollectionPageWrapperProps {
 }
 
 /**
- * Fetches a collection by slug and renders it via CollectionPage. Shared by the
- * home page (slug="home") and dynamic collection pages.
+ * Fetches a collection by slug and renders it via CollectionPage. Shared by the home page
+ * (slug="home") and dynamic collection pages, including home's own `?manage=1` edit view.
+ *
+ * The all-collections slug is permission-scoped per viewer, so it uses the no-store fetch; every
+ * other slug keeps the shared cacheable fetch. Home gets two synthetic tiles ahead of its backend
+ * children: the personal Me tile for a signed-in viewer (one extra no-store fetch, skipped on
+ * anonymous home) and the All Collections tile for everyone. Their negative `orderIndex` is what
+ * puts them first once `processContentBlocks` sorts, so the array order here mirrors that rather
+ * than deciding it. Home also pins its mobile row budget to `LAYOUT.homeMobileChunkSize`, since
+ * its saved density of 2 would otherwise map to one tile per row on a phone.
+ *
+ * `Array.isArray(content)` is the password-gate signal: the backend nulls `content` when the
+ * gallery cookie fails to validate, and a locked viewer is routed to the gate here rather than
+ * wrapped, so no RSC payload is serialised for them. Edit mode bypasses the gate.
+ *
+ * Errors are classified by duck-typing `status`, not `instanceof ApiError`, because production
+ * code-splitting can load two copies of the class. Next's own sentinels (`NEXT_*` digests) are
+ * re-thrown untouched; a 5xx re-throws on home, which is force-dynamic, and becomes notFound()
+ * elsewhere.
  */
 export default async function CollectionPageWrapper({
   slug,
@@ -44,8 +61,6 @@ export default async function CollectionPageWrapper({
   }
 
   try {
-    // all-collections is permission-scoped per viewer (session-dependent response), so it
-    // uses the dedicated no-store fetch; every other slug keeps the shared cacheable fetch.
     const [fetched, ssrViewport, me] = await Promise.all([
       slug === 'all-collections' ? getScopedAllCollections() : getCollectionBySlug(slug, 0, 500),
       resolveSsrViewport(),
@@ -62,39 +77,30 @@ export default async function CollectionPageWrapper({
           }
         : fetched;
 
-    // Home-only synthetic tiles. Logged-in viewers get the personal "Me" tile as the
-    // SECOND tile (one extra no-store fetch; anonymous home skips that fetch), and
-    // EVERY viewer gets the public "All Collections" tile immediately after it
-    // (index 2 logged-in, index 1 anonymous) linking to the permission-scoped list.
+    const isHome = slug === HOME_SLUG;
+
     const collection =
-      slug === HOME_SLUG && Array.isArray(baseCollection.content)
+      isHome && Array.isArray(baseCollection.content)
         ? {
             ...baseCollection,
             content: [
-              ...baseCollection.content.slice(0, 1),
               ...(me ? [buildMeContentBlock(await getUserPage())] : []),
               buildAllCollectionsContentBlock(),
-              ...baseCollection.content.slice(1),
+              ...baseCollection.content,
             ],
           }
         : baseCollection;
 
     const chunkSize = collection.rowsWide ?? LAYOUT.defaultChunkSize;
+    const mobileChunkSize = isHome ? LAYOUT.homeMobileChunkSize : undefined;
 
     if (collection.isClient === undefined && findMembership(me, collection.id)) {
-      // The grant proves this is a client gallery while the payload does not say so: a stale
-      // cache entry or a deploy-order slip. Selects are silently withheld from an entitled
-      // viewer, so make the window observable.
       logger.warn('CollectionPageWrapper', 'Membership held on a payload missing isClient', {
         slug,
         collectionId: collection.id,
       });
     }
 
-    // Seed the viewer's persisted selects for this collection (client galleries only) AND their
-    // global saved (bookmarked) image ids so the SelectsProvider/SavesProvider prime without a
-    // client round-trip. Saves are cross-collection, so they seed on EVERY collection render
-    // whenever a principal is present; both reads return [] for anonymous viewers. Pinned by test.
     const [initialSelectedIds, initialSavedImageIds] = await Promise.all([
       collection.isClient === true
         ? listSelectIdsServer(collection.id)
@@ -102,10 +108,6 @@ export default async function CollectionPageWrapper({
       me ? listSavedImageIdsServer() : Promise.resolve<number[]>([]),
     ]);
 
-    // Gate password-protected collections. `Array.isArray(content)` is the auth signal:
-    // the backend sets content to null when the password cookie fails to validate.
-    // Routing here (not wrapping children) prevents RSC payload serialization for
-    // locked viewers. editMode bypasses the gate — admins are never password-walled.
     if (!editMode && collection.isPasswordProtected === true) {
       const isAuthenticated = Array.isArray(collection.content);
       if (!isAuthenticated) {
@@ -117,6 +119,7 @@ export default async function CollectionPageWrapper({
       <CollectionPage
         collection={collection}
         chunkSize={chunkSize}
+        mobileChunkSize={mobileChunkSize}
         ssrViewport={ssrViewport}
         editMode={editMode}
         me={me}
@@ -125,8 +128,6 @@ export default async function CollectionPageWrapper({
       />
     );
   } catch (error) {
-    // Re-throw Next.js sentinel errors (notFound(), redirect()) so the framework
-    // can handle them. Their digest property starts with `NEXT_`.
     if (
       typeof error === 'object' &&
       error !== null &&
@@ -137,12 +138,6 @@ export default async function CollectionPageWrapper({
       throw error;
     }
 
-    // Duck-type the status field instead of `instanceof ApiError`. In production
-    // builds, code splitting can produce two copies of the ApiError class in
-    // different chunks; an instance from one chunk fails `instanceof` against
-    // the class in another, so the 404→notFound() branch silently misses and we
-    // fall through to a Lambda-level 500 page. Reading `error.status` works
-    // regardless of which copy of the class is throwing.
     const status =
       typeof error === 'object' && error !== null && 'status' in error
         ? Number((error as { status: unknown }).status)
@@ -153,15 +148,12 @@ export default async function CollectionPageWrapper({
     }
 
     if (status >= 500) {
-      // For home page, re-throw (page is force-dynamic so this won't break build)
       if (slug === HOME_SLUG) {
         throw error;
       }
       notFound();
     }
 
-    // Re-throw other known numeric statuses (4xx like 401, 403) as unhandled errors.
-    // These bubble up as Lambda 500s — same behavior as the prior instanceof branch.
     if (Number.isFinite(status)) {
       throw error;
     }

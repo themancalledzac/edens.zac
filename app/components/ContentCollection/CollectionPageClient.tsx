@@ -83,6 +83,12 @@ const NO_EXTRAS: readonly ToolbarExtra[] = [];
 interface CollectionPageClientProps {
   collection: CollectionModel;
   chunkSize?: number;
+  /**
+   * Pins the mobile row budget (1-5) instead of deriving it from `chunkSize`. The home page uses
+   * it so phones show two tiles per row while desktop keeps the saved density. While pinned, the
+   * density control is withheld on mobile, since there it could only move the desktop layout.
+   */
+  mobileChunkSize?: number;
   /** SSR fallback viewport, forwarded to Component. */
   serverContentWidth?: number;
   serverViewportHeight?: number;
@@ -145,6 +151,7 @@ interface CollectionPageClientProps {
 export default function CollectionPageClient({
   collection,
   chunkSize,
+  mobileChunkSize,
   serverContentWidth,
   serverViewportHeight,
   serverIsMobile,
@@ -215,7 +222,7 @@ export default function CollectionPageClient({
   const measured = useViewport();
   const isMobile = measured.width > 0 ? measured.isMobile : (serverIsMobile ?? false);
 
-  const mobileDensity = toMobileDensity(density);
+  const mobileDensity = mobileChunkSize ?? toMobileDensity(density);
   const displayDensity = isMobile ? mobileDensity : density;
   const densityMax = isMobile ? LAYOUT.maxDensityMobile : LAYOUT.maxDensityDesktop;
 
@@ -578,6 +585,7 @@ export default function CollectionPageClient({
    * rather than offering a control with nothing to resize.
    */
   const hasRenderableContent = rawContent.length > 0;
+  const densityPinned = isMobile && mobileChunkSize !== undefined;
 
   const filterContextValue = useMemo(
     () => ({
@@ -591,7 +599,7 @@ export default function CollectionPageClient({
       dateTwoState: isChronological,
       density: displayDensity,
       densityMax,
-      onDensityChange: hasRenderableContent ? handleDensityChange : undefined,
+      onDensityChange: hasRenderableContent && !densityPinned ? handleDensityChange : undefined,
       densityVariant: editMode ? ('slider' as const) : ('tiers' as const),
       densityTiers,
       activeDensityTier,
@@ -609,6 +617,7 @@ export default function CollectionPageClient({
       displayDensity,
       densityMax,
       hasRenderableContent,
+      densityPinned,
       handleDensityChange,
       editMode,
       densityTiers,
