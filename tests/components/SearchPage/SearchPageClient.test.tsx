@@ -3,7 +3,7 @@
  * states. `FilterToolbar` is not mocked — the wiring under test is what it receives.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import SearchPageClient from '@/app/components/SearchPage/SearchPageClient';
 import { type ContentImageModel } from '@/app/types/Content';
@@ -23,8 +23,25 @@ jest.mock('@/app/hooks/useFilterUrlState', () => ({
 /** jsdom cannot measure the layout engine; stub it to a count instead. */
 jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
   __esModule: true,
-  default: ({ content }: { content: unknown[] }) => (
-    <div data-testid="content-blocks">{content.length}</div>
+  default: ({
+    content,
+    serverContentWidth,
+    serverViewportHeight,
+    serverIsMobile,
+  }: {
+    content: unknown[];
+    serverContentWidth?: number;
+    serverViewportHeight?: number;
+    serverIsMobile?: boolean;
+  }) => (
+    <div
+      data-testid="content-blocks"
+      data-width={serverContentWidth}
+      data-height={serverViewportHeight}
+      data-mobile={String(serverIsMobile)}
+    >
+      {content.length}
+    </div>
   ),
 }));
 
@@ -65,6 +82,21 @@ describe('SearchPageClient', () => {
 
     expect(screen.getByText('No photos match the current filters.')).toBeInTheDocument();
     expect(screen.queryByText('There are no photos to search yet.')).not.toBeInTheDocument();
+  });
+
+  it('clears the filters from the filtered-to-zero empty state', () => {
+    mockInitialCriteria = { tags: ['nonexistent'] };
+    render(<SearchPageClient images={[tagged(1, 'alpine'), tagged(2, 'coastal')]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    expect(mockSyncToUrl).toHaveBeenLastCalledWith({});
+  });
+
+  it('offers no Clear filters button when there is nothing to search', () => {
+    render(<SearchPageClient images={[]} />);
+
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument();
   });
 
   it('renders content blocks when images survive the filters', () => {
@@ -136,5 +168,20 @@ describe('SearchPageClient — film stock dropdown', () => {
     mockInitialCriteria = { isFilm: true, filmTypes: ['Kodak Portra 400'] };
     render(<SearchPageClient images={twoStocks()} />);
     expect(screen.getByText('1 photo')).toBeInTheDocument();
+  });
+});
+
+describe('SearchPageClient — ssrViewport', () => {
+  it('passes the ssrViewport fields to the content grid', () => {
+    render(
+      <SearchPageClient
+        images={[tagged(1, 'alpine')]}
+        ssrViewport={{ contentWidth: 1234, viewportHeight: 777, isMobile: true }}
+      />
+    );
+    const grid = screen.getByTestId('content-blocks');
+    expect(grid).toHaveAttribute('data-width', '1234');
+    expect(grid).toHaveAttribute('data-height', '777');
+    expect(grid).toHaveAttribute('data-mobile', 'true');
   });
 });

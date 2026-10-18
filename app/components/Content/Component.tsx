@@ -224,14 +224,6 @@ export default function Component({
     );
   }
 
-  if (rows.length === 0) {
-    return (
-      <div className={cbStyles.wrapper}>
-        <div className={cbStyles.layoutSkeleton} aria-hidden="true" data-testid="layout-skeleton" />
-      </div>
-    );
-  }
-
   /** Renders a row using BoxRenderer (recursive). */
   const renderRow = (row: RowWithPatternAndSizes, rowIndex: number) => {
     const { rowType, items, boxTree } = row;

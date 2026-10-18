@@ -6,6 +6,13 @@
  */
 
 import { type ArrayFilterKey, type FilterState } from '@/app/types/GalleryFilter';
+import {
+  type extractFilterOptions,
+  type FilterCounts,
+  type FilterVisibility,
+} from '@/app/utils/contentFilter';
+
+import { type FilterToolbarProps } from './FilterToolbar';
 
 /**
  * Whether a dropdown option is still reachable under the current filters. With no
@@ -102,4 +109,77 @@ export function collectActiveFilterBadges(
     }
   }
   return badges;
+}
+
+const DIMENSION_LABELS: Partial<Record<ArrayFilterKey, string>> = {
+  selectedTags: 'Tags',
+  selectedPeople: 'People',
+  selectedLocations: 'Locations',
+  selectedCameras: 'Cameras',
+  selectedLenses: 'Lenses',
+  selectedFilmTypes: 'Film stock',
+};
+
+const DIMENSION_SOURCES: Partial<
+  Record<ArrayFilterKey, 'tags' | 'people' | 'locations' | 'cameras' | 'lenses' | 'filmTypes'>
+> = {
+  selectedTags: 'tags',
+  selectedPeople: 'people',
+  selectedLocations: 'locations',
+  selectedCameras: 'cameras',
+  selectedLenses: 'lenses',
+  selectedFilmTypes: 'filmTypes',
+};
+
+const DIMENSION_VISIBILITY: Partial<Record<ArrayFilterKey, keyof FilterVisibility>> = {
+  selectedTags: 'tags',
+  selectedPeople: 'people',
+  selectedLocations: 'locations',
+  selectedCameras: 'cameras',
+  selectedLenses: 'lenses',
+  selectedFilmTypes: 'filmTypes',
+};
+
+/**
+ * The toolbar props an image-corpus page derives from its filter data: one dropdown per surfaced
+ * key (in surfaced order, only when its visibility flag is on; film stock additionally only while
+ * the film filter is selected), the highly-rated / film / digital counts, and the show flags.
+ */
+export function buildImagePageToolbarProps(
+  input: {
+    filterState: FilterState;
+    availableOptions: ReturnType<typeof extractFilterOptions>;
+    filterCounts: FilterCounts;
+    visibility: FilterVisibility;
+  },
+  surfaced: readonly ArrayFilterKey[]
+): Pick<
+  FilterToolbarProps,
+  'dimensions' | 'counts' | 'showDateSort' | 'showHighlyRated' | 'showFilm'
+> {
+  const { filterState, availableOptions, filterCounts, visibility } = input;
+  const dimensions: FilterToolbarProps['dimensions'] = {};
+  for (const key of surfaced) {
+    const source = DIMENSION_SOURCES[key];
+    const flag = DIMENSION_VISIBILITY[key];
+    const label = DIMENSION_LABELS[key];
+    if (!source || !flag || !label || !visibility[flag]) continue;
+    if (key === 'selectedFilmTypes' && filterState.filmFilter !== 'film') continue;
+    dimensions[key] = {
+      label,
+      options: availableOptions[source],
+      counts: filterCounts[source],
+    };
+  }
+  return {
+    dimensions,
+    counts: {
+      highlyRated: filterCounts.highlyRated,
+      film: filterCounts.film,
+      digital: filterCounts.digital,
+    },
+    showDateSort: visibility.dateSort,
+    showHighlyRated: visibility.highlyRated,
+    showFilm: visibility.film,
+  };
 }

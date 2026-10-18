@@ -53,18 +53,17 @@ describe('Component — SSR fallback viewport', () => {
       />
     );
 
-    expect(screen.queryByTestId('layout-skeleton')).not.toBeInTheDocument();
     expect(screen.getByTestId('item-1')).toBeInTheDocument();
     expect(screen.getByTestId('item-4')).toBeInTheDocument();
   });
 
-  it('renders the measuring skeleton when neither measured viewport nor ssrViewport is available', () => {
+  it('renders no grid items and does not throw when neither measured viewport nor ssrViewport is available', () => {
     const content = [makeImage(1), makeImage(2)];
 
-    render(<Component content={content} />);
+    expect(() => render(<Component content={content} />)).not.toThrow();
 
-    expect(screen.getByTestId('layout-skeleton')).toBeInTheDocument();
     expect(screen.queryByTestId('item-1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('item-2')).not.toBeInTheDocument();
   });
 
   it('honors measured viewport over ssrViewport once the client has measured', () => {
@@ -84,7 +83,6 @@ describe('Component — SSR fallback viewport', () => {
       />
     );
 
-    expect(screen.queryByTestId('layout-skeleton')).not.toBeInTheDocument();
     expect(screen.getByTestId('item-1')).toBeInTheDocument();
   });
 });

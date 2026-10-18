@@ -5,6 +5,7 @@ import { cache } from 'react';
 import { resolveTaxonomyBySlug } from '@/app/components/TaxonomyPage/resolveTaxonomy';
 import TaxonomyPage from '@/app/components/TaxonomyPage/TaxonomyPage';
 import { getAllTags, searchImages } from '@/app/lib/api/content';
+import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 const getCachedTags = cache(() => getAllTags());
 
@@ -45,6 +46,9 @@ export default async function TagPageRoute({ params }: TagPageRouteProps) {
   const matchedTag = resolveTaxonomyBySlug(tags, slug);
   if (!matchedTag) notFound();
 
-  const images = await searchImages({ tagIds: [matchedTag.id] });
-  return <TaxonomyPage entityName={matchedTag.name} images={images} />;
+  const [images, ssrViewport] = await Promise.all([
+    searchImages({ tagIds: [matchedTag.id] }),
+    resolveSsrViewport(),
+  ]);
+  return <TaxonomyPage entityName={matchedTag.name} images={images} ssrViewport={ssrViewport} />;
 }
