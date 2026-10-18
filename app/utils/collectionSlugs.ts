@@ -21,7 +21,7 @@ export const HOME_SLUG = 'home';
  * hiding an admin's collection from a browse list would be a worse failure than showing a
  * tile with a wrong link. Consumers log instead — see `isShadowedRouteSlug`.
  */
-export const SHADOWED_ROUTE_SLUGS = [
+const SHADOWED_ROUTE_SLUGS = [
   'all-client-galleries',
   'all-collections',
   'collections',

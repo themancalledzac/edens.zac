@@ -1,4 +1,4 @@
-'use client';
+import { type JSX } from 'react';
 
 import { isGifContent } from '@/app/utils/contentTypeGuards';
 import { formatLongDate } from '@/app/utils/formatDateRange';
@@ -47,9 +47,7 @@ export interface ReadOnlyInfoSectionProps {
  * admin cannot change but still needs to see while editing — capture date, source filename,
  * pixel dimensions, upload time, and the content ID used when cross-referencing the backend.
  */
-export default function ReadOnlyInfoSection({
-  content,
-}: ReadOnlyInfoSectionProps): React.JSX.Element {
+export default function ReadOnlyInfoSection({ content }: ReadOnlyInfoSectionProps): JSX.Element {
   const rows = buildRows(content);
 
   return (

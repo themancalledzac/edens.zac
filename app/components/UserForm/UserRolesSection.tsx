@@ -13,7 +13,7 @@ import { logger } from '@/app/utils/logger';
 import styles from './UserRolesSection.module.scss';
 
 /** The role index — the admin hub, where `RolesPanel` lists every role. */
-export const ROLES_HREF = '/admin';
+const ROLES_HREF = '/admin';
 
 /**
  * Detail for one role — its members and the collections it grants.

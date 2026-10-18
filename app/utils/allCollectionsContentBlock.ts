@@ -18,9 +18,6 @@ export const ALL_COLLECTIONS_TILE_ID = -1001;
  * `orderIndex` -1 keeps it behind the Me tile (-2) and ahead of every backend child (0 and up)
  * once `processContentBlocks` sorts. It has no cover, so its `imageUrl` is empty and the public
  * view's renderability filter drops it before layout.
- *
- * No `collectionId` — that is what keeps the follow toggle from attaching to a tile
- * that is not a real collection.
  */
 export function buildAllCollectionsContentBlock(): ContentParallaxImageModel {
   return buildParallaxCard({

@@ -97,7 +97,7 @@ export const MAX_FILL_RATIO = 1.15;
  * A leading item whose effective rating is at or below this may be passed over so that
  * a solo-eligible hero just behind it leads the row instead.
  */
-export const LOW_RATED_THRESHOLD = 2;
+const LOW_RATED_THRESHOLD = 2;
 
 /**
  * Whether a set of components fills a row within the acceptable band
@@ -226,14 +226,14 @@ export function acToBoxTree(component: AtomicComponent): BoxTree {
 // =============================================================================
 
 /** Row AR must be at least targetAR × this value. */
-export const AR_FLOOR_MULTIPLIER = 0.7;
+const AR_FLOOR_MULTIPLIER = 0.7;
 
 /** Never pull a row's target AR below this fraction of the baseline. */
-export const ROW_TARGET_AR_MIN_FRACTION = 0.6;
+const ROW_TARGET_AR_MIN_FRACTION = 0.6;
 /** Peak height-demand at or below which no pull is applied (≈ a 5★ pano's Vv). */
 export const ROW_TARGET_AR_VV_LOW = 1.85;
 /** Peak height-demand at or above which the pull is full (≈ a 1:3 portrait hero). */
-export const ROW_TARGET_AR_VV_HIGH = 5.0;
+const ROW_TARGET_AR_VV_HIGH = 5.0;
 
 /**
  * Per-row target AR: the viewport baseline pulled toward a floor in proportion to

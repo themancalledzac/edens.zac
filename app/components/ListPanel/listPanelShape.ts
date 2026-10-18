@@ -77,7 +77,7 @@ export const SLOT_HEIGHT: Record<SlotKind, number> = {
 };
 
 /** Vertical gap between two stacked slots in the same section (`--space-1`). */
-export const SLOT_GAP = 4;
+const SLOT_GAP = 4;
 
 /**
  * Block padding inside a row (`--space-2` top and bottom) plus its 1px `--color-border` separator.
