@@ -13,7 +13,7 @@ import { cache } from 'react';
 
 import {
   clientFetch,
-  getApiBaseUrl,
+  getServerApiTarget,
   getServerCookieHeader,
   throwFromResponse,
 } from '@/app/lib/api/core';
@@ -88,7 +88,7 @@ export async function me(): Promise<MeResponse | null> {
 /**
  * Server-side counterpart to {@link me}. Server Components cannot call `me()` (relative URL +
  * `credentials:'same-origin'` only work in the browser), so this resolves the absolute backend URL
- * via `getApiBaseUrl` and forwards `ezac_session` via `getServerCookieHeader`. Returns null on 401.
+ * via `getServerApiTarget` and forwards `ezac_session` via `getServerCookieHeader`. Returns null on 401.
  *
  * Wrapped in React's `cache()` so multiple independent callers within the SAME request (e.g. the
  * `(admin)` layout's `requireAdmin()` and a page's own `Promise.all`) share one backend round-trip
@@ -99,10 +99,11 @@ export async function me(): Promise<MeResponse | null> {
  */
 export const meServer = cache(async (): Promise<MeResponse | null> => {
   const cookieHeader = await getServerCookieHeader();
-  const res = await fetch(`${getApiBaseUrl('auth')}/me`, {
+  const target = await getServerApiTarget('auth');
+  const res = await fetch(`${target.baseUrl}/me`, {
     method: 'GET',
     cache: 'no-store',
-    headers: cookieHeader ? { Cookie: cookieHeader } : {},
+    headers: { ...target.headers, ...(cookieHeader ? { Cookie: cookieHeader } : {}) },
   });
   if (res.status === 401) return null;
   if (!res.ok) {

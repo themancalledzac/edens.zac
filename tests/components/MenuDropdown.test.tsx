@@ -3,7 +3,7 @@
  * nav link) before asserting, so the fetch has settled and nothing races the assertions.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Link from 'next/link';
 
 import { MenuDropdown } from '@/app/components/MenuDropdown/MenuDropdown';
@@ -15,6 +15,7 @@ const mockPush = jest.fn();
 const mockRefresh = jest.fn();
 let mockPathname = '/some-collection';
 let mockIsLocal = false;
+let mockForceMountFetch = false;
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
@@ -26,6 +27,16 @@ jest.mock('@/app/lib/api/auth', () => ({
   me: jest.fn(),
   logout: jest.fn(),
 }));
+jest.mock('@/app/hooks/useFetchMe', () => {
+  const actual = jest.requireActual<{
+    useFetchMe: (options?: { initialMe?: unknown; enabled?: boolean }) => unknown;
+  }>('@/app/hooks/useFetchMe');
+  return {
+    ...actual,
+    useFetchMe: (options?: { initialMe?: unknown; enabled?: boolean }) =>
+      actual.useFetchMe(mockForceMountFetch ? { enabled: true } : options),
+  };
+});
 jest.mock('@/app/lib/actions/clearCache', () => ({ clearCacheAction: jest.fn() }));
 jest.mock('@/app/utils/environment', () => ({
   isLocalEnvironment: () => mockIsLocal,
@@ -148,38 +159,6 @@ describe('MenuDropdown — auth actions', () => {
     expect(screen.queryByRole('button', { name: /log in/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
   });
-
-  it('shows "Home" off the home page as a real link to /', async () => {
-    mockMe.mockResolvedValue(null);
-    const onClose = jest.fn();
-
-    render(<MenuDropdown isOpen onClose={onClose} />);
-    await screen.findByRole('button', { name: /log in/i });
-
-    const home = screen.getByRole('link', { name: 'Home' });
-    expect(home).toHaveAttribute('href', '/');
-
-    fireEvent.click(home);
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  it('hides "Home" when already on the home page', async () => {
-    mockMe.mockResolvedValue(null);
-    mockPathname = '/';
-
-    render(<MenuDropdown isOpen onClose={jest.fn()} />);
-    await screen.findByRole('button', { name: /log in/i });
-
-    expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
-  });
-
-  it('renders "Me" as a real link to /user for a logged-in principal', async () => {
-    mockMe.mockResolvedValue(principal);
-
-    render(<MenuDropdown isOpen onClose={jest.fn()} />);
-
-    expect(await screen.findByRole('link', { name: 'Me' })).toHaveAttribute('href', '/user');
-  });
 });
 
 describe('MenuDropdown — destinations are links, actions are buttons', () => {
@@ -194,7 +173,7 @@ describe('MenuDropdown — destinations are links, actions are buttons', () => {
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
     await screen.findByRole('button', { name: /log in/i });
 
-    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
+    expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Explore' })).toHaveAttribute('href', '/explore');
     expect(screen.getByRole('link', { name: 'Collections' })).toHaveAttribute(
       'href',
@@ -730,5 +709,355 @@ describe('MenuDropdown — focus restore when the trigger is gone', () => {
     expect(() => rerender(<Bare open={false} withTrigger={false} />)).not.toThrow();
 
     expect(document.body).toHaveFocus();
+  });
+});
+
+const NAV_ORDER = [
+  'Explore',
+  'Collections',
+  'Your space',
+  'About',
+  'Contact',
+  'Create',
+  'Update',
+  'Metadata',
+  'Comments',
+  'Clear Cache',
+  'Log out',
+  'Log in',
+];
+
+function renderedMenuOrder() {
+  return [...screen.getByRole('dialog').querySelectorAll('a, button')]
+    .map(el => (el.textContent ?? '').replace(/[^ A-Za-z]/g, '').trim())
+    .filter(text => NAV_ORDER.includes(text));
+}
+
+describe('MenuDropdown — A12 item list and order', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockMe.mockResolvedValue(null);
+    mockPathname = '/some-collection';
+    mockIsLocal = false;
+  });
+
+  afterEach(() => {
+    mockIsLocal = false;
+  });
+
+  it('A12: never renders a Home row, on the home page or off it', () => {
+    mockPathname = '/';
+    const { unmount } = render(<MenuDropdown isOpen onClose={jest.fn()} me={principal} />);
+    expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
+    unmount();
+
+    mockPathname = '/elsewhere';
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={principal} />);
+    expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
+  });
+
+  it('A12: renders no "Me" row and calls it "Your space"', () => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={principal} />);
+
+    expect(screen.queryByRole('link', { name: 'Me' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Your space' })).toBeInTheDocument();
+  });
+
+  it('A12: Your space links to /user for a signed-in non-admin', () => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={principal} />);
+
+    expect(screen.getByRole('link', { name: 'Your space' })).toHaveAttribute('href', '/user');
+  });
+
+  it('A12: Your space links to /admin for an admin', () => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={adminPrincipal} />);
+
+    expect(screen.getByRole('link', { name: 'Your space' })).toHaveAttribute('href', '/admin');
+  });
+
+  it('A12: Your space is absent for an anonymous viewer', () => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={null} />);
+
+    expect(screen.queryByRole('link', { name: 'Your space' })).not.toBeInTheDocument();
+  });
+
+  it('A12: orders a local admin on a collection page browse, account, About, Contact, admin rows, Clear Cache, Log out', () => {
+    mockIsLocal = true;
+    render(
+      <MenuDropdown
+        isOpen
+        onClose={jest.fn()}
+        me={adminPrincipal}
+        isCollectionPage
+        collectionSlug="x"
+      />
+    );
+
+    expect(renderedMenuOrder()).toEqual([
+      'Explore',
+      'Collections',
+      'Your space',
+      'About',
+      'Contact',
+      'Create',
+      'Update',
+      'Metadata',
+      'Comments',
+      'Clear Cache',
+      'Log out',
+    ]);
+  });
+
+  it('A12: orders a signed-in non-admin Explore, Collections, Your space, About, Contact, Log out', () => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={principal} />);
+
+    expect(renderedMenuOrder()).toEqual([
+      'Explore',
+      'Collections',
+      'Your space',
+      'About',
+      'Contact',
+      'Log out',
+    ]);
+  });
+
+  it('A12: orders an anonymous viewer Explore, Collections, About, Contact, Log in', () => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={null} />);
+
+    expect(renderedMenuOrder()).toEqual(['Explore', 'Collections', 'About', 'Contact', 'Log in']);
+  });
+
+  it('A12: keeps the same order when the viewer is resolved by the lazy fetch', async () => {
+    mockMe.mockResolvedValue(principal);
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    await screen.findByRole('button', { name: /log out/i });
+
+    expect(renderedMenuOrder()).toEqual([
+      'Explore',
+      'Collections',
+      'Your space',
+      'About',
+      'Contact',
+      'Log out',
+    ]);
+  });
+});
+
+describe('MenuDropdown — A13 Clear Cache gate', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPathname = '/some-collection';
+    mockIsLocal = true;
+  });
+
+  afterEach(() => {
+    mockIsLocal = false;
+    jest.restoreAllMocks();
+  });
+
+  it('A13: renders for a local admin', () => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={adminPrincipal} />);
+
+    expect(screen.getByRole('button', { name: 'Clear Cache' })).toBeInTheDocument();
+  });
+
+  it('A13: never renders for an anonymous viewer, even locally', () => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={null} />);
+
+    expect(screen.queryByRole('button', { name: /clear cache/i })).not.toBeInTheDocument();
+  });
+
+  it('A13: never renders for a signed-in non-admin, even locally', () => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={principal} />);
+
+    expect(screen.queryByRole('button', { name: /clear cache/i })).not.toBeInTheDocument();
+  });
+
+  it('A13: never renders for an admin outside a local environment', () => {
+    mockIsLocal = false;
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={adminPrincipal} />);
+
+    expect(screen.queryByRole('button', { name: /clear cache/i })).not.toBeInTheDocument();
+  });
+
+  it('A13 twin: with the local-environment check letting everything through, an admin sees Clear Cache outside local', () => {
+    mockIsLocal = false;
+    const environment = jest.requireMock('@/app/utils/environment') as {
+      isLocalEnvironment: () => boolean;
+    };
+    jest.spyOn(environment, 'isLocalEnvironment').mockReturnValue(true);
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={adminPrincipal} />);
+
+    expect(screen.getByRole('button', { name: 'Clear Cache' })).toBeInTheDocument();
+  });
+});
+
+describe('MenuDropdown — A15 no /auth/me on page load', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockMe.mockResolvedValue(null);
+    mockPathname = '/some-collection';
+    mockIsLocal = false;
+  });
+
+  afterEach(() => {
+    mockForceMountFetch = false;
+    jest.restoreAllMocks();
+  });
+
+  it('A15b: closed with me supplied makes no request', () => {
+    render(<MenuDropdown isOpen={false} onClose={jest.fn()} me={principal} />);
+
+    expect(mockMe).not.toHaveBeenCalled();
+  });
+
+  it('A15b: closed with me undefined makes no request', () => {
+    render(<MenuDropdown isOpen={false} onClose={jest.fn()} />);
+
+    expect(mockMe).not.toHaveBeenCalled();
+  });
+
+  it('A15b: opening with me supplied makes no request and renders from it', () => {
+    const { rerender } = render(<MenuDropdown isOpen={false} onClose={jest.fn()} me={principal} />);
+    rerender(<MenuDropdown isOpen onClose={jest.fn()} me={principal} />);
+
+    expect(mockMe).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument();
+  });
+
+  it('A15b: opening with me null (anonymous, server-resolved) makes no request', () => {
+    const { rerender } = render(<MenuDropdown isOpen={false} onClose={jest.fn()} me={null} />);
+    rerender(<MenuDropdown isOpen onClose={jest.fn()} me={null} />);
+
+    expect(mockMe).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
+  });
+
+  it('A15b: with me undefined the first open makes exactly one request, and later opens make none', async () => {
+    mockMe.mockResolvedValue(principal);
+    const { rerender } = render(<MenuDropdown isOpen={false} onClose={jest.fn()} />);
+    expect(mockMe).not.toHaveBeenCalled();
+
+    rerender(<MenuDropdown isOpen onClose={jest.fn()} />);
+    await screen.findByRole('button', { name: /log out/i });
+    expect(mockMe).toHaveBeenCalledTimes(1);
+
+    rerender(<MenuDropdown isOpen={false} onClose={jest.fn()} />);
+    rerender(<MenuDropdown isOpen onClose={jest.fn()} />);
+    expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument();
+    expect(mockMe).toHaveBeenCalledTimes(1);
+  });
+
+  it('A15 twin: a menu that fetches on mount makes a request while closed', () => {
+    mockMe.mockResolvedValue(null);
+    mockForceMountFetch = true;
+
+    render(<MenuDropdown isOpen={false} onClose={jest.fn()} me={principal} />);
+
+    expect(mockMe).toHaveBeenCalled();
+  });
+});
+
+describe('MenuDropdown — A14 AUTH_CHANGED_EVENT refetch', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockMe.mockResolvedValue(null);
+    mockPathname = '/some-collection';
+    mockIsLocal = false;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('A14: refetches and re-renders on AUTH_CHANGED_EVENT when seeded with me', async () => {
+    mockMe.mockResolvedValue(null);
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={principal} />);
+    expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new Event(authApi.AUTH_CHANGED_EVENT));
+    });
+
+    expect(await screen.findByRole('button', { name: /log in/i })).toBeInTheDocument();
+    expect(mockMe).toHaveBeenCalledTimes(1);
+  });
+
+  it('A14: refetches on AUTH_CHANGED_EVENT after a lazy first open', async () => {
+    mockMe.mockResolvedValueOnce(principal).mockResolvedValue(null);
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    await screen.findByRole('button', { name: /log out/i });
+
+    act(() => {
+      window.dispatchEvent(new Event(authApi.AUTH_CHANGED_EVENT));
+    });
+
+    expect(await screen.findByRole('button', { name: /log in/i })).toBeInTheDocument();
+    expect(mockMe).toHaveBeenCalledTimes(2);
+  });
+
+  it('A14 twin: with the event name no longer matching, the event does not refetch', () => {
+    const realName = authApi.AUTH_CHANGED_EVENT;
+    jest.replaceProperty(
+      jest.requireMock<{ AUTH_CHANGED_EVENT: string }>('@/app/lib/api/auth'),
+      'AUTH_CHANGED_EVENT',
+      'something-else'
+    );
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={principal} />);
+
+    act(() => {
+      window.dispatchEvent(new Event(realName));
+    });
+
+    expect(mockMe).not.toHaveBeenCalled();
+  });
+});
+
+describe('MenuDropdown — A15c me prop changes', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockMe.mockResolvedValue(null);
+    mockPathname = '/some-collection';
+    mockIsLocal = false;
+  });
+
+  it('A15c: shows the new value when me goes from anonymous to signed in', () => {
+    const { rerender } = render(<MenuDropdown isOpen onClose={jest.fn()} me={null} />);
+    expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
+
+    rerender(<MenuDropdown isOpen onClose={jest.fn()} me={adminPrincipal} />);
+
+    expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Your space' })).toHaveAttribute('href', '/admin');
+    expect(screen.getByRole('link', { name: 'Create' })).toBeInTheDocument();
+    expect(mockMe).not.toHaveBeenCalled();
+  });
+
+  it('A15c: shows the new value when me goes from signed in to anonymous', () => {
+    const { rerender } = render(<MenuDropdown isOpen onClose={jest.fn()} me={adminPrincipal} />);
+
+    rerender(<MenuDropdown isOpen onClose={jest.fn()} me={null} />);
+
+    expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Your space' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Create' })).not.toBeInTheDocument();
+  });
+});
+
+describe('MenuDropdown — A19 row markup unchanged', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPathname = '/some-collection';
+  });
+
+  it('A19: nav rows keep the item wrapper, link and options-span classes', () => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={principal} />);
+
+    const link = screen.getByRole('link', { name: 'Your space' });
+    expect(link).toHaveClass('dropdownMenuLink');
+    expect(link.parentElement).toHaveClass('dropdownMenuItem');
+    expect(link.querySelector('span')).toHaveClass('dropdownMenuOptions');
+    expect(screen.getByRole('dialog')).toHaveClass('dropdown');
   });
 });

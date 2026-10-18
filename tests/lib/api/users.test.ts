@@ -27,6 +27,7 @@ import {
   type UserCreateRequest,
   type UserUpdateRequest,
 } from '@/app/types/User';
+import { isLocalEnvironment } from '@/app/utils/environment';
 import { logger } from '@/app/utils/logger';
 
 jest.mock('next/headers', () => ({ cookies: jest.fn() }));
@@ -83,6 +84,17 @@ describe('createUser', () => {
 // ---------------------------------------------------------------------------
 
 describe('getInvitePreview', () => {
+  const originalWindow = global.window;
+
+  beforeEach(() => {
+    (isLocalEnvironment as jest.Mock).mockReturnValue(true);
+    Object.defineProperty(global, 'window', { value: undefined, writable: true });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(global, 'window', { value: originalWindow, writable: true });
+  });
+
   it('fetches server-side with no-store and returns InvitePreview on 200', async () => {
     const preview = { email: 'client@example.com', displayName: 'Jane' };
     (global.fetch as jest.Mock).mockResolvedValue({
@@ -555,5 +567,50 @@ describe('mergeUser', () => {
   it('propagates ApiError(409) for an illegal merge', async () => {
     (core.fetchAdminPostJsonApi as jest.Mock).mockRejectedValue(new ApiError('Conflict', 409));
     await expect(mergeUser(1, 2)).rejects.toMatchObject({ name: 'ApiError', status: 409 });
+  });
+});
+
+describe('getInvitePreview — outside a local environment (A3)', () => {
+  const originalApiUrl = process.env.API_URL;
+  const originalSecret = process.env.INTERNAL_API_SECRET;
+
+  beforeEach(() => {
+    (isLocalEnvironment as jest.Mock).mockReturnValue(false);
+    process.env.API_URL = 'https://backend.internal';
+    process.env.INTERNAL_API_SECRET = 'sec-' + 'y'.repeat(8);
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ email: 'a@b.com', displayName: null }),
+    });
+  });
+
+  afterEach(() => {
+    const restore = (key: string, value: string | undefined) => {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    };
+    restore('API_URL', originalApiUrl);
+    restore('INTERNAL_API_SECRET', originalSecret);
+  });
+
+  it('A3: calls the backend directly with X-Internal-Secret', async () => {
+    await getInvitePreview('tok');
+
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toBe('https://backend.internal/api/auth/invite/tok');
+    expect(url).not.toContain('/api/proxy');
+    expect(init.headers['X-Internal-Secret']).toBe('sec-yyyyyyyy');
+    expect(init.cache).toBe('no-store');
+  });
+
+  it('twin A3: with the local check letting everything through, no secret is sent', async () => {
+    (isLocalEnvironment as jest.Mock).mockReturnValue(true);
+
+    await getInvitePreview('tok');
+
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toBe('http://localhost:8080/api/auth/invite/tok');
+    expect(init.headers?.['X-Internal-Secret']).toBeUndefined();
   });
 });

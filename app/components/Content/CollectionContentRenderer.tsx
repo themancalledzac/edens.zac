@@ -698,7 +698,7 @@ export default function CollectionContentRenderer({
     alt: mediaAlt,
     width: imageWidth,
     height: imageHeight,
-    sizes: `(max-width: 768px) 100vw, ${Math.round(validWidth)}px`,
+    sizes: `${Math.round(validWidth)}px`,
     quality: IMAGE.quality,
     loading: priority ? ('eager' as const) : ('lazy' as const),
     priority: priority ?? false,

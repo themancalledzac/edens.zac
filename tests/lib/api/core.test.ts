@@ -17,9 +17,11 @@ import {
   fetchPublicRead,
   fetchReadApi,
   getApiBaseUrl,
+  getServerApiTarget,
   getServerCookieHeader,
   throwFromResponse,
 } from '@/app/lib/api/core';
+import { serverBackendTarget } from '@/app/lib/api/serverBackend';
 import { isLocalEnvironment } from '@/app/utils/environment';
 import { logger } from '@/app/utils/logger';
 
@@ -29,6 +31,13 @@ global.fetch = jest.fn();
 // Mock environment
 jest.mock('@/app/utils/environment', () => ({
   isLocalEnvironment: jest.fn(() => true),
+}));
+
+jest.mock('@/app/lib/api/serverBackend', () => ({
+  serverBackendTarget: jest.fn((endpointType: string) => ({
+    baseUrl: `https://backend.test/api/${endpointType}`,
+    headers: { 'X-Internal-Secret': 'mock-secret' },
+  })),
 }));
 
 // Mock next/headers for getServerCookieHeader tests
@@ -902,5 +911,140 @@ describe('clientFetchJson', () => {
     await expect(clientFetchJson<{ token: string }>('/api/proxy/thing')).resolves.toEqual({
       token: 'tok-1',
     });
+  });
+});
+
+describe('getServerApiTarget and server-side fetchers (A3, A4, A4b, A6b)', () => {
+  const originalWindow = global.window;
+  const nextHeaders = jest.requireMock('next/headers') as { cookies: jest.Mock };
+
+  const okResponse = () => ({
+    ok: true,
+    status: 200,
+    json: jest.fn().mockResolvedValue({ data: 'ok' }),
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (isLocalEnvironment as jest.Mock).mockReturnValue(false);
+    Object.defineProperty(global, 'window', { value: undefined, writable: true });
+    nextHeaders.cookies.mockResolvedValue({
+      getAll: () => [{ name: 'ezac_session', value: 'sess-token' }],
+    });
+    (global.fetch as jest.Mock).mockResolvedValue(okResponse());
+  });
+
+  afterEach(() => {
+    (isLocalEnvironment as jest.Mock).mockReturnValue(true);
+    Object.defineProperty(global, 'window', { value: originalWindow, writable: true });
+  });
+
+  it('A3: non-local server target is the serverBackend target', async () => {
+    const target = await getServerApiTarget('admin');
+
+    expect(serverBackendTarget).toHaveBeenCalledWith('admin');
+    expect(target).toEqual({
+      baseUrl: 'https://backend.test/api/admin',
+      headers: { 'X-Internal-Secret': 'mock-secret' },
+    });
+  });
+
+  it.each([
+    ['fetchReadApi', 'read', () => fetchReadApi('/x')],
+    ['fetchPublicRead', 'read', () => fetchPublicRead('/x')],
+    ['fetchAdminGetApi', 'admin', () => fetchAdminGetApi('/x')],
+    ['fetchAdminPostJsonApi', 'admin', () => fetchAdminPostJsonApi('/x', {})],
+    ['fetchAdminDeleteApi', 'admin', () => fetchAdminDeleteApi('/x')],
+    ['fetchEditPostJsonApi', 'edit', () => fetchEditPostJsonApi('/x', {})],
+    ['fetchEditPatchJsonApi', 'edit', () => fetchEditPatchJsonApi('/x', {})],
+  ])(
+    'A3: %s goes direct to the backend with the secret, never the proxy',
+    async (_n, channel, call) => {
+      process.env.NEXT_PUBLIC_APP_URL = 'https://app.example.com';
+
+      await call();
+
+      const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toBe(`https://backend.test/api/${channel}/x`);
+      expect(url).not.toContain('/api/proxy');
+      expect(init.headers['X-Internal-Secret']).toBe('mock-secret');
+    }
+  );
+
+  it('A3: keeps Cookie forwarding alongside the secret', async () => {
+    await fetchAdminGetApi('/x');
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(init.headers.Cookie).toBe('ezac_session=sess-token');
+    expect(init.headers['X-Internal-Secret']).toBe('mock-secret');
+  });
+
+  it('A3: fetchPublicRead sends the secret but no Cookie', async () => {
+    await fetchPublicRead('/x');
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(init.headers.Cookie).toBeUndefined();
+    expect(init.headers['X-Internal-Secret']).toBe('mock-secret');
+  });
+
+  it('A3: caller-supplied headers survive next to the secret', async () => {
+    await fetchAdminPostJsonApi('/x', { a: 1 });
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(init.headers['Content-Type']).toBe('application/json');
+    expect(init.headers['X-Internal-Secret']).toBe('mock-secret');
+  });
+
+  it('A4: the browser arm returns the relative proxy target with no headers', async () => {
+    Object.defineProperty(global, 'window', { value: originalWindow, writable: true });
+
+    const target = await getServerApiTarget('read');
+
+    expect(target).toEqual({ baseUrl: '/api/proxy/api/read', headers: {} });
+  });
+
+  it('A4b: the browser arm carries no X-Internal-Secret and never loads serverBackend', async () => {
+    Object.defineProperty(global, 'window', { value: originalWindow, writable: true });
+
+    const target = await getServerApiTarget('admin');
+
+    expect(target.headers).not.toHaveProperty('X-Internal-Secret');
+    expect(serverBackendTarget).not.toHaveBeenCalled();
+  });
+
+  it('twin A4b: with the browser guard off (no window) the secret does appear', async () => {
+    const target = await getServerApiTarget('admin');
+
+    expect(target.headers).toHaveProperty('X-Internal-Secret');
+  });
+
+  it('A6b: local server target is localhost:8080 with no secret and no serverBackend call', async () => {
+    (isLocalEnvironment as jest.Mock).mockReturnValue(true);
+
+    const target = await getServerApiTarget('admin');
+
+    expect(target).toEqual({ baseUrl: 'http://localhost:8080/api/admin', headers: {} });
+    expect(serverBackendTarget).not.toHaveBeenCalled();
+  });
+
+  it('A6b: local fetchers hit localhost with no X-Internal-Secret header', async () => {
+    (isLocalEnvironment as jest.Mock).mockReturnValue(true);
+
+    await fetchReadApi('/x');
+
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toBe('http://localhost:8080/api/read/x');
+    expect(init.headers['X-Internal-Secret']).toBeUndefined();
+    expect(serverBackendTarget).not.toHaveBeenCalled();
+  });
+
+  it('twin A6b: with the local check letting everything through, serverBackend is used', async () => {
+    (isLocalEnvironment as jest.Mock).mockReturnValue(false);
+
+    await fetchReadApi('/x');
+
+    expect(serverBackendTarget).toHaveBeenCalledWith('read');
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(init.headers['X-Internal-Secret']).toBe('mock-secret');
   });
 });

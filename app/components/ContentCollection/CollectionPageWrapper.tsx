@@ -7,7 +7,11 @@ import { meServer } from '@/app/lib/api/auth';
 import { getCollectionBySlug, getScopedAllCollections } from '@/app/lib/api/collections';
 import { getUserPage, listSavedImageIdsServer } from '@/app/lib/api/personal';
 import { listSelectIdsServer } from '@/app/lib/api/selects';
-import { buildAllCollectionsContentBlock } from '@/app/utils/allCollectionsContentBlock';
+import {
+  buildAllCollectionsContentBlock,
+  shouldBuildAllCollectionsTile,
+  shouldFetchUserPage,
+} from '@/app/utils/allCollectionsContentBlock';
 import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 import { findMembership } from '@/app/utils/galleryAccess';
 import { logger } from '@/app/utils/logger';
@@ -35,9 +39,10 @@ interface CollectionPageWrapperProps {
  * (slug="home") and dynamic collection pages, including home's own `?manage=1` edit view.
  *
  * The all-collections slug is permission-scoped per viewer, so it uses the no-store fetch; every
- * other slug keeps the shared cacheable fetch. Home gets two synthetic tiles ahead of its backend
- * children: the personal Me tile for a signed-in viewer (one extra no-store fetch, skipped on
- * anonymous home) and the All Collections tile for everyone. Their negative `orderIndex` is what
+ * other slug keeps the shared cacheable fetch. Home gets synthetic tiles ahead of its backend
+ * children: the personal Me tile for a signed-in viewer (one extra no-store fetch, started beside
+ * the collection fetch and skipped on anonymous home) and, in edit mode only, the All Collections
+ * tile. Their negative `orderIndex` is what
  * puts them first once `processContentBlocks` sorts, so the array order here mirrors that rather
  * than deciding it. Home also pins its mobile row budget to `LAYOUT.homeMobileChunkSize`, since
  * its saved density of 2 would otherwise map to one tile per row on a phone.
@@ -61,11 +66,18 @@ export default async function CollectionPageWrapper({
   }
 
   try {
-    const [fetched, ssrViewport, me] = await Promise.all([
+    const [fetched, ssrViewport, signedIn] = await Promise.all([
       slug === 'all-collections' ? getScopedAllCollections() : getCollectionBySlug(slug, 0, 500),
       resolveSsrViewport(),
-      meServer(),
+      meServer().then(async resolvedMe => {
+        const [userPage, savedImageIds] = await Promise.all([
+          shouldFetchUserPage(slug, resolvedMe) ? getUserPage() : Promise.resolve(null),
+          resolvedMe ? listSavedImageIdsServer() : Promise.resolve<number[]>([]),
+        ]);
+        return { me: resolvedMe, userPage, savedImageIds };
+      }),
     ]);
+    const { me, userPage, savedImageIds } = signedIn;
 
     const baseCollection =
       excludeContentSlugs && excludeContentSlugs.length > 0 && Array.isArray(fetched.content)
@@ -84,8 +96,10 @@ export default async function CollectionPageWrapper({
         ? {
             ...baseCollection,
             content: [
-              ...(me ? [buildMeContentBlock(await getUserPage())] : []),
-              buildAllCollectionsContentBlock(),
+              ...(me ? [buildMeContentBlock(userPage)] : []),
+              ...(shouldBuildAllCollectionsTile(editMode)
+                ? [buildAllCollectionsContentBlock()]
+                : []),
               ...baseCollection.content,
             ],
           }
@@ -101,12 +115,9 @@ export default async function CollectionPageWrapper({
       });
     }
 
-    const [initialSelectedIds, initialSavedImageIds] = await Promise.all([
-      collection.isClient === true
-        ? listSelectIdsServer(collection.id)
-        : Promise.resolve<number[]>([]),
-      me ? listSavedImageIdsServer() : Promise.resolve<number[]>([]),
-    ]);
+    const initialSelectedIds =
+      collection.isClient === true ? await listSelectIdsServer(collection.id) : [];
+    const initialSavedImageIds = savedImageIds;
 
     if (!editMode && collection.isPasswordProtected === true) {
       const isAuthenticated = Array.isArray(collection.content);

@@ -1,4 +1,5 @@
 import { type ContentParallaxImageModel } from '@/app/types/Content';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 import { buildParallaxCard } from '@/app/utils/parallaxCard';
 
 /**
@@ -30,4 +31,19 @@ export function buildAllCollectionsContentBlock(): ContentParallaxImageModel {
     alt: 'Browse all collections',
     orderIndex: -1,
   });
+}
+
+/**
+ * Whether home gets the All Collections tile. Only the `?manage=1` edit view does; the public
+ * view would drop the imageless tile anyway, so it is never built there.
+ */
+export function shouldBuildAllCollectionsTile(editMode: boolean): boolean {
+  return editMode === true;
+}
+
+/**
+ * Whether the personal user page is needed: only the home slug for a signed-in viewer.
+ */
+export function shouldFetchUserPage(slug: string, me: unknown): boolean {
+  return slug === HOME_SLUG && me !== null && me !== undefined;
 }

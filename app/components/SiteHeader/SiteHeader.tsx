@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useId, useState } from 'react';
 
 import { MenuDropdown } from '@/app/components/MenuDropdown/MenuDropdown';
+import { type MeResponse } from '@/app/types/Auth';
 
 import styles from './SiteHeader.module.scss';
 
@@ -12,6 +13,8 @@ interface SiteHeaderProps {
   /** True on a single collection's page; forwarded to {@link MenuDropdown} to gate Update. */
   isCollectionPage?: boolean;
   collectionSlug?: string;
+  /** Forwarded unchanged to {@link MenuDropdown}: undefined = unresolved, null = anonymous. */
+  me?: MeResponse | null;
 }
 
 /**
@@ -24,7 +27,7 @@ interface SiteHeaderProps {
  * the overlay is mounted — pointing it at an id that is not in the document would be an invalid
  * ARIA reference.
  */
-export function SiteHeader({ isCollectionPage = false, collectionSlug }: SiteHeaderProps) {
+export function SiteHeader({ isCollectionPage = false, collectionSlug, me }: SiteHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuId = useId();
 
@@ -61,6 +64,7 @@ export function SiteHeader({ isCollectionPage = false, collectionSlug }: SiteHea
         onClose={closeMenu}
         isCollectionPage={isCollectionPage}
         collectionSlug={collectionSlug}
+        me={me}
       />
     </>
   );

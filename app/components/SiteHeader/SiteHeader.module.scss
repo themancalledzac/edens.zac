@@ -76,7 +76,10 @@
 .menuButton {
   background: none;
   border: none;
-  padding: 0;
+
+  /* 32px glyph + 6px each side = 44px hit box; the negative margin keeps the glyph where it sat. */
+  padding: 6px;
+  margin: -6px;
   cursor: pointer;
   font: inherit;
   color: inherit;
@@ -88,6 +91,11 @@
   &:focus-visible {
     outline: var(--focus-ring);
     outline-offset: 2px;
+  }
+
+  @media (width >= 768px) {
+    padding: 0;
+    margin: 0;
   }
 }
 

@@ -89,11 +89,28 @@ export function getApiBaseUrl(endpointType: string): string {
 }
 
 /**
- * Build a simple API URL without query parameters (for use with fetch options)
+ * Base URL and extra headers for a server-side fetch to the backend.
+ *
+ * Browser: the relative same-origin proxy, no extra headers. Local: the backend on
+ * `http://localhost:8080`, no secret, and `serverBackend` is never imported. Otherwise the
+ * backend is called directly through `serverBackend`, which supplies `X-Internal-Secret`. That
+ * module is imported lazily inside the `typeof window === 'undefined'` branch so `API_URL` and
+ * `INTERNAL_API_SECRET` stay out of client bundles.
  */
-function buildSimpleApiUrl(endpointType: string, endpoint: string): string {
-  const baseUrl = getApiBaseUrl(endpointType);
-  return `${baseUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+export async function getServerApiTarget(
+  endpointType: string
+): Promise<{ baseUrl: string; headers: Record<string, string> }> {
+  if (typeof window !== 'undefined') {
+    return { baseUrl: `/api/proxy/api/${endpointType}`, headers: {} };
+  }
+  if (isLocalEnvironment()) {
+    return { baseUrl: `http://localhost:8080/api/${endpointType}`, headers: {} };
+  }
+  if (typeof window === 'undefined') {
+    const { serverBackendTarget } = await import('@/app/lib/api/serverBackend');
+    return serverBackendTarget(endpointType);
+  }
+  return { baseUrl: `/api/proxy/api/${endpointType}`, headers: {} };
 }
 
 /**
@@ -272,10 +289,12 @@ const fetchBase = async <T>(
   options: RequestInit = {},
   forwardCookies = true
 ): Promise<T | null> => {
-  const url = buildSimpleApiUrl(channel, endpoint);
+  const target = await getServerApiTarget(channel);
+  const url = `${target.baseUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
 
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> | undefined),
+    ...target.headers,
   };
   if (forwardCookies) {
     const cookieHeader = await getServerCookieHeader();

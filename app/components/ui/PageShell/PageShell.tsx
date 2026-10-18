@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
+import { type MeResponse } from '@/app/types/Auth';
 
 import styles from './PageShell.module.scss';
 
@@ -11,6 +12,8 @@ export interface PageShellProps {
   /** Render the site header (default true). Status pages pass false. */
   withHeader?: boolean;
   className?: string;
+  /** Server-resolved principal forwarded unchanged to {@link SiteHeader}; omitted means unresolved. */
+  me?: MeResponse | null;
 }
 
 /**
@@ -32,12 +35,13 @@ export function PageShell({
   collectionSlug,
   withHeader = true,
   className,
+  me,
 }: PageShellProps) {
   const mainClasses = [styles.main, className].filter(Boolean).join(' ');
   return (
     <div className={styles.container}>
       <main className={mainClasses}>
-        {withHeader && <SiteHeader collectionSlug={collectionSlug} />}
+        {withHeader && <SiteHeader collectionSlug={collectionSlug} me={me} />}
         <SkipTarget>{children}</SkipTarget>
       </main>
     </div>

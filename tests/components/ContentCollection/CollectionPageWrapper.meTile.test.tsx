@@ -87,7 +87,7 @@ describe('CollectionPageWrapper — Me tile injection', () => {
 
     expect(element.type).toBe(CollectionPage);
     const content = element.props.collection.content;
-    expect(content).toHaveLength(4);
+    expect(content).toHaveLength(3);
     expect(content[0].id).toBe(ME_TILE_ID);
     expect(content[0].slug).toBe('user');
     expect(content[0].orderIndex).toBeLessThan(content[1].orderIndex);
@@ -108,7 +108,7 @@ describe('CollectionPageWrapper — Me tile injection', () => {
     const element = await CollectionPageWrapper({ slug: 'home' });
 
     const content = element.props.collection.content;
-    expect(content).toHaveLength(4);
+    expect(content).toHaveLength(3);
     expect(content[0].id).toBe(ME_TILE_ID);
     expect(content[0].imageUrl).toBe('');
   });
@@ -120,7 +120,7 @@ describe('CollectionPageWrapper — Me tile injection', () => {
     const element = await CollectionPageWrapper({ slug: 'home' });
 
     const content = element.props.collection.content;
-    expect(content).toHaveLength(3);
+    expect(content).toHaveLength(2);
     expect(content.some((b: { id: number }) => b.id === ME_TILE_ID)).toBe(false);
     expect(mockGetUserPage).not.toHaveBeenCalled();
   });
