@@ -5,6 +5,9 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { Footer } from '@/app/components/Footer/Footer';
 import { Button } from '@/app/components/ui/Button/Button';
+import { Field } from '@/app/components/ui/Field/Field';
+import { FormError } from '@/app/components/ui/Field/FormError';
+import { Input } from '@/app/components/ui/Field/Input';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { ApiError } from '@/app/lib/api/core';
@@ -33,7 +36,8 @@ const UNLOCKING_FAILSAFE_MS = 5000;
  * component is only mounted when the viewer has no valid `gallery_access_<slug>`
  * cookie. Successful submission sets the cookie and triggers `router.refresh()`,
  * which re-runs the wrapper server-side and unmounts the gate in favor of the
- * page. The brief in-between window shows a "Loading gallery…" state.
+ * page. The brief in-between window shows a "Loading gallery…" state. On success the cookie is
+ * already set on the response, so the refresh is the only step left.
  *
  * The card is one tree, not a second `return` with its own card: the live region is always mounted
  * below the form, empty and zero-height until unlocking swaps the form out and fills it in. A
@@ -96,9 +100,6 @@ export default function ClientGalleryGate({ collection }: ClientGalleryGateProps
         const result = await validateClientGalleryAccess(collection.slug, password);
 
         if (result.hasAccess) {
-          // Cookie is now set on the response. Trigger an SSR re-fetch — the
-          // wrapper will route to <CollectionPage> on the next render and
-          // unmount us. Show a loading state during that window.
           setSubmitState('unlocking');
           router.refresh();
         } else {
@@ -144,21 +145,24 @@ export default function ClientGalleryGate({ collection }: ClientGalleryGateProps
 
           {!isUnlocking && (
             <form onSubmit={handleSubmit} className={styles.gateForm}>
-              <label htmlFor="gallery-password" className={styles.gateLabel}>
-                Enter the password to view this gallery
-              </label>
-              <input
-                id="gallery-password"
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className={styles.gateInput}
-                placeholder="Gallery password"
-                autoFocus
-                autoComplete="off"
-                readOnly={isVerifying}
-              />
-              {error && <p className={styles.gateError}>{error}</p>}
+              <Field
+                label="Enter the password to view this gallery"
+                htmlFor="gallery-password"
+                className={styles.gateField}
+              >
+                <Input
+                  id="gallery-password"
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className={styles.gateInput}
+                  placeholder="Gallery password"
+                  autoFocus
+                  autoComplete="off"
+                  readOnly={isVerifying}
+                />
+              </Field>
+              {error && <FormError>{error}</FormError>}
               <Button
                 type="submit"
                 className={styles.gateButton}

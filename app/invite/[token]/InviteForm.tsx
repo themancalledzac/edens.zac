@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
+import { Checkbox } from '@/app/components/ui/Field/Checkbox';
 import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
@@ -108,7 +109,7 @@ export default function InviteForm({ token, email, displayName }: InviteFormProp
     <form onSubmit={handleSubmit} className={styles.form}>
       <p className={styles.forEmail}>Setting up account for {email}</p>
 
-      <Field label="Display Name *" htmlFor="invite-display-name">
+      <Field label="Display Name" htmlFor="invite-display-name" required>
         <Input
           id="invite-display-name"
           value={name}
@@ -120,8 +121,9 @@ export default function InviteForm({ token, email, displayName }: InviteFormProp
       </Field>
 
       <Field
-        label="Password *"
+        label="Password"
         htmlFor="invite-password"
+        required
         hint={`At least ${PASSWORD_MIN_LENGTH} characters`}
       >
         <Input
@@ -135,7 +137,7 @@ export default function InviteForm({ token, email, displayName }: InviteFormProp
         />
       </Field>
 
-      <Field label="Confirm Password *" htmlFor="invite-confirm">
+      <Field label="Confirm Password" htmlFor="invite-confirm" required>
         <Input
           id="invite-confirm"
           type="password"
@@ -148,12 +150,10 @@ export default function InviteForm({ token, email, displayName }: InviteFormProp
       </Field>
 
       <label className={styles.passkeyLabel}>
-        <input
-          type="checkbox"
+        <Checkbox
           checked={enablePasskey}
           onChange={e => setEnablePasskey(e.target.checked)}
           disabled={submitting}
-          className={styles.passkeyCheckbox}
         />
         Enable Face / Touch ID (optional)
       </label>
