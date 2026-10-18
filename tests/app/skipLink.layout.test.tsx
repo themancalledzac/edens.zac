@@ -108,6 +108,13 @@ describe('skip link, composed through the root layout', () => {
      * the page inside the Suspense boundary, so it appeared LATER in the byte stream than the
      * footer and the footer's Instagram/GitHub links were reachable first.
      */
+    it('renders exactly one footer, after </main>', () => {
+      const { doc, html } = renderRoute(renderBody());
+      expect(doc.querySelectorAll('footer')).toHaveLength(1);
+      expect(html.indexOf('</main>')).toBeGreaterThan(-1);
+      expect(html.indexOf('</main>')).toBeLessThan(html.indexOf('<footer'));
+    });
+
     it('appears earlier in the emitted markup than the footer', () => {
       const { html } = renderRoute(renderBody());
       expect(html.indexOf('Skip to main content')).toBeGreaterThan(-1);
@@ -122,16 +129,15 @@ describe('skip link, composed through the root layout', () => {
 
   /**
    * The load-bearing assertion. Every route streams inside a Suspense boundary whose fallback is
-   * `app/loading.tsx`; the shell around it — footer included — flushes first. Standing in for that
-   * pending shell, the markup must ALREADY carry the skip link, ahead of the footer. A skip link
-   * rendered by a page shell fails here, because the page has not resolved yet: that is exactly
-   * the window in which the footer's Instagram and GitHub links were the first two tab stops.
+   * `app/loading.tsx`; the shell around it flushes first. Standing in for that pending shell, the
+   * markup must ALREADY carry the skip link, and no footer: the footer belongs to the page shells,
+   * so it cannot exist while the fallback is on screen.
    */
-  it('carries the skip link in the shell that flushes while the route is still pending', () => {
+  it('carries the skip link and no footer while the route is still pending', () => {
     const { doc, html } = renderRoute(<Loading />);
 
     expect(doc.querySelectorAll('a[href="#main-content"]')).toHaveLength(1);
-    expect(html.indexOf('Skip to main content')).toBeLessThan(html.indexOf('<footer'));
+    expect(html).not.toContain('<footer');
   });
 
   /**

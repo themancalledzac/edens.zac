@@ -1,4 +1,5 @@
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+import { Footer } from '@/app/components/Footer/Footer';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
 import { type MeResponse } from '@/app/types/Auth';
@@ -38,6 +39,8 @@ interface ContentCollectionPageProps {
   initialSelectedIds?: number[];
   /** The viewer's GLOBAL saved (bookmarked) image ids, seeded server-side. Cross-collection. */
   initialSavedImageIds?: number[];
+  /** Render the site footer after `<main>` in both branches (default true). */
+  withFooter?: boolean;
 }
 
 /**
@@ -111,6 +114,7 @@ export default function CollectionPage({
   me,
   initialSelectedIds = [],
   initialSavedImageIds = [],
+  withFooter = true,
 }: ContentCollectionPageProps) {
   if (!Array.isArray(collection)) {
     const headingText = collection.title?.trim() || collection.slug?.trim() || 'Untitled';
@@ -134,6 +138,7 @@ export default function CollectionPage({
             />
           </SkipTarget>
         </main>
+        {withFooter && <Footer />}
       </div>
     );
   }
@@ -162,6 +167,7 @@ export default function CollectionPage({
           ) : null}
         </SkipTarget>
       </main>
+      {withFooter && <Footer />}
     </div>
   );
 }

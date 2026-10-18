@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 
+import { Footer } from '@/app/components/Footer/Footer';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
 import { type MeResponse } from '@/app/types/Auth';
@@ -11,6 +12,8 @@ export interface PageShellProps {
   collectionSlug?: string;
   /** Render the site header (default true). Status pages pass false. */
   withHeader?: boolean;
+  /** Render the site footer after `<main>` (default true). */
+  withFooter?: boolean;
   className?: string;
   /** Server-resolved principal forwarded unchanged to {@link SiteHeader}; omitted means unresolved. */
   me?: MeResponse | null;
@@ -34,6 +37,7 @@ export function PageShell({
   children,
   collectionSlug,
   withHeader = true,
+  withFooter = true,
   className,
   me,
 }: PageShellProps) {
@@ -44,6 +48,7 @@ export function PageShell({
         {withHeader && <SiteHeader collectionSlug={collectionSlug} me={me} />}
         <SkipTarget>{children}</SkipTarget>
       </main>
+      {withFooter && <Footer />}
     </div>
   );
 }
