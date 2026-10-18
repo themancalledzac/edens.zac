@@ -20,6 +20,7 @@ import {
   filmFilterFromIsFilm,
 } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
+import { type SsrViewport } from '@/app/utils/ssrViewport';
 
 import LocationCollections from './LocationCollections';
 
@@ -43,9 +44,14 @@ function seedLocationState(initialCriteria: ContentFilterCriteria): FilterState 
 interface LocationPageClientProps {
   images: ViewableContent[];
   collections: CollectionModel[];
+  ssrViewport?: SsrViewport;
 }
 
-export default function LocationPageClient({ images, collections }: LocationPageClientProps) {
+export default function LocationPageClient({
+  images,
+  collections,
+  ssrViewport,
+}: LocationPageClientProps) {
   const {
     filterState,
     handleFilterChange,
@@ -86,6 +92,9 @@ export default function LocationPageClient({ images, collections }: LocationPage
           enableFullScreenView
           initialPageSize={30}
           chunkSize={4}
+          serverContentWidth={ssrViewport?.contentWidth}
+          serverViewportHeight={ssrViewport?.viewportHeight}
+          serverIsMobile={ssrViewport?.isMobile}
         />
       ) : (
         <FilteredEmptyState onClear={clearFilters}>

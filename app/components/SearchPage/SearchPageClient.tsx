@@ -12,6 +12,7 @@ import { type ContentImageModel } from '@/app/types/Content';
 import { type ArrayFilterKey, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import { isImageContent } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
+import { type SsrViewport } from '@/app/utils/ssrViewport';
 
 import { FilteredEmptyState } from './FilteredEmptyState';
 import { buildSearchCriteria, seedFilterState } from './searchFilters';
@@ -27,6 +28,7 @@ const SURFACED: readonly ArrayFilterKey[] = [
 
 interface SearchPageClientProps {
   images: ContentImageModel[];
+  ssrViewport?: SsrViewport;
 }
 
 /**
@@ -34,9 +36,9 @@ interface SearchPageClientProps {
  *
  * Surfaces every image-derived dimension, gated by {@link computeFilterVisibility} so a dimension
  * that cannot narrow anything is hidden. Filters client-side over the corpus the route fetched.
- * The empty corpus and empty result states are separate on purpose — they need different fixes.
+ * `ssrViewport` lets the grid lay out on the server. The empty corpus and empty result states are separate on purpose — they need different fixes.
  */
-export default function SearchPageClient({ images }: SearchPageClientProps) {
+export default function SearchPageClient({ images, ssrViewport }: SearchPageClientProps) {
   const {
     filterState,
     handleFilterChange,
@@ -76,6 +78,9 @@ export default function SearchPageClient({ images }: SearchPageClientProps) {
           enableFullScreenView
           initialPageSize={30}
           chunkSize={4}
+          serverContentWidth={ssrViewport?.contentWidth}
+          serverViewportHeight={ssrViewport?.viewportHeight}
+          serverIsMobile={ssrViewport?.isMobile}
         />
       )}
 

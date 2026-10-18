@@ -30,8 +30,24 @@ jest.mock('@/app/hooks/useFilterUrlState', () => ({
 /** Exposes the content handed to the grid as a JSON list of content types plus the block count. */
 jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
   __esModule: true,
-  default: ({ content }: { content: unknown[] }) => (
-    <div data-testid="content-blocks" data-count={content.length}>
+  default: ({
+    content,
+    serverContentWidth,
+    serverViewportHeight,
+    serverIsMobile,
+  }: {
+    content: unknown[];
+    serverContentWidth?: number;
+    serverViewportHeight?: number;
+    serverIsMobile?: boolean;
+  }) => (
+    <div
+      data-testid="content-blocks"
+      data-count={content.length}
+      data-width={serverContentWidth}
+      data-height={serverViewportHeight}
+      data-mobile={String(serverIsMobile)}
+    >
       {JSON.stringify(content)}
     </div>
   ),
@@ -227,5 +243,21 @@ describe('LocationPageClient — clear filters', () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
     expect(lastSyncedCriteria()).toEqual({});
+  });
+});
+
+describe('LocationPageClient — ssrViewport', () => {
+  it('passes the ssrViewport fields to the content grid', () => {
+    render(
+      <LocationPageClient
+        images={images()}
+        collections={[createCollectionModel(1)]}
+        ssrViewport={{ contentWidth: 1234, viewportHeight: 777, isMobile: true }}
+      />
+    );
+    const grid = screen.getByTestId('content-blocks');
+    expect(grid).toHaveAttribute('data-width', '1234');
+    expect(grid).toHaveAttribute('data-height', '777');
+    expect(grid).toHaveAttribute('data-mobile', 'true');
   });
 });

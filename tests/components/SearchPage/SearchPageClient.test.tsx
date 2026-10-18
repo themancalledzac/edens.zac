@@ -23,8 +23,25 @@ jest.mock('@/app/hooks/useFilterUrlState', () => ({
 /** jsdom cannot measure the layout engine; stub it to a count instead. */
 jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
   __esModule: true,
-  default: ({ content }: { content: unknown[] }) => (
-    <div data-testid="content-blocks">{content.length}</div>
+  default: ({
+    content,
+    serverContentWidth,
+    serverViewportHeight,
+    serverIsMobile,
+  }: {
+    content: unknown[];
+    serverContentWidth?: number;
+    serverViewportHeight?: number;
+    serverIsMobile?: boolean;
+  }) => (
+    <div
+      data-testid="content-blocks"
+      data-width={serverContentWidth}
+      data-height={serverViewportHeight}
+      data-mobile={String(serverIsMobile)}
+    >
+      {content.length}
+    </div>
   ),
 }));
 
@@ -151,5 +168,20 @@ describe('SearchPageClient — film stock dropdown', () => {
     mockInitialCriteria = { isFilm: true, filmTypes: ['Kodak Portra 400'] };
     render(<SearchPageClient images={twoStocks()} />);
     expect(screen.getByText('1 photo')).toBeInTheDocument();
+  });
+});
+
+describe('SearchPageClient — ssrViewport', () => {
+  it('passes the ssrViewport fields to the content grid', () => {
+    render(
+      <SearchPageClient
+        images={[tagged(1, 'alpine')]}
+        ssrViewport={{ contentWidth: 1234, viewportHeight: 777, isMobile: true }}
+      />
+    );
+    const grid = screen.getByTestId('content-blocks');
+    expect(grid).toHaveAttribute('data-width', '1234');
+    expect(grid).toHaveAttribute('data-height', '777');
+    expect(grid).toHaveAttribute('data-mobile', 'true');
   });
 });
