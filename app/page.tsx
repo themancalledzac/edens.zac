@@ -21,7 +21,7 @@ export const metadata: Metadata = {
  *
  * Not prerenderable — `CollectionPageWrapper` awaits `headers()` and `cookies()`. `force-dynamic`
  * is explicit so a fetch added here later is not cached with per-viewer data. ISR was investigated
- * and dropped: PF4 in docs/spikes/2026-features/pf-performance-platform.md.
+ * and dropped: see PR #360.
  */
 export const dynamic = 'force-dynamic';
 

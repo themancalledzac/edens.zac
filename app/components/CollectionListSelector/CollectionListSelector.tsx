@@ -17,7 +17,6 @@ import styles from './CollectionListSelector.module.scss';
  * collections have no `type` any more, so "home" is a slug, "client gallery" is `isClient`,
  * "blog" is `isBlog`, and everything else is just a collection. There is deliberately no
  * Portfolio or Art Gallery bucket — those concepts have no successor.
- * See docs/superpowers/specs/2026-07-26-typeless-collection.md §1.
  */
 export type CollectionBucket = 'HOME' | 'CLIENT_GALLERY' | 'BLOG' | 'COLLECTION';
 

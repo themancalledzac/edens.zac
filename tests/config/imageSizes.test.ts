@@ -4,7 +4,7 @@
  * Pins the image size arrays in `next.config.js` against both the obvious regression (restoring
  * widths the sources cannot fill) and the plausible-looking one (thinning the middle of the
  * ladder, which costs bytes). Read as text because the config is ESM wrapped in the bundle
- * analyzer. Measurements: docs/spikes/2026-features/pf-performance-platform.md
+ * analyzer. Measurements: PR #358.
  */
 
 import { readFileSync } from 'node:fs';
