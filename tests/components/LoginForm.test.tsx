@@ -21,11 +21,18 @@ const mockLoginWithPasskey = authApi.loginWithPasskey as jest.MockedFunction<
 >;
 
 const EMAIL_PLACEHOLDER = 'you@example.com';
-const PASSWORD_PLACEHOLDER = 'Your password';
 
 describe('LoginForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('does not repeat the Password label as the password placeholder', () => {
+    render(<LoginForm />);
+    expect(screen.getByLabelText('Password')).not.toHaveAttribute(
+      'placeholder',
+      expect.stringMatching(/password/i)
+    );
   });
 
   it('requires email and password before calling login', async () => {
@@ -42,7 +49,7 @@ describe('LoginForm', () => {
     fireEvent.change(screen.getByPlaceholderText(EMAIL_PLACEHOLDER), {
       target: { value: 'a@b.com' },
     });
-    fireEvent.change(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER), {
+    fireEvent.change(screen.getByLabelText('Password'), {
       target: { value: 'pw123456' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
@@ -58,7 +65,7 @@ describe('LoginForm', () => {
     fireEvent.change(screen.getByPlaceholderText(EMAIL_PLACEHOLDER), {
       target: { value: 'a@b.com' },
     });
-    fireEvent.change(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER), {
+    fireEvent.change(screen.getByLabelText('Password'), {
       target: { value: 'wrong' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
@@ -73,13 +80,17 @@ describe('LoginForm', () => {
     mockLoginWithPasskey.mockResolvedValue();
     render(<LoginForm />);
 
-    const passkeyBtn = screen.getByRole('button', { name: /face \/ touch id/i });
+    const passkeyBtn = screen.getByRole('button', { name: 'Sign in with Face / Touch ID' });
     expect(passkeyBtn).toBeDisabled();
+    expect(passkeyBtn).toHaveAccessibleDescription(/enter your email first/i);
+    expect(screen.getByText(/enter your email first/i)).toBeVisible();
 
     fireEvent.change(screen.getByPlaceholderText(EMAIL_PLACEHOLDER), {
       target: { value: 'a@b.com' },
     });
     expect(passkeyBtn).toBeEnabled();
+    expect(passkeyBtn).not.toHaveAttribute('aria-describedby');
+    expect(screen.queryByText(/enter your email first/i)).not.toBeInTheDocument();
 
     fireEvent.click(passkeyBtn);
     await waitFor(() => expect(mockLoginWithPasskey).toHaveBeenCalledWith('a@b.com'));
@@ -133,7 +144,7 @@ describe('LoginForm', () => {
     fireEvent.change(screen.getByPlaceholderText(EMAIL_PLACEHOLDER), {
       target: { value: 'a@b.com' },
     });
-    fireEvent.change(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER), {
+    fireEvent.change(screen.getByLabelText('Password'), {
       target: { value: 'pw123456' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
