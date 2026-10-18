@@ -143,33 +143,4 @@ export function MessageRow({
   );
 }
 
-/**
- * A hub row's left section: who wrote it, over what they wrote.
- *
- * The wrapper is not decoration — it is a flex column, which blockifies the `<a>` inside it. An
- * inline `<a>` ignores `overflow: hidden`, so without it the email would not ellipsise and a long
- * address would push the right rail off the panel.
- */
-export function MessageRowLeft({ message, excerptWords }: MessageBodyProps) {
-  return (
-    <div className={styles.identity}>
-      <EmailLink message={message} />
-      <MessageBody message={message} excerptWords={excerptWords} />
-    </div>
-  );
-}
-
-/**
- * A hub row's right section: when it arrived, over what to do about it. Needs no wrapper —
- * `ListPanel`'s `.rowRight` is already the flex column that stacks and right-aligns these two.
- */
-export function MessageRowRight({ message, onDelete, deleting }: MessageActionsProps) {
-  return (
-    <>
-      <Timestamp message={message} />
-      <MessageActions message={message} onDelete={onDelete} deleting={deleting} />
-    </>
-  );
-}
-
 export default MessageRow;

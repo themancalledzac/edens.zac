@@ -281,9 +281,7 @@ describe('tabbed panel height', () => {
 
   /** The Users tab's tag-only toggle is a first body line the other tabs do not have. */
   it('adds the Users toolbar line to that tab only', () => {
-    // 46 of header chrome, then the 17px toggle line and its 8px gap, then 37px one-line rows.
     expect(panelContentHeight('users', 5)).toBe(46 + 17 + 8 + 5 * 37);
-    // No toolbar: 46 of header chrome, then 37px rows.
     expect(panelContentHeight('roles', 5)).toBe(46 + 5 * 37);
   });
 

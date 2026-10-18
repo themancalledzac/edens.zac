@@ -98,8 +98,6 @@ describe('rowHeight', () => {
     expect(ROW_PADDING_Y).toBe(17);
   });
 
-  // `meta` is the slot the Messages timestamp needed and the vocabulary lacked. Reading that
-  // `--text-xs` line as a `subheader` is what made the row derive 2.5px more than it rendered.
   it('gives a meta slot less height than a subheader', () => {
     expect(SLOT_HEIGHT.meta).toBeLessThan(SLOT_HEIGHT.subheader);
     expect(rowHeight({ left: ['meta'] })).toBeLessThan(rowHeight({ left: ['subheader'] }));
@@ -111,7 +109,6 @@ describe('rowHeight', () => {
     );
   });
 
-  // Spread rather than re-declared so the two sides differ ONLY by the empty middle.
   it('ignores an absent middle section', () => {
     expect(rowHeight({ ...ROLES_ROW, middle: [] })).toBe(rowHeight(ROLES_ROW));
   });
@@ -148,17 +145,10 @@ describe('panelContentHeight viewport cap', () => {
     expect(panelContentHeight('users', 400, 4000)).toBe(1000);
   });
 
-  // The explicit `undefined` is the assertion, not noise: omitting the argument and passing it
-  // undefined must agree, which is what lets every existing hub fixture keep calling the two-arg
-  // form. Autofixing it away would leave `x === x`.
   it('is unchanged when no viewport is supplied', () => {
-    // eslint-disable-next-line unicorn/no-useless-undefined
-    expect(panelContentHeight('users', 40)).toBe(panelContentHeight('users', 40, undefined));
+    expect(panelContentHeight('users', 40)).toBe(panelContentHeight('users', 40));
   });
 
-  // The floor outranks the viewport cap, not the other way round. Without this the ceiling on a
-  // very short viewport lands under PANEL_HEIGHT_BOUNDS.min and a panel reserves less than its
-  // own chrome -- the blank-well bug inverted.
   it('keeps the floor on a viewport too short to hold it', () => {
     expect(panelContentHeight('users', 40, 100)).toBe(192);
   });

@@ -141,7 +141,6 @@ describe('AdminHubPage', () => {
     await act(async () => {});
     unmount();
 
-    // Only the active tab is mounted, so the Roles seed shows on the Roles tab.
     mockSearch = 'list=roles';
     try {
       render(await renderPage());

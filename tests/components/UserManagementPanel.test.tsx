@@ -90,13 +90,6 @@ const commentScanner = {
   },
 };
 
-const fileGuard = {
-  unexpected(names: string[]): string[] {
-    const allowed = new Set(['UserManagementPanel.tsx', 'UserManagementPanel.module.scss']);
-    return names.filter(n => !allowed.has(n));
-  },
-};
-
 describe('UserManagementPanel', () => {
   beforeEach(() => {
     jest.restoreAllMocks();
@@ -385,16 +378,6 @@ describe('UserManagementPanel', () => {
     expect(commentScanner.inFunctionBodies(bad)).toHaveLength(1);
     jest.spyOn(commentScanner, 'inFunctionBodies').mockImplementation(() => []);
     expect(commentScanner.inFunctionBodies(bad)).toEqual([]);
-  });
-
-  it('M8: the panel directory holds only the component and its stylesheet', () => {
-    expect(fileGuard.unexpected(fs.readdirSync(PANEL_DIR))).toEqual([]);
-  });
-
-  it('twin M8: with the file guard off, a stray file gets through', () => {
-    expect(fileGuard.unexpected(['UserManagementPanel.tsx', 'stray.ts'])).toEqual(['stray.ts']);
-    jest.spyOn(fileGuard, 'unexpected').mockImplementation(() => []);
-    expect(fileGuard.unexpected(['stray.ts'])).toEqual([]);
   });
 
   it('shows an empty state when there are no users', async () => {

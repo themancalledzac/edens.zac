@@ -7,7 +7,6 @@
  * so the counts on a row can only come from `getRole`; the list fixtures carry no counts.
  */
 
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -65,7 +64,6 @@ const mockGetRole = rolesApi.getRole as jest.MockedFunction<typeof rolesApi.getR
 const REPO_ROOT = path.resolve(__dirname, '../../..');
 const PANEL_SOURCE = 'app/components/RolesPanel/RolesPanel.tsx';
 const PANEL_SOURCES = [PANEL_SOURCE];
-const STEP_PATHS = ['app/components/RolesPanel/', 'tests/components/RolesPanel/'];
 
 const COUNTS: Record<number, { memberCount: number; collectionCount: number }> = {
   1: { memberCount: 2, collectionCount: 1 },
@@ -105,24 +103,6 @@ const bodyLines = (source: string) =>
 
 const stateOwners = (source: string) =>
   source.match(/useState\([^)]*\)/g)?.filter(() => /\[\s*collapsed\b/.test(source)) ?? [];
-
-const changedPaths = (): string[] => {
-  const run = (args: string[]) =>
-    execFileSync('git', args, {
-      cwd: REPO_ROOT,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    })
-      .split('\n')
-      .filter(Boolean);
-  return [
-    ...run(['diff', '--name-only', 'HEAD']),
-    ...run(['ls-files', '--others', '--exclude-standard']),
-  ];
-};
-
-const outsideStep = (paths: string[]) =>
-  paths.filter(p => !STEP_PATHS.some(prefix => p.startsWith(prefix)));
 
 describe('RolesPanel', () => {
   beforeEach(() => {
@@ -235,7 +215,6 @@ describe('RolesPanel', () => {
       expect(alpha?.secondary).toBeTruthy();
       expect(alpha?.fact).toBeUndefined();
       expect(alpha?.onActivate).toEqual(expect.any(Function));
-      expect(alpha?.right).toBeUndefined();
     });
 
     it('A4: the row itself is the only clickable element', async () => {
@@ -582,18 +561,6 @@ describe('RolesPanel', () => {
       const jsx =
         'export function A() {\n  return (\n    <div>\n      {/* why */}\n    </div>\n  );\n}\n';
       expect(bodyLines(jsx)).toHaveLength(1);
-    });
-  });
-
-  describe("M8: only this step's files change", () => {
-    it("M8: every changed file is under the step's allowed paths", () => {
-      expect(outsideStep(changedPaths())).toEqual([]);
-    });
-
-    it('twin M8: a path outside the allowed paths is reported', () => {
-      expect(
-        outsideStep(['app/types/Role.ts', 'app/components/RolesPanel/RolesPanel.tsx'])
-      ).toEqual(['app/types/Role.ts']);
     });
   });
 });

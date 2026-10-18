@@ -267,18 +267,11 @@ export function ListRows({ children }: ListRowsProps) {
   return <ul className={styles.list}>{children}</ul>;
 }
 
-interface ListRowBaseProps {
-  /**
-   * Makes the row activatable. The one-line form renders the WHOLE row as a single button and holds
-   * no other control; the legacy form wraps only its `left` section, because its `right` section
-   * holds its own buttons.
-   */
+interface ListRowProps {
+  /** Makes the WHOLE row a single button. The row then holds no other control. */
   onActivate?: () => void;
   /** Accessible name for the activation button. Required in practice whenever `onActivate` is set. */
   ariaLabel?: string;
-}
-
-interface ListRowLineProps extends ListRowBaseProps {
   /** The row's identity: a name, a subject. Rendered at 500, or 600 with `emphasis`. */
   primary: ReactNode;
   /** Muted, after a middle dot. Ellipsises before the fact does. */
@@ -289,63 +282,27 @@ interface ListRowLineProps extends ListRowBaseProps {
   leading?: ReactNode;
   /** Renders the primary at 600, for an unread message. */
   emphasis?: boolean;
-  left?: never;
-  right?: never;
 }
-
-interface ListRowLegacyProps extends ListRowBaseProps {
-  /** The row's identity. Hugs the left rail. */
-  left: ReactNode;
-  /** Actions and trailing stats. Hugs the right rail. */
-  right?: ReactNode;
-  primary?: never;
-  secondary?: never;
-  fact?: never;
-  leading?: never;
-  emphasis?: never;
-}
-
-type ListRowProps = ListRowLineProps | ListRowLegacyProps;
 
 /**
- * One row of a {@link ListRows} list. Given `primary` it is one line: leading, primary, a muted
- * secondary after a middle dot, and a small muted fact on the right. The dot is `aria-hidden` so a
- * screen reader reads the two texts and not the punctuation.
- *
- * The legacy `left` / `right` form, a left, middle and right section on a fixed grid, is accepted
- * until r-36.10 so panels that have not moved keep rendering.
+ * One row of a {@link ListRows} list, on one line: leading, primary, a muted secondary after a
+ * middle dot, and a small muted fact on the right. The dot is `aria-hidden` so a screen reader
+ * reads the two texts and not the punctuation. Per-row actions live in a `ListDetailSheet`.
  *
  * Height is declared, not measured: `listPanelShape.ts` derives it from the slots each section
  * stacks, and the layout packer reserves that number before the panel ever renders. So a row's
  * content must not change height with the row's width — every text slot is `nowrap` + ellipsis,
  * and no `@media` or `@container` may enter this subtree.
  */
-export function ListRow(props: ListRowProps) {
-  const { onActivate, ariaLabel } = props;
-
-  if (props.primary === undefined) {
-    const { left, right } = props;
-    return (
-      <li className={styles.row}>
-        {onActivate ? (
-          <button
-            type="button"
-            className={styles.rowActivate}
-            onClick={onActivate}
-            aria-label={ariaLabel}
-          >
-            {left}
-          </button>
-        ) : (
-          <div className={styles.rowLeft}>{left}</div>
-        )}
-        <div className={styles.rowMiddle} />
-        <div className={styles.rowRight}>{right}</div>
-      </li>
-    );
-  }
-
-  const { primary, secondary, fact, leading, emphasis } = props;
+export function ListRow({
+  onActivate,
+  ariaLabel,
+  primary,
+  secondary,
+  fact,
+  leading,
+  emphasis,
+}: ListRowProps) {
   const line = (
     <>
       {leading && <span className={styles.rowLeading}>{leading}</span>}

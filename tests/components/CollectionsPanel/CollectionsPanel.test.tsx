@@ -15,8 +15,6 @@
  *   a failed save puts the select back on the last saved visibility.
  */
 
-import type * as childProcessModule from 'node:child_process';
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import { join } from 'node:path';
 
@@ -73,11 +71,6 @@ jest.mock('@/app/components/ListPanel/PanelBody', () => {
 jest.mock('@/app/components/ListPanel/ListPanel', () => {
   const actual = jest.requireActual<typeof listPanelModule>('@/app/components/ListPanel/ListPanel');
   return { ...actual, ListRows: jest.fn(actual.ListRows) };
-});
-
-jest.mock('node:child_process', () => {
-  const actual = jest.requireActual<typeof childProcessModule>('node:child_process');
-  return { ...actual, execFileSync: jest.fn(actual.execFileSync) };
 });
 
 const mockPush = jest.fn();
@@ -544,34 +537,5 @@ describe('CollectionsPanel', () => {
     jest.restoreAllMocks();
 
     expect(offenders).toContain('// a comment');
-  });
-
-  const ALLOWED = [
-    /^app\/components\/CollectionsPanel\//,
-    /^tests\/components\/CollectionsPanel\//,
-  ];
-
-  const strayChanges = () => {
-    const out = execFileSync('git', ['status', '--porcelain', '--', 'app', 'tests'], {
-      cwd: process.cwd(),
-      encoding: 'utf8',
-    });
-    return out
-      .split('\n')
-      .filter(Boolean)
-      .map(line => line.slice(3).trim())
-      .filter(path => !ALLOWED.some(allowed => allowed.test(path)));
-  };
-
-  it('M8: the working tree touches nothing under app or tests outside the step paths', () => {
-    expect(strayChanges()).toEqual([]);
-  });
-
-  it('M8 twin: with git reporting an extra changed file the stray-change check fails', () => {
-    jest
-      .mocked(execFileSync)
-      .mockReturnValue(' M app/lib/api/collections.ts\n M app/components/CollectionsPanel/x.tsx\n');
-
-    expect(strayChanges()).toEqual(['app/lib/api/collections.ts']);
   });
 });

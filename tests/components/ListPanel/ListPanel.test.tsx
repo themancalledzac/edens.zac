@@ -47,7 +47,6 @@ describe('ListPanel shell', () => {
     expect(screen.getByRole('region', { name: 'User management' })).toBeInTheDocument();
   });
 
-  // Collapsing is opt-in, so panels that pass no handler keep exactly the plain markup.
   it('gives the title no toggle button when no onCollapsedChange is passed', () => {
     render(<ListPanel title="Users">content</ListPanel>);
     expect(screen.queryByRole('button', { name: /users/i })).not.toBeInTheDocument();
@@ -85,8 +84,6 @@ describe('ListPanel — collapsible', () => {
     expect(screen.queryByText('body content')).not.toBeInTheDocument();
   });
 
-  // The point of collapsing is reclaiming space, and the header is what stays behind -- so the
-  // controls it carries have to survive the collapse to remain reachable.
   it('keeps the header action usable while collapsed', () => {
     renderPanel(true);
     expect(screen.getByRole('button', { name: '+ New User' })).toBeInTheDocument();
@@ -104,17 +101,12 @@ describe('ListPanel — collapsible', () => {
     expect(onCollapsedChange).toHaveBeenCalledWith(false);
   });
 
-  // The action controls sit OUTSIDE the toggle button. Nesting them would be invalid HTML, and
-  // would make every "+ New User" click collapse the panel out from under the form it opens.
   it('does not toggle when a header action is clicked', () => {
     const onCollapsedChange = renderPanel(false);
     fireEvent.click(screen.getByRole('button', { name: '+ New User' }));
     expect(onCollapsedChange).not.toHaveBeenCalled();
   });
 
-  // The strip of empty body surface a closed panel keeps showing is an `::after`, not markup. It
-  // used to be two nested divs held out of the accessibility tree by an `aria-hidden` -- a guard a
-  // later edit could drop. Nothing but the header may survive a collapse.
   it('adds no element for the collapsed body strip', () => {
     renderPanel(true);
     const section = screen.getByRole('region', { name: 'User management' });
@@ -309,21 +301,12 @@ describe('ListPanel — tabbed', () => {
 });
 
 describe('ListRow', () => {
-  it('renders left and right sections', () => {
-    render(<ListRow left={<span>name</span>} right={<button type="button">Update</button>} />, {
+  it('is a button when activatable and static otherwise', () => {
+    const { rerender } = render(<ListRow primary="a" onActivate={() => {}} ariaLabel="Open a" />, {
       wrapper: ListRows,
     });
-    expect(screen.getByText('name')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Update' })).toBeInTheDocument();
-  });
-
-  it('is a button when activatable and static otherwise', () => {
-    const { rerender } = render(
-      <ListRow left={<span>a</span>} onActivate={() => {}} ariaLabel="Open a" />,
-      { wrapper: ListRows }
-    );
     expect(screen.getByRole('button', { name: 'Open a' })).toBeInTheDocument();
-    rerender(<ListRow left={<span>a</span>} />);
+    rerender(<ListRow primary="a" />);
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });
@@ -463,27 +446,6 @@ describe('ListRow — one line', () => {
     expect((screen.getByText('Bold') as HTMLElement).className).not.toBe(
       (screen.getByText('Plain') as HTMLElement).className
     );
-  });
-});
-
-describe('ListRow — legacy left / right form (S1)', () => {
-  it('still renders left and right together with an activatable left', () => {
-    const onActivate = jest.fn();
-    render(
-      <ListRow
-        left={<span>legacy name</span>}
-        right={<button type="button">Reset</button>}
-        onActivate={onActivate}
-        ariaLabel="Open legacy"
-      />,
-      { wrapper: ListRows }
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Open legacy' }));
-    expect(onActivate).toHaveBeenCalledTimes(1);
-    const reset = screen.getByRole('button', { name: 'Reset' });
-    expect(screen.getByRole('button', { name: 'Open legacy' })).not.toContainElement(reset);
-    fireEvent.click(reset);
-    expect(onActivate).toHaveBeenCalledTimes(1);
   });
 });
 

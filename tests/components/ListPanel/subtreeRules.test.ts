@@ -27,17 +27,10 @@ const PANEL_SCSS = [
 const read = (file: string) => readFileSync(path.join(process.cwd(), file), 'utf8');
 
 describe('panel subtree rules', () => {
-  // A row's height must not depend on the panel's width, and a breakpoint is the most direct way
-  // to make it depend on one. The packer hands every panel a width of its own choosing, so a rule
-  // that fires at some viewport is a rule that fires for one panel and not its neighbour.
   it.each(PANEL_SCSS)('%s contains no media or container query', file => {
     expect(read(file)).not.toMatch(/@media|@container/);
   });
 
-  // This one stops a specific plausible "fix": capping a panel with `max-height: 90vh` in CSS.
-  // The viewport cap is real, but it lives in `panelContentHeight` where the packer can see it --
-  // expressed in CSS instead, the reserved box and the rendered box disagree by whatever the cap
-  // removed.
   it.each(PANEL_SCSS)('%s uses no viewport units', file => {
     expect(read(file)).not.toMatch(/\d\s*(vh|vw|dvh|svh)\b/);
   });

@@ -165,7 +165,6 @@ describe('useCachedPanelData', () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(result.current.loading).toBe(false);
     expect(result.current.loadError).toBeNull();
-    // Promoted to the cache on mount, so an unchanged fetch compares equal and never re-sets state.
     expect(result.current.data).toBe(seed);
     expect(window.localStorage.getItem(ROLES_KEY)).toBe(JSON.stringify(seed));
   });

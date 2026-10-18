@@ -244,19 +244,13 @@
   list-style: none;
 }
 
-/* Same three columns as .header, resolved against the same rails. `grid` rather than the old
-   wrapping flex row on purpose: `flex-wrap` let a narrow panel move the actions onto a second
-   line, which would make the row's height depend on its width and desync the packer's pin.
-   A grid row cannot wrap, so the height stays width-independent by construction.
-
-   The block padding is 8 top and 8 bottom, plus the 1px rule: ROW_PADDING_Y (17) in
-   listPanelShape.ts, which the packer reserves BEFORE this renders. Change one and you must change
-   the other; they are one number written in two languages. */
+/* One line per row, so the height stays width-independent. The block padding is 8 top and 8
+   bottom, plus the 1px rule: ROW_PADDING_Y (17) in listPanelShape.ts, which the packer reserves
+   BEFORE this renders. Change one and you must change the other. Hover paints only a row that
+   activates. */
 .row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
+  display: flex;
   align-items: center;
-  gap: var(--space-2);
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-border);
 
@@ -264,64 +258,8 @@
     border-bottom: none;
   }
 
-  /* Hover paints only where there is something to activate. `:has()` rather than a modifier class
-     because the activation is already declared by ListRow's markup — a parallel flag would be a
-     second source of truth for the same fact, and the one that goes stale. */
-  &:has(.rowActivate):hover {
+  &:has(.rowButton):hover {
     background: var(--color-overlay-soft);
-  }
-}
-
-/* Lets the `1fr` track shrink below its content's min-content width, so the text slots inside it
-   can ellipsise instead of pushing the right rail out. */
-.rowLeft {
-  min-width: 0;
-}
-
-/* No row renders content here; the track stays for the height model. */
-.rowMiddle {
-  justify-self: end;
-}
-
-/* Row actions stack, which is why the Users row is 75px and not 58: `rowHeight` takes the tallest
-   section, and two stacked sm buttons beat the two-line identity block beside them. `nowrap` is
-   load-bearing — nothing else stops "Reset pw" breaking across two lines at a narrow panel width
-   and changing the row's height with it. */
-.rowRight {
-  display: flex;
-  flex-direction: column;
-  justify-self: end;
-  align-items: flex-end;
-  gap: var(--space-1);
-  white-space: nowrap;
-}
-
-/* The left section when the row is activatable. Carries .rowLeft's min-width itself rather than
-   pairing the two classes, so the button is one complete declaration. Padding is deliberately 0:
-   .row owns the row's block padding now, and the inverted arrangement the roles panel used — a
-   bare row with the padding pushed into its inner button — is what made that panel's height
-   disagree with the derived model. */
-.rowActivate {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: var(--space-3);
-  padding: 0;
-  border: none;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-
-  &:hover {
-    opacity: 0.85;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-    border-radius: var(--radius-1);
   }
 }
 
@@ -329,6 +267,7 @@
    The text runs ellipsise so the row never wraps and its height stays width-independent. */
 .rowLine {
   display: flex;
+  flex: 1;
   min-width: 0;
   align-items: center;
   gap: var(--space-2);

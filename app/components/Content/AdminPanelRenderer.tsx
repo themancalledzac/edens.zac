@@ -43,24 +43,14 @@ interface AdminPanelRendererProps {
  * severs that cycle: a count cannot change when the packer changes a panel's width.
  *
  * That severance rests on CSS, so these rules are layout correctness and not styling — a panel row
- * must never become width-dependent. `ListPanel`'s `.row` is a CSS GRID with fixed tracks
- * (`1fr auto auto`), and a grid row cannot wrap: its three sections sit in three columns whatever
- * the width, so the row is always exactly one line of sections tall.
- *
- * Within that frame three rules still carry weight, because a grid track cannot stop its own
- * CONTENTS from growing taller:
- * - Every text slot is `nowrap` + `text-overflow: ellipsis` (`.name`, `.email`, the message
- *   `.body`), so a long value ellipsises instead of becoming a second line. `white-space: nowrap`
- *   on `.rowRight` does the same for "Reset pw".
- * - `min-width: 0` on `.rowLeft` and `.rowActivate`. A grid item's automatic minimum is its
- *   min-content width, so without it the `1fr` track refuses to shrink and pushes the right rail
- *   out of the panel rather than letting its text ellipsise.
+ * must never become width-dependent. Every `ListRow` is one line:
+ * - Its text runs are `nowrap` + `text-overflow: ellipsis`, and `.rowLine` carries `min-width: 0`
+ *   so it can shrink, so a long value ellipsises instead of becoming a second line.
  * - No control may exceed the slot height its shape declares in `listPanelShape.ts`. Nothing
- *   enforces this at compile time, and an oversized control grows its row in silence. Controls
- *   read their slot as a custom property — `--lp-slot-button` for the button slot.
+ *   enforces this at compile time, and an oversized control grows its row in silence.
  *
  * No `@media` or `@container` may enter this subtree — a breakpoint reintroduces exactly the
- * width-dependence the grid removes. That rule and the rail definitions are pinned by
+ * width-dependence the one-line row removes. That rule and the rail definitions are pinned by
  * `tests/components/ListPanel/subtreeRules.test.ts` rather than left to this comment.
  *
  * Those rules bind the LIST view, which is the only view the height model describes. A panel that
