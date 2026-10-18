@@ -22,8 +22,8 @@ export function ShareBanner({ ownerName }: ShareBannerProps) {
       <p className={styles.text}>
         {ownerName ? (
           <>
-            You are viewing <strong className={styles.name}>{ownerName}</strong>&apos;s work,
-            shared with you.
+            You are viewing <strong className={styles.name}>{ownerName}</strong>&apos;s work, shared
+            with you.
           </>
         ) : (
           <>You are viewing work that was shared with you.</>

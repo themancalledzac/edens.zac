@@ -106,8 +106,7 @@ export function StructureTab({ edit }: StructureTabProps) {
                 value={updateData.rowsWide ?? ''}
                 placeholder="4"
                 onChange={e => {
-                  const value =
-                    e.target.value === '' ? undefined : Number.parseInt(e.target.value);
+                  const value = e.target.value === '' ? undefined : Number.parseInt(e.target.value);
                   if (value === undefined || (value >= 1 && value <= 10)) {
                     setUpdateField('rowsWide', value);
                   }

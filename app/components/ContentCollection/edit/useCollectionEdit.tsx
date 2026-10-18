@@ -149,13 +149,7 @@ async function inheritLocationsToContent(
 }
 
 export type ManageMode =
-  | 'browse'
-  | 'select'
-  | 'reorder'
-  | 'add'
-  | 'edit'
-  | 'pick-date'
-  | 'pick-cover';
+  'browse' | 'select' | 'reorder' | 'add' | 'edit' | 'pick-date' | 'pick-cover';
 export type CollectionEditTab = 'info' | 'structure';
 
 export interface UseCollectionEditParams {
