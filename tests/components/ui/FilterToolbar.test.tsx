@@ -953,4 +953,60 @@ describe('FilterToolbar — film stock', () => {
     renderToolbar({ showFilm: true, filterState: withStock });
     expect(screen.queryByRole('button', { name: 'Film stock' })).not.toBeInTheDocument();
   });
+
+  describe('flatDateLimit', () => {
+    const twoDayCap = 2;
+    const threeDays = {
+      selectedDates: {
+        label: 'Date',
+        options: ['2026-07-20', '2026-07-21', '2026-07-22'],
+        optionLabels: { '2026-07-20': 'Jul 20', '2026-07-21': 'Jul 21', '2026-07-22': 'Jul 22' },
+      },
+    };
+
+    it('F1: a limit of 2 collapses three flat dates into one Date dropdown chip', () => {
+      renderToolbar({ dimensions: threeDays, flatDateLimit: twoDayCap });
+      expect(screen.getByRole('button', { name: /^date/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /jul 20/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /jul 21/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /jul 22/i })).toBeNull();
+    });
+
+    it('F1/A2: the default limit renders the same three dates as flat chips', () => {
+      renderToolbar({ dimensions: threeDays });
+      expect(screen.getByRole('button', { name: /jul 20/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /jul 21/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /jul 22/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
+    });
+
+    it('A2: a limit of 2 keeps two dates flat', () => {
+      renderToolbar({
+        dimensions: {
+          selectedDates: { ...threeDays.selectedDates, options: ['2026-07-20', '2026-07-21'] },
+        },
+        flatDateLimit: twoDayCap,
+      });
+      expect(screen.getByRole('button', { name: /jul 20/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /jul 21/i })).toBeInTheDocument();
+    });
+
+    it('A2: the default limit is MAX_FLAT_DATE_CHIPS', () => {
+      const options = Array.from(
+        { length: MAX_FLAT_DATE_CHIPS + 1 },
+        (_, i) => `2026-07-${String(20 + i).padStart(2, '0')}`
+      );
+      renderToolbar({
+        dimensions: { selectedDates: { label: 'Date', options, optionLabels: dayLabels(options) } },
+      });
+      expect(screen.getByRole('button', { name: /^date/i })).toBeInTheDocument();
+    });
+
+    it('F1 twin: with the cap lifted to Infinity the collapse guard lets every date through as flat chips', () => {
+      renderToolbar({ dimensions: threeDays, flatDateLimit: Number.POSITIVE_INFINITY });
+      expect(screen.getByRole('button', { name: /jul 20/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /jul 22/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
+    });
+  });
 });
