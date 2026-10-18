@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import { IconButton } from '@/app/components/ui/IconButton/IconButton';
@@ -23,6 +26,15 @@ describe('IconButton', () => {
     const btn = screen.getByRole('button', { name: 'Close' });
     expect(btn.className).toMatch(/round/);
     expect(btn.className).toMatch(/overlay/);
+  });
+
+  it('applies the scrim variant class', () => {
+    render(
+      <IconButton aria-label="Close" variant="scrim">
+        <span>x</span>
+      </IconButton>
+    );
+    expect(screen.getByRole('button', { name: 'Close' }).className).toMatch(/scrim/);
   });
 
   it('is disabled and aria-busy while loading', () => {
@@ -65,5 +77,19 @@ describe('IconButton', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Go' }));
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('scrim tokens', () => {
+  it('defines --scrim-dark-10 through --scrim-dark-90 in globals.css', () => {
+    const css = readFileSync(join(process.cwd(), 'app/styles/globals.css'), 'utf8');
+    for (let step = 10; step <= 90; step += 10) {
+      expect(css).toContain(`--scrim-dark-${step}: rgb(0 0 0 / ${step}%);`);
+    }
+  });
+
+  it('has no [data-surface=dark] block in globals.css', () => {
+    const css = readFileSync(join(process.cwd(), 'app/styles/globals.css'), 'utf8');
+    expect(css).not.toMatch(/\[data-surface=["']dark["']]/);
   });
 });

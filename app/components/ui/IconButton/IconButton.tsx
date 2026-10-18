@@ -5,7 +5,7 @@ import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import styles from './IconButton.module.scss';
 
 export type IconButtonShape = 'round' | 'square';
-export type IconButtonVariant = 'overlay' | 'ghost';
+export type IconButtonVariant = 'overlay' | 'ghost' | 'scrim';
 export type IconButtonSize = 'sm' | 'md';
 
 export interface IconButtonProps extends Omit<
