@@ -8,13 +8,13 @@ export type AdminListTab = 'users' | 'messages' | 'roles' | 'collections';
  * (no client code), so `adminHubContent.ts` can size the panel from the same list the strip renders.
  */
 export const ADMIN_LIST_TABS: ReadonlyArray<ListPanelTab<AdminListTab>> = [
-  { id: 'users', label: 'Users' },
   { id: 'messages', label: 'Messages' },
-  { id: 'roles', label: 'Roles' },
+  { id: 'users', label: 'Users' },
   { id: 'collections', label: 'Collections' },
+  { id: 'roles', label: 'Roles' },
 ];
 
-export const DEFAULT_ADMIN_LIST_TAB: AdminListTab = 'users';
+export const DEFAULT_ADMIN_LIST_TAB: AdminListTab = 'messages';
 
 /** The query param that carries the active tab, so a tab survives a reload and can be linked to. */
 export const ADMIN_LIST_TAB_PARAM = 'list';

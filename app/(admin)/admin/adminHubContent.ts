@@ -1,6 +1,6 @@
 /**
- * Builds the AnyContentModel[] for the admin hub. Array order: the one tabbed list panel first,
- * then the nav tiles.
+ * Builds the AnyContentModel[] for the admin hub. Array order: the nav tiles first,
+ * then the one tabbed list panel.
  *
  * The panel's HEIGHT is content-derived, not shape-derived: `chrome + rowCount × rowHeight` for its
  * TALLEST tab, declared to the layout engine as `minHeight === maxHeight` — a pin. The sizer models
@@ -109,30 +109,32 @@ const TILE_MIN_WIDTH = 300;
 const HEADER_SHAPE: RowShape = { left: ['button'], right: ['button'] };
 
 /**
+ * The one-line row every tab renders: a `header`-tall line with a `meta` fact on the right.
+ */
+const ROW_SHAPE: RowShape = { left: ['header'], right: ['meta'] };
+
+/**
  * What each tab's list rows are made of, as {@link RowShape} slot stacks, plus the body's first
  * line where a tab has one. {@link rowHeight} and {@link panelChromeHeight} do the arithmetic.
  *
- * Users, Messages and Roles derive their rendered row height to the pixel: 71 / 58.5 / 40, measured
- * in Chrome against the live Inter font at panel widths 400, 430, 520 and 610px -- identical at all
- * four, which is the property {@link PANEL_MIN_WIDTH} exists to protect. Collections was declared
- * before its panel existed (54px) and the panel built to it.
+ * Every tab shares {@link ROW_SHAPE}, so a row is 37px: a 20px line plus {@link ROW_PADDING_Y}.
  *
  * Users is the one tab with a `toolbar`: its tag-only toggle is a `--text-sm` line on the body's
  * first line, a `subheader` slot.
  */
 const TAB_SHAPE: Record<AdminListTab, { row: RowShape; toolbar?: SectionShape }> = {
   users: {
-    row: { left: ['header', 'subheader'], right: ['button', 'button'] },
+    row: ROW_SHAPE,
     toolbar: ['subheader'],
   },
   messages: {
-    row: { left: ['subheader', 'subheader'], right: ['meta', 'button'] },
+    row: ROW_SHAPE,
   },
   roles: {
-    row: { left: ['header'], right: ['button'] },
+    row: ROW_SHAPE,
   },
   collections: {
-    row: { left: ['header', 'subheader'], right: [] },
+    row: ROW_SHAPE,
   },
 };
 
@@ -221,7 +223,7 @@ const PANEL_ID = 1001;
 
 /**
  * The panel's `orderIndex`, clear of the nav tiles' `0..n-1` run. Nothing on the admin path sorts
- * by it -- `buildAdminHubContent` puts the panel first in the array itself -- so it only has to stay
+ * by it -- `buildAdminHubContent` puts the panel last in the array itself -- so it only has to stay
  * unique.
  */
 const PANEL_ORDER_INDEX = 100;
@@ -291,27 +293,16 @@ export function buildAdminHubContent(
     visible: true,
   };
 
-  return [panel, ...tileModels];
+  return [...tileModels, panel];
 }
 
 /**
- * Visible height of the empty list body a COLLAPSED panel keeps showing, beyond its padding.
- *
- * Zac's round-3 review: a closed panel is not only its header — it shows a small strip of the
- * (empty) body surface, "as tall as the padding around it, maybe twice as tall". Body padding is
- * 32px total (the `bodyPadding` term inside {@link panelChromeHeight}), so the visible body lands
- * at 48px — inside his stated band. Mirrored in `ListPanel.module.scss` by the `.isCollapsed::after`
- * strip, whose `min-height: var(--space-4)` (16px) inside `margin: var(--space-4)` (32px in total)
- * is the same 32 + 16 arithmetic; change the two together.
+ * The height a collapsed panel reserves and renders: the header chrome alone, since the body carries
+ * no padding and no sliver. Derived through the same {@link panelChromeHeight} as the expanded
+ * model, so a token change moves both. No toolbar term: the body, and its first line, unmount
+ * while collapsed.
  */
-const COLLAPSED_BODY_SLIVER = 16;
-
-/**
- * The height a collapsed panel reserves and renders: full header chrome over the padded empty
- * body sliver. Derived through the same {@link panelChromeHeight} as the expanded model so a token
- * change moves both. No toolbar term: the body, and its first line, unmount while collapsed.
- */
-export const COLLAPSED_PANEL_HEIGHT = panelChromeHeight(HEADER_SHAPE) + COLLAPSED_BODY_SLIVER;
+export const COLLAPSED_PANEL_HEIGHT = panelChromeHeight(HEADER_SHAPE);
 
 /**
  * Footprint a COLLAPSED panel reports to the layout packer: an ordinary small block.
@@ -325,6 +316,7 @@ export const COLLAPSED_PANEL_HEIGHT = panelChromeHeight(HEADER_SHAPE) + COLLAPSE
  *
  * - `width`/`height` 180×102 — AR 1.76, under `EXTREMENESS_RAMP_START` (2.0), so `isSoloHero`'s
  *   extremeness gate can never fire and the bar goes through row composition like everything else.
+ *   The ratio is declared, not derived from the pin: the 46px bar would be AR 3.9 and solo.
  *   Same rule the header docblock sets for the expanded panels, horizontal edition.
  * - `rating: 1` — the "0-1 star" half. The point-balance split and the equity tiebreak read
  *   prominence, and a bar of chrome has almost none; rated 5 it would claim leaf area it cannot
@@ -342,7 +334,7 @@ export const COLLAPSED_PANEL_HEIGHT = panelChromeHeight(HEADER_SHAPE) + COLLAPSE
  */
 export const COLLAPSED_PANEL_SIZE = {
   width: 180,
-  height: COLLAPSED_PANEL_HEIGHT,
+  height: 102,
   rating: 1,
   minWidth: PANEL_MIN_WIDTH,
   maxWidth: undefined,
@@ -368,4 +360,12 @@ export function withPanelFootprints(
 ): AnyContentModel[] {
   if (!collapsed) return content;
   return content.map(item => (isPanelContent(item) ? { ...item, ...COLLAPSED_PANEL_SIZE } : item));
+}
+
+/**
+ * The Admin segment's count from the unread messages read: the total when above 0, otherwise
+ * `undefined`, so a failed read (`null`) and an empty inbox both show no count.
+ */
+export function toUnreadCount(unread: { total: number } | null): number | undefined {
+  return unread !== null && unread.total > 0 ? unread.total : undefined;
 }

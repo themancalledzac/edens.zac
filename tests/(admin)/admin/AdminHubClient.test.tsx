@@ -106,22 +106,20 @@ describe('AdminHubClient', () => {
       />
     );
 
-    // Only the active tab is mounted: Users, the default.
     expect(screen.queryByTestId('RolesPanel-stub')).not.toBeInTheDocument();
-    const heightBefore = Number.parseFloat(panelBox('UserManagementPanel').style.height);
+    const heightBefore = Number.parseFloat(panelBox('MessagesPanel').style.height);
 
-    fireEvent.click(screen.getByRole('button', { name: 'collapse UserManagementPanel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'collapse MessagesPanel' }));
 
-    const boxAfter = panelBox('UserManagementPanel');
+    const boxAfter = panelBox('MessagesPanel');
     const widthAfter = Number.parseFloat(boxAfter.style.width);
     const heightAfter = Number.parseFloat(boxAfter.style.height);
 
-    // A real re-pack, not a local restyle: the box the packer hands the panel drops to the bar.
     expect(heightAfter).toBe(COLLAPSED_PANEL_SIZE.minHeight);
     expect(heightAfter).toBeLessThan(heightBefore);
     expect(widthAfter).toBeGreaterThanOrEqual(COLLAPSED_PANEL_SIZE.minWidth);
     expect(boxAfter.style.maxHeight).toBe('');
 
-    expect(screen.getByTestId('UserManagementPanel-collapsed')).toHaveTextContent('true');
+    expect(screen.getByTestId('MessagesPanel-collapsed')).toHaveTextContent('true');
   });
 });

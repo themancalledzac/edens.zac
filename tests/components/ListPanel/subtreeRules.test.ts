@@ -27,17 +27,10 @@ const PANEL_SCSS = [
 const read = (file: string) => readFileSync(path.join(process.cwd(), file), 'utf8');
 
 describe('panel subtree rules', () => {
-  // A row's height must not depend on the panel's width, and a breakpoint is the most direct way
-  // to make it depend on one. The packer hands every panel a width of its own choosing, so a rule
-  // that fires at some viewport is a rule that fires for one panel and not its neighbour.
   it.each(PANEL_SCSS)('%s contains no media or container query', file => {
     expect(read(file)).not.toMatch(/@media|@container/);
   });
 
-  // This one stops a specific plausible "fix": capping a panel with `max-height: 90vh` in CSS.
-  // The viewport cap is real, but it lives in `panelContentHeight` where the packer can see it --
-  // expressed in CSS instead, the reserved box and the rendered box disagree by whatever the cap
-  // removed.
   it.each(PANEL_SCSS)('%s uses no viewport units', file => {
     expect(read(file)).not.toMatch(/\d\s*(vh|vw|dvh|svh)\b/);
   });
@@ -67,13 +60,13 @@ describe('ListPanel rails', () => {
    * Compared as declarations because there is nowhere else to compare them. jsdom has no cascade.
    */
   it('insets the header and the list by the same rail', () => {
-    expect(inlinePadding('.header')).toBe('var(--space-4)');
+    expect(inlinePadding('.header')).toBe('var(--space-3)');
     expect(inlinePadding('.list')).toBe(inlinePadding('.header'));
   });
 
   /** The body's first line (`toolbar`) sits on the same rail as the header and the rows. */
   it('insets the toolbar by the same rail', () => {
-    expect(declarationOf('.toolbar', 'padding')).toBe('0 var(--space-4) var(--space-2)');
+    expect(declarationOf('.toolbar', 'padding')).toBe('0 var(--space-3) var(--space-2)');
   });
 
   /**
@@ -103,21 +96,16 @@ describe('ListPanel rails', () => {
       const token = p.match(/var\((--space-\d)\)/)?.[1] as keyof typeof SPACE | undefined;
       return token ? SPACE[token] : Number(p);
     });
-    // `padding: <top> <inline> <bottom>` -- the row insets nothing horizontally, .list does.
-    const [top, inline, bottom] = parts;
-    expect(parts).toHaveLength(3);
+    const [top, inline] = parts;
+    expect(parts).toHaveLength(2);
     expect(inline).toBe(0);
 
     const SEPARATOR = 1;
-    expect(top! + bottom! + SEPARATOR).toBe(ROW_PADDING_Y);
+    expect(top! * 2 + SEPARATOR).toBe(ROW_PADDING_Y);
   });
 
-  /**
-   * The density pass, pinned as a direction rather than a pair of numbers. The bottom padding is
-   * smaller because the separator underneath already performs that separation; the top padding has
-   * no such partner. Restoring symmetry would silently give back the 4px per row this reclaimed.
-   */
-  it('pads a row less below than above', () => {
-    expect(rowPadding()).toBe('var(--space-2) 0 var(--space-1)');
+  /** The row pads 8 above and 8 below; the separator is the only asymmetry. */
+  it('pads a row evenly', () => {
+    expect(rowPadding()).toBe('var(--space-2) 0');
   });
 });

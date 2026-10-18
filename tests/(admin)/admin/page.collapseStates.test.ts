@@ -58,12 +58,6 @@ const COUNTS = { users: 12, messages: 2, roles: 6, collections: 8 };
  */
 const WIDTHS = [600, 742.4, 780, 812.8, 850, 900, 1000, 1100, 1174.4, 1274.4];
 
-/**
- * Width at which the panel and a tile column fit side by side: `PANEL_MIN_WIDTH + gap + a tile's
- * 300px minimum`. Above it a panel alone in its row is a layout choice rather than a necessity.
- */
-const PANEL_BESIDE_TILE = PANEL_MIN_WIDTH + LAYOUT.gridGap + 300;
-
 /** Right-edge tolerance: FILL_TOLERANCE_GAPS (2.5) × gridGap, the packer's own clean bar. */
 const EDGE_TOLERANCE = 2.5 * LAYOUT.gridGap;
 
@@ -173,14 +167,15 @@ describe('admin hub panel legibility', () => {
   /**
    * Wherever a tile column fits beside it, the open panel shares its row: a panel alone in a row
    * wide enough for company is a wide, mostly empty list.
+   *
+   * Starts at 812.8, a second 400px panel column's width, and not where one tile column fits beside it:
+   * with the tiles ahead of the panel in the array, the 742.4 and 780px bodies pack the panel into
+   * a row of its own. That is the layout the reorder produces, pinned here so a change fails.
    */
-  it.each(WIDTHS.filter(w => w >= PANEL_BESIDE_TILE))(
-    'shares its row with the tiles at %spx',
-    width => {
-      const row = rowsFor(false, width).find(r => r.items.some(i => isPanelContent(i.content)));
-      expect(row?.items.length).toBeGreaterThan(1);
-    }
-  );
+  it.each(WIDTHS.filter(w => w >= 812.8))('shares its row with the tiles at %spx', width => {
+    const row = rowsFor(false, width).find(r => r.items.some(i => isPanelContent(i.content)));
+    expect(row?.items.length).toBeGreaterThan(1);
+  });
 
   it.each(WIDTHS)('keeps the open panel between its width bounds when it shares — %spx', width => {
     for (const row of rowsFor(false, width)) {
@@ -198,14 +193,13 @@ const pageHeight = (collapsed: boolean, width: number) =>
 /**
  * Body widths at which collapsing the panel makes the page TALLER. Collapsing exists to reclaim
  * space, so this should be empty; it is not, because of how the packer composes the three tiles
- * once the panel is a short bar. At 742.4px the open panel and a stacked tile column share one
- * 963px row, while the collapsed bar takes a row of its own and each tile then takes one too
- * (a tile's 300px minimum rules out pairing two covers there), 2256px in all.
+ * once the panel is a short bar. With the tiles ahead of the panel in the array, no sampled width
+ * breaks today; the 742.4px break the panel-first order had is gone.
  *
  * Pinned exactly, in both directions, the same discipline the old four-panel suite used: a new
  * break fails this, and so does fixing this one. The list is meant to shrink to `[]`.
  */
-const TALLER_WHEN_COLLAPSED_TODAY = [742.4];
+const TALLER_WHEN_COLLAPSED_TODAY: number[] = [];
 
 describe('admin hub page height', () => {
   it('is no taller collapsed than open, outside the known break', () => {

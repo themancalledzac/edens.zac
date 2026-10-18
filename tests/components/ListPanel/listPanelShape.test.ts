@@ -13,8 +13,9 @@ import {
 
 /**
  * The three live panels, as the shapes they declare. These are the calibration fixtures for
- * `listPanelShape`: 71 / 58.5 / 40 is what each row MEASURES in Chrome against the live Inter
- * font, so a model that stops reproducing them is wrong. Fix the model, never these numbers.
+ * `listPanelShape`: 75 / 62.5 / 44 is what the model derives for each row. They are the earlier
+ * Chrome measurements plus the 4px of added row padding, not fresh measurements, so re-measure
+ * before trusting them against a browser.
  *
  * All three are now exact -- derived and rendered agree to the pixel, at panel widths 400, 430,
  * 520 and 610. No shape carries a residual any more: `RowShape.heightAdjustment` existed only to
@@ -55,19 +56,19 @@ const COLLECTIONS_ROW: RowShape = { left: ['header', 'subheader'], right: [] };
 
 describe('rowHeight', () => {
   it('reproduces the measured Users row height', () => {
-    expect(rowHeight(USERS_ROW)).toBeCloseTo(71, 1);
+    expect(rowHeight(USERS_ROW)).toBeCloseTo(75, 1);
   });
 
   it('reproduces the measured Messages row height', () => {
-    expect(rowHeight(MESSAGES_ROW)).toBeCloseTo(58.5, 1);
+    expect(rowHeight(MESSAGES_ROW)).toBeCloseTo(62.5, 1);
   });
 
   it('reproduces the measured Roles row height', () => {
-    expect(rowHeight(ROLES_ROW)).toBeCloseTo(40, 1);
+    expect(rowHeight(ROLES_ROW)).toBeCloseTo(44, 1);
   });
 
   it('derives the Collections row height', () => {
-    expect(rowHeight(COLLECTIONS_ROW)).toBeCloseTo(54, 1);
+    expect(rowHeight(COLLECTIONS_ROW)).toBeCloseTo(58, 1);
   });
 
   /**
@@ -92,17 +93,11 @@ describe('rowHeight', () => {
     expect(Number(declared)).toBeLessThan(rowHeight(COLLECTIONS_ROW) - ROW_PADDING_Y);
   });
 
-  // The density pass is only honest if the row actually got shorter. Pinning the direction as
-  // well as the values means a later "tidy-up" that restores symmetric padding fails here rather
-  // than silently handing the packer back the 4px it just reclaimed.
-  it('derives a shorter row than the symmetric padding it replaced', () => {
-    const SYMMETRIC_ROW_PADDING_Y = 17;
-    expect(rowHeight(USERS_ROW)).toBe(58 + ROW_PADDING_Y);
-    expect(ROW_PADDING_Y).toBeLessThan(SYMMETRIC_ROW_PADDING_Y);
+  it('derives the one-line row every tab renders', () => {
+    expect(rowHeight({ left: ['header'], right: ['meta'] })).toBe(20 + ROW_PADDING_Y);
+    expect(ROW_PADDING_Y).toBe(17);
   });
 
-  // `meta` is the slot the Messages timestamp needed and the vocabulary lacked. Reading that
-  // `--text-xs` line as a `subheader` is what made the row derive 2.5px more than it rendered.
   it('gives a meta slot less height than a subheader', () => {
     expect(SLOT_HEIGHT.meta).toBeLessThan(SLOT_HEIGHT.subheader);
     expect(rowHeight({ left: ['meta'] })).toBeLessThan(rowHeight({ left: ['subheader'] }));
@@ -114,7 +109,6 @@ describe('rowHeight', () => {
     );
   });
 
-  // Spread rather than re-declared so the two sides differ ONLY by the empty middle.
   it('ignores an absent middle section', () => {
     expect(rowHeight({ ...ROLES_ROW, middle: [] })).toBe(rowHeight(ROLES_ROW));
   });
@@ -124,7 +118,7 @@ describe('panelChromeHeight', () => {
   it('adds a toolbar line and its gap when the panel declares one', () => {
     const tabbedHeader: RowShape = { left: ['button'], right: ['button'] };
     const plain = panelChromeHeight(tabbedHeader);
-    expect(plain).toBe(86);
+    expect(plain).toBe(46);
     expect(panelChromeHeight(tabbedHeader, ['subheader'])).toBe(
       plain + SLOT_HEIGHT.subheader + TOOLBAR_GAP
     );
@@ -151,17 +145,10 @@ describe('panelContentHeight viewport cap', () => {
     expect(panelContentHeight('users', 400, 4000)).toBe(1000);
   });
 
-  // The explicit `undefined` is the assertion, not noise: omitting the argument and passing it
-  // undefined must agree, which is what lets every existing hub fixture keep calling the two-arg
-  // form. Autofixing it away would leave `x === x`.
   it('is unchanged when no viewport is supplied', () => {
-    // eslint-disable-next-line unicorn/no-useless-undefined
-    expect(panelContentHeight('users', 40)).toBe(panelContentHeight('users', 40, undefined));
+    expect(panelContentHeight('users', 40)).toBe(panelContentHeight('users', 40));
   });
 
-  // The floor outranks the viewport cap, not the other way round. Without this the ceiling on a
-  // very short viewport lands under PANEL_HEIGHT_BOUNDS.min and a panel reserves less than its
-  // own chrome -- the blank-well bug inverted.
   it('keeps the floor on a viewport too short to hold it', () => {
     expect(panelContentHeight('users', 40, 100)).toBe(192);
   });

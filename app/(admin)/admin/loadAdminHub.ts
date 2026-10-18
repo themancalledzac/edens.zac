@@ -6,11 +6,12 @@ import { listRoles } from '@/app/lib/api/roles';
 import { listUsers } from '@/app/lib/api/users';
 import { type AnyContentModel } from '@/app/types/Content';
 
-import { buildAdminHubContent } from './adminHubContent';
+import { buildAdminHubContent, toUnreadCount } from './adminHubContent';
 
 export interface AdminHub {
   content: AnyContentModel[];
   seed: AdminPanelSeed;
+  unreadMessages: number | undefined;
 }
 
 /**
@@ -18,13 +19,15 @@ export interface AdminHub {
  * the first pack, with the full lists handed on as the panels' seed so nothing is fetched twice.
  * Resolving the counts server-side keeps that first pack the only one — a count arriving after
  * paint would re-pack the page, remount every panel, and re-fire their fetches in a loop.
- * Each read fails soft on its own; a failed list seeds `null`, never `[]`.
+ * The unread total rides along as the Admin segment's count. Each read fails soft on its own; a
+ * failed list seeds `null`, never `[]`.
  */
 export async function loadAdminHub(viewportHeight: number | undefined): Promise<AdminHub> {
-  const [tiles, users, messages, roles, metadata] = await Promise.all([
+  const [tiles, users, messages, unread, roles, metadata] = await Promise.all([
     getAdminHomeTiles().catch(() => []),
     listUsers().catch(() => null),
     getAdminMessages(1, 0).catch(() => null),
+    getAdminMessages(1, 0, { unread: true }).catch(() => null),
     listRoles().catch(() => null),
     getMetadata().catch(() => null),
   ]);
@@ -39,5 +42,9 @@ export async function loadAdminHub(viewportHeight: number | undefined): Promise<
     },
     viewportHeight
   );
-  return { content, seed: { users, roles, collections } };
+  return {
+    content,
+    seed: { users, roles, collections },
+    unreadMessages: toUnreadCount(unread),
+  };
 }

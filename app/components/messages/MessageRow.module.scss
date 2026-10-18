@@ -1,16 +1,5 @@
-/* MessageRow — the message parts' own styling, shared by the /comments card and the compact
-   admin-hub row. The card arranges email, badge and time on .meta; the hub row stacks the sender
-   over an excerpt in .identity. */
-
-/* Flex rather than a plain block because it has to blockify the `<a>` inside it — an inline `<a>`
-   ignores the `overflow: hidden` on .email below, and a long address would then push the right
-   rail off the panel instead of ellipsising. */
-.identity {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
+/* MessageRow — the message parts' own styling, used by the /comments card and the admin hub's
+   message sheet. The card arranges email, badge and time on .meta. */
 
 .email {
   font-size: var(--text-sm);
@@ -83,4 +72,11 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.bodyFull {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

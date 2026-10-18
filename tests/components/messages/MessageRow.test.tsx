@@ -183,35 +183,9 @@ describe('MessageRow — own stylesheet (A10)', () => {
 
   it('defines every class in MessageRow.module.scss', () => {
     const scss = read('app/components/messages/MessageRow.module.scss');
-    for (const name of [
-      'identity',
-      'email',
-      'body',
-      'time',
-      'actions',
-      'replyButton',
-      'meta',
-      'unread',
-    ]) {
+    for (const name of ['email', 'body', 'time', 'actions', 'replyButton', 'meta', 'unread']) {
       expect(scss).toMatch(new RegExp(`\\.${name}\\b`));
     }
-  });
-
-  it('MessageRowLeft and MessageRowRight style themselves without a styles prop', () => {
-    const { MessageRowLeft, MessageRowRight } = jest.requireActual(
-      '@/app/components/messages/MessageRow'
-    );
-    const { container } = render(
-      <>
-        <MessageRowLeft message={message} />
-        <MessageRowRight message={message} onDelete={jest.fn()} deleting={false} />
-      </>
-    );
-    expect(container.querySelector('.identity')).not.toBeNull();
-    expect(container.querySelector('a.email')).not.toBeNull();
-    expect(container.querySelector('p.body')).not.toBeNull();
-    expect(container.querySelector('time.time')).not.toBeNull();
-    expect(container.querySelector('.actions')).not.toBeNull();
   });
 });
 

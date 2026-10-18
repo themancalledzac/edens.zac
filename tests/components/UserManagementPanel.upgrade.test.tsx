@@ -1,6 +1,6 @@
 /**
- * Tests the in-place upgrade flow on UserManagementPanel: toggling "Show tag-only people" reveals a
- * PERSON row with an Upgrade action alongside Merge; opening the modal, entering a required email,
+ * Tests the in-place upgrade flow on UserManagementPanel: toggling the People chip reveals a
+ * PERSON row whose detail sheet offers Upgrade alongside Merge; opening the modal, entering a required email,
  * and submitting calls {@link upgradeUser} with `(id, email)` and then shows the returned invite
  * link. Also covers the required-email guard (no request fired when the email is blank), the fact
  * that a successful upgrade refreshes the list and revalidates caches immediately rather than
@@ -47,9 +47,12 @@ beforeEach(() => {
 });
 
 const openUpgradeModal = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(await screen.findByLabelText(/show tag-only people/i));
+  await user.click(await screen.findByRole('button', { name: /people/i }));
   const personRow = (await screen.findByText('Danny Nieves')).closest('li') as HTMLElement;
-  await user.click(within(personRow).getByRole('button', { name: /upgrade/i }));
+  await user.click(within(personRow).getByRole('button'));
+  await user.click(
+    within(await screen.findByRole('dialog')).getByRole('button', { name: /upgrade/i })
+  );
 };
 
 const submitUpgrade = async (

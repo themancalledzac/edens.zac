@@ -1,10 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { type ReactNode, useMemo } from 'react';
+import Link from 'next/link';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAdminPanelSeed } from '@/app/components/ListPanel/AdminPanelSeedContext';
+import { ListDetailSheet } from '@/app/components/ListPanel/ListDetailSheet';
 import {
   ListPanel,
   type ListPanelShell,
@@ -12,15 +13,22 @@ import {
   ListRows,
   ViewAllLink,
 } from '@/app/components/ListPanel/ListPanel';
-import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
-import { LoadError } from '@/app/components/ui/StatusText/LoadError';
-import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
-import { StaleNotice } from '@/app/components/ui/StatusText/StaleNotice';
+import { PanelBody } from '@/app/components/ListPanel/PanelBody';
+import { Select } from '@/app/components/ui/Field/Select';
 import { IMAGE } from '@/app/constants';
 import { useCachedPanelData } from '@/app/hooks/useCachedPanelData';
-import { getMetadata } from '@/app/lib/api/collections';
+import {
+  getCollectionUpdateMetadata,
+  getMetadata,
+  updateCollection,
+} from '@/app/lib/api/collections';
 import { type CollectionListModel } from '@/app/types/Collection';
+import {
+  COLLECTION_VISIBILITY_LABELS,
+  CollectionVisibility,
+} from '@/app/types/CollectionVisibility';
 import { formatLongDate } from '@/app/utils/formatDateRange';
+import { manageHref } from '@/app/utils/manageUrl';
 import { compareCollectionsNewestFirst } from '@/app/utils/sortCollections';
 
 import styles from './CollectionsPanel.module.scss';
@@ -30,51 +38,148 @@ interface CollectionsPanelProps {
   shell?: ListPanelShell;
 }
 
+/** Side of the row's cover thumb, in CSS px, matched to `.cover` in the stylesheet. */
+const THUMB_SIZE = 20;
+
+/** Width of the cover in the detail sheet, in CSS px, as the optimizer's intrinsic size. */
+const SHEET_COVER_SIZE = 480;
+
+const VISIBILITIES = Object.values(CollectionVisibility);
+
 /**
- * Side of the cover thumbnail, in CSS px, matched to `.cover` in the stylesheet.
+ * The calls the visibility select makes, held on an object so a test can replace one and watch the
+ * select's behaviour change.
  *
- * Passed to `next/image` as its intrinsic size so the optimizer requests a square rather than the
- * source image's own shape. The rendered size is CSS's — see the stylesheet for why it is fixed.
+ * `saveVisibility` is the same `updateCollection` call the manage page's InfoTab makes.
+ * `rollsBackFailedSave` says whether a failed save puts the select back on the last saved value.
  */
-const THUMBNAIL_SIZE = 32;
+export const collectionsPanelGuards = {
+  saveVisibility(id: number, visibility: CollectionVisibility) {
+    return updateCollection(id, { id, visibility }).then(() => {});
+  },
+  rollsBackFailedSave(): boolean {
+    return true;
+  },
+};
 
 /**
  * The collection list, from the metadata endpoint the admin page already calls.
  *
  * There is no collections-only endpoint and no viewer-scoped one. This panel is admin-only, so the
- * admin metadata payload is the right source; a lighter endpoint would be a second way to ask the
- * same question.
+ * admin metadata payload is the right source.
  */
 async function fetchCollections(): Promise<CollectionListModel[]> {
   const metadata = await getMetadata();
   return metadata?.collections ?? [];
 }
 
+interface CollectionSheetBodyProps {
+  collection: CollectionListModel;
+}
+
 /**
- * The hub's collection list: a cover thumbnail, the collection's name and its date, per row.
+ * What the detail sheet shows for one collection: cover, date, Open, Manage and a visibility select.
  *
- * The first panel built on {@link ListPanel} rather than migrated onto it. Its row declares
- * `left: ['header', 'subheader']` and nothing on the right (`TAB_SHAPE` in `adminHubContent.ts`),
- * which derives to 54px. The thumbnail is deliberately not part of that declaration: at 32px it is
- * shorter than the 41px name-over-date stack, so the stack governs the row and the thumbnail costs
- * no height. Growing it past 41px would make the declared shape wrong with nothing to catch it.
+ * Mounted only while the sheet is open, so the current visibility is read once per opening with
+ * `getCollectionUpdateMetadata`. The select is disabled until that read lands. A change saves at
+ * once through {@link collectionsPanelGuards}; if the save fails the select returns to the last
+ * saved value and the error shows beneath it.
+ */
+function CollectionSheetBody({ collection }: CollectionSheetBodyProps) {
+  const { id, slug, coverImageUrl, collectionDate } = collection;
+  const [visibility, setVisibility] = useState<CollectionVisibility | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const savedRef = useRef<CollectionVisibility | null>(null);
+
+  useEffect(() => {
+    if (!slug) return;
+    let cancelled = false;
+    void getCollectionUpdateMetadata(slug)
+      .then(response => {
+        const current = response?.collection.visibility ?? null;
+        if (cancelled || current === null) return;
+        savedRef.current = current;
+        setVisibility(current);
+      })
+      .catch(() => {
+        if (!cancelled) setSaveError('Could not read the current visibility.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  const handleChange = async (e: ChangeEvent<HTMLSelectElement>) => {
+    const next = e.target.value as CollectionVisibility;
+    setVisibility(next);
+    setSaveError(null);
+    try {
+      await collectionsPanelGuards.saveVisibility(id, next);
+      savedRef.current = next;
+    } catch {
+      if (collectionsPanelGuards.rollsBackFailedSave()) setVisibility(savedRef.current);
+      setSaveError('Could not save visibility.');
+    }
+  };
+
+  return (
+    <div className={styles.sheetBody}>
+      {coverImageUrl && (
+        <Image
+          src={coverImageUrl}
+          alt=""
+          width={SHEET_COVER_SIZE}
+          height={SHEET_COVER_SIZE}
+          className={styles.sheetCover}
+          quality={IMAGE.quality}
+        />
+      )}
+      {collectionDate && <span className={styles.sheetDate}>{formatLongDate(collectionDate)}</span>}
+      {slug && (
+        <div className={styles.links}>
+          <Link href={`/${slug}`}>Open</Link>
+          <Link href={manageHref(slug)}>Manage</Link>
+        </div>
+      )}
+      <label className={styles.field}>
+        Visibility
+        <Select
+          value={visibility ?? ''}
+          disabled={visibility === null}
+          onChange={e => void handleChange(e)}
+        >
+          {visibility === null && <option value="">…</option>}
+          {VISIBILITIES.map(option => (
+            <option key={option} value={option}>
+              {COLLECTION_VISIBILITY_LABELS[option]}
+            </option>
+          ))}
+        </Select>
+      </label>
+      {saveError && (
+        <p className={styles.error} role="alert">
+          {saveError}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The hub's collection list: one line per collection, a 20px cover thumb, the name and the date
+ * muted after a middle dot. The list payload carries no visibility, so the row has no fact.
  *
- * Clicking a row opens that collection. It is `onActivate` rather than a `<Link>` because
- * `ListRow` already wraps the left section in a button, and an anchor inside a button is invalid
- * markup. A collection with no slug has nowhere to go, so it renders as a plain row instead.
- *
- * Data comes through `useCachedPanelData` under a `collections` key, seeded by the list the server
- * already fetched to size this panel — see `page.tsx`. A failed load gets its own branch ahead of
- * the empty state, so a dead backend is never reported as "no collections", and a failed
- * background refresh over showing data raises the {@link StaleNotice} instead. Both follow
- * {@link RolesPanel}, which this panel is otherwise a simpler version of.
+ * Tapping a row opens a {@link ListDetailSheet} for that collection. Collections stay a list, never
+ * a tile grid. The body renders through {@link PanelBody}, which owns the loading, error, empty and
+ * stale states; data comes through `useCachedPanelData` under a `collections` key, seeded by the
+ * list the server already fetched to size this panel — see `page.tsx`.
  *
  * The Collections tab of the `/admin` hub's list panel. The tab strip and collapsed state arrive as
- * `shell` and pass straight through: this panel has no body-only mode to force itself open for.
+ * `shell` and pass straight through.
  */
 export function CollectionsPanel({ shell }: CollectionsPanelProps) {
-  const router = useRouter();
   const seed = useAdminPanelSeed();
+  const [openId, setOpenId] = useState<number | null>(null);
 
   const { data, loading, loadError, revalidationFailed, refresh } = useCachedPanelData(
     'collections',
@@ -84,55 +189,54 @@ export function CollectionsPanel({ shell }: CollectionsPanelProps) {
   );
 
   const collections = useMemo(() => [...(data ?? [])].sort(compareCollectionsNewestFirst), [data]);
+  const opened = collections.find(collection => collection.id === openId) ?? null;
 
   const action = <ViewAllLink href="/collections" count={collections.length} />;
 
-  let body: ReactNode = null;
-  if (!loading) {
-    if (loadError) {
-      body = <LoadError message={loadError} onRetry={() => void refresh()} />;
-    } else if (collections.length === 0) {
-      body = <EmptyState>No collections yet.</EmptyState>;
-    } else {
-      body = (
+  return (
+    <ListPanel {...shell} title="Collections" ariaLabel="Collections" action={action}>
+      <PanelBody
+        loading={loading}
+        loadError={loadError}
+        revalidationFailed={revalidationFailed}
+        onRetry={() => void refresh()}
+        loadingLabel="Loading collections…"
+        isEmpty={collections.length === 0}
+        emptyLabel="No collections yet."
+      >
         <ListRows>
           {collections.map(collection => (
             <ListRow
               key={collection.id}
-              onActivate={collection.slug ? () => router.push(`/${collection.slug}`) : undefined}
-              ariaLabel={`Open collection ${collection.name}`}
-              left={
-                <span className={styles.entry}>
-                  {collection.coverImageUrl ? (
-                    <Image
-                      src={collection.coverImageUrl}
-                      alt=""
-                      width={THUMBNAIL_SIZE}
-                      height={THUMBNAIL_SIZE}
-                      className={styles.cover}
-                      quality={IMAGE.quality}
-                    />
-                  ) : (
-                    <span className={styles.coverPlaceholder} aria-hidden="true" />
-                  )}
-                  <span className={styles.text}>
-                    <span className={styles.name}>{collection.name}</span>
-                    <span className={styles.date}>{formatLongDate(collection.collectionDate)}</span>
-                  </span>
-                </span>
+              onActivate={() => setOpenId(collection.id)}
+              ariaLabel={`Open details for ${collection.name}`}
+              leading={
+                collection.coverImageUrl ? (
+                  <Image
+                    src={collection.coverImageUrl}
+                    alt=""
+                    width={THUMB_SIZE}
+                    height={THUMB_SIZE}
+                    className={styles.cover}
+                    quality={IMAGE.quality}
+                  />
+                ) : (
+                  <span className={styles.coverPlaceholder} aria-hidden="true" />
+                )
               }
+              primary={collection.name}
+              secondary={formatLongDate(collection.collectionDate) || undefined}
             />
           ))}
         </ListRows>
-      );
-    }
-  }
-
-  return (
-    <ListPanel {...shell} title="Collections" ariaLabel="Collections" action={action}>
-      <LoadingText isLoading={loading}>Loading collections…</LoadingText>
-      {!loading && !loadError && revalidationFailed && <StaleNotice />}
-      {body}
+      </PanelBody>
+      <ListDetailSheet
+        open={opened !== null}
+        onClose={() => setOpenId(null)}
+        title={opened?.name ?? ''}
+      >
+        {opened && <CollectionSheetBody key={opened.id} collection={opened} />}
+      </ListDetailSheet>
     </ListPanel>
   );
 }

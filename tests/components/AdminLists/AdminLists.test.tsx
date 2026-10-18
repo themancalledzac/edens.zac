@@ -54,10 +54,10 @@ describe('AdminLists', () => {
     replaceState.mockRestore();
   });
 
-  it('shows the Users tab by default', () => {
+  it('shows the Messages tab by default', () => {
     render(<AdminLists />);
-    expect(screen.getByTestId('panel')).toHaveTextContent('Users panel');
-    expect(screen.getByTestId('active')).toHaveTextContent('users');
+    expect(screen.getByTestId('panel')).toHaveTextContent('Messages panel');
+    expect(screen.getByTestId('active')).toHaveTextContent('messages');
   });
 
   it.each([
@@ -65,7 +65,7 @@ describe('AdminLists', () => {
     ['?list=collections', 'Collections panel'],
     ['?role=7', 'Roles panel'],
     ['?list=users&role=7', 'Users panel'],
-    ['?list=bogus', 'Users panel'],
+    ['?list=bogus', 'Messages panel'],
   ])('mounts only the tab %s names', (search, label) => {
     mockSearchParams = new URLSearchParams(search);
     render(<AdminLists />);

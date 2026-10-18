@@ -29,6 +29,8 @@ export interface UserSpaceProps {
   toolbarExtras?: readonly ToolbarExtra[];
   /** The Admin section's content, already an element. Only `/admin` passes it. */
   adminHub?: ReactNode;
+  /** The Admin segment's count, the unread message total. Only `/admin` passes it. */
+  adminCount?: number;
 }
 
 /**
@@ -67,6 +69,7 @@ export function UserSpace({
   railExtras = null,
   toolbarExtras,
   adminHub,
+  adminCount,
 }: UserSpaceProps) {
   const {
     collection,
@@ -90,6 +93,7 @@ export function UserSpace({
       railExtras={railExtras}
       toolbarExtras={toolbarExtras}
       adminHub={adminHub}
+      adminCount={adminCount}
     />
   );
 

@@ -35,11 +35,16 @@ function Timestamp({ message }: MessagePartProps) {
 interface MessageBodyProps extends MessagePartProps {
   /** When set, the body is truncated to this many words and the full text moves to a title tooltip. */
   excerptWords?: number;
+  /** Lets the body wrap instead of ellipsising, for a surface that shows the whole message. */
+  fullBody?: boolean;
 }
 
-function MessageBody({ message, excerptWords }: MessageBodyProps) {
+function MessageBody({ message, excerptWords, fullBody }: MessageBodyProps) {
   return (
-    <p className={styles.body} title={excerptWords ? message.message : undefined}>
+    <p
+      className={fullBody ? `${styles.body} ${styles.bodyFull}` : styles.body}
+      title={excerptWords ? message.message : undefined}
+    >
       {excerptWords ? truncateWords(message.message, excerptWords) : message.message}
     </p>
   );
@@ -115,6 +120,7 @@ export function MessageRow({
   onDelete,
   deleting,
   excerptWords,
+  fullBody,
   onToggleRead,
   togglingRead,
 }: MessageRowProps) {
@@ -125,7 +131,7 @@ export function MessageRow({
         {onToggleRead && message.readAt === null && <UnreadBadge />}
         <Timestamp message={message} />
       </div>
-      <MessageBody message={message} excerptWords={excerptWords} />
+      <MessageBody message={message} excerptWords={excerptWords} fullBody={fullBody} />
       <MessageActions
         message={message}
         onDelete={onDelete}
@@ -133,35 +139,6 @@ export function MessageRow({
         onToggleRead={onToggleRead}
         togglingRead={togglingRead}
       />
-    </>
-  );
-}
-
-/**
- * A hub row's left section: who wrote it, over what they wrote.
- *
- * The wrapper is not decoration — it is a flex column, which blockifies the `<a>` inside it. An
- * inline `<a>` ignores `overflow: hidden`, so without it the email would not ellipsise and a long
- * address would push the right rail off the panel.
- */
-export function MessageRowLeft({ message, excerptWords }: MessageBodyProps) {
-  return (
-    <div className={styles.identity}>
-      <EmailLink message={message} />
-      <MessageBody message={message} excerptWords={excerptWords} />
-    </div>
-  );
-}
-
-/**
- * A hub row's right section: when it arrived, over what to do about it. Needs no wrapper —
- * `ListPanel`'s `.rowRight` is already the flex column that stacks and right-aligns these two.
- */
-export function MessageRowRight({ message, onDelete, deleting }: MessageActionsProps) {
-  return (
-    <>
-      <Timestamp message={message} />
-      <MessageActions message={message} onDelete={onDelete} deleting={deleting} />
     </>
   );
 }

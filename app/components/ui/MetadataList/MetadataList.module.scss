@@ -25,10 +25,14 @@
   font-weight: 400;
 }
 
+// Every row is one fixed height, and the list's max height rounds 60vh down to a whole number of
+// rows plus the list's own 2px of border, so the scroll box never ends on a half-cut row.
 .list {
+  --metadata-row-height: 3rem;
+
   display: flex;
   flex-direction: column;
-  max-height: 60vh;
+  max-height: calc(round(down, 60vh - 2px, var(--metadata-row-height)) + 2px);
   overflow-y: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-1);
@@ -36,8 +40,10 @@
 
 .row {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
+  height: var(--metadata-row-height);
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-border);
 
