@@ -3,31 +3,6 @@
 /* UserManagementPanel — the content inside this panel's ListPanel slots. The shell, the list
    surface and the row grid are ListPanel's; nothing here may re-declare them. */
 
-/* The list surface, the row grid and both row sections now belong to ListPanel — .list, .row,
-   .rowMain, .rowStatic and .rowActions all lived here and are gone. What stays is the content
-   INSIDE the identity slot, which is this panel's own and nobody else's. */
-
-/* The row's left section: who they are, over how to reach them. The `gap` is SLOT_GAP — this
-   section declares two stacked slots (`header` over `subheader`) and the model puts --space-1
-   between any two, so without it the declared 41px stack rendered 36.5. It never changed the row's
-   height, because the two stacked buttons opposite are taller either way; it made the shape
-   describe a row slightly unlike the one on screen. The same block in MessagesPanel already had
-   it, so this also stops the two identity blocks reading differently side by side on /admin. */
-.identity {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.nameLine {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
 .dot {
   flex: none;
   width: 8px;
@@ -52,19 +27,33 @@
   }
 }
 
-.name {
-  font-weight: 600;
-  color: var(--color-on-surface);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .srOnly {
   @extend %visually-hidden;
 }
 
-.email {
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sheetIdentity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-on-surface);
+}
+
+.sheetEmail {
   color: var(--color-on-surface-muted);
   font-size: var(--text-sm);
   overflow: hidden;
@@ -72,18 +61,13 @@
   white-space: nowrap;
 }
 
-/* The tag-only filter on the body's first line (ListPanel's `toolbar`). The checkbox's default
-   margins are zeroed so the line is exactly its --text-sm text tall — the `subheader` slot the
-   Users tab's toolbar declares in adminHubContent.ts. */
-.toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+.statusSelect {
+  align-self: flex-start;
+  font: inherit;
   font-size: var(--text-sm);
-  color: var(--color-on-surface-muted);
-  cursor: pointer;
+}
 
-  input {
-    margin: 0;
-  }
+.openSpace {
+  font-size: var(--text-sm);
+  color: var(--color-accent);
 }

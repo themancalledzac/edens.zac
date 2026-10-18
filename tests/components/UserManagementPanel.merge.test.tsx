@@ -1,6 +1,6 @@
 /**
- * Tests the identity-merge flow on UserManagementPanel: toggling "Show tag-only people" reveals a
- * PERSON row with a Merge action; opening the modal, picking a survivor, and confirming calls
+ * Tests the identity-merge flow on UserManagementPanel: toggling the People chip reveals a
+ * PERSON row whose detail sheet offers a Merge action; opening the modal, picking a survivor, and confirming calls
  * {@link mergeUser} with `(targetId, sourceId)`. Also covers the safety guards: a null preview keeps
  * the confirm disabled, and PERSON rows are non-navigable (no account detail page to reach).
  *
@@ -52,15 +52,19 @@ beforeEach(() => {
   });
 });
 
+const openPersonSheet = async (user: ReturnType<typeof userEvent.setup>) => {
+  const personRow = (await screen.findByText('Danny Nieves')).closest('li') as HTMLElement;
+  await user.click(within(personRow).getByRole('button'));
+};
+
 it('merges a tag-only person into an account', async () => {
   const user = userEvent.setup();
   render(<UserManagementPanel />);
 
-  // toggle on -> person row appears with a Merge button
-  await user.click(await screen.findByLabelText(/show tag-only people/i));
+  await user.click(await screen.findByRole('button', { name: /people/i }));
+  await openPersonSheet(user);
   await user.click(await screen.findByRole('button', { name: /merge/i }));
 
-  // pick the survivor + confirm
   await user.selectOptions(await screen.findByRole('combobox'), '1');
   expect(await screen.findByText(/permanently deletes/i)).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: /^merge$/i }));
@@ -73,11 +77,11 @@ it('keeps the confirm disabled (and never merges) when the preview is null', asy
   const user = userEvent.setup();
   render(<UserManagementPanel />);
 
-  await user.click(await screen.findByLabelText(/show tag-only people/i));
+  await user.click(await screen.findByRole('button', { name: /people/i }));
+  await openPersonSheet(user);
   await user.click(await screen.findByRole('button', { name: /merge/i }));
   await user.selectOptions(await screen.findByRole('combobox'), '1');
 
-  // null preview surfaces an error, no preview text, and a disabled confirm
   expect(await screen.findByText(/no longer exists/i)).toBeInTheDocument();
   expect(screen.queryByText(/permanently deletes/i)).not.toBeInTheDocument();
   const confirm = screen.getByRole('button', { name: /^merge$/i });
@@ -87,14 +91,14 @@ it('keeps the confirm disabled (and never merges) when the preview is null', asy
   expect(mergeUser).not.toHaveBeenCalled();
 });
 
-it('does not navigate to a detail page when a tag-only person row is clicked', async () => {
+it('opens the sheet and does not navigate when a tag-only person row is clicked', async () => {
   const user = userEvent.setup();
   render(<UserManagementPanel />);
 
-  await user.click(await screen.findByLabelText(/show tag-only people/i));
-  // The PERSON row identity is a static element, not a navigating button.
+  await user.click(await screen.findByRole('button', { name: /people/i }));
   const personRow = (await screen.findByText('Danny Nieves')).closest('li') as HTMLElement;
   await user.click(within(personRow).getByText('Danny Nieves'));
 
+  expect(await screen.findByRole('dialog')).toBeInTheDocument();
   expect(mockPush).not.toHaveBeenCalled();
 });
