@@ -11,11 +11,17 @@
  * resolved declarations directly.
  */
 
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { compile } from 'sass';
 
 const SOURCE = join(process.cwd(), 'app/components/FullScreenModal/FullScreenModal.module.scss');
+const MODAL_TSX = join(process.cwd(), 'app/components/FullScreenModal/FullScreenModal.tsx');
+const DOWNLOAD_TSX = join(
+  process.cwd(),
+  'app/components/ClientGalleryDownload/FullScreenDownloadButton.tsx'
+);
 const MIN_TOUCH_TARGET = 44;
 
 function rulesFor(css: string, selector: string): string[] {
@@ -34,13 +40,23 @@ function rulesFor(css: string, selector: string): string[] {
 
 describe('fullscreen metadata toggle touch target', () => {
   const css = compile(SOURCE).css;
+  const tsx = readFileSync(MODAL_TSX, 'utf8');
 
-  it('declares the toggle with a doubled class so it outranks IconButton', () => {
-    expect(css).toContain('.metadataToggle.metadataToggle {');
+  it('renders the toggle as an IconButton with the scrim variant', () => {
+    expect(tsx).toMatch(/<IconButton[^>]*variant="scrim"[^>]*className={styles\.metadataToggle}/);
+  });
+
+  it('renders the download toggle as an IconButton with the scrim variant', () => {
+    expect(readFileSync(DOWNLOAD_TSX, 'utf8')).toMatch(/<IconButton[^>]*variant="scrim"/);
+  });
+
+  it('no longer relies on a doubled class to outrank IconButton', () => {
+    expect(css).not.toContain('.metadataToggle.metadataToggle');
+    expect(css).not.toContain('.closeButton.closeButton');
   });
 
   it('sizes every metadataToggle rule at 44px or larger', () => {
-    const bodies = rulesFor(css, '.metadataToggle.metadataToggle');
+    const bodies = rulesFor(css, '.metadataOverlay .metadataToggle');
     expect(bodies.length).toBeGreaterThan(0);
 
     const sizes = bodies.flatMap(body => [
@@ -55,15 +71,25 @@ describe('fullscreen metadata toggle touch target', () => {
 
   it('has no width-conditional step that shrinks the toggle on narrow viewports', () => {
     const shrinkingMediaBlock =
-      /@media[^{]*{[^}]*(?:\.metadataTog{2}le){2}\s*{[^}]*(?:width|height):\s*(?:[0-3]?\d|4[0-3])px/;
+      /@media[^{]*{[^}]*\.metadataToggle\s*{[^}]*(?:width|height):\s*(?:[0-3]?\d|4[0-3])px/;
     expect(css).not.toMatch(shrinkingMediaBlock);
   });
 
   it('leaves the sibling close button to IconButton, which already meets the target', () => {
-    const bodies = rulesFor(css, '.closeButton.closeButton');
+    const bodies = rulesFor(css, '.imageFullScreenWrapper .closeButton');
     expect(bodies.length).toBeGreaterThan(0);
     for (const body of bodies) {
       expect(body).not.toMatch(/(?:^|;)\s*(?:width|height):/);
     }
+  });
+
+  it('clears the top safe area with the close button offset', () => {
+    const bodies = rulesFor(css, '.imageFullScreenWrapper .closeButton');
+    expect(bodies.some(body => body.includes('env(safe-area-inset-top'))).toBe(true);
+  });
+
+  it('makes clickable chips block boxes so padding and the hit area lay out', () => {
+    const bodies = rulesFor(css, '.metadataSectionItemClickable');
+    expect(bodies.some(body => /display:\s*block/.test(body))).toBe(true);
   });
 });

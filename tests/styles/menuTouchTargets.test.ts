@@ -238,7 +238,7 @@ describe('menu touch targets', () => {
     expect(desktop['width']).toContain('var(--default-padding)');
     expect(desktop['right']).toContain('100vw');
     expect(desktop['right']).toContain('var(--page-max-width)');
-    expect(desktop['box-shadow']).toBe('-8px 0 16px -8px rgba(0, 0, 0, 0.2)');
+    expect(desktop['box-shadow']).toBe('-8px 0 16px -8px var(--scrim-dark-20)');
     const wrapper = declsFor(base, '.dropdownCloseButtonWrapper');
     expect(wrapper['justify-content']).toBe('flex-end');
     expect(wrapper['align-items']).toBe('center');
@@ -276,5 +276,36 @@ describe('menu touch targets', () => {
     expect(changed).not.toBe(menuCss);
     const desktop = declsFor(splitMedia(changed).media, '.dropdown');
     expect(desktop['width']).not.toContain('min(400px');
+  });
+});
+
+describe('token adoption in the menu, Dropdown and density control stylesheets', () => {
+  const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
+  const menu = stripComments(read('app/components/MenuDropdown/MenuDropdown.module.scss'));
+  const dropdown = stripComments(read('app/components/ui/Dropdown/Dropdown.module.scss'));
+  const density = stripComments(
+    read('app/components/ui/FilterToolbar/DensityTierControl.module.scss')
+  );
+
+  it('menu has no raw black rgb() scrims', () => {
+    expect(menu).not.toMatch(/rgb\(\s*(?:0[\s,]+){2}0/);
+  });
+
+  it('menu hairlines use --color-border and scrims use --scrim-dark-*', () => {
+    expect(menu).toMatch(/border-bottom: 1px solid var\(--color-border\)/);
+    expect(menu).toMatch(/border-top: 1px solid var\(--color-border\)/);
+    expect(menu).not.toMatch(/border[^;]*var\(--scrim-dark/);
+    expect(menu).toMatch(/background-color: var\(--scrim-dark-40\)/);
+    expect(menu).toMatch(/box-shadow: -8px 0 16px -8px var\(--scrim-dark-20\)/);
+  });
+
+  it('Dropdown has no raw px margin, padding or font-size and no transition: all', () => {
+    expect(dropdown).not.toMatch(/(?:margin|padding|font-size)[\w-]*:[^;]*\d+px/);
+    expect(dropdown).not.toMatch(/transition:\s*all/);
+  });
+
+  it('density control paints its borders with --color-border-control', () => {
+    expect(density).not.toMatch(/var\(--color-border\)/);
+    expect(density.match(/var\(--color-border-control\)/g)?.length).toBe(3);
   });
 });

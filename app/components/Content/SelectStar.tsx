@@ -4,6 +4,7 @@ import { type ReactElement } from 'react';
 
 import { useMe } from '@/app/components/auth/MeProvider';
 import { useSelects } from '@/app/components/ContentCollection/SelectsContext';
+import { IconButton } from '@/app/components/ui/IconButton/IconButton';
 import { isClientOfCollection } from '@/app/utils/galleryAccess';
 
 import cbStyles from './ContentComponent.module.scss';
@@ -31,8 +32,9 @@ export function SelectStar({ contentId }: SelectStarProps): ReactElement | null 
   const selected = selects.isSelected(contentId);
 
   return (
-    <button
-      type="button"
+    <IconButton
+      variant="scrim"
+      size="sm"
       className={`${cbStyles.selectStar} ${selected ? cbStyles.selectStarActive : ''}`}
       aria-pressed={selected}
       aria-label={selected ? 'Remove from Your Selects' : 'Add to Your Selects'}
@@ -45,6 +47,6 @@ export function SelectStar({ contentId }: SelectStarProps): ReactElement | null 
       <svg className={cbStyles.selectStarIcon} viewBox="0 0 24 24" aria-hidden="true">
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
       </svg>
-    </button>
+    </IconButton>
   );
 }

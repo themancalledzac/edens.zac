@@ -108,3 +108,12 @@
     background-color: var(--color-badge-bg);
   }
 }
+
+.scrim {
+  background-color: var(--scrim-dark-50);
+  color: var(--color-white);
+
+  @include enabled-hover {
+    background-color: var(--scrim-light-30);
+  }
+}

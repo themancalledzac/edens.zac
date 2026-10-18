@@ -12,11 +12,11 @@
   &.pickedUp {
     outline: 3px solid var(--color-accent);
     outline-offset: -3px;
-    background: rgb(59, 130, 246, 0.1);
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   }
 
   &.moved {
-    outline: 3px solid var(--color-success, #22c55e);
+    outline: var(--space-1) solid var(--color-success);
     outline-offset: -3px;
   }
 }
@@ -34,16 +34,8 @@
 
 .pickUpButton,
 .cancelButton {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity var(--duration-fast) var(--ease-standard);
+  color: white;
+  font-size: var(--text-md);
   opacity: 0.8;
 
   &:hover {
@@ -51,14 +43,14 @@
   }
 }
 
-.pickUpButton {
+.topRow .pickUpButton,
+.topRow .pickUpButton:hover:not(:disabled) {
   background: var(--color-accent);
-  color: white;
 }
 
-.cancelButton {
+.topRow .cancelButton,
+.topRow .cancelButton:hover:not(:disabled) {
   background: var(--color-danger);
-  color: white;
 }
 
 // Arrow buttons centered vertically on left/right edges
@@ -72,13 +64,13 @@
   height: 40%;
   max-height: 64px;
   border: none;
-  border-radius: var(--radius-1, 4px);
+  border-radius: var(--radius-1);
   cursor: pointer;
-  font-size: 18px;
+  font-size: var(--text-lg);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(0, 0, 0, 0.5);
+  background: var(--scrim-dark-50);
   color: white;
   opacity: 0.7;
   transition: opacity var(--duration-fast) var(--ease-standard);

@@ -47,9 +47,9 @@ const ROLES_ROW: RowShape = { left: ['header'], right: ['button'] };
  * rather than measured off one that already existed. Its left section is the collection name over
  * its date; nothing sits on the right.
  *
- * The 32px cover thumbnail beside that text is not a slot. It is shorter than the 41px stack it
+ * The 32px cover thumbnail beside that text is not a slot. It is shorter than the 38px stack it
  * sits next to, so the stack governs the row and the thumbnail contributes no height. That is the
- * reason the thumbnail is pinned at 32px in CSS: at anything over 41px it would govern instead,
+ * reason the thumbnail is pinned at 32px in CSS: at anything over 38px it would govern instead,
  * and this shape would understate the row.
  */
 const COLLECTIONS_ROW: RowShape = { left: ['header', 'subheader'], right: [] };
@@ -68,12 +68,12 @@ describe('rowHeight', () => {
   });
 
   it('derives the Collections row height', () => {
-    expect(rowHeight(COLLECTIONS_ROW)).toBeCloseTo(58, 1);
+    expect(rowHeight(COLLECTIONS_ROW)).toBeCloseTo(55, 1);
   });
 
   /**
    * The rule the 32px thumbnail exists to satisfy, read out of the stylesheet rather than restated
-   * here. The left stack is 41px; a thumbnail taller than that becomes the tallest thing in the
+   * here. The left stack is 38px; a thumbnail taller than that becomes the tallest thing in the
    * row, and the shape above stops describing what renders.
    *
    * The earlier form declared `const COLLECTIONS_THUMBNAIL = 32` inside the test and compared it
@@ -93,8 +93,20 @@ describe('rowHeight', () => {
     expect(Number(declared)).toBeLessThan(rowHeight(COLLECTIONS_ROW) - ROW_PADDING_Y);
   });
 
+  it('renders a row title at the --text-sm line the header slot declares', () => {
+    const css = readFileSync(
+      path.join(process.cwd(), 'app/components/ListPanel/ListPanel.module.scss'),
+      'utf8'
+    );
+    const fontSize = css.match(/\.rowText {[^}]*?font-size:\s*([^;]+);/)?.[1];
+
+    expect(fontSize).toBe('var(--text-sm)');
+    expect(SLOT_HEIGHT.header).toBe(SLOT_HEIGHT.subheader);
+  });
+
   it('derives the one-line row every tab renders', () => {
-    expect(rowHeight({ left: ['header'], right: ['meta'] })).toBe(20 + ROW_PADDING_Y);
+    expect(rowHeight({ left: ['header'], right: ['meta'] })).toBe(17 + ROW_PADDING_Y);
+    expect(rowHeight({ left: ['header'], right: ['meta'] })).toBe(34);
     expect(ROW_PADDING_Y).toBe(17);
   });
 

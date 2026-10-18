@@ -12,12 +12,12 @@ html,
   --color-overlay-soft: rgb(0, 0, 0, 0.1);
   --color-white: #fff;
   --color-black: #111;
+  --color-letterbox: #000; /* pure black behind the fullscreen photo */
   --color-bg: var(--color-white);
   --color-fg: var(--color-black);
 
   /* Constant white content mat/frame for images and content blocks. The brand
-     signature is white-framed photos floating on the surface; this frame stays
-     white and does NOT invert under [data-surface='dark'] (see that block). */
+     signature is white-framed photos floating on the surface. */
   --content-frame: #fff;
 
   /* ── Unified semantic color taxonomy (review §6b). Roles, not raw colors.
@@ -40,17 +40,24 @@ html,
      so keyboard users keep a visible ring while mouse/touch users don't. */
   --focus-ring: 2px solid var(--color-accent);
 
-  /* Scrim alpha ramp — light scale, 10..90 in steps of 10. Replaces the 9-step
-     --color-overlay-light-* ramp + the inline rgb() literals it absorbed.
-     The matching --scrim-dark-* scale was declared and never picked up a call
-     site through the entire migration, so it was dropped; reintroduce per-step
-     on first real need rather than carrying the whole ramp speculatively. */
+  /* Scrim alpha ramps — light and dark scales, 10..90 in steps of 10. The light
+     ramp replaces the 9-step --color-overlay-light-* ramp + the inline rgb()
+     literals it absorbed. */
   --scrim-light-10: rgb(255 255 255 / 10%);
   --scrim-light-20: rgb(255 255 255 / 20%);
   --scrim-light-30: rgb(255 255 255 / 30%);
   --scrim-light-50: rgb(255 255 255 / 50%);
   --scrim-light-70: rgb(255 255 255 / 70%);
   --scrim-light-90: rgb(255 255 255 / 90%);
+  --scrim-dark-10: rgb(0 0 0 / 10%);
+  --scrim-dark-20: rgb(0 0 0 / 20%);
+  --scrim-dark-30: rgb(0 0 0 / 30%);
+  --scrim-dark-40: rgb(0 0 0 / 40%);
+  --scrim-dark-50: rgb(0 0 0 / 50%);
+  --scrim-dark-60: rgb(0 0 0 / 60%);
+  --scrim-dark-70: rgb(0 0 0 / 70%);
+  --scrim-dark-80: rgb(0 0 0 / 80%);
+  --scrim-dark-90: rgb(0 0 0 / 90%);
 
   /* Badge and overlay colors */
   --color-badge-bg: rgb(0, 0, 0, 0.9);
@@ -62,8 +69,7 @@ html,
 
   /* Content affordance accents — icon fills layered over content thumbnails.
      Like the other brand/status literals (--color-danger, --color-warning) these
-     are deliberately NOT re-declared under [data-surface='dark']: the affordance
-     must read as the same color on both surfaces. */
+     are brand/status literals: the affordance reads as the same color everywhere. */
   --color-heart: #e0245e; /* SaveHeart fill + FollowButton active state */
   --color-star: #f5c518; /* ContentComponent select-star fill */
 
@@ -120,11 +126,12 @@ html,
   --color-error-bg: #fee;
   --color-error-border: #fcc;
   --color-error-text: #c33;
+  --color-success-bg: #f0fdf4;
   --color-primary: #212226;
   --color-primary-dark: #1a1b1e;
   --color-primary-hover: var(
     --color-primary-dark
-  ); /* hover step for the primary <Button>. Light surface: the dark fill deepens. The dark scope re-points this so the white-fill button dims toward gray instead of inverting to near-black. */
+  ); /* hover step for the primary <Button>: the dark fill deepens. */
 
   --color-secondary: #6c757d;
   --color-secondary-dark: #5a6268;
@@ -140,16 +147,8 @@ html,
      different contrast bars: a fill/border only needs 3:1, text needs 4.5:1, and
      --color-danger clears 4.5:1 on pure white by 0.03 — it already fails on
      --color-surface-raised (4.30:1) and on the -subtle wash below (3.31:1). So
-     danger text steps DARKER than the brand red on light, and is re-pointed
-     LIGHTER under [data-surface='dark'], where the brand red is only 3.8:1.
-     Read --color-danger for fills and borders; read this for glyphs and copy.
-
-     (--color-danger-dark, red-600, was deleted here: it was filed under "danger
-     colors for dark backgrounds" but 3.56:1 on charcoal is unusable there — it
-     was a light-surface red all along, and a near-duplicate of --color-danger,
-     which now covers its four border call sites. --color-blue-text, blue-300,
-     was deleted too: zero call sites, same reasoning as the --scrim-dark-* ramp
-     above — reintroduce on first real need rather than carrying it on spec.) */
+     danger text steps DARKER than the brand red.
+     Read --color-danger for fills and borders; read this for glyphs and copy. */
   --color-danger-text: #b91c1c; /* tailwind red-700 — 6.5:1 on white, 6.1:1 on raised, 4.7:1 on -subtle */
   --color-success-text: #15803d; /* tailwind green-700 */
 
@@ -183,57 +182,6 @@ html,
      alias were migrated onto the semantic taxonomy and deleted (TK-3). ── */
   --radius-sm: var(--radius-1);
   --color-warning: #f4b400; /* amber: warning affordances + RatingStars star fill */
-}
-
-/* ── Scoped dark surface ──────────────────────────────────────────────────
-   Admin/edit chrome opts into this via app/(admin)/layout.tsx; the public
-   site stays light (the :root defaults above are UNCHANGED — no global flip).
-   We only redefine the SEMANTIC tokens that chrome + ui/ primitives already
-   consume (--color-bg/-fg, the surface + on-surface + border roles), so every
-   descendant adapts with zero per-component overrides. Custom properties
-   inherit through display:contents, so the layout's scope wrapper can paint
-   the surface and still let these cascade.
-
-   Design language: muted neutral charcoal (not black, not purple), light-on-
-   dark text, neutral accents. Primary action = white fill / dark text falls
-   out for free: <Button> primary is `background: var(--color-fg); color:
-   var(--color-bg)`. --content-frame is intentionally NOT overridden — the
-   white image mat stays white on dark (gallery-wall look). ── */
-[data-surface='dark'] {
-  --color-bg: #1b1b1d; /* neutral charcoal page surface */
-  --color-fg: #f1f1f1; /* light-on-dark primary text */
-  --color-on-surface: var(--color-fg); /* headings/titles track fg on dark */
-  --color-on-surface-muted: #9a9aa0; /* muted light-gray secondary text */
-
-  /* Raised/sunken surface roles, lifted a step off the page surface so cards,
-     inputs and steppers read as distinct planes rather than blending in. */
-  --color-surface-raised: #232326; /* panels/cards a step above the page */
-  --color-surface-sunken: #141416; /* recessed wells/placeholders */
-  --color-surface-sunken-strong: #0f0f11; /* deeper sunken hover step */
-
-  /* Low-alpha white hairline so borders read on dark without harsh lines. */
-  --color-border: rgb(255 255 255 / 14%);
-  --color-border-strong: rgb(255 255 255 / 28%);
-  --color-border-control: rgb(255 255 255 / 50%);
-
-  /* Hover/active surface tint flips to low-alpha WHITE so it lifts on dark instead
-     of the near-invisible black wash the :root rgb(0 0 0 / 10%) would give. Drives
-     every ghost/outline/list-row/segment/dropdown hover that reads this role.
-     (--color-overlay-strong is intentionally NOT overridden — the modal scrim and
-     image overlays must stay dark regardless of surface.) */
-  --color-overlay-soft: rgb(255 255 255 / 8%);
-
-  /* The primary <Button> fill is --color-fg (near-white) on dark, so its hover must
-     DIM toward gray, not deepen toward black like the light-surface default does. */
-  --color-primary-hover: #d4d4d6;
-
-  /* Danger text inverts the light-surface step: there it goes darker than the brand
-     red, here it must go lighter. --color-danger is only 3.8:1 on this charcoal;
-     red-300 is 9.1:1 on it and 7.8:1 over the --color-danger-subtle wash. The fill
-     token itself is deliberately NOT re-declared — like --color-heart/--color-star,
-     the brand red must read as the same color on both surfaces. */
-  --color-danger-text: rgb(252, 165, 165); /* tailwind red-300 */
-  --color-success-text: rgb(134, 239, 172); /* tailwind green-300 */
 }
 
 /* Desktop heading sizes */
@@ -279,7 +227,7 @@ body.scroll-locked {
    NOTE: intentionally scoped to fullscreen-open, NOT scroll-locked — the menu dropdown also
    locks scroll but must not darken the html canvas. */
 html:has(body.fullscreen-open) {
-  background-color: #000;
+  background-color: var(--color-letterbox);
 }
 
 /* …and the <body> box itself. body is explicitly white (--color-bg) and sits behind the
@@ -287,7 +235,7 @@ html:has(body.fullscreen-open) {
    fixed overlay can't reach. Forcing it dark while the modal is open makes the fix independent
    of whether the exposed surface is the html canvas or the body box. Reverts on close. */
 body.fullscreen-open {
-  background-color: #000;
+  background-color: var(--color-letterbox);
 }
 
 /* Universal scrollbar hiding for all elements */

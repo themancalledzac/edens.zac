@@ -124,7 +124,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 5px;
+  padding: var(--space-1);
   margin: 0;
   /* Ensure serif font and typography are maintained */
   font-family: var(--font-serif), serif;
@@ -192,7 +192,7 @@
   font-size: var(--collection-title);
   font-weight: 700;
   text-align: center;
-  padding: 5px;
+  padding: var(--space-1);
   overflow-wrap: break-word;
   pointer-events: none;
   z-index: var(--z-content); /* Ensure text overlay appears above parallax image (z-index: base) */
@@ -267,32 +267,18 @@
   stroke-linejoin: round;
 }
 
-/* Selects (favorites) star — top-left corner toggle button on client-gallery images. */
+/* Selects (favorites) star — top-left corner toggle on client-gallery images. The box, colour and
+   touch target come from IconButton; this only pins it to the corner. */
 .selectStar {
   position: absolute;
   top: 8px;
   left: 8px;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background-color: rgb(0 0 0 / 35%);
-  cursor: pointer;
   z-index: var(--z-content);
-  transition: background-color 0.15s ease;
-
-  &:hover {
-    background-color: rgb(0 0 0 / 55%);
-  }
 }
 
 .selectStarIcon {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   fill: none;
   stroke: white;
   stroke-width: 2;
@@ -629,7 +615,7 @@
   line-height: 1.2;
   text-align: center;
   color: var(--color-white);
-  text-shadow: 0 1px 3px rgb(0 0 0 / 50%);
+  text-shadow: 0 1px 3px var(--scrim-dark-50);
 }
 
 /* Cover-less sibling inside the card row: a text-link chip, vertically centered
@@ -716,7 +702,7 @@
 .separatorLine {
   flex: 1;
   height: 1px;
-  background-color: var(--color-border, #e5e5e5);
+  background-color: var(--color-border);
   max-width: 200px;
 }
 
@@ -740,9 +726,9 @@
 .imagePlaceholder {
   box-sizing: border-box;
   position: relative;
-  background-color: #e0e0e0;
+  background-color: var(--color-surface-sunken-strong);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #757575;
+  color: var(--color-on-surface-muted);
 }

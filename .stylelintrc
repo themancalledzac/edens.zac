@@ -41,6 +41,20 @@
     ],
     "comment-empty-line-before": null,
     "declaration-empty-line-before": null,
-    "rule-empty-line-before": null
+    "rule-empty-line-before": null,
+    "declaration-property-value-disallowed-list": [
+      {
+        "/^(color|background|background-color|border|border-(top|right|bottom|left|block|inline|block-start|block-end|inline-start|inline-end)|border(-(top|right|bottom|left|block|inline|block-start|block-end|inline-start|inline-end))?-color|outline|outline-color|fill|stroke|box-shadow|text-shadow|caret-color|accent-color|text-decoration-color|column-rule|column-rule-color)$/": [
+          "/#[0-9a-fA-F]{3,8}\\b/",
+          "/\\brgba?\\(/"
+        ],
+        "/^(font-size|border-radius|border-(top|bottom)-(left|right)-radius|border-(start|end)-(start|end)-radius|gap|row-gap|column-gap|padding|padding-(top|right|bottom|left|block|inline|block-start|block-end|inline-start|inline-end)|margin|margin-(top|right|bottom|left|block|inline|block-start|block-end|inline-start|inline-end))$/": [
+          "/(?<![\\w.-])(?!(?:0|1)px\\b)\\d*\\.?\\d+px\\b/"
+        ]
+      },
+      {
+        "message": "Use a token from app/styles/globals.css (hex and rgb() colours, and px sizes other than 0 and 1px, are not allowed here)"
+      }
+    ]
   }
 }

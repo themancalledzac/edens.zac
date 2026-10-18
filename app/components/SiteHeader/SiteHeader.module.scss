@@ -24,7 +24,7 @@
   justify-content: space-between;
   align-items: center;
   margin: 0 auto;
-  padding-bottom: 16px;
+  padding-bottom: var(--space-4);
 
   @media (width >= 768px) {
     padding-bottom: var(--page-padding-desktop);
@@ -78,7 +78,7 @@
   border: none;
 
   /* 32px glyph + 6px each side = 44px hit box; the negative margin keeps the glyph where it sat. */
-  padding: 6px;
+  padding: var(--space-2);
   margin: -6px;
   cursor: pointer;
   font: inherit;

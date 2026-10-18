@@ -6,10 +6,13 @@
   /* Inset while the content grids below run full-bleed on mobile, released at the desktop
      breakpoint where .sections regains its own side padding. Mirrors the shared FilterToolbar,
      which brackets the same grids. */
-  padding-inline: var(--page-padding-mobile);
+  margin-inline: var(--page-padding-mobile);
+  padding: var(--space-3);
+  border-radius: var(--radius-1);
+  background-color: var(--color-surface-raised);
 
   @media (width >= 768px) {
-    padding-inline: 0;
+    margin-inline: 0;
   }
 }
 

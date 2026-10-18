@@ -109,7 +109,7 @@ describe('ListPanel shape matches the stylesheet (A3)', () => {
   });
 
   it('derives a one-line row from the header slot', () => {
-    expect(rowHeight({ left: ['header'], right: ['meta'] })).toBe(20 + 17);
+    expect(rowHeight({ left: ['header'], right: ['meta'] })).toBe(17 + 17);
   });
 
   it('collapses to exactly the chrome height with no body sliver', () => {

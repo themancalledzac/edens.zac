@@ -64,9 +64,10 @@ interface FullScreenModalProps {
  * (close / prev / next / position counter / per-image download).
  *
  * Controls: close and the metadata toggle are `IconButton`s so they share the design system's
- * focus ring and coarse-pointer hit area. Both carry a viewer-local `className` that keeps this
- * surface's lighter scrim (50% black brightening on hover) instead of the `overlay` variant's
- * token fill — see the doubled-class rules in FullScreenModal.module.scss. The prev/next
+ * focus ring and coarse-pointer hit area. Both use the `scrim` variant and carry a viewer-local
+ * `className` for placement and footprint — see FullScreenModal.module.scss. The position counter
+ * is deliberately not a live region: announcing it on every swipe talked over the photo's own
+ * navigation. The prev/next
  * chevrons stay hand-rolled: they are non-square rails (40×56 / 56×80) that IconButton's
  * square-footprint size scale cannot express.
  *
@@ -297,67 +298,69 @@ export function FullScreenModal({
                   {currentImage.tags && currentImage.tags.length > 0 && (
                     <div className={styles.metadataSection}>
                       <div className={styles.metadataSectionRow}>
-                        <div className={styles.metadataSectionHeader}>Tags</div>
-                        <div className={styles.metadataSectionItems}>
+                        <h2 className={styles.metadataSectionHeader}>Tags</h2>
+                        <ul className={styles.metadataSectionItems}>
                           {currentImage.tags.map((t, index) =>
                             t.slug ? (
-                              <Link
-                                key={t.id || index}
-                                href={`/tag/${t.slug}`}
-                                className={`${styles.metadataSectionItem} ${styles.metadataSectionItemClickable}`}
-                                onClick={e => e.stopPropagation()}
-                              >
-                                {t.name}
-                              </Link>
+                              <li key={t.id || index}>
+                                <Link
+                                  href={`/tag/${t.slug}`}
+                                  className={`${styles.metadataSectionItem} ${styles.metadataSectionItemClickable}`}
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  {t.name}
+                                </Link>
+                              </li>
                             ) : (
-                              <div key={t.id || index} className={styles.metadataSectionItem}>
+                              <li key={t.id || index} className={styles.metadataSectionItem}>
                                 {t.name}
-                              </div>
+                              </li>
                             )
                           )}
-                        </div>
+                        </ul>
                       </div>
                     </div>
                   )}
                   {!isGif && currentImage.people && currentImage.people.length > 0 && (
                     <div className={styles.metadataSection}>
                       <div className={styles.metadataSectionRow}>
-                        <div className={styles.metadataSectionHeader}>People</div>
-                        <div className={styles.metadataSectionItems}>
+                        <h2 className={styles.metadataSectionHeader}>People</h2>
+                        <ul className={styles.metadataSectionItems}>
                           {currentImage.people.map((p, index) => (
-                            <div key={p.id || index} className={styles.metadataSectionItem}>
+                            <li key={p.id || index} className={styles.metadataSectionItem}>
                               {p.name}
-                            </div>
+                            </li>
                           ))}
-                        </div>
+                        </ul>
                       </div>
                     </div>
                   )}
                   {!isGif && currentImage.collections && currentImage.collections.length > 0 && (
                     <div className={styles.metadataSection}>
                       <div className={styles.metadataSectionRow}>
-                        <div className={styles.metadataSectionHeader}>Collections</div>
-                        <div className={styles.metadataSectionItems}>
+                        <h2 className={styles.metadataSectionHeader}>Collections</h2>
+                        <ul className={styles.metadataSectionItems}>
                           {currentImage.collections.map((c, index) =>
                             c.slug ? (
-                              <Link
-                                key={c.collectionId || index}
-                                href={`/${c.slug}`}
-                                className={`${styles.metadataSectionItem} ${styles.metadataSectionItemClickable}`}
-                                onClick={e => e.stopPropagation()}
-                              >
-                                {c.name || `Collection ${c.collectionId}`}
-                              </Link>
+                              <li key={c.collectionId || index}>
+                                <Link
+                                  href={`/${c.slug}`}
+                                  className={`${styles.metadataSectionItem} ${styles.metadataSectionItemClickable}`}
+                                  onClick={e => e.stopPropagation()}
+                                >
+                                  {c.name || `Collection ${c.collectionId}`}
+                                </Link>
+                              </li>
                             ) : (
-                              <div
+                              <li
                                 key={c.collectionId || index}
                                 className={styles.metadataSectionItem}
                               >
                                 {c.name || `Collection ${c.collectionId}`}
-                              </div>
+                              </li>
                             )
                           )}
-                        </div>
+                        </ul>
                       </div>
                     </div>
                   )}
@@ -366,7 +369,7 @@ export function FullScreenModal({
               {!immersive && (
                 <IconButton
                   shape="square"
-                  variant="overlay"
+                  variant="scrim"
                   className={styles.metadataToggle}
                   onClick={toggleMetadata}
                   aria-label={showMetadata ? 'Hide metadata' : 'Show metadata'}
@@ -410,14 +413,14 @@ export function FullScreenModal({
       )}
 
       {!immersive && fullScreenState.images.length > 1 && (
-        <div className={styles.positionCounter} aria-live="polite">
+        <div className={styles.positionCounter}>
           {fullScreenState.currentIndex + 1} / {fullScreenState.images.length}
         </div>
       )}
 
       {!immersive && (
         <CloseButton
-          variant="overlay"
+          variant="scrim"
           className={styles.closeButton}
           onClick={hideImage}
           aria-label="Close fullscreen image"

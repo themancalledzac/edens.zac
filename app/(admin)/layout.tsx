@@ -15,10 +15,6 @@ import { AdminScrollManager } from './AdminScrollManager';
  * halves of the site. A real dark mode, if it comes, belongs to the whole site behind a user
  * preference — not to a route group.
  *
- * The scoped `[data-surface='dark']` token block in `app/styles/globals.css` and the surface
- * bridge in `Modal` survive deliberately: they are the general mechanism for that future toggle,
- * and neither is admin-specific. What was deleted here is the admin-only wiring into it.
- *
  * No wrapper element remains — `PageShell` (and the collection-edit pages' own container) already
  * carry `min-height: 100dvh`, and the removed box only existed to paint behind them.
  */
