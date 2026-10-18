@@ -1,5 +1,4 @@
 /* Scoped styles for ContentComponent */
-@use '../../styles/shimmer';
 
 .wrapper {
   width: 100%;
@@ -746,14 +745,4 @@
   align-items: center;
   justify-content: center;
   color: #757575;
-}
-
-/* Measuring skeleton: reserves a screenful while the BoxTree layout is computed
-   client-side (rows empty until contentWidth is measured), preventing the blank
-   void / layout shift on first paint. Token-driven shimmer, reduced-motion safe. */
-.layoutSkeleton {
-  @include shimmer.surface;
-
-  width: 100%;
-  min-height: 100dvh;
 }
