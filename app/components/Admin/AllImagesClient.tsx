@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
+import { Footer } from '@/app/components/Footer/Footer';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { useInViewport } from '@/app/hooks/inViewport';
 import { useImageBrowser } from '@/app/hooks/useImageBrowser';
@@ -80,7 +81,13 @@ export default function AllImagesClient({ initial, ssrViewport }: AllImagesClien
 
   return (
     <>
-      <CollectionPage collection={mockCollection} chunkSize={4} ssrViewport={ssrViewport} />
+      <CollectionPage
+        collection={mockCollection}
+        chunkSize={4}
+        ssrViewport={ssrViewport}
+        withFooter={false}
+        backHref="/admin"
+      />
 
       <div ref={sentinelRef} className={styles.sentinel} aria-hidden />
 
@@ -96,6 +103,8 @@ export default function AllImagesClient({ initial, ssrViewport }: AllImagesClien
           </button>
         </div>
       )}
+
+      <Footer />
     </>
   );
 }

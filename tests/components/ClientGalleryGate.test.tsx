@@ -63,6 +63,11 @@ function deferredValidate() {
 }
 
 describe('ClientGalleryGate', () => {
+  it('renders exactly one footer', () => {
+    render(<ClientGalleryGate collection={makeCollection()} />);
+    expect(document.querySelectorAll('footer')).toHaveLength(1);
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
