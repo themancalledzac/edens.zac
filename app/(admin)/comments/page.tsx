@@ -14,7 +14,7 @@ export default async function CommentsPage() {
   const total = data?.total ?? 0;
 
   return (
-    <PageShell>
+    <PageShell backHref="/admin">
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Comments</h1>
         <span className={styles.total}>{total} total</span>

@@ -1,6 +1,7 @@
 // Admin = authenticated admin principal: the backend enforces hasRole('ADMIN') on
 // /api/admin/** (see docs 009). Gating centralized in app/(admin)/layout.tsx via requireAdmin().
 import { MetadataPageClient } from '@/app/components/MetadataPage/MetadataPageClient';
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { getMetadata } from '@/app/lib/api/collections';
 
 // Render on every request. `getMetadata()` calls fetchAdminGetApi which would
@@ -20,7 +21,11 @@ export default async function MetadataPage() {
   }
 
   if (!metadata) {
-    return <p>Failed to load metadata.</p>;
+    return (
+      <PageShell backHref="/admin">
+        <p>Failed to load metadata.</p>
+      </PageShell>
+    );
   }
 
   const { tags, people, locations } = metadata;

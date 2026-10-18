@@ -29,7 +29,7 @@ interface MetadataPageClientProps {
  */
 export function MetadataPageClient({ tags, people, locations }: MetadataPageClientProps) {
   return (
-    <PageShell>
+    <PageShell backHref="/admin">
       <CollectionHeader title="Metadata" />
       <div className={styles.grid}>
         <MetadataList title="Tags" emptyLabel="No tags" items={tags} basePath="/metadata/tags" />
