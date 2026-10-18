@@ -1,49 +1,112 @@
+/**
+ * `/explore` is public, so the directory reads only the public `/api/read` channel: the admin
+ * channel refuses everyone but admins (401 at the BFF, 403 at the backend).
+ *
+ * `fetch` is the mock boundary, so `getAllTags` and `getAllLocations` run for real against bodies
+ * in the backend's wire shape. `PageShell` is a passthrough because it mounts the site header's
+ * client tree.
+ */
 import '@testing-library/jest-dom';
 
 import { render, screen } from '@testing-library/react';
 import { type ReactNode } from 'react';
 
-jest.mock('@/app/lib/api/collections', () => ({
-  getMetadata: jest.fn(),
-}));
+import { ExploreDirectory } from '@/app/explore/ExploreDirectory';
+import ExplorePage from '@/app/explore/page';
 
-// PageShell pulls in SiteHeader -> MenuDropdown (a 'use client' tree with
-// next/navigation hooks). The page's own contract is the headings + links, so
-// render PageShell as a transparent passthrough.
 jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
   __esModule: true,
   PageShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-import { ExploreDirectory } from '@/app/explore/ExploreDirectory';
-import ExplorePage from '@/app/explore/page';
-import { getMetadata } from '@/app/lib/api/collections';
-import { makeMetadata } from '@/tests/fixtures/collectionEditFixtures';
+/** Backend `Records.Tag`. */
+interface WireTag {
+  id: number;
+  name: string;
+  slug: string;
+}
 
-const mockGetMetadata = getMetadata as jest.MockedFunction<typeof getMetadata>;
+/** Backend `Records.LocationWithCounts`. */
+interface WireLocation {
+  id: number;
+  name: string;
+  slug: string;
+  collectionCount: number;
+  imageCount: number;
+}
+
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
+const respond = (status: number, body: unknown) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  statusText: '',
+  json: async () => body,
+});
+
+const wireLocation = (id: number, name: string, slug: string): WireLocation => ({
+  id,
+  name,
+  slug,
+  collectionCount: 1,
+  imageCount: 0,
+});
+
+/**
+ * Answer the two public directory reads. Any other URL gets a 404, so a read from another channel
+ * fails the render instead of passing silently.
+ */
+function serveDirectory({
+  tags = [],
+  locations = [],
+  failing,
+}: {
+  tags?: WireTag[];
+  locations?: WireLocation[];
+  failing?: 'tags' | 'locations';
+} = {}) {
+  mockFetch.mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith('/api/read/content/tags')) {
+      return failing === 'tags' ? respond(500, { message: 'boom' }) : respond(200, tags);
+    }
+    if (url.endsWith('/api/read/content/locations')) {
+      return failing === 'locations' ? respond(500, { message: 'boom' }) : respond(200, locations);
+    }
+    return respond(404, { message: 'Not found' });
+  });
+}
+
+beforeEach(() => {
+  mockFetch.mockReset();
+});
 
 describe('ExploreDirectory', () => {
-  beforeEach(() => {
-    mockGetMetadata.mockReset();
+  it('reads tags and locations from the public read channel only', async () => {
+    serveDirectory();
+
+    render(await ExploreDirectory());
+
+    const urls = mockFetch.mock.calls.map(([input]) => String(input)).sort();
+    expect(urls).toEqual([
+      expect.stringMatching(/\/api\/read\/content\/locations$/),
+      expect.stringMatching(/\/api\/read\/content\/tags$/),
+    ]);
   });
 
-  it('renders a section heading and a NavLink per tag and location', async () => {
-    mockGetMetadata.mockResolvedValue(
-      makeMetadata({
-        tags: [{ id: 1, name: 'Mountains', slug: 'mountains' }],
-        locations: [{ id: 3, name: 'Patagonia', slug: 'patagonia' }],
-      })
-    );
+  it('links tags to /tag/[slug] and locations to /location/[slug] under their own headings', async () => {
+    serveDirectory({
+      tags: [{ id: 1, name: 'Mountains', slug: 'mountains' }],
+      locations: [wireLocation(3, 'Patagonia', 'patagonia')],
+    });
 
     render(await ExploreDirectory());
 
     expect(screen.getByRole('heading', { name: 'Locations' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Tags' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'People' })).not.toBeInTheDocument();
-
-    // Tags target the /tag/[slug] taxonomy route, not a bare /[slug] — the latter resolves to the
-    // collection route, so it 404s or opens an unrelated collection that happens to share the slug.
     expect(screen.getByRole('link', { name: 'Mountains' })).toHaveAttribute(
       'href',
       '/tag/mountains'
@@ -54,35 +117,27 @@ describe('ExploreDirectory', () => {
     );
   });
 
-  it('renders a NavLink for every metadata entry', async () => {
-    mockGetMetadata.mockResolvedValue(
-      makeMetadata({
-        tags: [
-          { id: 1, name: 'Mountains', slug: 'mountains' },
-          { id: 2, name: 'Rivers', slug: 'rivers' },
-        ],
-        locations: [
-          { id: 4, name: 'Patagonia', slug: 'patagonia' },
-          { id: 5, name: 'Dolomites', slug: 'dolomites' },
-        ],
-      })
-    );
+  it('renders a link for every tag and location', async () => {
+    serveDirectory({
+      tags: [
+        { id: 1, name: 'Mountains', slug: 'mountains' },
+        { id: 2, name: 'Rivers', slug: 'rivers' },
+      ],
+      locations: [
+        wireLocation(4, 'Patagonia', 'patagonia'),
+        wireLocation(5, 'Dolomites', 'dolomites'),
+      ],
+    });
 
     render(await ExploreDirectory());
 
-    // 2 tags + 2 locations = 4 directory links (People removed from the directory).
     expect(screen.getAllByRole('link')).toHaveLength(4);
   });
 
-  it('omits locations that have no slug (no /location/undefined links)', async () => {
-    mockGetMetadata.mockResolvedValue(
-      makeMetadata({
-        locations: [
-          { id: 1, name: 'Patagonia', slug: 'patagonia' },
-          { id: 2, name: 'Nowhere' },
-        ],
-      })
-    );
+  it('omits locations with an empty slug (no /location/ links)', async () => {
+    serveDirectory({
+      locations: [wireLocation(1, 'Patagonia', 'patagonia'), wireLocation(2, 'Nowhere', '')],
+    });
 
     render(await ExploreDirectory());
 
@@ -90,17 +145,24 @@ describe('ExploreDirectory', () => {
     expect(screen.queryByRole('link', { name: 'Nowhere' })).not.toBeInTheDocument();
   });
 
-  it('renders a fallback message when metadata fails to load', async () => {
-    mockGetMetadata.mockResolvedValue(null);
+  it.each(['tags', 'locations'] as const)(
+    'renders the unreachable-directory message when the %s read fails',
+    async failing => {
+      serveDirectory({
+        tags: [{ id: 1, name: 'Mountains', slug: 'mountains' }],
+        locations: [wireLocation(3, 'Patagonia', 'patagonia')],
+        failing,
+      });
 
-    render(await ExploreDirectory());
+      render(await ExploreDirectory());
 
-    expect(screen.getByText(/unable to load/i)).toBeInTheDocument();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
-  });
+      expect(screen.getByText(/unable to load/i)).toBeInTheDocument();
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    }
+  );
 
-  it('renders a friendly empty state when metadata has no entries', async () => {
-    mockGetMetadata.mockResolvedValue(makeMetadata());
+  it('renders a friendly empty state when there are no tags or locations', async () => {
+    serveDirectory();
 
     render(await ExploreDirectory());
 
@@ -111,14 +173,11 @@ describe('ExploreDirectory', () => {
 
 /**
  * The route itself is synchronous — that is the point of the split. The heading is in the first
- * paint while the directory is still suspended, so a slow `getMetadata()` no longer holds the
- * whole response.
+ * paint while the directory is still suspended.
  */
 describe('ExplorePage', () => {
   it('paints the heading while the directory is still suspended', () => {
-    mockGetMetadata.mockResolvedValue(
-      makeMetadata({ tags: [{ id: 1, name: 'Mountains', slug: 'mountains' }] })
-    );
+    serveDirectory({ tags: [{ id: 1, name: 'Mountains', slug: 'mountains' }] });
 
     render(<ExplorePage />);
 

@@ -10,36 +10,44 @@ import { render, screen } from '@testing-library/react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
+import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { collectionPublicLabel } from '@/app/components/ui/Badge/Badge';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type ContentParallaxImageModel } from '@/app/types/Content';
 import { logger } from '@/app/utils/logger';
 
-// SiteHeader transitively pulls next/cache (via MenuDropdown -> clearCacheAction)
-// and cannot run under jsdom. Stub it; the page's own <h1> is what we assert.
+/**
+ * SiteHeader transitively pulls next/cache (via MenuDropdown -> clearCacheAction) and cannot run
+ * under jsdom. Stub it; the page's own <h1> is what we assert.
+ */
 jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
   __esModule: true,
   default: () => null,
   SiteHeader: () => null,
 }));
 
-// The client body renders the heavy content/layout pipeline (fullscreen viewer,
-// filters, observers). Stub it so the test isolates the page heading.
+/**
+ * The client body renders the heavy content/layout pipeline (fullscreen viewer, filters,
+ * observers). Stub it, capturing props, so the tests isolate the page heading and the row budgets
+ * handed down.
+ */
 jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => ({
   __esModule: true,
-  default: () => null,
+  default: jest.fn(() => null),
 }));
 
-// The array branch feeds converted parallax cards into the full content grid;
-// stub it and capture props so the cover-strip test can inspect the converted
-// blocks without mounting the layout engine.
+/**
+ * The array branch feeds converted parallax cards into the full content grid; stub it and capture
+ * props so the cover-strip test can inspect the converted blocks without mounting the layout engine.
+ */
 jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
   __esModule: true,
   default: jest.fn(() => null),
 }));
 
 const mockContentBlock = ContentBlockWithFullScreen as unknown as jest.Mock;
+const mockClient = CollectionPageClient as unknown as jest.Mock;
 
 function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
   return {
@@ -79,6 +87,26 @@ describe('CollectionPage (single collection)', () => {
     const heading = screen.getByRole('heading', { level: 1 });
     expect(heading).toHaveTextContent('Untitled');
     expect(heading.textContent?.trim()).not.toBe('');
+  });
+});
+
+describe('CollectionPage — row budgets', () => {
+  beforeEach(() => {
+    mockClient.mockClear();
+    mockContentBlock.mockClear();
+  });
+
+  it('forwards chunkSize and a pinned mobileChunkSize to the client on the single branch', () => {
+    render(<CollectionPage collection={makeCollection()} chunkSize={2} mobileChunkSize={2} />);
+
+    expect(mockClient).toHaveBeenCalledTimes(1);
+    expect(mockClient.mock.calls[0][0]).toMatchObject({ chunkSize: 2, mobileChunkSize: 2 });
+  });
+
+  it('forwards them to the grid on the array branch', () => {
+    render(<CollectionPage collection={[makeCollection()]} chunkSize={2} mobileChunkSize={2} />);
+
+    expect(mockContentBlock.mock.calls[0][0]).toMatchObject({ chunkSize: 2, mobileChunkSize: 2 });
   });
 });
 

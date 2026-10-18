@@ -10,10 +10,13 @@ import { buildParallaxCard } from '@/app/utils/parallaxCard';
 export const ME_TILE_ID = -1000;
 
 /**
- * Build the synthetic "Me" tile shown as the second tile on the home page for a
- * logged-in user: the same parallax image card the home grid already uses, linking
- * to `/user`. Uses the user-page cover when present, else an empty `imageUrl` (the
- * renderer shows its placeholder).
+ * Build the synthetic "Me" tile that leads the home page for a signed-in viewer: the same
+ * parallax image card the home grid already uses, linking to `/user`. Uses the user-page cover
+ * when present; without one the tile has an empty `imageUrl`, which the public view's
+ * renderability filter drops.
+ *
+ * `orderIndex` is negative because `processContentBlocks` sorts home content by it and backend
+ * children start at 0. The All Collections tile sits at -1 so it follows this one.
  *
  * No `collectionId` — that is what keeps the follow toggle from attaching to a tile
  * that is not a real collection.
@@ -26,6 +29,6 @@ export function buildMeContentBlock(userPage: CollectionModel | null): ContentPa
     description: null,
     coverImage: userPage?.coverImage ?? null,
     alt: 'Your page',
-    orderIndex: 1,
+    orderIndex: -2,
   });
 }

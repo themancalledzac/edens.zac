@@ -1,5 +1,6 @@
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
+import { LAYOUT } from '@/app/constants';
 import * as collectionsApi from '@/app/lib/api/collections';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
@@ -60,7 +61,7 @@ describe('CollectionPageWrapper — Me tile injection', () => {
     jest.clearAllMocks();
   });
 
-  it('injects the Me tile at index 1 of home content for a logged-in viewer', async () => {
+  it('injects the Me tile as the FIRST home tile for a logged-in viewer', async () => {
     mockMeServer.mockResolvedValue({
       email: 'a@b.com',
       isAdmin: false,
@@ -87,8 +88,10 @@ describe('CollectionPageWrapper — Me tile injection', () => {
     expect(element.type).toBe(CollectionPage);
     const content = element.props.collection.content;
     expect(content).toHaveLength(4);
-    expect(content[1].id).toBe(ME_TILE_ID);
-    expect(content[1].slug).toBe('user');
+    expect(content[0].id).toBe(ME_TILE_ID);
+    expect(content[0].slug).toBe('user');
+    expect(content[0].orderIndex).toBeLessThan(content[1].orderIndex);
+    expect(element.props.mobileChunkSize).toBe(LAYOUT.homeMobileChunkSize);
   });
 
   it('injects a placeholder Me tile when getUserPage() returns null for a logged-in viewer', async () => {
@@ -106,8 +109,8 @@ describe('CollectionPageWrapper — Me tile injection', () => {
 
     const content = element.props.collection.content;
     expect(content).toHaveLength(4);
-    expect(content[1].id).toBe(ME_TILE_ID);
-    expect(content[1].imageUrl).toBe('');
+    expect(content[0].id).toBe(ME_TILE_ID);
+    expect(content[0].imageUrl).toBe('');
   });
 
   it('does NOT inject the Me tile for an anonymous home viewer', async () => {
@@ -137,5 +140,6 @@ describe('CollectionPageWrapper — Me tile injection', () => {
     const content = element.props.collection.content;
     expect(content.some((b: { id: number }) => b.id === ME_TILE_ID)).toBe(false);
     expect(mockGetUserPage).not.toHaveBeenCalled();
+    expect(element.props.mobileChunkSize).toBeUndefined();
   });
 });

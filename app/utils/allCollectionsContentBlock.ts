@@ -9,12 +9,14 @@ import { buildParallaxCard } from '@/app/utils/parallaxCard';
 export const ALL_COLLECTIONS_TILE_ID = -1001;
 
 /**
- * Build the synthetic "All Collections" tile injected into the home grid right
- * after the Me tile (or as the second tile for anonymous viewers). Links to
- * /collections, which the backend permission-scopes per viewer — the tile's slug
- * IS its href (`/${slug}`), so this is the canonical browse route, not the
- * backend's `all-collections` resource slug. No cover -> empty imageUrl and
- * undefined dimensions, which the renderer draws as its placeholder card.
+ * Build the synthetic "All Collections" tile injected into the home grid right after the Me
+ * tile, or leading it for an anonymous viewer. Links to /collections, which the backend
+ * permission-scopes per viewer — the tile's slug IS its href (`/${slug}`), so this is the
+ * canonical browse route, not the backend's `all-collections` resource slug.
+ *
+ * `orderIndex` -1 keeps it behind the Me tile (-2) and ahead of every backend child (0 and up)
+ * once `processContentBlocks` sorts. It has no cover, so its `imageUrl` is empty and the public
+ * view's renderability filter drops it before layout.
  *
  * No `collectionId` — that is what keeps the follow toggle from attaching to a tile
  * that is not a real collection.
@@ -26,6 +28,6 @@ export function buildAllCollectionsContentBlock(): ContentParallaxImageModel {
     slug: 'collections',
     description: null,
     alt: 'Browse all collections',
-    orderIndex: 1,
+    orderIndex: -1,
   });
 }
