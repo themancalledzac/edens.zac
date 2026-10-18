@@ -9,10 +9,11 @@ import { buildImagePageToolbarProps } from '@/app/components/ui/FilterToolbar/fi
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { useFilteredImagePage } from '@/app/hooks/useFilteredImagePage';
 import { type ContentImageModel } from '@/app/types/Content';
-import { type ArrayFilterKey } from '@/app/types/GalleryFilter';
+import { type ArrayFilterKey, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import { isImageContent } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 
+import { FilteredEmptyState } from './FilteredEmptyState';
 import { buildSearchCriteria, seedFilterState } from './searchFilters';
 
 const SURFACED: readonly ArrayFilterKey[] = [
@@ -49,6 +50,12 @@ export default function SearchPageClient({ images }: SearchPageClientProps) {
 
   const contentBlocks = useMemo(() => processContentBlocks(filteredImages, true), [filteredImages]);
 
+  const clearFilters = () =>
+    handleFilterChange({
+      ...INITIAL_FILTER_STATE,
+      dateSortDirection: filterState.dateSortDirection,
+    });
+
   return (
     <>
       <CollectionHeader title="Search" count={filteredImages.length} />
@@ -73,7 +80,9 @@ export default function SearchPageClient({ images }: SearchPageClientProps) {
       )}
 
       {contentBlocks.length === 0 && images.length > 0 && (
-        <EmptyState align="page">No photos match the current filters.</EmptyState>
+        <FilteredEmptyState onClear={clearFilters}>
+          No photos match the current filters.
+        </FilteredEmptyState>
       )}
 
       {images.length === 0 && (

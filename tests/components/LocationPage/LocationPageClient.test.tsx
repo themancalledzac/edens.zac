@@ -220,3 +220,12 @@ describe('LocationPageClient — empty state', () => {
     expect(screen.getByTestId('location-collections')).toBeInTheDocument();
   });
 });
+
+describe('LocationPageClient — clear filters', () => {
+  it('clears every filter from the filtered-to-zero empty state', () => {
+    mockInitialCriteria = { tags: ['nonexistent'] };
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(lastSyncedCriteria()).toEqual({});
+  });
+});

@@ -3,9 +3,9 @@
 import { useMemo } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+import { FilteredEmptyState } from '@/app/components/SearchPage/FilteredEmptyState';
 import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { buildImagePageToolbarProps } from '@/app/components/ui/FilterToolbar/filterToolbarUtils';
-import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { useFilteredImagePage } from '@/app/hooks/useFilteredImagePage';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ViewableContent } from '@/app/types/Content';
@@ -60,6 +60,12 @@ export default function LocationPageClient({ images, collections }: LocationPage
     [filteredContent]
   );
 
+  const clearFilters = () =>
+    handleFilterChange({
+      ...INITIAL_FILTER_STATE,
+      dateSortDirection: filterState.dateSortDirection,
+    });
+
   return (
     <>
       <LocationCollections collections={collections} />
@@ -82,7 +88,9 @@ export default function LocationPageClient({ images, collections }: LocationPage
           chunkSize={4}
         />
       ) : (
-        <EmptyState align="page">No images match the current filters.</EmptyState>
+        <FilteredEmptyState onClear={clearFilters}>
+          No images match the current filters.
+        </FilteredEmptyState>
       )}
     </>
   );

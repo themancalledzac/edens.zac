@@ -3,7 +3,7 @@
  * states. `FilterToolbar` is not mocked — the wiring under test is what it receives.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import SearchPageClient from '@/app/components/SearchPage/SearchPageClient';
 import { type ContentImageModel } from '@/app/types/Content';
@@ -65,6 +65,21 @@ describe('SearchPageClient', () => {
 
     expect(screen.getByText('No photos match the current filters.')).toBeInTheDocument();
     expect(screen.queryByText('There are no photos to search yet.')).not.toBeInTheDocument();
+  });
+
+  it('clears the filters from the filtered-to-zero empty state', () => {
+    mockInitialCriteria = { tags: ['nonexistent'] };
+    render(<SearchPageClient images={[tagged(1, 'alpine'), tagged(2, 'coastal')]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+
+    expect(mockSyncToUrl).toHaveBeenLastCalledWith({});
+  });
+
+  it('offers no Clear filters button when there is nothing to search', () => {
+    render(<SearchPageClient images={[]} />);
+
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument();
   });
 
   it('renders content blocks when images survive the filters', () => {
