@@ -3,8 +3,10 @@ import { notFound } from 'next/navigation';
 import { type ReactNode } from 'react';
 
 import AdminUserDetailPage from '@/app/(admin)/admin/users/[id]/page';
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
+import { meServer } from '@/app/lib/api/auth';
 import { ApiError } from '@/app/lib/api/core';
 import { getAdminUser } from '@/app/lib/api/users';
 
@@ -20,7 +22,11 @@ jest.mock('next/link', () => ({
 }));
 
 jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
-  PageShell: ({ children }: { children: ReactNode }) => children,
+  PageShell: jest.fn(({ children }: { children: ReactNode }) => children),
+}));
+
+jest.mock('@/app/lib/api/auth', () => ({
+  meServer: jest.fn(),
 }));
 
 jest.mock('@/app/(admin)/admin/users/GenerateInviteButton', () => ({
@@ -63,6 +69,8 @@ jest.mock('@/app/lib/api/users', () => ({
 const mockUserSpace = UserSpace as unknown as jest.Mock;
 const mockLoadUserSpace = loadUserSpace as jest.Mock;
 const mockGetAdminUser = getAdminUser as jest.Mock;
+const mockPageShell = PageShell as unknown as jest.Mock;
+const mockMeServer = meServer as jest.Mock;
 const mockNotFound = notFound as unknown as jest.Mock;
 
 const adminUser = { id: 5, email: 'c@x.com', displayName: 'Cara', status: 'ACTIVE' };
@@ -214,6 +222,7 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
 describe('app/(admin)/admin/users/[id] — tag-only PERSON identities', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockMeServer.mockResolvedValue(null);
     mockGetAdminUser.mockResolvedValue({
       id: 7,
       email: null,
@@ -240,5 +249,24 @@ describe('app/(admin)/admin/users/[id] — tag-only PERSON identities', () => {
 
     expect(screen.getByText('Dana')).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Dana' })).toBeNull();
+  });
+
+  it('hands PageShell the server-resolved principal', async () => {
+    const principal = { isAdmin: true, email: 'a@example.com' };
+    mockMeServer.mockResolvedValue(principal);
+
+    await renderPage();
+
+    expect(mockPageShell.mock.calls[0][0].me).toBe(principal);
+    expect(mockPageShell.mock.calls[0][0].hideBottomNav).toBeUndefined();
+  });
+
+  it('falls back to a null principal when meServer fails', async () => {
+    mockMeServer.mockRejectedValue(new ApiError('Service Unavailable', 503));
+
+    await renderPage();
+
+    expect(mockPageShell.mock.calls[0][0].me).toBeNull();
+    expect(screen.getByText('tag-only · no account')).toBeTruthy();
   });
 });
