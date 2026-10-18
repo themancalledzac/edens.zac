@@ -45,7 +45,13 @@ export function configuredAppOrigin(): string | null {
 }
 
 /**
- * Origins allowed to send writes by exact match: the deployed app URL, and nothing else.
+ * The `www` production origin, matched exactly like the configured app URL.
+ */
+const WWW_ORIGIN = 'https://www.zacedens.com';
+
+/**
+ * Origins allowed to send writes by exact match: the deployed app URL and the `www` host
+ * ({@link WWW_ORIGIN}), in every environment.
  *
  * Dev ports are NOT listed here. `DEV_LAN_ORIGIN` below matches `http://localhost:3000` and
  * `:3001` under the same `NODE_ENV === 'development'` gate, and does it case-insensitively, so
@@ -53,10 +59,10 @@ export function configuredAppOrigin(): string | null {
  * Keep the dev-port allowance in that one place: literals here would silently survive any later
  * tightening of the regex.
  *
- * Adding a second non-dev exact-match origin here is fine — that is what the Set is for.
+ * Adding another non-dev exact-match origin here is fine — that is what the Set is for.
  */
 function allowedOrigins(): Set<string> {
-  return new Set([configuredAppOrigin()].filter(Boolean) as string[]);
+  return new Set([configuredAppOrigin(), WWW_ORIGIN].filter(Boolean) as string[]);
 }
 
 /**

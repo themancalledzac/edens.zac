@@ -205,4 +205,70 @@ describe('isAllowedWriteOrigin', () => {
       expect(isAllowedWriteOrigin('http://localhost:3000')).toBe(false);
     });
   });
+
+  describe('www.zacedens.com second exact-match origin', () => {
+    const WWW = 'https://www.zacedens.com';
+
+    function setEnv(nodeEnv: 'development' | 'production' | 'test', appUrl?: string) {
+      process.env = { ...ORIGINAL_ENV, NODE_ENV: nodeEnv };
+      if (appUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+      else process.env.NEXT_PUBLIC_APP_URL = appUrl;
+    }
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('A8: accepts the www origin in production', () => {
+      setEnv('production', APP_ORIGIN);
+      expect(isAllowedWriteOrigin(WWW)).toBe(true);
+    });
+
+    it('A8: accepts the www origin in development and when the app URL is unset', () => {
+      setEnv('development', APP_ORIGIN);
+      expect(isAllowedWriteOrigin(WWW)).toBe(true);
+      setEnv('production');
+      expect(isAllowedWriteOrigin(WWW)).toBe(true);
+    });
+
+    it('A8: still accepts the configured app origin alongside www', () => {
+      setEnv('production', APP_ORIGIN);
+      expect(isAllowedWriteOrigin(APP_ORIGIN)).toBe(true);
+    });
+
+    it('M2: does not admit the apex zacedens.com unless configured', () => {
+      setEnv('production', APP_ORIGIN);
+      expect(isAllowedWriteOrigin('https://zacedens.com')).toBe(false);
+    });
+
+    it('A9: rejects the www origin with a trailing slash', () => {
+      setEnv('production', APP_ORIGIN);
+      expect(isAllowedWriteOrigin(`${WWW}/`)).toBe(false);
+    });
+
+    it('A9: rejects the www origin over http', () => {
+      setEnv('production', APP_ORIGIN);
+      expect(isAllowedWriteOrigin('http://www.zacedens.com')).toBe(false);
+    });
+
+    it('A9: rejects a suffix domain of the www origin', () => {
+      setEnv('production', APP_ORIGIN);
+      expect(isAllowedWriteOrigin(`${WWW}.evil.example`)).toBe(false);
+    });
+
+    it('A9/M3: rejects a www origin with a path, port or different case', () => {
+      setEnv('production', APP_ORIGIN);
+      expect(isAllowedWriteOrigin(`${WWW}/evil`)).toBe(false);
+      expect(isAllowedWriteOrigin(`${WWW}:443`)).toBe(false);
+      expect(isAllowedWriteOrigin('https://WWW.zacedens.com')).toBe(false);
+    });
+
+    it('twin of A9/M3: near misses get through when the exact-match lookup is off', () => {
+      setEnv('production', APP_ORIGIN);
+      jest.spyOn(Set.prototype, 'has').mockReturnValue(true);
+      expect(isAllowedWriteOrigin(`${WWW}/`)).toBe(true);
+      expect(isAllowedWriteOrigin('http://www.zacedens.com')).toBe(true);
+      expect(isAllowedWriteOrigin(`${WWW}.evil.example`)).toBe(true);
+    });
+  });
 });

@@ -1,9 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
 
+import type * as messageRowModule from '@/app/components/messages/MessageRow';
 import { MessagesPanel } from '@/app/components/MessagesPanel/MessagesPanel';
 import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import * as messagesApi from '@/app/lib/api/messages';
+import * as sortModule from '@/app/utils/sortByDate';
 
 jest.mock('next/link', () => ({
   __esModule: true,
@@ -24,6 +26,11 @@ jest.mock('next/link', () => ({
 
 jest.mock('@/app/lib/api/messages');
 
+jest.mock('@/app/utils/sortByDate', () => {
+  const actual = jest.requireActual<typeof sortModule>('@/app/utils/sortByDate');
+  return { ...actual, sortByDate: jest.fn(actual.sortByDate) };
+});
+
 const mockGet = messagesApi.getAdminMessages as jest.MockedFunction<
   typeof messagesApi.getAdminMessages
 >;
@@ -41,6 +48,11 @@ const makeMessage = (
 describe('MessagesPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest
+      .mocked(sortModule.sortByDate)
+      .mockImplementation(
+        jest.requireActual<typeof sortModule>('@/app/utils/sortByDate').sortByDate
+      );
     clearCachedPanelData();
     window.localStorage.clear();
     window.confirm = jest.fn(() => true);
@@ -64,6 +76,69 @@ describe('MessagesPanel', () => {
     const items = screen.getAllByRole('listitem');
     expect(items[0]).toHaveTextContent('bob@example.com');
     expect(items[1]).toHaveTextContent('alice@example.com');
+  });
+
+  it('A15: sorts through sortByDate(messages, "desc")', async () => {
+    const older = makeMessage(1, 'alice@example.com', 'Older message', '2024-01-01T10:00:00Z');
+    const newer = makeMessage(2, 'bob@example.com', 'Newer message', '2024-06-01T10:00:00Z');
+    mockGet.mockResolvedValue({ messages: [older, newer], total: 2, limit: 100, offset: 0 });
+
+    render(<MessagesPanel />);
+    await waitFor(() => expect(screen.getByText('bob@example.com')).toBeInTheDocument());
+
+    expect(sortModule.sortByDate).toHaveBeenCalledWith(expect.any(Array), 'desc');
+  });
+
+  it('A15-guard: the newest-first assertion fails when the list is sorted oldest-first', async () => {
+    const actual = jest.requireActual<typeof sortModule>('@/app/utils/sortByDate');
+    jest
+      .mocked(sortModule.sortByDate)
+      .mockImplementation(<T extends { createdAt?: string | null }>(items: T[]) =>
+        actual.sortByDate(items, 'asc')
+      );
+    const older = makeMessage(1, 'alice@example.com', 'Older message', '2024-01-01T10:00:00Z');
+    const newer = makeMessage(2, 'bob@example.com', 'Newer message', '2024-06-01T10:00:00Z');
+    mockGet.mockResolvedValue({ messages: [newer, older], total: 2, limit: 100, offset: 0 });
+
+    render(<MessagesPanel />);
+    await waitFor(() => expect(screen.getByText('bob@example.com')).toBeInTheDocument());
+
+    const items = screen.getAllByRole('listitem');
+    expect(items[0]).toHaveTextContent('alice@example.com');
+    expect(items[0]).not.toHaveTextContent('bob@example.com');
+  });
+
+  it('A13: the row email link and body carry their ellipsis classes', async () => {
+    mockGet.mockResolvedValue({
+      messages: [makeMessage(1, 'alice@example.com', 'Hello world', '2024-01-01T10:00:00Z')],
+      total: 1,
+      limit: 100,
+      offset: 0,
+    });
+
+    render(<MessagesPanel />);
+    const email = await screen.findByText('alice@example.com');
+
+    expect(email.closest('a')).toHaveClass('email');
+    expect(screen.getByText('Hello world')).toHaveClass('body');
+  });
+
+  it('A13 twin: with the row stylesheet resolving no classes the email link and body lose them', () => {
+    const view = makeMessage(1, 'alice@example.com', 'Hello world', '2024-01-01T10:00:00Z');
+    jest.isolateModules(() => {
+      jest.doMock('@/app/components/messages/MessageRow.module.scss', () => ({
+        __esModule: true,
+        default: {},
+      }));
+      const { MessageRowLeft } = jest.requireActual<typeof messageRowModule>(
+        '@/app/components/messages/MessageRow'
+      );
+      render(<MessageRowLeft message={view} excerptWords={10} />);
+    });
+    jest.dontMock('@/app/components/messages/MessageRow.module.scss');
+
+    expect(screen.getByText('alice@example.com').closest('a')).not.toHaveClass('email');
+    expect(screen.getByText('Hello world')).not.toHaveClass('body');
   });
 
   it('removes message optimistically on delete', async () => {

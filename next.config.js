@@ -68,6 +68,10 @@ const securityHeaders = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Strict-Transport-Security', value: 'max-age=63072000' },
   { key: 'Content-Security-Policy-Report-Only', value: csp },
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+  },
 ];
 
 /** @type {import('next').NextConfig} */
@@ -89,10 +93,7 @@ const nextConfig = {
   },
   images: {
     remotePatterns: [
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-      },
+      ...(isDev ? [{ protocol: 'http', hostname: 'localhost' }] : []),
       {
         protocol: 'https',
         hostname: CLOUDFRONT_HOST,
@@ -106,7 +107,7 @@ const nextConfig = {
      * Sources are 2500px on the long edge, so 2560/3200/3840 returned the same bytes as 2048;
      * capping at 2048 halves the largest request. Intermediates stay — browsers round up to the
      * next candidate, so removing one costs bytes. Measurements:
-     * `docs/spikes/2026-features/pf-performance-platform.md`.
+     * #360.
      */
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
     imageSizes: [128, 256, 384],
