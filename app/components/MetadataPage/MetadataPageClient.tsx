@@ -4,6 +4,7 @@ import { revalidateLocationCaches } from '@/app/components/ContentCollection/edi
 import { CollectionHeader } from '@/app/components/ui/CollectionHeader/CollectionHeader';
 import { MetadataList } from '@/app/components/ui/MetadataList/MetadataList';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
+import type { MeResponse } from '@/app/types/Auth';
 import type { LocationModel } from '@/app/types/Collection';
 import type { ContentPersonModel, ContentTagModel } from '@/app/types/Metadata';
 
@@ -13,6 +14,7 @@ interface MetadataPageClientProps {
   tags: ContentTagModel[];
   people: ContentPersonModel[];
   locations: LocationModel[];
+  me?: MeResponse | null;
 }
 
 /**
@@ -27,9 +29,9 @@ interface MetadataPageClientProps {
  * Tags and people get no callback: `collections-location-${slug}` is the only slug-keyed cache tag
  * registered anywhere in `app/lib/api/`, and `updatePerson` does not even have a slug to change.
  */
-export function MetadataPageClient({ tags, people, locations }: MetadataPageClientProps) {
+export function MetadataPageClient({ tags, people, locations, me }: MetadataPageClientProps) {
   return (
-    <PageShell backHref="/admin">
+    <PageShell backHref="/admin" me={me}>
       <CollectionHeader title="Metadata" />
       <div className={styles.grid}>
         <MetadataList title="Tags" emptyLabel="No tags" items={tags} basePath="/metadata/tags" />

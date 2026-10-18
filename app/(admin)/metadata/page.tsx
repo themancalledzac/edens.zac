@@ -2,6 +2,7 @@
 // /api/admin/** (see docs 009). Gating centralized in app/(admin)/layout.tsx via requireAdmin().
 import { MetadataPageClient } from '@/app/components/MetadataPage/MetadataPageClient';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
+import { meServer } from '@/app/lib/api/auth';
 import { getMetadata } from '@/app/lib/api/collections';
 
 // Render on every request. `getMetadata()` calls fetchAdminGetApi which would
@@ -10,19 +11,24 @@ import { getMetadata } from '@/app/lib/api/collections';
 // version of itself). See app/tag/[slug]/page.tsx for the same rationale.
 export const dynamic = 'force-dynamic';
 
+/**
+ * Catches backend failures so a transient outage returns a fallback page instead of a 500.
+ * `getMetadata()` calls fetchAdminGetApi, which re-throws on failure. `meServer()` failures fall
+ * back to null.
+ */
 export default async function MetadataPage() {
-  // Catch backend failures so a transient outage returns a fallback page instead
-  // of a 500. getMetadata() calls fetchAdminGetApi, which re-throws on failure.
+  const mePromise = meServer().catch(() => null);
   let metadata;
   try {
     metadata = await getMetadata();
   } catch {
     metadata = null;
   }
+  const me = await mePromise;
 
   if (!metadata) {
     return (
-      <PageShell backHref="/admin">
+      <PageShell backHref="/admin" me={me}>
         <p>Failed to load metadata.</p>
       </PageShell>
     );
@@ -30,5 +36,5 @@ export default async function MetadataPage() {
 
   const { tags, people, locations } = metadata;
 
-  return <MetadataPageClient tags={tags} people={people} locations={locations} />;
+  return <MetadataPageClient tags={tags} people={people} locations={locations} me={me} />;
 }
