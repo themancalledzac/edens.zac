@@ -101,3 +101,32 @@ describe('serializeJsonLd', () => {
     expect(JSON.parse(serializeJsonLd(node as object))).toEqual(node);
   });
 });
+
+describe('buildCollectionJsonLd — home collection url', () => {
+  it('F1: the home collection url is the origin with a trailing slash', () => {
+    const node = buildCollectionJsonLd(makeCollection({ slug: 'home', title: 'Home' }), ORIGIN);
+
+    expect(node?.url).toBe('https://zacedens.com/');
+    expect(node?.url).not.toBe('https://zacedens.com/home');
+  });
+
+  it('F1: other collections keep origin/slug', () => {
+    const node = buildCollectionJsonLd(makeCollection({ slug: 'homestead' }), ORIGIN);
+
+    expect(node?.url).toBe('https://zacedens.com/homestead');
+  });
+
+  it('F1 twin: the home collection url is origin/home when the home check is off', async () => {
+    jest.resetModules();
+    jest.doMock('@/app/utils/collectionSlugs', () => ({
+      ...jest.requireActual('@/app/utils/collectionSlugs'),
+      HOME_SLUG: '__no-home__',
+    }));
+    const mod = await import('@/app/utils/structuredData');
+    const node = mod.buildCollectionJsonLd(makeCollection({ slug: 'home', title: 'Home' }), ORIGIN);
+    jest.dontMock('@/app/utils/collectionSlugs');
+    jest.resetModules();
+
+    expect(node?.url).toBe('https://zacedens.com/home');
+  });
+});

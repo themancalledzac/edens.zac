@@ -7,6 +7,7 @@
  */
 
 import { type CollectionModel } from '@/app/types/Collection';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 
 /** The byline used across route metadata; kept here so the JSON-LD author cannot drift from it. */
 export const AUTHOR_NAME = 'Zac Edens';
@@ -53,7 +54,9 @@ export function buildCollectionJsonLd(
   const description = collection.description?.trim();
   if (description) node.description = description;
 
-  if (origin && collection.slug) node.url = `${origin}/${collection.slug}`;
+  if (origin && collection.slug) {
+    node.url = collection.slug === HOME_SLUG ? `${origin}/` : `${origin}/${collection.slug}`;
+  }
   if (collection.collectionDate) node.datePublished = collection.collectionDate;
 
   const image = collection.coverImage?.imageUrl;
