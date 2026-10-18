@@ -1128,8 +1128,7 @@ export function buildRows(
 // =============================================================================
 
 type AbstractNode =
-  | { kind: 'leaf'; img: ImageType }
-  | { kind: 'merge'; left: AbstractNode; right: AbstractNode };
+  { kind: 'leaf'; img: ImageType } | { kind: 'merge'; left: AbstractNode; right: AbstractNode };
 
 /**
  * Build an unlabeled binary tree by recursively splitting at the adjacent boundary

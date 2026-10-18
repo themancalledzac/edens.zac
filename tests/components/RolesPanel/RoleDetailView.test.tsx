@@ -189,11 +189,14 @@ describe('RoleDetailView', () => {
     await renderDetail();
 
     const grantSelect = await screen.findByLabelText('Access level for apple orchard');
-    expect(within(grantSelect).getByRole('option', { name: 'Collaborator (edit collection)' }))
-      .toBeInTheDocument();
+    expect(
+      within(grantSelect).getByRole('option', { name: 'Collaborator (edit collection)' })
+    ).toBeInTheDocument();
 
     const addLevelSelect = screen.getByLabelText('Access level for the collection being added');
-    expect(within(addLevelSelect).getByRole('option', { name: 'Collaborator' })).toBeInTheDocument();
+    expect(
+      within(addLevelSelect).getByRole('option', { name: 'Collaborator' })
+    ).toBeInTheDocument();
   });
 
   it('confirms "Delete role", then calls onDeleted once the delete resolves', async () => {

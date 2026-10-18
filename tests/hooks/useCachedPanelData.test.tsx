@@ -379,12 +379,10 @@ describe('useCachedPanelData', () => {
   });
 
   it('setData writes through to memory and localStorage (no resurrection on remount)', async () => {
-    const fetcher = jest.fn(
-      async (): Promise<RoleSummary[]> => [
-        { id: 1, name: 'a' },
-        { id: 2, name: 'b' },
-      ]
-    );
+    const fetcher = jest.fn(async (): Promise<RoleSummary[]> => [
+      { id: 1, name: 'a' },
+      { id: 2, name: 'b' },
+    ]);
     const first = renderHook(() => useCachedPanelData('roles', fetcher, 'failed'));
     await waitFor(() => expect(first.result.current.loading).toBe(false));
 
@@ -400,12 +398,10 @@ describe('useCachedPanelData', () => {
   });
 
   it('a mutation that lands mid-fetch survives the in-flight fetch resolving', async () => {
-    const warm = jest.fn(
-      async (): Promise<RoleSummary[]> => [
-        { id: 1, name: 'a' },
-        { id: 2, name: 'b' },
-      ]
-    );
+    const warm = jest.fn(async (): Promise<RoleSummary[]> => [
+      { id: 1, name: 'a' },
+      { id: 2, name: 'b' },
+    ]);
     const first = renderHook(() => useCachedPanelData('roles', warm, 'failed'));
     await waitFor(() => expect(first.result.current.loading).toBe(false));
     first.unmount();
@@ -445,12 +441,10 @@ describe('useCachedPanelData', () => {
    * the reload it takes to notice.
    */
   it('guards a mutation whose updater is deferred by other pending state', async () => {
-    const warm = jest.fn(
-      async (): Promise<RoleSummary[]> => [
-        { id: 1, name: 'a' },
-        { id: 2, name: 'b' },
-      ]
-    );
+    const warm = jest.fn(async (): Promise<RoleSummary[]> => [
+      { id: 1, name: 'a' },
+      { id: 2, name: 'b' },
+    ]);
     const first = renderHook(() => useCachedPanelData('roles', warm, 'failed'));
     await waitFor(() => expect(first.result.current.loading).toBe(false));
     first.unmount();
@@ -502,11 +496,9 @@ describe('useCachedPanelData', () => {
   });
 
   it('a key switch re-seeds from the new key and caches variants independently', async () => {
-    const fetcher = jest.fn(
-      async (key: string): Promise<AdminUserSummary[]> => [
-        key === 'users:base' ? user(1, 'base') : user(99, 'people'),
-      ]
-    );
+    const fetcher = jest.fn(async (key: string): Promise<AdminUserSummary[]> => [
+      key === 'users:base' ? user(1, 'base') : user(99, 'people'),
+    ]);
     const initialProps: { cacheKey: 'users:base' | 'users:people' } = { cacheKey: 'users:base' };
     const { result, rerender } = renderHook(
       ({ cacheKey }: { cacheKey: 'users:base' | 'users:people' }) =>

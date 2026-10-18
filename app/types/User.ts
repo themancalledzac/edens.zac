@@ -86,9 +86,7 @@ export interface InvitePreview {
  * distinction away, so callers get the reason.
  */
 export type InvitePreviewResult =
-  | { status: 'ok'; preview: InvitePreview }
-  | { status: 'used' }
-  | { status: 'invalid' };
+  { status: 'ok'; preview: InvitePreview } | { status: 'used' } | { status: 'invalid' };
 
 /** Request body for `POST /api/auth/invite/{token}/accept`. */
 export interface AcceptInviteRequest {
