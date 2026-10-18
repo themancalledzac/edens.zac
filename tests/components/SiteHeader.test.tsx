@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import { SiteHeader } from '@/app/components/SiteHeader/SiteHeader';
+import { SiteMenuProvider, useSiteMenu } from '@/app/components/SiteHeader/SiteMenuContext';
 import * as authApi from '@/app/lib/api/auth';
 
 jest.mock('next/navigation', () => ({
@@ -109,5 +110,32 @@ describe('SiteHeader — menu toggle accessibility', () => {
     fireEvent.click(toggle());
     await screen.findByRole('button', { name: /log in/i });
     expect(mockMe).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('SiteHeader — shared site menu', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockMe.mockResolvedValue(null);
+  });
+
+  it('opens from a sibling control through the provider', () => {
+    function Opener() {
+      const menu = useSiteMenu();
+      return (
+        <button type="button" onClick={menu?.toggle}>
+          external
+        </button>
+      );
+    }
+    render(
+      <SiteMenuProvider>
+        <SiteHeader />
+        <Opener />
+      </SiteMenuProvider>
+    );
+    expect(toggle()).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(screen.getByText('external'));
+    expect(toggle()).toHaveAttribute('aria-expanded', 'true');
   });
 });

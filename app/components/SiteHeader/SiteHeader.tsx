@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useId, useState } from 'react';
 
 import { MenuDropdown } from '@/app/components/MenuDropdown/MenuDropdown';
+import { useSiteMenu } from '@/app/components/SiteHeader/SiteMenuContext';
 import { type MeResponse } from '@/app/types/Auth';
 
 import styles from './SiteHeader.module.scss';
@@ -26,13 +27,19 @@ interface SiteHeaderProps {
  * "Open navigation menu" while the menu is already open. `aria-controls` is emitted only while
  * the overlay is mounted — pointing it at an id that is not in the document would be an invalid
  * ARIA reference.
+ *
+ * Menu state comes from {@link SiteMenuProvider} when one wraps the header, so the mobile bottom
+ * bar shares it; without a provider the header keeps its own state.
  */
 export function SiteHeader({ isCollectionPage = false, collectionSlug, me }: SiteHeaderProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const menuId = useId();
+  const shared = useSiteMenu();
+  const [localOpen, setLocalOpen] = useState(false);
+  const localId = useId();
 
-  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-  const closeMenu = () => setIsMenuOpen(false);
+  const isMenuOpen = shared ? shared.isOpen : localOpen;
+  const menuId = shared ? shared.menuId : localId;
+  const toggleMenu = shared ? shared.toggle : () => setLocalOpen(!localOpen);
+  const closeMenu = shared ? shared.close : () => setLocalOpen(false);
 
   return (
     <>

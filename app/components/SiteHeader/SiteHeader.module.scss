@@ -93,6 +93,12 @@
     outline-offset: 2px;
   }
 
+  @media (width < 768px) {
+    body:has([data-bottom-nav]) & {
+      display: none;
+    }
+  }
+
   @media (width >= 768px) {
     padding: 0;
     margin: 0;

@@ -172,6 +172,7 @@ html,
   --z-content: 2; /* Content elements above base */
   --z-overlay: 3; /* Text overlays, badges */
   --z-dropdown: 100; /* Dropdown menus */
+  --bottom-nav-height: 56px;
   --z-sticky: 500; /* Sticky headers */
   --z-modal: 1000; /* Modal backdrops */
   --z-modal-controls: 1002; /* Modal close buttons */
@@ -254,6 +255,12 @@ body {
   /* No body perspective/transform-style: it makes <body> the containing block for
      position:fixed overlays and breaks the fullscreen modal on iOS. Parallax is JS-driven. */
   overflow-x: clip;
+}
+
+@media (width < 768px) {
+  body:has([data-bottom-nav]) {
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+  }
 }
 
 body.scroll-locked {
