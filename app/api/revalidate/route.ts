@@ -1,8 +1,23 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 
+import { meServer } from '@/app/lib/api/auth';
 import { isLocalEnvironment } from '@/app/utils/environment';
 import { isAllowedWriteOrigin } from '@/app/utils/originAllowlist';
+
+/**
+ * Admin-principal gate for {@link POST}. Local/dev returns true without resolving a principal;
+ * elsewhere only `meServer()` resolving `isAdmin === true` passes, and a throw counts as false.
+ */
+async function isAdminPrincipal(): Promise<boolean> {
+  if (isLocalEnvironment()) return true;
+
+  try {
+    return (await meServer())?.isAdmin === true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Revalidate Collection Cache
@@ -17,9 +32,14 @@ import { isAllowedWriteOrigin } from '@/app/utils/originAllowlist';
  * `proxy.ts` applies to the (admin) route group, and for the same reason: a route handler
  * cannot validate a session, only observe one. `proxy.ts` does not match `/api/*`, so
  * without this gate any anonymous caller could loop `{ path: "/" }` and permanently bust
- * the ISR cache, pushing every render to Lambda and Spring. The only callers are
- * `revalidateCollectionCache` / `revalidateMetadataCache` in the admin edit UI, which is
- * already behind that cookie and sends it on same-origin fetches.
+ * the ISR cache, pushing every render to Lambda and Spring. The cookie only proves a session
+ * exists, not whose, so any signed-in non-admin could still purge the cache. Outside local/dev
+ * the handler therefore also resolves the principal with `meServer()` and requires
+ * `isAdmin === true`; a null principal or a throw (backend down or erroring) is 401, so it
+ * fails closed. Local/dev skips the lookup entirely, matching `clearCacheAction` and the
+ * standing "localhost admin needs no login" rule. The callers are
+ * `revalidateCollectionCache` / `revalidateMetadataCache` in the admin edit UI, which send the
+ * cookie on same-origin fetches.
  *
  * The session check alone does not stop CSRF — the browser attaches that cookie to cross-site
  * POSTs too — so the request must also carry an allowed `Origin`, via the same helper the proxy
@@ -38,7 +58,8 @@ import { isAllowedWriteOrigin } from '@/app/utils/originAllowlist';
  * `'use client'`), so D6+D8 still admit every real production caller.
  *
  * Order matters. The session check runs first so an anonymous caller still gets 401 rather than
- * a 403 that would suggest the origin was the problem.
+ * a 403 that would suggest the origin was the problem. The principal check runs after the origin
+ * check and before the body is read.
  */
 export async function POST(req: NextRequest) {
   if (!isLocalEnvironment() && !req.cookies.get('ezac_session')?.value) {
@@ -49,6 +70,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  if (!(await isAdminPrincipal())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { tag, tags, path } = body;
@@ -57,12 +82,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Either tag, tags, or path is required' }, { status: 400 });
     }
 
-    // Revalidate single cache tag if provided
     if (tag && typeof tag === 'string') {
       revalidateTag(tag, 'max');
     }
 
-    // Revalidate multiple cache tags if provided
     if (Array.isArray(tags)) {
       for (const t of tags) {
         if (typeof t === 'string') {
@@ -71,7 +94,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Revalidate path if provided
     if (path && typeof path === 'string') {
       revalidatePath(path);
     }
