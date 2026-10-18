@@ -3,15 +3,22 @@
  */
 
 import {
+  buildImagePageToolbarProps,
   collectActiveFilterBadges,
   computeHasActiveFilters,
   isOptionAvailable,
 } from '@/app/components/ui/FilterToolbar/filterToolbarUtils';
 import {
   ARRAY_FILTER_KEYS,
+  type ArrayFilterKey,
   type FilterState,
   INITIAL_FILTER_STATE,
 } from '@/app/types/GalleryFilter';
+import {
+  type extractFilterOptions,
+  type FilterCounts,
+  type FilterVisibility,
+} from '@/app/utils/contentFilter';
 
 describe('isOptionAvailable', () => {
   it('returns true for every option when no filteredAvailable map is given', () => {
@@ -159,5 +166,79 @@ describe('collectActiveFilterBadges', () => {
         b => b.label
       )
     ).toEqual(['Tag: sunset']);
+  });
+});
+
+describe('buildImagePageToolbarProps', () => {
+  const allVisible: FilterVisibility = {
+    dateSort: true,
+    highlyRated: true,
+    film: true,
+    tags: true,
+    people: true,
+    cameras: true,
+    lenses: true,
+    filmTypes: true,
+    locations: true,
+  };
+  const availableOptions = {
+    tags: ['a'],
+    people: ['p'],
+    locations: ['l'],
+    cameras: ['c'],
+    lenses: ['n'],
+    filmTypes: ['f'],
+  } as unknown as ReturnType<typeof extractFilterOptions>;
+  const filterCounts = {
+    highlyRated: 1,
+    film: 2,
+    digital: 3,
+    tags: { a: 1 },
+    people: { p: 1 },
+    locations: { l: 1 },
+    cameras: { c: 1 },
+    lenses: { n: 1 },
+    filmTypes: { f: 1 },
+  } as unknown as FilterCounts;
+  const surfaced: ArrayFilterKey[] = [
+    'selectedTags',
+    'selectedPeople',
+    'selectedLocations',
+    'selectedCameras',
+    'selectedLenses',
+    'selectedFilmTypes',
+  ];
+
+  it('surfaces keys in order with their labels, hiding film stock unless film is selected', () => {
+    const result = buildImagePageToolbarProps(
+      { filterState: INITIAL_FILTER_STATE, availableOptions, filterCounts, visibility: allVisible },
+      surfaced
+    );
+    expect(Object.keys(result.dimensions)).toEqual(surfaced.slice(0, 5));
+    expect(result.dimensions.selectedTags).toEqual({
+      label: 'Tags',
+      options: ['a'],
+      counts: { a: 1 },
+    });
+    expect(result.counts).toEqual({ highlyRated: 1, film: 2, digital: 3 });
+    expect(result.showDateSort).toBe(true);
+    expect(result.showHighlyRated).toBe(true);
+    expect(result.showFilm).toBe(true);
+  });
+
+  it('adds Film stock when the film filter is on and honours visibility and surfaced', () => {
+    const result = buildImagePageToolbarProps(
+      {
+        filterState: { ...INITIAL_FILTER_STATE, filmFilter: 'film' },
+        availableOptions,
+        filterCounts,
+        visibility: { ...allVisible, tags: false, dateSort: false },
+      },
+      ['selectedTags', 'selectedFilmTypes', 'selectedLenses']
+    );
+    expect(Object.keys(result.dimensions)).toEqual(['selectedFilmTypes', 'selectedLenses']);
+    expect(result.dimensions.selectedFilmTypes?.label).toBe('Film stock');
+    expect(result.dimensions.selectedLenses?.label).toBe('Lenses');
+    expect(result.showDateSort).toBe(false);
   });
 });
