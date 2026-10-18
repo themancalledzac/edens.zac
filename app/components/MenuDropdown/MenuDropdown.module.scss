@@ -39,7 +39,7 @@
        so the dropdown aligns with the .main container's right edge */
     right: max(0px, calc((100vw - var(--page-max-width)) / 2));
     width: min(400px, calc(100% - var(--default-padding)));
-    box-shadow: -8px 0 16px -8px rgb(0, 0, 0, 0.2);
+    box-shadow: -8px 0 16px -8px var(--scrim-dark-20);
   }
 }
 
@@ -51,7 +51,7 @@
     position: fixed;
     inset: 0;
     z-index: calc(var(--z-sticky) + 1);
-    background-color: rgb(0, 0, 0, 0.4);
+    background-color: var(--scrim-dark-40);
   }
 }
 
@@ -86,7 +86,7 @@
     order: 3;
     min-height: 0;
     padding: var(--space-2) var(--page-padding-mobile);
-    border-top: 1px solid rgb(0, 0, 0, 0.1);
+    border-top: 1px solid var(--color-border);
   }
 
   body:has([data-bottom-nav])
@@ -177,7 +177,7 @@
   height: var(--menu-item-height);
   padding-bottom: 5px;
   cursor: pointer;
-  border-bottom: 1px solid rgb(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--color-border);
 
   &:last-child {
     border-bottom: none;
@@ -301,7 +301,7 @@ a.dropdownMenuLink {
 .dropdownSocialIconsWrapper {
   flex-shrink: 0;
   padding: var(--page-padding-mobile) var(--page-padding-mobile);
-  border-top: 1px solid rgb(0, 0, 0, 0.1);
+  border-top: 1px solid var(--color-border);
   border-bottom: none;
 
   @media (width >= 768px) {

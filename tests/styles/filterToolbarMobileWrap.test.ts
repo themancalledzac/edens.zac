@@ -94,12 +94,12 @@ describe('DensityTierControl joined segments', () => {
   const branch = mobileBranch(density);
 
   it('should draw one outer border on the group below 768px', () => {
-    expect(branch).toMatch(/gap:\s*0;\s*border:\s*1px solid var\(--color-border\)/);
+    expect(branch).toMatch(/gap:\s*0;\s*border:\s*1px solid var\(--color-border-control\)/);
   });
 
   it('should divide the segments with a border-left on siblings', () => {
     expect(branch).toMatch(
-      /&\s*\+\s*\.segment\s*{[^}]*border-left:\s*1px solid var\(--color-border\)/
+      /&\s*\+\s*\.segment\s*{[^}]*border-left:\s*1px solid var\(--color-border-control\)/
     );
   });
 
