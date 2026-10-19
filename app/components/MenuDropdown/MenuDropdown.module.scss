@@ -55,51 +55,114 @@
   }
 }
 
-/* Phone bottom sheet, applied alongside .dropdown. Placed above the bottom bar when one is
-   rendered. The close button moves to the last row with `order` only, so DOM and Tab order stay
-   put, and the bar's destinations are hidden with CSS only. Kept under its own class so the
-   desktop panel's declarations stay the only ones on .dropdown. */
+// Phone full-screen sheet, applied alongside .dropdown. It covers the whole viewport including
+// the bottom bar. The close button is taken out of flow and laid exactly over the bar's Menu cell
+// (the right-most quarter of the bar's box, same height, same bottom inset), so open and close are
+// the same tap. The socials row moves to the top with `order`, leaving DOM and Tab order alone.
 @media (width < 768px) {
   .sheet {
-    top: auto;
+    top: 0;
     bottom: 0;
-    height: auto;
-    max-height: 85dvh;
+    height: 100dvh;
     z-index: calc(var(--z-sticky) + 2);
-    border-radius: calc(var(--radius-2) * 2) calc(var(--radius-2) * 2) 0 0;
-  }
+    border-radius: 0;
+    touch-action: none;
+    transition: transform var(--duration-base) var(--ease-standard);
 
-  body:has([data-bottom-nav]) .sheet {
-    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
-    max-height: calc(85dvh - var(--bottom-nav-height));
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
   }
 
   .sheet .dropdownMenuOptionsWrapper {
-    order: 1;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + var(--space-4));
+  }
+
+  .sheet .dropdownMenuItem {
+    height: 4.25rem;
+  }
+
+  .sheet .dropdownMenuOptions {
+    height: 4.25rem;
+    font-size: var(--text-3xl);
   }
 
   .sheet .dropdownSocialIconsWrapper {
-    order: 2;
+    order: -1;
+    height: auto;
+    justify-content: space-between;
+    padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--page-padding-mobile)
+      var(--space-3);
+    border-top: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .sheet .socialIconButton svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .sheet .copyright {
+    order: 0;
+    margin: 0 0 0 auto;
   }
 
   .sheet .dropdownCloseButtonWrapper {
-    order: 3;
+    position: absolute;
+    right: 0;
+    bottom: env(safe-area-inset-bottom);
+    z-index: 1;
+    width: 25%;
+    height: var(--bottom-nav-height);
     min-height: 0;
-    padding: var(--space-2) var(--page-padding-mobile);
-    border-top: 1px solid var(--color-border);
+    padding: 0;
+    justify-content: center;
   }
 
-  body:has([data-bottom-nav])
-    .sheet
-    .dropdownMenuItem:has(
-      a[href='/explore'],
-      a[href='/collections'],
-      a[href='/user'],
-      a[href='/admin'],
-      a[href='/login']
-    ) {
+  .sheet .dropdownCloseButtonWrapper_button {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .sheet .dropdownCloseIcon {
+    width: 22px;
+    height: 22px;
+    stroke-width: 2;
+  }
+}
+
+.adminGroup {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.adminLabel {
+  margin: 0;
+  padding-top: var(--space-4);
+  text-align: right;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-on-surface-muted);
+
+  @media (width >= 768px) {
     display: none;
   }
+}
+
+.copyright {
+  order: -1;
+  margin: 0 auto 0 0;
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-on-surface-muted);
+  white-space: nowrap;
 }
 
 /* Carries the aria-controls target id for the About/Contact disclosures without becoming a box —
