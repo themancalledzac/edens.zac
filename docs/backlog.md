@@ -137,7 +137,6 @@ The round ran #440 to #454 and edens.zac.backend#334. Its review docs are delete
 
 - **RV1** — Collection header on phones: `/dolomites-film` has a 252px gap from the cover to the first row against a target of about 230px (`/pnwer` is 214px), and its filter bar wraps to three rows. Blocked on: nothing. Size: small.
 - **RV2** — `/all-images` renders an empty info block, about 38px tall, above its filter bar. Blocked on: nothing. Size: tiny.
-- **RV3** — Unknown slugs render the 404 page but answer HTTP 200. The root `app/loading.tsx` starts streaming before `notFound()` runs, so the status is already sent. Older than the round. Blocked on: nothing. Size: unsized.
 - **RV4** — `/explore` and `/search` wait on `meServer()` before streaming (#452), so the loading fallback paints first, about 0.4s in dev. Measure in production before changing it. Blocked on: nothing. Size: small.
 - **RV6** — Fullscreen metadata chips are 26px tall, not the 44px touch target. Blocked on: nothing. Size: small.
 - **RV7** — Link the collection header's tags to `/tag/[slug]`. Dropped from #447 because tags arrive without slugs. Blocked on: BA5. Size: small FE.

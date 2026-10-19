@@ -38,6 +38,12 @@ export async function generateMetadata({ params }: TagPageRouteProps): Promise<M
   };
 }
 
+/**
+ * Tag page route. Needs no status change beyond r-49.1's mechanism (see `app/[slug]/page.tsx`): the
+ * body itself resolves the slug against {@link getCachedTags} and throws `notFound()` before any
+ * image search or JSX, so an unknown tag answers 404 ahead of the `loading.tsx` boundary. The tag
+ * list is the read `generateMetadata` already made, deduped by `cache()`, so no extra request.
+ */
 export default async function TagPageRoute({ params }: TagPageRouteProps) {
   const { slug } = await params;
   if (!slug) notFound();
