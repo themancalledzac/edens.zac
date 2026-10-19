@@ -38,8 +38,7 @@ async function resolveLocationFromSlug(slug: string): Promise<ResolvedLocation |
 
 const getCachedLocation = cache(resolveLocationFromSlug);
 
-// Render on every request rather than at build time. See app/tag/[slug]/page.tsx
-// for the rationale — same trade-off applies here.
+/** Renders on every request rather than at build time; see app/tag/[slug]/page.tsx. */
 export const dynamic = 'force-dynamic';
 
 /**
@@ -66,9 +65,6 @@ export async function generateMetadata({ params }: LocationPageRouteProps): Prom
  *
  * Resolves the slug against real backend locations, then fetches collections and images in parallel.
  * Calls notFound() when the location doesn't exist or has no content.
- *
- * @remarks Cover image is the highest-rated image (rating >= 4), falling back to the first image.
- *   Collection listing endpoints may not include coverImage data, so the image list is used instead.
  */
 export default async function LocationPageRoute({ params }: LocationPageRouteProps) {
   const { slug } = await params;
@@ -84,14 +80,5 @@ export default async function LocationPageRoute({ params }: LocationPageRoutePro
 
   if (collections.length === 0 && images.length === 0) notFound();
 
-  const coverImage = images.find(img => (img.rating ?? 0) >= 4) ?? images[0] ?? null;
-
-  return (
-    <LocationPage
-      locationName={location.name}
-      collections={collections}
-      images={images}
-      coverImage={coverImage}
-    />
-  );
+  return <LocationPage locationName={location.name} collections={collections} images={images} />;
 }
