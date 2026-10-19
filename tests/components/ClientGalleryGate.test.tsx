@@ -63,9 +63,9 @@ function deferredValidate() {
 }
 
 describe('ClientGalleryGate', () => {
-  it('renders exactly one footer', () => {
+  it('renders no site footer', () => {
     render(<ClientGalleryGate collection={makeCollection()} />);
-    expect(document.querySelectorAll('footer')).toHaveLength(1);
+    expect(document.querySelectorAll('footer')).toHaveLength(0);
   });
 
   beforeEach(() => {

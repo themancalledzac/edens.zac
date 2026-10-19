@@ -171,7 +171,7 @@ html,
   --z-content: 2; /* Content elements above base */
   --z-overlay: 3; /* Text overlays, badges */
   --z-dropdown: 100; /* Dropdown menus */
-  --bottom-nav-height: 56px;
+  --bottom-nav-height: 48px;
   --z-sticky: 500; /* Sticky headers */
   --z-modal: 1000; /* Modal backdrops */
   --z-modal-controls: 1002; /* Modal close buttons */

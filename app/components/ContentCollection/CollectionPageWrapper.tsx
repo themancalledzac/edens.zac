@@ -41,7 +41,8 @@ interface CollectionPageWrapperProps {
  * The all-collections slug is permission-scoped per viewer, so it uses the no-store fetch; every
  * other slug keeps the shared cacheable fetch. Home gets synthetic tiles ahead of its backend
  * children: the personal Me tile for a signed-in viewer (one extra no-store fetch, started beside
- * the collection fetch and skipped on anonymous home) and, in edit mode only, the All Collections
+ * the collection fetch and skipped on anonymous home and on phones, where the tile is absent from
+ * the content list entirely) and, in edit mode only, the All Collections
  * tile. Their negative `orderIndex` is what
  * puts them first once `processContentBlocks` sorts, so the array order here mirrors that rather
  * than deciding it. Home also pins its mobile row budget to `LAYOUT.homeMobileChunkSize`, since
@@ -66,12 +67,16 @@ export default async function CollectionPageWrapper({
   }
 
   try {
+    const viewportPromise = resolveSsrViewport();
     const [fetched, ssrViewport, signedIn] = await Promise.all([
       slug === 'all-collections' ? getScopedAllCollections() : getCollectionBySlug(slug, 0, 500),
-      resolveSsrViewport(),
+      viewportPromise,
       meServer().then(async resolvedMe => {
+        const { isMobile } = await viewportPromise;
         const [userPage, savedImageIds] = await Promise.all([
-          shouldFetchUserPage(slug, resolvedMe) ? getUserPage() : Promise.resolve(null),
+          !isMobile && shouldFetchUserPage(slug, resolvedMe)
+            ? getUserPage()
+            : Promise.resolve(null),
           resolvedMe ? listSavedImageIdsServer() : Promise.resolve<number[]>([]),
         ]);
         return { me: resolvedMe, userPage, savedImageIds };
@@ -96,7 +101,7 @@ export default async function CollectionPageWrapper({
         ? {
             ...baseCollection,
             content: [
-              ...(me ? [buildMeContentBlock(userPage)] : []),
+              ...(me && !ssrViewport.isMobile ? [buildMeContentBlock(userPage)] : []),
               ...(shouldBuildAllCollectionsTile(editMode)
                 ? [buildAllCollectionsContentBlock()]
                 : []),
