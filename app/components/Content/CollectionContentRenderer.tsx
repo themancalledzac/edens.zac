@@ -12,10 +12,7 @@ import { useCollectionFilter } from '@/app/components/ContentCollection/Collecti
 import { useInlineEdit } from '@/app/components/ContentCollection/edit/InlineEditContext';
 import { FollowButton } from '@/app/components/Personal/FollowButton';
 import { Badge } from '@/app/components/ui/Badge/Badge';
-import {
-  FilterToolbar,
-  MAX_FLAT_DATE_CHIPS,
-} from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { InlineEditableText } from '@/app/components/ui/InlineEditableText/InlineEditableText';
 import { Tile } from '@/app/components/ui/Tile/Tile';
 import { IMAGE } from '@/app/constants';
@@ -502,7 +499,6 @@ export default function CollectionContentRenderer({
                     : null
                 }
                 showDateSort={collectionFilter.filterOptions.showDateSort}
-                flatDateLimit={isMobile ? 2 : MAX_FLAT_DATE_CHIPS}
                 dateTwoState={collectionFilter.dateTwoState}
                 showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
                 showHiddenToggle={collectionFilter.filterOptions.showHiddenToggle}

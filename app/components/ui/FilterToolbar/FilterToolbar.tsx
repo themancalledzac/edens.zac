@@ -132,8 +132,6 @@ export interface FilterToolbarProps {
   density?: number;
   /** Upper bound of the fine slider. Defaults to 10 (desktop scale). */
   densityMax?: number;
-  /** @deprecated Ignored. Years and days live in the single Date dropdown; no caller needs a cap. */
-  flatDateLimit?: number;
   onDensityChange?: (value: number) => void;
   /**
    * Which density affordance to render. Visitors get `tiers` (three photo-size presets); edit mode
@@ -166,9 +164,6 @@ const ORDER_GLYPHS: Record<FilterState['dateSortDirection'], string> = {
   desc: 'v',
   off: '',
 };
-
-/** @deprecated Unused. Kept only so `CollectionContentRenderer` still compiles; remove with its import. */
-export const MAX_FLAT_DATE_CHIPS = 5;
 
 /** One option list inside a dropdown. The Date dropdown holds two: the years, then the days. */
 interface DropdownGroup {
