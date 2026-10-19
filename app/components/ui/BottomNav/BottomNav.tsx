@@ -1,6 +1,6 @@
 'use client';
 
-import { AlignJustify, Folders, Plane, User } from 'lucide-react';
+import { AlignJustify, Folders, Plane, User, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -26,7 +26,9 @@ function isCurrent(pathname: string | null, href: string) {
  * `me` prop only and never requests `/me`: a value gives "Your space" (`/admin` for admins,
  * `/user` otherwise), `null` gives "Log in", and `undefined` (unresolved) reserves an empty You
  * cell, so a signed-in visitor never sees "Log in".
- * The bar is hidden at 768px and up in CSS.
+ * While the menu is open the Menu cell becomes a "Close menu" X and the bar stays usable under the
+ * phone sheet; tapping a link cell navigates and closes the menu. The bar is hidden at 768px and up
+ * in CSS.
  */
 export function BottomNav({ me }: BottomNavProps) {
   const pathname = usePathname();
@@ -64,11 +66,15 @@ export function BottomNav({ me }: BottomNavProps) {
         type="button"
         className={styles.cell}
         onClick={menu?.toggle}
-        aria-label="Menu"
+        aria-label={isOpen ? 'Close menu' : 'Menu'}
         aria-expanded={isOpen}
         aria-controls={isOpen ? menu?.menuId : undefined}
       >
-        <AlignJustify className={styles.icon} aria-hidden="true" />
+        {isOpen ? (
+          <X className={styles.icon} aria-hidden="true" />
+        ) : (
+          <AlignJustify className={styles.icon} aria-hidden="true" />
+        )}
       </button>
     </nav>
   );

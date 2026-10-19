@@ -36,6 +36,8 @@ interface MenuDropdownProps {
   me?: MeResponse | null;
 }
 
+const BOTTOM_BAR_TABBABLE = '[data-bottom-nav] a[href], [data-bottom-nav] button:not([disabled])';
+
 /**
  * Skin for the two `Disclosure` rows. No `headingLevel`: these are menu items inside a labelled
  * `dialog`, not sections of the document outline, so a heading here would be a phantom level.
@@ -63,10 +65,12 @@ interface MenuNavItem {
 /**
  * Menu Dropdown
  *
- * Navigation overlay: a full-screen sheet under 768px that covers the bottom bar, a top-right
- * panel above. On phones the close X sits exactly over the bar's Menu cell and a downward swipe
- * closes the sheet (`useSwipeToClose`); the socials and copyright row moves to the top. It has an expandable About section and a Contact row that closes the menu and opens the
- * shared `ContactModal`.
+ * Navigation overlay: a sheet under 768px that fills the viewport above the bottom bar, a
+ * top-right panel above. On phones the bar stays visible and its Menu cell turns into the close X
+ * (this component hides its own X there), the bar's controls join the focus trap
+ * (`alsoTabbable`), and a downward swipe closes the sheet (`useSwipeToClose`); the socials and
+ * copyright row moves to the top. It has an expandable About section and a Contact row that
+ * closes the menu and opens the shared `ContactModal`.
  *
  * Destinations are real `NavLink` anchors, so cmd-click / middle-click / open-in-new-tab and
  * Next's route prefetch all work; `onClick={onClose}` only dismisses the overlay. Only genuine
@@ -121,6 +125,7 @@ export function MenuDropdown({
   const { onKeyDown } = useDialogFocus(dropdownRef, isOpen, onClose, {
     escape: 'document',
     respectAutoFocus: false,
+    alsoTabbable: BOTTOM_BAR_TABBABLE,
   });
 
   const [showContact, setShowContact] = useState(false);
