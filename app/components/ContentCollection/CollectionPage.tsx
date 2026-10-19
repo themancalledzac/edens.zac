@@ -1,6 +1,5 @@
 import { type ReactNode } from 'react';
 
-import { Footer } from '@/app/components/Footer/Footer';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { SiteMenuProvider } from '@/app/components/SiteHeader/SiteMenuContext';
 import { BottomNav } from '@/app/components/ui/BottomNav/BottomNav';
@@ -32,8 +31,6 @@ interface ContentCollectionPageProps {
   initialSelectedIds?: number[];
   /** The viewer's GLOBAL saved (bookmarked) image ids, seeded server-side. Cross-collection. */
   initialSavedImageIds?: number[];
-  /** Render the site footer after `<main>` (default true). */
-  withFooter?: boolean;
   /** When set, renders a back link to this href as the first element inside the skip target. */
   backHref?: string;
   /** Destination name in the back link (default 'Admin'). */
@@ -63,7 +60,6 @@ export default function CollectionPage({
   me,
   initialSelectedIds = [],
   initialSavedImageIds = [],
-  withFooter = true,
   backHref,
   backLabel,
   header,
@@ -90,7 +86,6 @@ export default function CollectionPage({
             />
           </SkipTarget>
         </main>
-        {withFooter && <Footer />}
       </div>
     </SiteMenuProvider>
   );

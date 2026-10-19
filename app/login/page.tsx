@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: 'Sign in' };
  * the personal `/user` page instead of showing the form.
  *
  * Rendered through `PageShell` with `me={null}`: a signed-in visitor was redirected above, so the
- * header never needs the principal resolved. The shell supplies the header, the footer's anchor and
+ * header never needs the principal resolved. The shell supplies the header and
  * the skip target.
  */
 export default async function LoginPage() {
