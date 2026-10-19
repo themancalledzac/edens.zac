@@ -265,6 +265,18 @@ describe('menu touch targets', () => {
     }
   });
 
+  it('A21: the phone sheet and scrim stop at the top of the bottom bar and hide the sheet close X', () => {
+    const { media } = splitMedia(menuCss);
+    const barTop = 'calc(var(--bottom-nav-height) + env(safe-area-inset-bottom))';
+    const sheet = declsFor(media, '.sheet');
+    expect(sheet['top']).toBe('0');
+    expect(sheet['bottom']).toBe(barTop);
+    expect(sheet['height']).toBe('auto');
+    expect(sheet['border-radius']).toBe('0');
+    expect(declsFor(media, '.sheet .dropdownCloseButtonWrapper')['display']).toBe('none');
+    expect(declsFor(media, '.scrim')['inset']).toBe(`0 0 ${barTop}`);
+  });
+
   it('A20: this test file carries no inline comments', () => {
     const source = readFileSync(__filename, 'utf8');
     const inline = source.split('\n').filter(line => /^\s*\/\/(?!\s*$)/.test(line));

@@ -120,7 +120,7 @@ describe('BottomNav', () => {
     expect(menuCell).not.toHaveAttribute('aria-controls');
     fireEvent.click(menuCell);
     expect(screen.getByTestId('probe')).toHaveTextContent('open');
-    const open = screen.getByRole('button', { name: 'Menu' });
+    const open = screen.getByRole('button', { name: 'Close menu' });
     expect(open).toHaveAttribute('aria-expanded', 'true');
     expect(open).toHaveAttribute('aria-controls');
   });
@@ -130,5 +130,20 @@ describe('BottomNav', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Menu' }));
     fireEvent.click(screen.getByLabelText('Explore'));
     expect(screen.getByTestId('probe')).toHaveTextContent('closed');
+  });
+
+  it('turns the Menu cell into a Close menu X while the menu is open and closes on tap', () => {
+    renderBar(null);
+    const menuCell = screen.getByRole('button', { name: 'Menu' });
+    expect(menuCell.querySelector('svg')).toHaveClass('lucide-text-align-justify');
+    fireEvent.click(menuCell);
+    const closeCell = screen.getByRole('button', { name: 'Close menu' });
+    expect(screen.queryByRole('button', { name: 'Menu' })).not.toBeInTheDocument();
+    expect(closeCell).toHaveAttribute('aria-expanded', 'true');
+    expect(closeCell).toHaveAttribute('aria-controls');
+    expect(closeCell.querySelector('svg')).toHaveClass('lucide-x');
+    fireEvent.click(closeCell);
+    expect(screen.getByTestId('probe')).toHaveTextContent('closed');
+    expect(screen.getByRole('button', { name: 'Menu' })).toHaveAttribute('aria-expanded', 'false');
   });
 });

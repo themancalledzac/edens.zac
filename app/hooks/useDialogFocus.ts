@@ -18,6 +18,12 @@ export interface DialogFocusOptions {
    * not restored to it on close. When false, the container is always focused on open.
    */
   respectAutoFocus?: boolean;
+  /**
+   * Selector for controls outside the container that join the Tab cycle after the container's own
+   * (the phone bar's close X). Only elements that are rendered count, and a Tab keydown that
+   * starts on one of them is handled on `document`, since it never reaches the dialog.
+   */
+  alsoTabbable?: string;
 }
 
 /**
@@ -55,7 +61,7 @@ export function useDialogFocus(
   onClose: () => void,
   options: DialogFocusOptions = {}
 ): { onKeyDown: (event: KeyboardEvent<HTMLElement>) => void } {
-  const { escape = 'dialog', respectAutoFocus = true } = options;
+  const { escape = 'dialog', respectAutoFocus = true, alsoTabbable } = options;
 
   useBodyScrollLock(open);
 
@@ -89,19 +95,16 @@ export function useDialogFocus(
     };
   }, [open, ref, respectAutoFocus]);
 
-  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (escape === 'dialog' && event.key === 'Escape') {
-      event.stopPropagation();
-      onClose();
-      return;
-    }
-
-    if (event.key !== 'Tab') return;
-
+  const trapTab = (event: { shiftKey: boolean; preventDefault: () => void }) => {
     const node = ref.current;
     if (!node) return;
 
-    const focusable = [...node.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)];
+    const outside = alsoTabbable
+      ? [...document.querySelectorAll<HTMLElement>(alsoTabbable)].filter(
+          element => element.getClientRects().length > 0
+        )
+      : [];
+    const focusable = [...node.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR), ...outside];
     if (focusable.length === 0) {
       event.preventDefault();
       return;
@@ -110,16 +113,41 @@ export function useDialogFocus(
     const first = focusable[0]!;
     const last = focusable[focusable.length - 1]!;
     const active = document.activeElement;
+    const inside = node.contains(active) || outside.includes(active as HTMLElement);
 
     if (event.shiftKey) {
-      if (active === first || active === node || !node.contains(active)) {
+      if (active === first || active === node || !inside) {
         event.preventDefault();
         last.focus();
       }
-    } else if (active === last || !node.contains(active)) {
+    } else if (active === last || !inside) {
       event.preventDefault();
       first.focus();
     }
+  };
+
+  useEffect(() => {
+    if (!open || !alsoTabbable) return;
+
+    const handleOutsideTab = (event: globalThis.KeyboardEvent) => {
+      const target = event.target;
+      if (event.key !== 'Tab' || !(target instanceof Element)) return;
+      if (ref.current?.contains(target) || !target.closest(alsoTabbable)) return;
+      trapTab(event);
+    };
+
+    document.addEventListener('keydown', handleOutsideTab);
+    return () => document.removeEventListener('keydown', handleOutsideTab);
+  });
+
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (escape === 'dialog' && event.key === 'Escape') {
+      event.stopPropagation();
+      onClose();
+      return;
+    }
+
+    if (event.key === 'Tab') trapTab(event);
   };
 
   return { onKeyDown };
