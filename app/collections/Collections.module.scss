@@ -5,34 +5,11 @@
 
   The body renders through the shared collection stack (CollectionPageClient), so the cover
   cards, filter bar and density slider carry their own styles. What is left here is the page's
-  own chrome: the visually-hidden heading, and the fallback header/message used when the
-  all-collections parent fails to load and there is no shared stack to render.
+  own chrome: the visually-hidden heading.
 */
 
 /* Visually hidden but announced. The visible title comes from the shared header block's cover
    overlay, the same arrangement /user uses. */
 .srOnly {
   @extend %visually-hidden;
-}
-
-.pageHeader {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-5) var(--page-padding-mobile) var(--space-4);
-}
-
-.pageTitle {
-  margin: 0;
-  font-size: var(--text-3xl);
-  font-weight: 700;
-  color: var(--color-fg);
-}
-
-/* Failed-read message only — a genuinely empty list renders through the shared EmptyState.
-   Kept apart on purpose: an unreachable backend must not read as "no collections yet". */
-.empty {
-  padding: var(--space-8) var(--page-padding-mobile);
-  color: var(--color-on-surface-muted);
-  text-align: center;
 }
