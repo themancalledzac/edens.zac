@@ -17,7 +17,6 @@ jest.mock('@/app/lib/api/personal', () => ({
 }));
 
 beforeEach(() => {
-  // toggle calls `.catch()` on the persist result, so both must return a promise.
   (addFollow as jest.Mock).mockImplementation(() => Promise.resolve());
   (removeFollow as jest.Mock).mockImplementation(() => Promise.resolve());
 });
@@ -36,17 +35,50 @@ describe('FollowButton', () => {
     expect(container.querySelector('button')).toBeNull();
   });
 
-  it('renders a Follow button inside a FollowsProvider', () => {
+  it('renders a Plus icon, unpressed, with no text when not following', () => {
     wrap(<FollowButton collectionId={99} />);
-    expect(screen.getByRole('button', { name: /follow collection/i })).toBeInTheDocument();
-    expect(screen.getByRole('button')).toHaveTextContent('Follow');
+    const button = screen.getByRole('button', { name: 'Follow collection' });
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+    expect(button.querySelector('.lucide-plus')).not.toBeNull();
+    expect(button.querySelector('.lucide-check')).toBeNull();
+    expect(button).toHaveTextContent('');
   });
 
-  it('renders a pressed "Following" button for an already-followed collection', () => {
+  it('renders a Check icon, pressed, with no text when following', () => {
     wrap(<FollowButton collectionId={7} />);
-    const button = screen.getByRole('button', { name: /unfollow collection/i });
+    const button = screen.getByRole('button', { name: 'Unfollow collection' });
     expect(button).toHaveAttribute('aria-pressed', 'true');
-    expect(button).toHaveTextContent('Following');
+    expect(button.querySelector('.lucide-check')).not.toBeNull();
+    expect(button.querySelector('.lucide-plus')).toBeNull();
+    expect(button).toHaveTextContent('');
+  });
+
+  it('labels with the title when one is given', () => {
+    wrap(
+      <>
+        <FollowButton collectionId={99} title="Iceland" />
+        <FollowButton collectionId={7} title="Norway" />
+      </>
+    );
+    expect(screen.getByRole('button', { name: 'Follow Iceland' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Unfollow Norway' })).toBeInTheDocument();
+  });
+
+  it('falls back to "collection" for a blank title', () => {
+    wrap(<FollowButton collectionId={99} title="   " />);
+    expect(screen.getByRole('button', { name: 'Follow collection' })).toBeInTheDocument();
+  });
+
+  it('applies the bottom placement class', () => {
+    wrap(
+      <>
+        <FollowButton collectionId={99} placement="bottom" />
+        <FollowButton collectionId={98} />
+      </>
+    );
+    const [bottom, top] = screen.getAllByRole('button');
+    expect(bottom!.className).toContain('cornerToggleBottom');
+    expect(top!.className).not.toContain('cornerToggleBottom');
   });
 
   it('toggles the follow on click', () => {
