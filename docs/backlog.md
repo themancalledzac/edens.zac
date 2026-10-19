@@ -175,7 +175,6 @@ These need the EC2 box, a phone, the AWS console or the local machine. Ids are t
 - **O4** — Review the CI audit scope change in #441: `npm run audit` is `npm audit --omit=dev --audit-level=high`, because `braces` has no fix.
 - **O5** — Check that Amplify appends the client IP to `x-forwarded-for`: `curl -H 'X-Forwarded-For: 1.2.3.4'` against an endpoint that logs the resolved IP.
 - **O6** — Point the local backend at a local Postgres before anyone runs `tests/e2e/passkey.spec.ts`. Port 5432 on this Mac is the tunnel to the production database.
-- **O7** — Check production streaming after #445 deployed: on a phone-sized window, no `<footer>` shows while the loading fallback is up, and the spinner is replaced by the page frame. If Amplify buffers the response, record that.
 - **O9** — Local-only cleanup: `docs/superpowers/`, `docs/_archive/`, `.superpowers/`, `.claude/agent-memory/code-reviewer/`, and `todo/` after moving its one file to a backend issue.
 - **O10** — Redeploy the backend with `deploy.sh`; merging edens.zac.backend#334 did not deploy it. Then browser-check its parent covers.
 - **O11** — After rebuilding the local Docker backend with #334, anonymous admin from the Mac gets 401. Add `DEV_LOCAL_ADMIN_EXTRA_ADDRESSES=<Docker gateway IP>` to the local backend `.env`, or log in with the bootstrap admin. The 401's remote address in the debug log is the gateway IP.

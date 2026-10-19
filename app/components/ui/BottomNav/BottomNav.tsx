@@ -1,6 +1,6 @@
 'use client';
 
-import { AlignJustify } from 'lucide-react';
+import { AlignJustify, Folders, Plane, User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -21,11 +21,11 @@ function isCurrent(pathname: string | null, href: string) {
 /**
  * Bottom Nav
  *
- * Mobile-only fixed bar with Menu, Explore, Collections and a fourth Log in / Your space cell.
- * The Menu cell drives the shared site menu from {@link SiteMenuProvider}. Renders from the
- * server-resolved `me` prop only and never requests `/me`: a value gives "Your space" (`/admin`
- * for admins, `/user` otherwise), `null` gives "Log in", and `undefined` (unresolved) reserves an
- * empty fourth cell, so a signed-in visitor never sees "Log in".
+ * Mobile-only fixed bar of four equal icon cells: Explore, Collections, You, Menu. The Menu cell
+ * drives the shared site menu from {@link SiteMenuProvider}. Renders from the server-resolved
+ * `me` prop only and never requests `/me`: a value gives "Your space" (`/admin` for admins,
+ * `/user` otherwise), `null` gives "Log in", and `undefined` (unresolved) reserves an empty You
+ * cell, so a signed-in visitor never sees "Log in".
  * The bar is hidden at 768px and up in CSS.
  */
 export function BottomNav({ me }: BottomNavProps) {
@@ -36,40 +36,40 @@ export function BottomNav({ me }: BottomNavProps) {
   const closeMenu = menu?.close;
 
   const links = [
-    { href: '/explore', label: 'Explore' },
-    { href: '/collections', label: 'Collections' },
+    { href: '/explore', label: 'Explore', Icon: Plane },
+    { href: '/collections', label: 'Collections', Icon: Folders },
   ];
-  if (me) links.push({ href: me.isAdmin ? '/admin' : '/user', label: 'Your space' });
-  else if (me === null) links.push({ href: '/login', label: 'Log in' });
+  if (me) links.push({ href: me.isAdmin ? '/admin' : '/user', label: 'Your space', Icon: User });
+  else if (me === null) links.push({ href: '/login', label: 'Log in', Icon: User });
 
   return (
     <nav className={styles.bar} aria-label="Primary" data-bottom-nav>
-      <button
-        type="button"
-        className={styles.cell}
-        onClick={menu?.toggle}
-        aria-label={isOpen ? 'Close navigation menu' : 'Open navigation menu'}
-        aria-expanded={isOpen}
-        aria-controls={isOpen ? menu?.menuId : undefined}
-      >
-        <AlignJustify className={styles.icon} aria-hidden="true" />
-        <span>Menu</span>
-      </button>
-      {links.map(link => {
-        const current = isCurrent(pathname, link.href);
+      {links.map(({ href, label, Icon }) => {
+        const current = isCurrent(pathname, href);
         return (
           <Link
-            key={link.href}
-            href={link.href}
+            key={href}
+            href={href}
             className={current ? `${styles.cell} ${styles.cellActive}` : styles.cell}
+            aria-label={label}
             aria-current={current ? 'page' : undefined}
             onClick={closeMenu}
           >
-            {link.label}
+            <Icon className={styles.icon} aria-hidden="true" />
           </Link>
         );
       })}
       {me === undefined && <span className={styles.cell} aria-hidden="true" />}
+      <button
+        type="button"
+        className={styles.cell}
+        onClick={menu?.toggle}
+        aria-label="Menu"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? menu?.menuId : undefined}
+      >
+        <AlignJustify className={styles.icon} aria-hidden="true" />
+      </button>
     </nav>
   );
 }

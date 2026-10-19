@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
-import { Footer } from '@/app/components/Footer/Footer';
 import { CollectionHeader } from '@/app/components/ui/CollectionHeader/CollectionHeader';
 import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { useInViewport } from '@/app/hooks/inViewport';
@@ -85,7 +84,6 @@ export default function AllImagesClient({ initial, ssrViewport }: AllImagesClien
         collection={mockCollection}
         chunkSize={4}
         ssrViewport={ssrViewport}
-        withFooter={false}
         backHref="/admin"
         header={<CollectionHeader title="All Images" count={initial.totalElements} />}
       />
@@ -104,8 +102,6 @@ export default function AllImagesClient({ initial, ssrViewport }: AllImagesClien
           </button>
         </div>
       )}
-
-      <Footer />
     </>
   );
 }

@@ -1,6 +1,5 @@
 import { type ReactNode } from 'react';
 
-import { Footer } from '@/app/components/Footer/Footer';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { SiteMenuProvider } from '@/app/components/SiteHeader/SiteMenuContext';
 import { BottomNav } from '@/app/components/ui/BottomNav/BottomNav';
@@ -15,8 +14,6 @@ export interface PageShellProps {
   collectionSlug?: string;
   /** Render the site header (default true). Status pages pass false. */
   withHeader?: boolean;
-  /** Render the site footer after `<main>` (default true). */
-  withFooter?: boolean;
   className?: string;
   /** Server-resolved principal forwarded unchanged to {@link SiteHeader}; omitted means unresolved. */
   me?: MeResponse | null;
@@ -51,7 +48,6 @@ export function PageShell({
   children,
   collectionSlug,
   withHeader = true,
-  withFooter = true,
   className,
   me,
   backHref,
@@ -70,7 +66,6 @@ export function PageShell({
             {children}
           </SkipTarget>
         </main>
-        {withFooter && <Footer />}
       </div>
     </SiteMenuProvider>
   );

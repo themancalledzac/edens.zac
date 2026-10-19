@@ -86,6 +86,36 @@ describe('FilterToolbar mobile wrap', () => {
   });
 });
 
+/**
+ * The bottom row must fill up to the density control. An inactive reset × kept as an invisible
+ * slot reserved about 35px beside the density control, so a chip that fit there wrapped upward.
+ * jsdom has no layout, so the collapse is pinned at the source.
+ */
+describe('FilterToolbar bottom-row fill', () => {
+  const scss = readFileSync(SOURCE, 'utf8');
+
+  it('should collapse the inactive reset × below 768px instead of reserving its width', () => {
+    expect(mobileBranch(scss)).toMatch(/\.resetInactive\s*{[^}]*display:\s*none/);
+  });
+
+  it('should keep the inactive reset × invisible but in flow on desktop', () => {
+    expect(scss).toMatch(/\.resetInactive\s*{\s*visibility:\s*hidden/);
+  });
+});
+
+describe('FilterToolbar square corners', () => {
+  it.each([
+    'app/components/ui/FilterChip/FilterChip.module.scss',
+    'app/components/ui/FilterToolbar/FilterToolbar.module.scss',
+    'app/components/ui/FilterToolbar/DensityTierControl.module.scss',
+  ])('should use --radius-0 and no --radius-1 in %s', file => {
+    const source = readFileSync(join(process.cwd(), file), 'utf8');
+
+    expect(source).toContain('border-radius: var(--radius-0)');
+    expect(source).not.toContain('--radius-1');
+  });
+});
+
 describe('DensityTierControl joined segments', () => {
   const density = readFileSync(
     join(process.cwd(), 'app/components/ui/FilterToolbar/DensityTierControl.module.scss'),
