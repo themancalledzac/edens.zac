@@ -148,13 +148,22 @@ export function UserSpaceGrid({
 
   const toolbarSections: ToolbarSection[] = [
     ...(hasAdminHub
-      ? [{ key: 'admin', label: 'Admin', count: adminCount, href: `${basePath}?tab=admin` }]
+      ? [
+          {
+            key: 'admin',
+            label: 'Admin',
+            icon: 'admin' as const,
+            count: adminCount,
+            href: `${basePath}?tab=admin`,
+          },
+        ]
       : []),
     ...visibleKeys.map(key => {
       const section = sections[key];
       return {
         key,
         label: section.label,
+        icon: key,
         count: section.unavailableLabel === undefined ? section.count : undefined,
         href: `${basePath}?tab=${key}`,
       };

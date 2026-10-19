@@ -10,7 +10,6 @@ import {
   DensityTierControl,
 } from '@/app/components/ui/FilterToolbar/DensityTierControl';
 import { Modal } from '@/app/components/ui/Modal/Modal';
-import { SegmentedChip } from '@/app/components/ui/SegmentedChip/SegmentedChip';
 import { useClickOutside } from '@/app/hooks/useClickOutside';
 import { useViewport } from '@/app/hooks/useViewport';
 import {
@@ -24,7 +23,7 @@ import {
   toggleArrayFilter,
 } from '@/app/types/GalleryFilter';
 
-import { CHIP_WEIGHT, type ToolbarExtra } from './chipWeights';
+import { type ToolbarExtra } from './chipWeights';
 import styles from './FilterToolbar.module.scss';
 import {
   collectActiveFilterBadges,
@@ -60,8 +59,8 @@ export interface ToolbarCounts {
 }
 
 /**
- * One mutually-exclusive page section (e.g. Collections / Images / Saved), rendered as a segment
- * of the `SegmentedChip` in the bar's upper tier.
+ * One mutually-exclusive page section (e.g. Collections / Images / Saved), rendered as a link
+ * {@link Chip} in the bar's upper tier: icon and count on a phone, icon, label and count from 768px.
  *
  * Sections are a SINGLE-select dimension addressed by a search param, which is why they are not
  * part of {@link FilterState} like every other dimension here: exactly one is always chosen, and
@@ -73,13 +72,15 @@ export interface ToolbarSection {
   /** Stable key, also the search-param value. */
   key: string;
   label: string;
+  /** The section's icon. Without one the chip shows its label at every width. */
+  icon?: ChipIconKey;
   /**
    * Item count in this section, shown as the chip's badge.
    *
    * OMITTED when the count is not known — a section whose read failed has no count, and badging it
    * `0` would assert the section is empty in the one place a caller has already stopped making
-   * that claim in the body. Absent renders as the bare label, never an empty badge: `FilterChip`
-   * drops the whole count node on `undefined`.
+   * that claim in the body. Absent renders as the bare label, never an empty badge: `Chip` drops
+   * the whole count node on `undefined`.
    */
   count?: number;
   /** Destination selecting this section. */
@@ -96,9 +97,9 @@ export interface FilterToolbarProps {
   sections?: readonly ToolbarSection[];
   /** Key of the section currently rendered. Ignored when {@link sections} is absent. */
   activeSectionKey?: string;
-  /** Intercepts a section click for client-side switching. Passed to `SegmentedChip` as `onSelect`. */
+  /** Intercepts a plain section click for client-side switching. Modifier clicks still navigate. */
   onSectionSelect?: (key: string, href: string) => void;
-  /** Page-level chips for the upper tier (Share, Contact, …), ordered by weight with the sections. */
+  /** Page-level chips for the upper tier (Share, Contact, …), after the sections in weight order. */
   extras?: readonly ToolbarExtra[];
   /** Which array dimensions to surface as dropdowns, keyed by the FilterState array key. */
   dimensions: Partial<Record<ArrayFilterKey, ToolbarDimension>>;
@@ -315,38 +316,40 @@ export function FilterToolbar({
   const controls = buildDropdownControls(dimensions);
   const activeBadges = collectActiveFilterBadges(filterState, dimensions, ARRAY_FILTER_KEYS);
 
-  const upper: ToolbarExtra[] = [
-    ...(sections && sections.length > 0
-      ? [
-          {
-            key: 'sections',
-            weight: CHIP_WEIGHT.sections,
-            node: (
-              <SegmentedChip
-                ariaLabel="Sections"
-                onSelect={onSectionSelect}
-                segments={sections.map(section => ({
-                  key: section.key,
-                  label: section.label,
-                  count: section.count,
-                  href: section.href,
-                  current: section.key === activeSectionKey,
-                }))}
-              />
-            ),
-          },
-        ]
-      : []),
-    ...(extras ?? []),
-  ].sort((a, b) => b.weight - a.weight);
+  const pageActions = [...(extras ?? [])].sort((a, b) => b.weight - a.weight);
+  const hasSections = sections !== undefined && sections.length > 0;
 
   return (
     <div ref={barRef} className={styles.bar}>
-      {upper.length > 0 && (
+      {(hasSections || pageActions.length > 0) && (
         <div className={styles.upper}>
-          {upper.map(entry => (
-            <Fragment key={entry.key}>{entry.node}</Fragment>
-          ))}
+          {hasSections && (
+            <nav aria-label="Sections">
+              <ChipRow underline={false}>
+                {sections.map(section => (
+                  <Chip
+                    key={section.key}
+                    label={section.label}
+                    icon={section.icon ? CHIP_ICONS[section.icon] : undefined}
+                    hideLabelBelow={section.icon !== undefined}
+                    count={section.count}
+                    href={section.href}
+                    active={section.key === activeSectionKey}
+                    onSelect={
+                      onSectionSelect ? () => onSectionSelect(section.key, section.href) : undefined
+                    }
+                  />
+                ))}
+              </ChipRow>
+            </nav>
+          )}
+          {pageActions.length > 0 && (
+            <ChipRow underline={false}>
+              {pageActions.map(entry => (
+                <Fragment key={entry.key}>{entry.node}</Fragment>
+              ))}
+            </ChipRow>
+          )}
         </div>
       )}
       <div className={styles.toolbar}>

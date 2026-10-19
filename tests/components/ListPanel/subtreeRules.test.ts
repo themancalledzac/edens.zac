@@ -70,13 +70,15 @@ describe('ListPanel rails', () => {
   });
 
   /**
-   * A tab and the header action are both exactly the `button` slot tall, which is what the tabbed
-   * header's `{ left: ['button'], right: ['button'] }` shape reserves. Taller, and every panel
-   * would render a header the packer never reserved.
+   * Tabs and the header action are Chips, sized to the `button` slot through `--chip-height`,
+   * which is what the tabbed header's `{ left: ['button'], right: ['button'] }` shape reserves.
+   * Taller, and every panel would render a header the packer never reserved.
    */
-  it('sizes tabs and the header action to the button slot', () => {
-    expect(declarationOf('.tab', 'height')).toBe('var(--lp-slot-button)');
-    expect(declarationOf('.panelAction', 'height')).toBe('var(--lp-slot-button)');
+  it('sizes the chips in a panel to the button slot', () => {
+    expect(declarationOf('.panel', '--chip-height')).toBe('var(--lp-slot-button)');
+    expect(read('app/components/ui/Chip/Chip.module.scss')).toContain(
+      'height: var(--chip-height, 32px)'
+    );
   });
 
   /**

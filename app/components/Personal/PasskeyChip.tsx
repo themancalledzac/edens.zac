@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 
-import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
+import { Chip } from '@/app/components/ui/Chip/Chip';
+import { CHIP_ICONS } from '@/app/components/ui/Chip/chipIcons';
 import { registerPasskey } from '@/app/lib/api/auth';
 import { ApiError } from '@/app/lib/api/core';
 
@@ -63,9 +64,10 @@ export function PasskeyChip({ initiallyEnrolled }: PasskeyChipProps) {
   const pending = phase === 'pending';
   return (
     <span className={styles.wrap}>
-      <FilterChip
+      <Chip
         label={PASSKEY_LABEL}
-        trailing={pending ? '…' : ''}
+        icon={CHIP_ICONS.passkey}
+        hideLabelBelow
         state={pending ? 'unavailable' : 'available'}
         onToggle={handleEnroll}
       />

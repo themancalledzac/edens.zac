@@ -1,4 +1,4 @@
-import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
+import { Chip } from '@/app/components/ui/Chip/Chip';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { getAllLocations, getAllTags } from '@/app/lib/api/content';
 
@@ -56,7 +56,7 @@ export async function ExploreDirectory() {
           <ul className={styles.linkList}>
             {locations.map(loc => (
               <li key={loc.id}>
-                <FilterChip label={loc.name} href={`/location/${loc.slug}`} scroll />
+                <Chip label={loc.name} href={`/location/${loc.slug}`} scroll />
               </li>
             ))}
           </ul>
@@ -73,7 +73,7 @@ export async function ExploreDirectory() {
           <ul className={styles.linkList}>
             {tags.map(tag => (
               <li key={tag.id}>
-                <FilterChip label={tag.name} href={`/tag/${tag.slug}`} scroll />
+                <Chip label={tag.name} href={`/tag/${tag.slug}`} scroll />
               </li>
             ))}
           </ul>

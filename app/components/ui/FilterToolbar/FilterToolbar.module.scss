@@ -51,12 +51,16 @@
   }
 }
 
-/* Highest weight leftmost; plain wrap, since the row a reader starts from is the top one here. */
+/* Two ChipRows on one underlined line: the sections, then the page actions in weight order. The
+   wider column gap sets the two groups apart, where a divider would read them as one. Plain wrap,
+   since the row a reader starts from is the top one here. */
 .upper {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  row-gap: var(--space-2);
+  column-gap: var(--space-4);
   align-items: center;
+  border-bottom: 1px solid var(--color-border);
 }
 
 /* The wrapping half: every filter control, a ChipRow with `wrap="reverse"` so the bottom line fills

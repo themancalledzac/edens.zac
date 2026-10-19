@@ -104,7 +104,6 @@ describe('FilterToolbar bottom-row fill', () => {
 
 describe('FilterToolbar square corners', () => {
   it.each([
-    'app/components/ui/FilterChip/FilterChip.module.scss',
     'app/components/ui/FilterToolbar/FilterToolbar.module.scss',
     'app/components/ui/Chip/Chip.module.scss',
   ])('should use --radius-0 and no --radius-1 in %s', file => {
@@ -131,6 +130,6 @@ describe('ChipRow dividers and line gap', () => {
   });
 
   it('should keep every chip at least 44px wide and 32px tall', () => {
-    expect(chip).toMatch(/\.chip {[^}]*min-width: 44px;[^}]*height: 32px;/);
+    expect(chip).toMatch(/\.chip {[^}]*min-width: 44px;[^}]*height: var\(--chip-height, 32px\);/);
   });
 });

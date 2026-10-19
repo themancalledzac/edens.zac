@@ -1,4 +1,5 @@
-/* Chip and ChipRow. A chip is a 32px cell with no box. Its coarse-pointer ::after overlay lifts the
+/* Chip and ChipRow. A chip is a 32px cell with no box. A container with a fixed slot (a list panel
+   header) can lower that with --chip-height. Its coarse-pointer ::after overlay lifts the
    tap target to 44px, so a wrapped line needs an 8px row gap to clear the 6px overhang. The
    divider is the row child's ::before. */
 
@@ -44,7 +45,7 @@
   justify-content: center;
   gap: var(--space-1);
   min-width: 44px;
-  height: 32px;
+  height: var(--chip-height, 32px);
   padding: 0 var(--space-2);
   font: inherit;
   font-size: var(--text-sm);
