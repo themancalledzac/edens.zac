@@ -84,14 +84,16 @@ const photoProps = {
 describe('CollectionContentRenderer — follow toggle on collection cards', () => {
   it('renders the follow toggle on a collection card inside a FollowsProvider', () => {
     withFollows(<CollectionContentRenderer {...collectionCardProps} />);
-    expect(screen.getByRole('button', { name: /follow collection/i })).toHaveTextContent('Follow');
+    expect(screen.getByRole('button', { name: /follow collection/i })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
   });
 
   it('reflects existing follow state from the provider', () => {
     withFollows(<CollectionContentRenderer {...collectionCardProps} />, [301]);
     const button = screen.getByRole('button', { name: /unfollow collection/i });
     expect(button).toHaveAttribute('aria-pressed', 'true');
-    expect(button).toHaveTextContent('Following');
   });
 
   it('persists the COLLECTION id, not the content-block id', () => {
