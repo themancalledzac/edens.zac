@@ -1,7 +1,7 @@
 /** @jest-environment node */
 import { type ReactElement, type ReactNode } from 'react';
 
-import CommentsPage from '@/app/(admin)/comments/page';
+import CommentsPage from '@/app/(site)/(admin)/comments/page';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { meServer } from '@/app/lib/api/auth';
 import { getAdminMessages } from '@/app/lib/api/messages';
@@ -9,7 +9,7 @@ import { getAdminMessages } from '@/app/lib/api/messages';
 jest.mock('@/app/lib/api/auth', () => ({ meServer: jest.fn() }));
 jest.mock('@/app/lib/api/messages', () => ({ getAdminMessages: jest.fn() }));
 jest.mock('@/app/components/ui/PageShell/PageShell', () => ({ PageShell: jest.fn() }));
-jest.mock('@/app/(admin)/comments/CommentsList', () => ({ CommentsList: jest.fn() }));
+jest.mock('@/app/(site)/(admin)/comments/CommentsList', () => ({ CommentsList: jest.fn() }));
 
 const principal = { isAdmin: true, email: 'a@example.com' };
 

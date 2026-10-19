@@ -1,8 +1,8 @@
 import { act, render, screen } from '@testing-library/react';
 import { isValidElement } from 'react';
 
-import { ADMIN_TILES } from '@/app/(admin)/admin/adminTiles';
-import AdminHubPage from '@/app/(admin)/admin/page';
+import { ADMIN_TILES } from '@/app/(site)/(admin)/admin/adminTiles';
+import AdminHubPage from '@/app/(site)/(admin)/admin/page';
 import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import * as adminHomeApi from '@/app/lib/api/adminHome';
 import * as rolesApi from '@/app/lib/api/roles';

@@ -1,5 +1,5 @@
-import { buildAdminHubContent } from '@/app/(admin)/admin/adminHubContent';
-import { ADMIN_TILES } from '@/app/(admin)/admin/adminTiles';
+import { buildAdminHubContent } from '@/app/(site)/(admin)/admin/adminHubContent';
+import { ADMIN_TILES } from '@/app/(site)/(admin)/admin/adminTiles';
 import { buildContentRows } from '@/app/components/Content/componentUtils';
 import { LAYOUT } from '@/app/constants';
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';

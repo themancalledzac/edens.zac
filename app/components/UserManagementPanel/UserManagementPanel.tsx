@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useMemo, useState } from 'react';
 
-import { GenerateInviteButton } from '@/app/(admin)/admin/users/GenerateInviteButton';
+import { GenerateInviteButton } from '@/app/(site)/(admin)/admin/users/GenerateInviteButton';
 import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { useAdminPanelSeed } from '@/app/components/ListPanel/AdminPanelSeedContext';
 import { ListDetailSheet } from '@/app/components/ListPanel/ListDetailSheet';

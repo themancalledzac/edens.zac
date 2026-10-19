@@ -1,5 +1,5 @@
 .container {
-  /* Match the route loading fallback (app/loading.module.scss, 100dvh) so the
+  /* Match the route loading fallback (app/components/ui/PageLoading/PageLoading.module.scss, 100dvh) so the
      frame keeps a constant height across the loading -> loaded handoff.
      100vh > 100dvh on mobile, so a mismatch shifts the page when content arrives. */
   min-height: 100dvh;

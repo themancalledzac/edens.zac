@@ -20,12 +20,12 @@ type MessagesFilter = { unread?: boolean };
 async function load(unread: number | Error, all: number, guardOff = false) {
   jest.resetModules();
   if (guardOff) {
-    jest.doMock('@/app/(admin)/admin/adminHubContent', () => ({
-      ...jest.requireActual('@/app/(admin)/admin/adminHubContent'),
+    jest.doMock('@/app/(site)/(admin)/admin/adminHubContent', () => ({
+      ...jest.requireActual('@/app/(site)/(admin)/admin/adminHubContent'),
       toUnreadCount: (result: { total: number } | null) => result?.total ?? 0,
     }));
   } else {
-    jest.dontMock('@/app/(admin)/admin/adminHubContent');
+    jest.dontMock('@/app/(site)/(admin)/admin/adminHubContent');
   }
   const { getAdminMessages } = await import('@/app/lib/api/messages');
   const messages = getAdminMessages as jest.Mock;
@@ -35,7 +35,7 @@ async function load(unread: number | Error, all: number, guardOff = false) {
       ? Promise.reject(unread)
       : Promise.resolve({ total: unread, items: [] });
   });
-  const { loadAdminHub } = await import('@/app/(admin)/admin/loadAdminHub');
+  const { loadAdminHub } = await import('@/app/(site)/(admin)/admin/loadAdminHub');
   return { loadAdminHub, messages };
 }
 

@@ -1,5 +1,5 @@
 // Admin = authenticated admin principal: the backend enforces hasRole('ADMIN') on
-// /api/admin/** (see docs 009). Gating centralized in app/(admin)/layout.tsx via requireAdmin().
+// /api/admin/** (see docs 009). Gating centralized in app/(site)/(admin)/layout.tsx via requireAdmin().
 import { notFound } from 'next/navigation';
 
 import AllImagesClient from '@/app/components/Admin/AllImagesClient';

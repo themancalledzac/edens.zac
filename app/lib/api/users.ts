@@ -120,7 +120,7 @@ export async function upgradeUser(userId: number, email: string): Promise<Create
  *
  * `null` means an EMPTY BODY, not a 404: `fetchAdminGetApi` throws `ApiError` for every non-OK
  * response, 404 included. Callers that want a `notFound()` must narrow on `error.status === 404`
- * and rethrow the rest — see `app/(admin)/admin/users/[id]/page.tsx`. Catching every status there
+ * and rethrow the rest — see `app/(site)/(admin)/admin/users/[id]/page.tsx`. Catching every status there
  * would render "user not found" at an admin whose backend is merely unreachable.
  */
 export async function getAdminUser(id: number): Promise<AdminUserSummary | null> {
