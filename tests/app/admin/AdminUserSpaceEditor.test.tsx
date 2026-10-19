@@ -12,7 +12,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import { AdminUserSpaceEditor } from '@/app/(admin)/admin/users/[id]/AdminUserSpaceEditor';
+import { AdminUserSpaceEditor } from '@/app/(site)/(admin)/admin/users/[id]/AdminUserSpaceEditor';
 import { useInlineEdit } from '@/app/components/ContentCollection/edit/InlineEditContext';
 import { InlineEditableText } from '@/app/components/ui/InlineEditableText/InlineEditableText';
 import { ApiError } from '@/app/lib/api/core';

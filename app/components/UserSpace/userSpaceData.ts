@@ -246,7 +246,7 @@ export interface UserSpaceData {
  * `getUserPageById` throws `ApiError` for every non-OK status (see `fetchAdminGetApi`), so the
  * bare `.catch(() => null)` this replaces reported a 500, a timeout and a lapsed admin session as
  * "this user has no galleries yet" — a claim about the data, made from a state where nothing about
- * the data was known. Everything but a 404 now rethrows and lands on `app/(admin)/error.tsx`,
+ * the data was known. Everything but a 404 now rethrows and lands on `app/(site)/(admin)/error.tsx`,
  * which offers a retry. Same narrowing as `getAdminUser` in the detail page.
  */
 async function loadAdminUserPage(userId: number): Promise<CollectionModel | null> {

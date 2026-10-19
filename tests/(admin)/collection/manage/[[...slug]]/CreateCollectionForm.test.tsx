@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import CreateCollectionForm from '@/app/(admin)/collection/manage/[[...slug]]/CreateCollectionForm';
+import CreateCollectionForm from '@/app/(site)/(admin)/collection/manage/[[...slug]]/CreateCollectionForm';
 import { createCollection } from '@/app/lib/api/collections';
 
 jest.mock('next/navigation', () => ({

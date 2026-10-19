@@ -3,7 +3,7 @@
  * `AUTHOR_NAME` so the home page, the collection route and the JSON-LD author cannot drift apart.
  */
 
-import { metadata } from '@/app/page';
+import { metadata } from '@/app/(site)/page';
 import { AUTHOR_NAME } from '@/app/utils/structuredData';
 
 jest.mock('@/app/components/ContentCollection/CollectionPageWrapper', () => ({

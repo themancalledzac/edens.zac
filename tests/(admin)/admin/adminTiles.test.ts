@@ -1,4 +1,4 @@
-import { ADMIN_TILES } from '@/app/(admin)/admin/adminTiles';
+import { ADMIN_TILES } from '@/app/(site)/(admin)/admin/adminTiles';
 
 describe('ADMIN_TILES', () => {
   it('has every tileKey unique', () => {
@@ -17,9 +17,10 @@ describe('ADMIN_TILES', () => {
     expect(ADMIN_TILES.find(t => t.tileKey === 'home')).toBeUndefined();
   });
 
-  // buildAdminHubContent derives a tile's slug as `href.replace(/^\//, '')`, and
-  // getClickEligibility gates isSlugNav on `!!hasSlug`. A tile pointing at '/' would
-  // therefore render but navigate nowhere, so no tile may point at the root.
+  /**
+   * A tile's slug is `href` without its leading slash, and slug navigation needs a non-empty slug,
+   * so a tile pointing at '/' would render but navigate nowhere.
+   */
   it('has no tile pointing at the root, which would derive an empty (falsy) slug', () => {
     for (const tile of ADMIN_TILES) {
       expect(tile.href).not.toBe('/');

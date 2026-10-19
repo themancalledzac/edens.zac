@@ -45,6 +45,7 @@ jest.mock('@/app/components/Personal/FollowsContext', () => ({
 
 import { renderToStaticMarkup } from 'react-dom/server';
 
+import UserPage from '@/app/(site)/user/page';
 import { MeProvider } from '@/app/components/Auth/MeProvider';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
@@ -58,7 +59,6 @@ import {
   listSavedImagesServer,
 } from '@/app/lib/api/personal';
 import { readShareSettings } from '@/app/lib/api/share';
-import UserPage from '@/app/user/page';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 const authedPrincipal = {

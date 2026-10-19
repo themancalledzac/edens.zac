@@ -3,7 +3,7 @@ import {
   COLLAPSED_PANEL_SIZE,
   tabbedPanelHeight,
   withPanelFootprints,
-} from '@/app/(admin)/admin/adminHubContent';
+} from '@/app/(site)/(admin)/admin/adminHubContent';
 import { buildContentRows } from '@/app/components/Content/componentUtils';
 import { LAYOUT } from '@/app/constants';
 import { isPanelContent } from '@/app/utils/contentTypeGuards';

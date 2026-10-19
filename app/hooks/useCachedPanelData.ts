@@ -293,7 +293,7 @@ export interface CachedPanelData<T> {
  * another fetch has moved that key on since it started.
  *
  * `initialData` is a third, colder layer beneath those two: the list the SERVER already fetched for
- * this render (see `app/(admin)/admin/page.tsx`, which needs the row counts to lay the hub out and
+ * this render (see `app/(site)/(admin)/admin/page.tsx`, which needs the row counts to lay the hub out and
  * so has the lists in hand). Without it a panel's first paint is "Loading…" over data that crossed
  * the wire moments earlier, and the client repeats a request the server just made. It is consumed
  * in the `useState` initializer rather than an effect because that is the only place a value can

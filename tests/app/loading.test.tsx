@@ -5,9 +5,9 @@ import { join } from 'node:path';
 
 import { render, screen } from '@testing-library/react';
 
+import Loading from '@/app/(site)/loading';
+import SearchLoading from '@/app/(site)/search/loading';
 import { MAIN_CONTENT_ID } from '@/app/components/ui/SkipLink/SkipLink';
-import Loading from '@/app/loading';
-import SearchLoading from '@/app/search/loading';
 
 jest.mock('@/app/components/SiteHeader/SiteHeader', () => {
   const stub = () => <div data-testid="site-header" />;
@@ -56,7 +56,7 @@ describe('root loading fallback body', () => {
  * regression, so this reads the stylesheet source and asserts its declarations. The twins run
  * the checker over a regressed copy and assert the regression is reported.
  */
-const SOURCE = join(process.cwd(), 'app/loading.module.scss');
+const SOURCE = join(process.cwd(), 'app/components/ui/PageLoading/PageLoading.module.scss');
 
 function source(): string {
   return readFileSync(SOURCE, 'utf8');

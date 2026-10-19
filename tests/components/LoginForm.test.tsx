@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
+import LoginForm from '@/app/(site)/login/LoginForm';
 import * as authApi from '@/app/lib/api/auth';
 import { ApiError } from '@/app/lib/api/core';
-import LoginForm from '@/app/login/LoginForm';
 
 const mockPush = jest.fn();
 const mockRefresh = jest.fn();

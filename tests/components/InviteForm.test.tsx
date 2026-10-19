@@ -10,7 +10,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import InviteForm from '@/app/invite/[token]/InviteForm';
+import InviteForm from '@/app/(site)/invite/[token]/InviteForm';
 import * as authApi from '@/app/lib/api/auth';
 import { ApiError } from '@/app/lib/api/core';
 import * as usersApi from '@/app/lib/api/users';

@@ -44,10 +44,12 @@ jest.mock('@/app/lib/api/messages', () => ({
   getAdminMessages: jest.fn().mockResolvedValue({ total: 0, items: [] }),
   submitContactMessage: jest.fn(),
 }));
-jest.mock('@/app/(admin)/admin/AdminHubClient', () => ({ AdminHubClient: () => 'AdminHubClient' }));
+jest.mock('@/app/(site)/(admin)/admin/AdminHubClient', () => ({
+  AdminHubClient: () => 'AdminHubClient',
+}));
 
-import { AdminHubClient } from '@/app/(admin)/admin/AdminHubClient';
-import AdminPage from '@/app/(admin)/admin/page';
+import { AdminHubClient } from '@/app/(site)/(admin)/admin/AdminHubClient';
+import AdminPage from '@/app/(site)/(admin)/admin/page';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';

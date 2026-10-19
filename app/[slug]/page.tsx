@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound, redirect, unstable_rethrow } from 'next/navigation';
+import { Suspense } from 'react';
 
 import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
 import { CollectionJsonLd } from '@/app/components/StructuredData/CollectionJsonLd';
+import { PageLoading } from '@/app/components/ui/PageLoading/PageLoading';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
 import { requireAdmin } from '@/app/utils/admin';
 import { HOME_SLUG } from '@/app/utils/collectionSlugs';
@@ -18,22 +20,19 @@ interface CollectionPageProps {
   }>;
 }
 
-// Render every collection through Lambda SSR — same path the home page
-// (app/page.tsx) uses. Amplify's static-with-dynamic-fallback routing for
-// this segment doesn't work in prod: non-prerendered slugs return a fixed
-// CloudFront 500 without invoking Lambda. Going fully dynamic sidesteps
-// the broken fallback and matches what local dev already does.
+/**
+ * Renders every collection through Lambda SSR, the same path the home page uses. Amplify's
+ * static-with-dynamic-fallback routing returns a fixed CloudFront 500 for non-prerendered slugs.
+ */
 export const dynamic = 'force-dynamic';
 
 const STATIC_FILES = ['favicon.ico', 'robots.txt', 'sitemap.xml', 'manifest.json'];
 
 /**
- * Settles the response status before the root `loading.tsx` Suspense boundary streams.
- *
- * Streaming metadata means non-bot clients get their status from the page, not from
- * `generateMetadata`, and a `notFound()` thrown once the fallback has streamed can no longer change
- * the 200. The read is `getCollectionBySlug(slug, 0, 500)`, the same call `generateMetadata` and
- * `CollectionPageWrapper` make, so it is served from the shared fetch cache with no extra request.
+ * Settles the response status before the page's `<Suspense>` boundary streams. This route sits
+ * outside the `(site)` group's `loading.tsx`, so nothing streams before this check. The read is
+ * `getCollectionBySlug(slug, 0, 500)`, the same call `generateMetadata` and `CollectionPageWrapper`
+ * make, so it is served from the shared fetch cache with no extra request.
  * Control-flow errors from Next.js (they carry a `digest`) are rethrown; any other failure is left
  * for the page body to handle, so an outage is never reported as a missing page.
  */
@@ -49,7 +48,7 @@ async function assertCollectionExists(slug: string) {
 /**
  * Resolves collection metadata and decides the response status for an unknown slug.
  *
- * Status mechanism (r-49.2 applies the same one to tag and location pages): metadata streams for
+ * Status mechanism (shared with the tag and location pages): metadata streams for
  * non-bot clients, so the status for them is decided by the page body, which runs the existence
  * check {@link assertCollectionExists} before returning its JSX. This function covers HTML-limited
  * bots, which block on metadata, with the read it already makes, `getCollectionBySlug(slug, 0, 500)`, which throws
@@ -122,6 +121,9 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
  *
  * {@link CollectionJsonLd} is skipped in edit mode: the admin surface is not a public gallery,
  * and it suppresses itself for password-protected collections the way `generateMetadata` does.
+ *
+ * The content renders inside `<Suspense>` only after {@link assertCollectionExists}, so an unknown
+ * slug answers a real 404 and a known one still shows {@link PageLoading} while it streams.
  */
 export default async function CollectionPage({ params, searchParams }: CollectionPageProps) {
   const { slug } = await params;
@@ -148,9 +150,9 @@ export default async function CollectionPage({ params, searchParams }: Collectio
   await assertCollectionExists(slug);
 
   return (
-    <>
+    <Suspense fallback={<PageLoading />}>
       {!editMode && <CollectionJsonLd slug={slug} />}
       <CollectionPageWrapper slug={slug} editMode={editMode} />
-    </>
+    </Suspense>
   );
 }

@@ -11,8 +11,8 @@ import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import { type ReactNode } from 'react';
 
-import { ExploreDirectory } from '@/app/explore/ExploreDirectory';
-import ExplorePage from '@/app/explore/page';
+import { ExploreDirectory } from '@/app/(site)/explore/ExploreDirectory';
+import ExplorePage from '@/app/(site)/explore/page';
 import { meServer } from '@/app/lib/api/auth';
 import { type MeResponse } from '@/app/types/Auth';
 

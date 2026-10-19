@@ -315,7 +315,7 @@ describe('A12: the b1164134 MessagesPanel shape (nested left, two named imports)
 });
 
 describe('A14: Comments.module.scss keeps only rules a file still reads', () => {
-  const commentsDir = path.join(APP_ROOT, '(admin)', 'comments');
+  const commentsDir = path.join(APP_ROOT, '(site)', '(admin)', 'comments');
   const stylesheet = path.join(commentsDir, 'Comments.module.scss');
 
   it('drops the row rules MessageRow now owns', () => {

@@ -14,7 +14,7 @@ let clientReportsRemaining = CLIENT_REPORT_BUDGET;
 /**
  * Route prefixes whose first path segment is an access token rather than an identifier.
  *
- * On `/s/<token>` and `/invite/<token>` the URL *is* the credential — `app/invite/[token]/page.tsx`
+ * On `/s/<token>` and `/invite/<token>` the URL *is* the credential — `app/(site)/invite/[token]/page.tsx`
  * sets `referrer: 'no-referrer'` for exactly this reason. Both are leaf routes, so collapsing
  * everything after the prefix discards nothing a reader would have used.
  */

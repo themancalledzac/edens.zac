@@ -4,8 +4,8 @@ import {
   panelContentHeight,
   tabbedPanelHeight,
   withPanelFootprints,
-} from '@/app/(admin)/admin/adminHubContent';
-import { ADMIN_TILES } from '@/app/(admin)/admin/adminTiles';
+} from '@/app/(site)/(admin)/admin/adminHubContent';
+import { ADMIN_TILES } from '@/app/(site)/(admin)/admin/adminTiles';
 import { LAYOUT } from '@/app/constants';
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
 import type { ContentPanelModel, ContentParallaxImageModel } from '@/app/types/Content';

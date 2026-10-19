@@ -10,7 +10,7 @@ import { type AdminUserSummary } from '@/app/types/User';
  * The lists the SERVER already fetched for this render of the hub, handed to the panels that would
  * otherwise fetch them again.
  *
- * `app/(admin)/admin/page.tsx` does not fetch these for the panels' benefit — it needs their row
+ * `app/(site)/(admin)/admin/page.tsx` does not fetch these for the panels' benefit — it needs their row
  * COUNTS to reserve each panel's layout height before the first pack. Having paid for the round
  * trip, keeping only `.length` and letting the client re-request the same list is the project's
  * single-fetch rule broken in the most literal way, and it costs a "Loading…" paint over data the

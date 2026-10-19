@@ -13,6 +13,10 @@ import CollectionPageWrapper from '@/app/components/ContentCollection/Collection
 import { CollectionJsonLd } from '@/app/components/StructuredData/CollectionJsonLd';
 import { requireAdmin } from '@/app/utils/admin';
 
+jest.mock('@/app/components/ui/PageLoading/PageLoading', () => ({
+  PageLoading: () => null,
+}));
+
 jest.mock('@/app/components/ContentCollection/CollectionPageWrapper', () => ({
   __esModule: true,
   default: jest.fn(() => null),
@@ -86,7 +90,6 @@ describe('app/[slug]/page.tsx — ?manage=1 entry (isAdmin-gated via requireAdmi
 
     await expect(renderPage('film', '1')).rejects.toThrow('NEXT_REDIRECT');
     expect(mockRequireAdmin).toHaveBeenCalledTimes(1);
-    // CollectionPageWrapper must not render for a viewer requireAdmin rejects.
     expect(mockWrapper).not.toHaveBeenCalled();
   });
 

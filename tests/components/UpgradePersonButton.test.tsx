@@ -10,7 +10,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { UpgradePersonButton } from '@/app/(admin)/admin/users/[id]/UpgradePersonButton';
+import { UpgradePersonButton } from '@/app/(site)/(admin)/admin/users/[id]/UpgradePersonButton';
 import { ApiError } from '@/app/lib/api/core';
 import { upgradeUser } from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';

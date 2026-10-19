@@ -1,8 +1,10 @@
 /**
- * Tests that an unknown location, or one with no collections and no images, answers 404: the page
- * body must throw `notFound()` before returning JSX, so the status is settled ahead of the loading
- * boundary.
+ * Tests that an unknown location answers 404: the page body must throw `notFound()` before
+ * returning JSX, so the status is settled ahead of the page's `<Suspense>` boundary. A known
+ * location with no content throws `notFound()` from inside that boundary.
  */
+
+import { isValidElement, type ReactElement, Suspense } from 'react';
 
 import { getCollectionsByLocation } from '@/app/lib/api/collections';
 import { getAllLocations, searchImages } from '@/app/lib/api/content';
@@ -15,6 +17,10 @@ jest.mock('@/app/lib/api/collections', () => ({
 jest.mock('@/app/lib/api/content', () => ({
   getAllLocations: jest.fn(),
   searchImages: jest.fn(),
+}));
+
+jest.mock('@/app/components/ui/PageLoading/PageLoading', () => ({
+  PageLoading: () => null,
 }));
 
 jest.mock('@/app/components/LocationPage/LocationPage', () => ({
@@ -34,6 +40,15 @@ function pageFor(slug: string) {
   return LocationPageRoute({ params: Promise.resolve({ slug }) });
 }
 
+async function contentFor(slug: string) {
+  const page = await pageFor(slug);
+  expect(page.type).toBe(Suspense);
+  const content = page.props.children as ReactElement<Record<string, unknown>>;
+  expect(isValidElement(content)).toBe(true);
+  const Content = content.type as (props: Record<string, unknown>) => Promise<ReactElement>;
+  return Content(content.props);
+}
+
 describe('LocationPageRoute — unknown location status', () => {
   beforeEach(() => {
     mockGetAllLocations.mockReset();
@@ -51,14 +66,14 @@ describe('LocationPageRoute — unknown location status', () => {
     mockGetCollectionsByLocation.mockResolvedValue([]);
     mockSearchImages.mockResolvedValue([]);
 
-    await expect(pageFor('lisbon')).rejects.toMatchObject(NOT_FOUND);
+    await expect(contentFor('lisbon')).rejects.toMatchObject(NOT_FOUND);
   });
 
   it('renders when the location has images', async () => {
     mockGetCollectionsByLocation.mockResolvedValue([]);
     mockSearchImages.mockResolvedValue([{ id: 1 } as Awaited<ReturnType<typeof searchImages>>[0]]);
 
-    await expect(pageFor('lisbon')).resolves.toBeTruthy();
+    await expect(contentFor('lisbon')).resolves.toBeTruthy();
     expect(mockSearchImages).toHaveBeenCalledWith({ locationId: 7 });
   });
 });

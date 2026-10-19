@@ -1,7 +1,10 @@
 /**
  * Tests that an unknown tag slug answers 404: the page body must throw `notFound()` from the
- * cached tag list before any image search, so the status is settled ahead of the loading boundary.
+ * cached tag list before any image search, so the status is settled ahead of the page's
+ * `<Suspense>` boundary.
  */
+
+import { isValidElement, type ReactElement, Suspense } from 'react';
 
 import { getAllTags, searchImages } from '@/app/lib/api/content';
 import { default as TagPageRoute } from '@/app/tag/[slug]/page';
@@ -9,6 +12,10 @@ import { default as TagPageRoute } from '@/app/tag/[slug]/page';
 jest.mock('@/app/lib/api/content', () => ({
   getAllTags: jest.fn(),
   searchImages: jest.fn(),
+}));
+
+jest.mock('@/app/components/ui/PageLoading/PageLoading', () => ({
+  PageLoading: () => null,
 }));
 
 jest.mock('@/app/components/TaxonomyPage/TaxonomyPage', () => ({
@@ -50,11 +57,21 @@ describe('TagPageRoute — unknown tag status', () => {
     });
   });
 
-  it('renders when the tag exists', async () => {
+  it('wraps the image search in a Suspense boundary when the tag exists', async () => {
     mockGetAllTags.mockResolvedValue([{ id: 1, name: 'Street', slug: 'street' }]);
     mockSearchImages.mockResolvedValue([]);
 
-    await expect(pageFor('street')).resolves.toBeTruthy();
+    const page = await pageFor('street');
+    expect(page.type).toBe(Suspense);
+    expect(mockSearchImages).not.toHaveBeenCalled();
+
+    const content = page.props.children as ReactElement<{ tagId: number; tagName: string }>;
+    expect(isValidElement(content)).toBe(true);
+    const Content = content.type as (props: {
+      tagId: number;
+      tagName: string;
+    }) => Promise<ReactElement>;
+    await expect(Content(content.props)).resolves.toBeTruthy();
     expect(mockSearchImages).toHaveBeenCalledWith({ tagIds: [1] });
   });
 });

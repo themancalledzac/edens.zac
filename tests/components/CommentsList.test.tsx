@@ -8,7 +8,7 @@
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import { CommentsList } from '@/app/(admin)/comments/CommentsList';
+import { CommentsList } from '@/app/(site)/(admin)/comments/CommentsList';
 import type { AdminMessageView } from '@/app/lib/api/messages';
 import * as messagesApi from '@/app/lib/api/messages';
 

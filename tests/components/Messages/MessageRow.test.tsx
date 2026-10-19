@@ -225,7 +225,7 @@ describe('MessageRow — no styles prop (A11)', () => {
 
   it.each([
     'app/components/MessagesPanel/MessagesPanel.tsx',
-    'app/(admin)/comments/CommentsList.tsx',
+    'app/(site)/(admin)/comments/CommentsList.tsx',
   ])('%s passes no styles to a message row', file => {
     const src = read(file);
     const tags = src.match(/<MessageRow\w*\b[\S\s]*?\/>/g) ?? [];
