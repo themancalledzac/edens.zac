@@ -1,0 +1,102 @@
+/* Shared corner toggle — an edge-flush 32px square box pinned to the top-right corner of its
+   image, or the bottom-right with `.cornerToggleBottom`. The 44px touch target is the invisible
+   `::after` overlay under `(pointer: coarse)`, anchored to the same corner so it extends the hit
+   area inward without moving the box.
+
+   The surrounding wrapper carries `data-parallax-container`, `data-image-wrapper`, or neither, so
+   the reveal rules target both attributes plus a direct-parent hover. */
+.cornerToggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  width: var(--space-6);
+  height: var(--space-6);
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--scrim-dark-50);
+  opacity: 0.35;
+  cursor: pointer;
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    background-color var(--duration-base) var(--ease-standard);
+  z-index: var(--z-content);
+  flex-shrink: 0;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    background: var(--scrim-dark-80);
+  }
+}
+
+.cornerToggleBottom {
+  top: auto;
+  bottom: 0;
+  right: 0;
+}
+
+@media (hover: hover) {
+  .cornerToggle {
+    opacity: 0;
+  }
+
+  [data-parallax-container]:hover .cornerToggle,
+  [data-image-wrapper]:hover .cornerToggle,
+  :hover > .cornerToggle {
+    opacity: 0.4;
+  }
+
+  [data-parallax-container]:hover .cornerToggle:hover,
+  [data-parallax-container]:hover .cornerToggle:focus-visible,
+  [data-image-wrapper]:hover .cornerToggle:hover,
+  [data-image-wrapper]:hover .cornerToggle:focus-visible,
+  :hover > .cornerToggle:hover,
+  .cornerToggle:hover,
+  .cornerToggle:focus-visible {
+    opacity: 0.75;
+  }
+}
+
+.cornerToggleActive {
+  opacity: 0.6;
+}
+
+@media (hover: hover) {
+  [data-parallax-container]:hover .cornerToggleActive,
+  [data-image-wrapper]:hover .cornerToggleActive,
+  :hover > .cornerToggleActive,
+  .cornerToggleActive:hover,
+  .cornerToggleActive:focus-visible {
+    opacity: 0.9;
+  }
+}
+
+@media (pointer: coarse) {
+  .cornerToggle {
+    opacity: 0.6;
+  }
+
+  .cornerToggle::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 44px;
+    height: 44px;
+  }
+
+  .cornerToggleBottom::after {
+    top: auto;
+    bottom: 0;
+  }
+}
