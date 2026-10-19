@@ -205,8 +205,12 @@ describe('chip skin (stylesheet source)', () => {
   ].map(read);
   const rolesSheet = read('app/components/UserForm/UserRolesSection.module.scss');
 
-  it.each(sheets)('uses the tight padding, the control border and no muted opacity', sheet => {
-    expect(sheet).toContain('padding: var(--space-1) var(--space-2);');
+  it('gives FilterChip the tighter horizontal padding and square corners', () => {
+    expect(sheets[0]).toContain('padding: var(--space-1) 0.375rem;');
+    expect(sheets[0]).toContain('border-radius: var(--radius-0);');
+  });
+
+  it.each(sheets)('uses the control border and no muted opacity', sheet => {
     expect(sheet).not.toContain('opacity: 0.7');
     expect(sheet).not.toContain('opacity: 0.6');
     expect(sheet).toContain('var(--color-on-surface-muted)');

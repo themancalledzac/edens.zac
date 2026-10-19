@@ -4,6 +4,11 @@ import { type ReactNode } from 'react';
 import { type CollectionModel } from '@/app/types/Collection';
 import { createCollectionContent } from '@/tests/fixtures/contentFixtures';
 
+const mockRefresh = jest.fn();
+jest.mock('next/navigation', () => ({
+  ...jest.requireActual('next/navigation'),
+  useRouter: () => ({ refresh: mockRefresh }),
+}));
 jest.mock('@/app/lib/api/collections', () => ({
   getScopedAllCollections: jest.fn(),
 }));
@@ -23,9 +28,11 @@ jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
   default: ({ children }: { children: ReactNode }) => children,
 }));
 
+import { CollectionsReadError } from '@/app/collections/CollectionsReadError';
 import CollectionsPage from '@/app/collections/page';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
+import { StatusPage } from '@/app/components/ui/StatusPage/StatusPage';
 import { meServer } from '@/app/lib/api/auth';
 import { getScopedAllCollections } from '@/app/lib/api/collections';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
@@ -143,11 +150,11 @@ describe('CollectionsPage', () => {
     expect(stack.collection.content.map((b: { slug: string }) => b.slug)).toEqual(['keep']);
   });
 
-  it('renders a fallback message when the fetch fails', async () => {
+  it('renders the read-error state instead of the stack when the fetch fails', async () => {
     mockGetScopedAllCollections.mockRejectedValue(new Error('upstream down'));
 
-    const result = await CollectionsPage();
-    expect(allText(result)).toMatch(/unable to load collections/i);
+    const result = (await CollectionsPage()) as { type: unknown };
+    expect(result.type).toBe(CollectionsReadError);
     expect(stackProps(result)).toBeNull();
   });
 
@@ -197,7 +204,7 @@ describe('CollectionsPage', () => {
     expect(result.props.me).toBe(me);
   });
 
-  it('passes the resolved principal to the shell on the fallback render', async () => {
+  it('hands the resolved principal to the read-error state', async () => {
     const me = { isAdmin: false } as Awaited<ReturnType<typeof meServer>>;
     mockMeServer.mockResolvedValue(me);
     mockGetScopedAllCollections.mockRejectedValue(new Error('upstream down'));
@@ -205,6 +212,27 @@ describe('CollectionsPage', () => {
     const result = (await CollectionsPage()) as { props: { me: unknown } };
 
     expect(result.props.me).toBe(me);
+  });
+
+  it('hands a null principal to the read-error state when the principal read fails', async () => {
+    mockMeServer.mockRejectedValue(new Error('boom'));
+    mockGetScopedAllCollections.mockRejectedValue(new Error('upstream down'));
+
+    const result = (await CollectionsPage()) as { props: { me: unknown } };
+
+    expect(result.props.me).toBeNull();
+  });
+
+  it('retries the read by refreshing the router', () => {
+    const me = { isAdmin: false } as Awaited<ReturnType<typeof meServer>>;
+    mockRefresh.mockClear();
+
+    const props = findProps(CollectionsReadError({ me }), StatusPage);
+    expect(props.me).toBe(me);
+    expect(mockRefresh).not.toHaveBeenCalled();
+    props.onRetry();
+
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
   });
 
   it('renders with a null principal when the principal read fails', async () => {

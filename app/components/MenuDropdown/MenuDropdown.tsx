@@ -2,17 +2,19 @@
 
 import { CircleX } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { type PointerEvent, useEffect, useId, useRef, useState, useTransition } from 'react';
 
 import { About } from '@/app/components/About/About';
 import GitHubIcon from '@/app/components/Icons/GitHubIcon';
 import InstagramIcon from '@/app/components/Icons/InstagramIcon';
+import { CopyrightYear } from '@/app/components/MenuDropdown/CopyrightYear';
 import { ContactModal } from '@/app/components/Personal/ContactChip';
 import { Disclosure } from '@/app/components/ui/Disclosure/Disclosure';
 import { NavLink } from '@/app/components/ui/NavLink/NavLink';
 import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { useDialogFocus } from '@/app/hooks/useDialogFocus';
 import { useFetchMe } from '@/app/hooks/useFetchMe';
+import { useSwipeToClose } from '@/app/hooks/useSwipeToClose';
 import { clearCacheAction } from '@/app/lib/actions/clearCache';
 import { logout } from '@/app/lib/api/auth';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
@@ -61,8 +63,9 @@ interface MenuNavItem {
 /**
  * Menu Dropdown
  *
- * Navigation overlay: a bottom sheet over a tap-to-close scrim under 768px, a top-right panel
- * above. It has an expandable About section and a Contact row that closes the menu and opens the
+ * Navigation overlay: a full-screen sheet under 768px that covers the bottom bar, a top-right
+ * panel above. On phones the close X sits exactly over the bar's Menu cell and a downward swipe
+ * closes the sheet (`useSwipeToClose`); the socials and copyright row moves to the top. It has an expandable About section and a Contact row that closes the menu and opens the
  * shared `ContactModal`.
  *
  * Destinations are real `NavLink` anchors, so cmd-click / middle-click / open-in-new-tab and
@@ -123,6 +126,12 @@ export function MenuDropdown({
   const [showContact, setShowContact] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [isClearing, startClearing] = useTransition();
+  const adminLabelId = useId();
+  const swipe = useSwipeToClose(dropdownRef, { enabled: isOpen, onClose });
+
+  const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
+    if (window.matchMedia?.('(width < 768px)').matches) swipe.onPointerDown(event);
+  };
 
   const [hasOpened, setHasOpened] = useState(isOpen);
   if (isOpen && !hasOpened) setHasOpened(true);
@@ -208,6 +217,7 @@ export function MenuDropdown({
       href: me?.isAdmin ? '/admin' : '/user',
       show: !meLoading && Boolean(me),
     },
+    { label: 'Log in', href: '/login', show: !meLoading && !me },
   ];
 
   const adminNavItems: MenuNavItem[] = [
@@ -244,6 +254,10 @@ export function MenuDropdown({
         aria-label="Site navigation"
         tabIndex={-1}
         onKeyDown={onKeyDown}
+        onPointerDown={handlePointerDown}
+        onPointerMove={swipe.onPointerMove}
+        onPointerUp={swipe.onPointerUp}
+        onPointerCancel={swipe.onPointerCancel}
       >
         <div className={styles.dropdownCloseButtonWrapper}>
           <button
@@ -274,20 +288,26 @@ export function MenuDropdown({
             </button>
           </div>
 
-          {renderNavItems(adminNavItems)}
-
-          {isLocalEnvironment() && isAdmin && (
-            <div className={styles.dropdownMenuItem}>
-              <button
-                type="button"
-                className={styles.dropdownMenuButton}
-                onClick={handleClearCache}
-                aria-disabled={isClearing || undefined}
-              >
-                <span className={styles.dropdownMenuOptions}>
-                  {isClearing ? 'Clearing…' : 'Clear Cache'}
-                </span>
-              </button>
+          {isAdmin && (
+            <div role="group" aria-labelledby={adminLabelId} className={styles.adminGroup}>
+              <p id={adminLabelId} className={styles.adminLabel}>
+                Admin
+              </p>
+              {renderNavItems(adminNavItems)}
+              {isLocalEnvironment() && (
+                <div className={styles.dropdownMenuItem}>
+                  <button
+                    type="button"
+                    className={styles.dropdownMenuButton}
+                    onClick={handleClearCache}
+                    aria-disabled={isClearing || undefined}
+                  >
+                    <span className={styles.dropdownMenuOptions}>
+                      {isClearing ? 'Clearing…' : 'Clear Cache'}
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -296,14 +316,6 @@ export function MenuDropdown({
               <button type="button" className={styles.dropdownMenuButton} onClick={handleLogout}>
                 <span className={styles.dropdownMenuOptions}>Log out</span>
               </button>
-            </div>
-          )}
-
-          {!meLoading && !me && (
-            <div className={styles.dropdownMenuItem}>
-              <NavLink href="/login" className={styles.dropdownMenuLink} onClick={onClose}>
-                <span className={styles.dropdownMenuOptions}>Log in</span>
-              </NavLink>
             </div>
           )}
         </div>
@@ -331,6 +343,9 @@ export function MenuDropdown({
           >
             <GitHubIcon size={32} className={styles.githubIcon} aria-hidden="true" />
           </a>
+          <p className={styles.copyright}>
+            © <CopyrightYear /> Zac Edens
+          </p>
         </div>
       </div>
       {contactModal}
