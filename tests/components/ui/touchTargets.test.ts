@@ -13,7 +13,7 @@ const INTERACTIVE_MODULES = [
   'IconButton/IconButton.module.scss',
   'FilterChip/FilterChip.module.scss',
   'SegmentedChip/SegmentedChip.module.scss',
-  'FilterToolbar/DensityTierControl.module.scss',
+  'Chip/Chip.module.scss',
 ];
 
 const COARSE_OVERLAY =

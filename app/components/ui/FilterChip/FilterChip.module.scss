@@ -33,14 +33,12 @@
   }
 
   /* Touch-target padding on coarse pointers only, and via an overlay rather than the box itself,
-     so meeting the 44px minimum never changes the toolbar's row height. Same treatment as the
-     density segments the chips share a row with.
+     so meeting the 44px minimum never changes the row height. Same treatment as Chip.
 
      The box is ~29.6px tall (14px text at 1.4, plus --space-1 padding and a 1px border), so the
      overlay overhangs it by ~7.2px above and below. Any container that wraps chips must therefore
      keep its row-gap >= --space-2; at --space-1 a wrapped row's overlay reached back over the
-     chips on the row above and, painting later in DOM order, took their taps. See the invariant
-     comments on FilterToolbar's .controls and .panel.
+     chips on the row above and, painting later in DOM order, took their taps.
 
      Escape hatch for a cluster that cannot afford that gap: set --touch-target-min on the
      container (it inherits). Read IconButton.module.scss before reaching for it — shrinking the

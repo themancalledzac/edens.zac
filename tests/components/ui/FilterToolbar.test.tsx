@@ -27,7 +27,7 @@ function renderToolbar(overrides: Partial<Props> = {}) {
 describe('FilterToolbar', () => {
   it('labels the sort chip Order and cycles off -> asc on click', () => {
     const { onFilterChange } = renderToolbar({ showDateSort: true });
-    fireEvent.click(screen.getByRole('button', { name: /^order$/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Order: curated' }));
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'asc' });
   });
 
@@ -36,7 +36,7 @@ describe('FilterToolbar', () => {
       showDateSort: true,
       filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'desc' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Order v' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Order: newest first' }));
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'off' });
   });
 
@@ -49,7 +49,7 @@ describe('FilterToolbar', () => {
         showDateSort
       />
     );
-    expect(screen.getByRole('button', { name: 'Order ^' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Order: oldest first' })).toBeInTheDocument();
     unmount();
 
     render(
@@ -60,7 +60,7 @@ describe('FilterToolbar', () => {
         showDateSort
       />
     );
-    expect(screen.getByRole('button', { name: 'Order v' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Order: newest first' })).toBeInTheDocument();
   });
 
   it('two-state date toggle cycles asc <-> desc and never shows the off label', () => {
@@ -69,7 +69,7 @@ describe('FilterToolbar', () => {
       dateTwoState: true,
       filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'asc' },
     });
-    const chip = screen.getByRole('button', { name: 'Order ^' });
+    const chip = screen.getByRole('button', { name: 'Order: oldest first' });
     fireEvent.click(chip);
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'desc' });
   });
@@ -80,7 +80,7 @@ describe('FilterToolbar', () => {
       dateTwoState: true,
       filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'desc' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Order v' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Order: newest first' }));
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'asc' });
   });
 
@@ -471,7 +471,7 @@ describe('FilterToolbar', () => {
       expect(screen.getByRole('button', { name: /reset all filters/i })).toBeInTheDocument();
     });
 
-    it('renders the same Order chip DOM shape (label + trailing slot) in every direction', () => {
+    it('renders the same Order chip DOM shape (icon + label) in every direction, flipping only for desc', () => {
       const directions = ['off', 'asc', 'desc'] as const;
       for (const dateSortDirection of directions) {
         const { unmount } = render(
@@ -483,8 +483,15 @@ describe('FilterToolbar', () => {
           />
         );
         const chip = screen.getByRole('button', { name: /^order/i });
-        expect(chip.firstChild?.textContent).toBe('Order');
-        expect(chip.querySelector('span')).not.toBeNull();
+        const icon = chip.querySelector('svg');
+        expect(icon).not.toBeNull();
+        expect(chip.querySelector('span')?.textContent).toBe('Order');
+        expect(chip.children).toHaveLength(2);
+        expect(icon?.getAttribute('class')).toEqual(
+          dateSortDirection === 'desc'
+            ? expect.stringMatching(/flipped/)
+            : expect.not.stringMatching(/flipped/)
+        );
         unmount();
       }
     });
@@ -630,7 +637,7 @@ describe('FilterToolbar', () => {
     });
   });
 
-  it('renders a dimension trigger as a chip with a chevron and popup aria', () => {
+  it('renders a dimension trigger as an icon chip with a desktop caret and popup aria', () => {
     render(
       <FilterToolbar
         filterState={INITIAL_FILTER_STATE}
@@ -638,14 +645,18 @@ describe('FilterToolbar', () => {
         dimensions={{ selectedPeople: { label: 'People', options: ['Ada', 'Grace'] } }}
       />
     );
-    const trigger = screen.getByRole('button', { name: /^People/ });
+    const trigger = screen.getByRole('button', { name: 'People' });
     expect(trigger).toHaveAttribute('aria-haspopup', 'true');
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).not.toHaveAttribute('aria-pressed');
     expect(trigger.className).toMatch(/chip/);
-    expect(trigger.querySelector('span')?.textContent).toBe('▾');
+    expect(trigger.querySelector('svg')).not.toBeNull();
+    expect(trigger.lastElementChild?.textContent).toBe('▾');
+    expect(trigger.lastElementChild?.className).toMatch(/caret/);
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
-    expect(trigger.querySelector('span')?.textContent).toBe('▴');
+    expect(trigger.className).toMatch(/active/);
+    expect(trigger.lastElementChild?.textContent).toBe('▴');
   });
 });
 
@@ -961,5 +972,100 @@ describe('FilterToolbar — film stock', () => {
       fireEvent.click(option);
       expect(onFilterChange).toHaveBeenCalledWith({ selectedTags: ['forest'] });
     });
+  });
+});
+
+describe('FilterToolbar icon chips', () => {
+  it('names each icon chip by its control, state and count', () => {
+    renderToolbar({
+      showDateSort: true,
+      showHighlyRated: true,
+      showHiddenToggle: true,
+      showFollowingToggle: true,
+      showFilm: true,
+      counts: { highlyRated: 7, hidden: 27, following: 0 },
+      filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'asc', filmFilter: 'film' },
+    });
+    for (const name of [
+      'Order: oldest first',
+      'Rated only, 7',
+      'Show hidden items, 27',
+      'Following only, 0',
+      'Film only',
+      'Reset all filters',
+    ]) {
+      const chip = screen.getByRole('button', { name });
+      expect(chip).toHaveAttribute('aria-label', name);
+      expect(chip.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    }
+  });
+
+  it('lights the Hidden chip only while hidden items show', () => {
+    const { unmount } = render(
+      <FilterToolbar
+        filterState={{ ...INITIAL_FILTER_STATE, showHidden: true }}
+        onFilterChange={jest.fn()}
+        dimensions={{}}
+        showHiddenToggle
+      />
+    );
+    expect(screen.getByRole('button', { name: 'Show hidden items' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    unmount();
+    renderToolbar({
+      showHiddenToggle: true,
+      filterState: { ...INITIAL_FILTER_STATE, showHidden: false },
+    });
+    expect(screen.getByRole('button', { name: 'Show hidden items' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  it('keeps the Digital label visible on phones, where the film icon alone cannot tell it apart', () => {
+    renderToolbar({
+      showFilm: true,
+      filterState: { ...INITIAL_FILTER_STATE, filmFilter: 'digital' },
+    });
+    const chip = screen.getByRole('button', { name: 'Digital only' });
+    expect(within(chip).getByText('Digital').className).not.toMatch(/labelWide/);
+  });
+
+  it('keeps text-only dropdowns for dimensions with no approved icon', () => {
+    renderToolbar({ dimensions: { selectedTags: { label: 'Tags', options: ['sunset'] } } });
+    const trigger = screen.getByRole('button', { name: /^Tags/ });
+    expect(trigger.querySelector('svg')).toBeNull();
+    expect(trigger).not.toHaveAttribute('aria-label');
+  });
+
+  it('gives an active-filter badge a trailing remove icon', () => {
+    renderToolbar({
+      dimensions: { selectedTags: { label: 'Tag', options: ['sunset'] } },
+      filterState: { ...INITIAL_FILTER_STATE, selectedTags: ['sunset'] },
+    });
+    const badge = screen.getByRole('button', { name: 'Remove sunset from Tag' });
+    expect(badge.querySelector('svg')).not.toBeNull();
+  });
+
+  it('draws one icon and no text per photo-size tier', () => {
+    renderToolbar({
+      density: 5,
+      onDensityChange: jest.fn(),
+      densityTiers: DENSITY_TIERS.map(tier => ({
+        key: tier.key,
+        label: tier.label,
+        value: tier.desktop,
+      })),
+      activeDensityTier: 'medium',
+    });
+    const group = screen.getByRole('radiogroup', { name: 'Photo size' });
+    const radios = within(group).getAllByRole('radio');
+    expect(radios).toHaveLength(3);
+    for (const radio of radios) {
+      expect(radio.querySelectorAll('svg')).toHaveLength(1);
+      expect(radio.textContent).toBe('');
+    }
   });
 });

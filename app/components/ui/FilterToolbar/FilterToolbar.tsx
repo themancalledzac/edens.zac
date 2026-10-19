@@ -2,7 +2,9 @@
 
 import { Fragment, useCallback, useId, useRef, useState } from 'react';
 
-import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
+import { Chip } from '@/app/components/ui/Chip/Chip';
+import { CHIP_ICONS, type ChipIconKey } from '@/app/components/ui/Chip/chipIcons';
+import { ChipRow } from '@/app/components/ui/Chip/ChipRow';
 import {
   type DensityTier,
   DensityTierControl,
@@ -151,18 +153,29 @@ export interface FilterToolbarProps {
 }
 
 /**
- * The sort chip's trailing direction glyph. Named "Order" rather than "Date" because it controls
- * SEQUENCE, not membership: `off` shows a collection's curated orderIndex, asc/desc re-sort
- * chronologically. The `Date` name now belongs to the per-day membership filter.
- *
- * The label itself stays the fixed string "Order" -- only this trailing glyph changes -- so the
- * chip's rendered width is a function of the fixed-width trailing slot, never of which direction
- * is selected.
+ * Accessible names for the Order chip. It controls sequence, not membership: `off` keeps the
+ * collection's curated order, asc/desc re-sort by date. Its icon flips for `desc`.
  */
-const ORDER_GLYPHS: Record<FilterState['dateSortDirection'], string> = {
-  asc: '^',
-  desc: 'v',
-  off: '',
+const ORDER_NAMES: Record<FilterState['dateSortDirection'], string> = {
+  asc: 'Order: oldest first',
+  desc: 'Order: newest first',
+  off: 'Order: curated',
+};
+
+/** Accessible names for the film/digital chip, which cycles off -> film -> digital. */
+const FILM_NAMES: Record<FilterState['filmFilter'], string> = {
+  off: 'Film filter',
+  film: 'Film only',
+  digital: 'Digital only',
+};
+
+/** Dropdowns with an approved icon. A dropdown missing here (Tags, Film stock) stays a text chip. */
+const DROPDOWN_ICONS: Partial<Record<ArrayFilterKey, ChipIconKey>> = {
+  selectedPeople: 'people',
+  selectedLocations: 'location',
+  selectedDates: 'date',
+  selectedCameras: 'camera',
+  selectedLenses: 'lens',
 };
 
 /** One option list inside a dropdown. The Date dropdown holds two: the years, then the days. */
@@ -216,7 +229,8 @@ function buildDropdownControls(
  *
  * A dropdown shows that it is active but not which values are selected, so every selection also
  * renders as a removable badge after the controls — see {@link collectActiveFilterBadges} for what
- * is summarised and what is deliberately left out. Clearing everything at once is the trailing ×.
+ * is summarised and what is deliberately left out. Clearing everything at once is the trailing
+ * reset chip.
  *
  * Three behaviours worth keeping straight. `resetAll` preserves the direction under
  * {@link dateTwoState}, where views are inherently date-ordered and `off` is not a valid value.
@@ -336,11 +350,14 @@ export function FilterToolbar({
         </div>
       )}
       <div className={styles.toolbar}>
-        <div className={styles.controls}>
+        <ChipRow wrap="reverse" underline={false} className={styles.controls}>
           {showDateSort && (
-            <FilterChip
+            <Chip
               label="Order"
-              trailing={ORDER_GLYPHS[filterState.dateSortDirection]}
+              icon={CHIP_ICONS.order}
+              iconFlipped={filterState.dateSortDirection === 'desc'}
+              hideLabelBelow
+              ariaLabel={ORDER_NAMES[filterState.dateSortDirection]}
               active={dateTwoState || filterState.dateSortDirection !== 'off'}
               onToggle={() =>
                 onFilterChange({
@@ -353,8 +370,11 @@ export function FilterToolbar({
           )}
 
           {showHighlyRated && (
-            <FilterChip
+            <Chip
               label="Rated"
+              icon={CHIP_ICONS.rated}
+              hideLabelBelow
+              ariaLabel="Rated only"
               count={counts?.highlyRated}
               active={filterState.highlyRatedOnly}
               onToggle={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
@@ -362,8 +382,11 @@ export function FilterToolbar({
           )}
 
           {showFollowingToggle && (
-            <FilterChip
+            <Chip
               label="Following"
+              icon={CHIP_ICONS.following}
+              hideLabelBelow
+              ariaLabel="Following only"
               count={counts?.following}
               active={filterState.followedOnly}
               onToggle={() => onFilterChange({ followedOnly: !filterState.followedOnly })}
@@ -371,8 +394,11 @@ export function FilterToolbar({
           )}
 
           {showHiddenToggle && (
-            <FilterChip
+            <Chip
               label="Hidden"
+              icon={CHIP_ICONS.hidden}
+              hideLabelBelow
+              ariaLabel="Show hidden items"
               count={counts?.hidden}
               active={filterState.showHidden}
               onToggle={() => onFilterChange({ showHidden: !filterState.showHidden })}
@@ -380,10 +406,12 @@ export function FilterToolbar({
           )}
 
           {showFilm && (
-            <FilterChip
+            <Chip
               label={filterState.filmFilter === 'digital' ? 'Digital' : 'Film'}
+              icon={CHIP_ICONS.film}
+              hideLabelBelow={filterState.filmFilter !== 'digital'}
+              ariaLabel={FILM_NAMES[filterState.filmFilter]}
               count={filmCount}
-              tone={filterState.filmFilter === 'digital' ? 'digital' : 'film'}
               active={filterState.filmFilter !== 'off'}
               onToggle={cycleFilm}
             />
@@ -404,7 +432,7 @@ export function FilterToolbar({
                       const available =
                         isSelected || isOptionAvailable(filteredAvailable, group.key, option);
                       return (
-                        <FilterChip
+                        <Chip
                           key={`${group.key}-${option}`}
                           label={group.dim.optionLabels?.[option] ?? option}
                           count={group.dim.counts?.[option]}
@@ -420,17 +448,17 @@ export function FilterToolbar({
                   </div>
                 );
               });
+            const iconKey = DROPDOWN_ICONS[control.key];
             return (
               <div key={control.key} className={styles.dropdown}>
-                <FilterChip
+                <Chip
                   ref={node => {
                     triggerRefs.current[control.key] = node;
                   }}
                   label={control.label}
-                  trailing={isOpen ? '▴' : '▾'}
-                  active={isOpen}
-                  ariaExpanded={isOpen}
-                  ariaHasPopup="true"
+                  icon={iconKey ? CHIP_ICONS[iconKey] : undefined}
+                  hideLabelBelow={iconKey !== undefined}
+                  menu={{ open: isOpen }}
                   onToggle={() => toggleOpen(control.key)}
                 />
                 {isOpen && !isMobile && <div className={styles.panel}>{renderOptions()}</div>}
@@ -448,35 +476,30 @@ export function FilterToolbar({
             );
           })}
 
-          {activeBadges.length > 0 && (
-            <>
-              <span className={styles.separator} aria-hidden="true" />
-              {activeBadges.map(badge => (
-                <FilterChip
-                  key={`active-${badge.key}-${badge.value}`}
-                  label={badge.label}
-                  ariaLabel={badge.removeLabel}
-                  trailing="×"
-                  active
-                  onToggle={() =>
-                    toggleArrayFilter(filterState, onFilterChange, badge.key, badge.value)
-                  }
-                />
-              ))}
-            </>
-          )}
-        </div>
+          {activeBadges.map(badge => (
+            <Chip
+              key={`active-${badge.key}-${badge.value}`}
+              label={badge.label}
+              ariaLabel={badge.removeLabel}
+              trailingIcon={CHIP_ICONS.remove}
+              active
+              onToggle={() =>
+                toggleArrayFilter(filterState, onFilterChange, badge.key, badge.value)
+              }
+            />
+          ))}
+        </ChipRow>
 
-        <div className={styles.trailing}>
-          <button
-            type="button"
-            className={`${styles.reset} ${hasActiveFilters ? '' : styles.resetInactive}`}
-            onClick={resetAll}
-            disabled={!hasActiveFilters}
-            aria-label="Reset all filters"
-          >
-            ×
-          </button>
+        <ChipRow wrap="none" underline={false} className={styles.trailing}>
+          <span className={hasActiveFilters ? undefined : styles.resetInactive}>
+            <Chip
+              label="Reset all filters"
+              icon={CHIP_ICONS.reset}
+              hideLabel
+              state={hasActiveFilters ? 'available' : 'unavailable'}
+              onToggle={resetAll}
+            />
+          </span>
 
           {onDensityChange && density !== undefined && (
             <div className={styles.densitySlot}>
@@ -504,7 +527,7 @@ export function FilterToolbar({
               )}
             </div>
           )}
-        </div>
+        </ChipRow>
       </div>
     </div>
   );

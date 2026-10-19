@@ -71,13 +71,12 @@ describe('FilterToolbar mobile wrap', () => {
     expect(mobileBranch(scss)).toMatch(/flex:\s*1\s+0\s+180px/);
   });
 
-  it('should open the row gap to --space-2 below 768px so the density overlays clear the chip row above', () => {
+  it('should open the row gap to --space-2 below 768px so the chip overlays clear the row above', () => {
     expect(mobileBranch(scss)).toMatch(/row-gap:\s*var\(--space-2\)/);
   });
 
-  it('should leave the desktop column gap and the 8px chip gap alone', () => {
+  it('should leave the desktop column gap alone', () => {
     expect(scss).toMatch(/\.toolbar {[^@]*?gap: var\(--space-1\);/);
-    expect(scss).toMatch(/\.controls {[^}]*?gap: var\(--space-2\);/);
   });
 
   it('should keep the trailing group right-pinned rather than pinning it per-branch', () => {
@@ -107,7 +106,7 @@ describe('FilterToolbar square corners', () => {
   it.each([
     'app/components/ui/FilterChip/FilterChip.module.scss',
     'app/components/ui/FilterToolbar/FilterToolbar.module.scss',
-    'app/components/ui/FilterToolbar/DensityTierControl.module.scss',
+    'app/components/ui/Chip/Chip.module.scss',
   ])('should use --radius-0 and no --radius-1 in %s', file => {
     const source = readFileSync(join(process.cwd(), file), 'utf8');
 
@@ -116,24 +115,22 @@ describe('FilterToolbar square corners', () => {
   });
 });
 
-describe('DensityTierControl joined segments', () => {
-  const density = readFileSync(
-    join(process.cwd(), 'app/components/ui/FilterToolbar/DensityTierControl.module.scss'),
-    'utf8'
-  );
-  const branch = mobileBranch(density);
+/**
+ * The chip row has no gaps between chips, so the dividers and the 8px line gap are what keep the
+ * 44px overlays apart. jsdom has no layout, so both are pinned at the source.
+ */
+describe('ChipRow dividers and line gap', () => {
+  const chip = readFileSync(join(process.cwd(), 'app/components/ui/Chip/Chip.module.scss'), 'utf8');
 
-  it('should draw one outer border on the group below 768px', () => {
-    expect(branch).toMatch(/gap:\s*0;\s*border:\s*1px solid var\(--color-border-control\)/);
+  it('should draw a 1px divider before every chip but the first', () => {
+    expect(chip).toMatch(/> \* \+ \*::before\s*{[^}]*width: 1px;[^}]*height: 16px;/);
   });
 
-  it('should divide the segments with a border-left on siblings', () => {
-    expect(branch).toMatch(
-      /&\s*\+\s*\.segment\s*{[^}]*border-left:\s*1px solid var\(--color-border-control\)/
-    );
+  it('should keep wrapped lines 8px apart', () => {
+    expect(chip).toMatch(/\.row {[^}]*row-gap: var\(--space-2\);/);
   });
 
-  it('should keep the coarse-pointer overlay', () => {
-    expect(density).toMatch(/@media \(pointer: coarse\)[\S\s]*&::after/);
+  it('should keep every chip at least 44px wide and 32px tall', () => {
+    expect(chip).toMatch(/\.chip {[^}]*min-width: 44px;[^}]*height: 32px;/);
   });
 });

@@ -1,6 +1,10 @@
 'use client';
 
-import styles from './DensityTierControl.module.scss';
+import { type LucideIcon } from 'lucide-react';
+
+import { Chip } from '@/app/components/ui/Chip/Chip';
+import { CHIP_ICONS } from '@/app/components/ui/Chip/chipIcons';
+import { ChipRow } from '@/app/components/ui/Chip/ChipRow';
 
 /** One selectable photo-size preset, already resolved to the active viewport's density scale. */
 export interface DensityTier {
@@ -18,48 +22,31 @@ interface DensityTierControlProps {
   onSelect: (value: number) => void;
 }
 
-/**
- * Grid glyphs standing in for each tier, ordered large -> small. Purely decorative: the accessible
- * name comes from the tier's own label, so these are hidden from assistive tech. A cell count that
- * grows as photos shrink is the whole affordance — the raw density number is meaningless to a
- * visitor and runs backwards from what they see.
- */
-const TIER_GLYPH_CELLS: Record<string, number> = { large: 1, medium: 4, small: 9 };
-
-/** Fallback for a tier key with no glyph mapping, so an added tier degrades rather than vanishing. */
-const DEFAULT_GLYPH_CELLS = 4;
+/** One icon per tier, all drawn at the same 16px. An unknown tier key falls back to the 2x2 grid. */
+const TIER_ICONS: Record<string, LucideIcon> = {
+  large: CHIP_ICONS.densityLarge,
+  medium: CHIP_ICONS.densityMedium,
+  small: CHIP_ICONS.densitySmall,
+};
 
 /**
- * Segmented photo-size picker: the visitor-facing replacement for the raw 1-10 density slider.
- *
- * Rendered as a radiogroup rather than a set of toggle buttons because the options are mutually
- * exclusive and exactly one is always current — the same reason page sections are links, not
- * pressed chips. The active segment reuses FilterChip's fg/bg inversion, the one treatment in this
- * bar with adequate contrast.
+ * Photo-size picker: a radiogroup of icon-only chips, one per tier. A radiogroup because exactly
+ * one tier is always current. Each option's accessible name is the tier's label.
  */
 export function DensityTierControl({ tiers, activeKey, onSelect }: DensityTierControlProps) {
   return (
-    <div className={styles.group} role="radiogroup" aria-label="Photo size">
-      {tiers.map(tier => {
-        const isActive = tier.key === activeKey;
-        return (
-          <button
-            key={tier.key}
-            type="button"
-            role="radio"
-            aria-checked={isActive}
-            aria-label={tier.label}
-            className={`${styles.segment} ${isActive ? styles.segmentActive : ''}`}
-            onClick={() => onSelect(tier.value)}
-          >
-            <span className={styles.glyph} aria-hidden="true">
-              {Array.from({ length: TIER_GLYPH_CELLS[tier.key] ?? DEFAULT_GLYPH_CELLS }, (_, i) => (
-                <span key={i} className={styles.cell} />
-              ))}
-            </span>
-          </button>
-        );
-      })}
-    </div>
+    <ChipRow radioGroupLabel="Photo size" underline={false} wrap="none">
+      {tiers.map(tier => (
+        <Chip
+          key={tier.key}
+          radio
+          label={tier.label}
+          icon={TIER_ICONS[tier.key] ?? CHIP_ICONS.densityMedium}
+          hideLabel
+          active={tier.key === activeKey}
+          onToggle={() => onSelect(tier.value)}
+        />
+      ))}
+    </ChipRow>
   );
 }
