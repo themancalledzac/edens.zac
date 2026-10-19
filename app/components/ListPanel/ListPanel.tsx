@@ -1,8 +1,10 @@
 'use client';
 
-import Link from 'next/link';
+import { type LucideIcon } from 'lucide-react';
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef } from 'react';
 
+import { Chip } from '@/app/components/ui/Chip/Chip';
+import { ChipRow } from '@/app/components/ui/Chip/ChipRow';
 import { Disclosure } from '@/app/components/ui/Disclosure/Disclosure';
 
 import styles from './ListPanel.module.scss';
@@ -11,6 +13,8 @@ import styles from './ListPanel.module.scss';
 export interface ListPanelTab<Id extends string = string> {
   id: Id;
   label: string;
+  /** Shown before the label; under 768px the tab is this icon alone. Look it up in `CHIP_ICONS`. */
+  icon?: LucideIcon;
 }
 
 /**
@@ -177,7 +181,7 @@ interface TabStripProps {
 }
 
 /**
- * The header's tab strip, following the WAI-ARIA tabs pattern: one tab in the Tab order (the
+ * The header's tab strip, a {@link ChipRow} of tab {@link Chip}s following the WAI-ARIA tabs pattern: one tab in the Tab order (the
  * active one), arrow keys move between tabs, and selection follows focus.
  *
  * `aria-controls` is emitted only on the active tab, and only while the panel is mounted. The
@@ -230,24 +234,19 @@ function TabStrip({ tabs, tabId, tabPanelId, onSelect }: TabStripProps) {
 
   return (
     <div ref={stripRef} role="tablist" className={styles.tabs} onKeyDown={handleKeyDown}>
-      {tabs.tabs.map(tab => {
-        const selected = tab.id === tabs.active;
-        return (
-          <button
+      <ChipRow underline={false} wrap="none">
+        {tabs.tabs.map(tab => (
+          <Chip
             key={tab.id}
-            id={tabId(tab.id)}
-            type="button"
-            role="tab"
-            className={styles.tab}
-            aria-selected={selected}
-            aria-controls={selected ? tabPanelId : undefined}
-            tabIndex={selected ? 0 : -1}
-            onClick={() => onSelect(tab.id)}
-          >
-            {tab.label}
-          </button>
-        );
-      })}
+            label={tab.label}
+            icon={tab.icon}
+            hideLabelBelow={tab.icon !== undefined}
+            active={tab.id === tabs.active}
+            tab={{ id: tabId(tab.id), controls: tabPanelId }}
+            onToggle={() => onSelect(tab.id)}
+          />
+        ))}
+      </ChipRow>
     </div>
   );
 }
@@ -340,35 +339,25 @@ export function ListRow({
 }
 
 type PanelActionProps =
-  | { href: string; onClick?: never; disabled?: never; children: ReactNode }
-  | { href?: never; onClick: () => void; disabled?: boolean; children: ReactNode };
+  | { href: string; onClick?: never; disabled?: never; children: string }
+  | { href?: never; onClick: () => void; disabled?: boolean; children: string };
 
 /**
- * The one style for a panel's header action, whether it navigates or acts.
- *
- * `+ New User` used to be a ghost Button, `+ New Role` a filled secondary Button, and `View all` a
- * muted text link, all in the same header position. This is the only way a panel renders its
- * action now: a link when given `href`, a button when given `onClick`, identical either way.
- * Its height is the header's `button` slot (`--lp-slot-button`), so it cannot grow the header past
- * what `listPanelShape.ts` reserves.
+ * The one style for a panel's header action, whether it navigates or acts: a text {@link Chip},
+ * a link when given `href` and a button when given `onClick`. Inside `.panel` a chip is the
+ * header's `button` slot tall (`--chip-height`), so it cannot grow the header past what
+ * `listPanelShape.ts` reserves.
  */
 export function PanelAction(props: PanelActionProps) {
   if (props.href !== undefined) {
-    return (
-      <Link href={props.href} className={styles.panelAction}>
-        {props.children}
-      </Link>
-    );
+    return <Chip label={props.children} href={props.href} scroll />;
   }
   return (
-    <button
-      type="button"
-      className={styles.panelAction}
-      onClick={props.onClick}
-      disabled={props.disabled}
-    >
-      {props.children}
-    </button>
+    <Chip
+      label={props.children}
+      state={props.disabled ? 'unavailable' : 'available'}
+      onToggle={props.onClick}
+    />
   );
 }
 
@@ -381,5 +370,5 @@ interface ViewAllLinkProps {
 
 /** The `N · View all` action for a panel whose full list lives on a page of its own. */
 export function ViewAllLink({ href, count }: ViewAllLinkProps) {
-  return <PanelAction href={href}>{count} · View all</PanelAction>;
+  return <PanelAction href={href}>{`${count} · View all`}</PanelAction>;
 }

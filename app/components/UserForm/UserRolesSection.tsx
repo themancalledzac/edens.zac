@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useState } from 'react';
 
+import { Chip } from '@/app/components/ui/Chip/Chip';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { IconButton } from '@/app/components/ui/IconButton/IconButton';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
@@ -186,9 +187,13 @@ export function UserRolesSection({ userId, compact = false }: UserRolesSectionPr
           {compact && addControl && <li className={styles.addItem}>{addControl}</li>}
           {userRoles.map(r => (
             <li key={r.roleId} className={compact ? styles.chip : styles.row}>
-              <Link href={roleHref(r.roleId)} className={styles.roleLink}>
-                {r.name}
-              </Link>
+              {compact ? (
+                <Chip label={r.name} href={roleHref(r.roleId)} scroll />
+              ) : (
+                <Link href={roleHref(r.roleId)} className={styles.roleLink}>
+                  {r.name}
+                </Link>
+              )}
               <IconButton
                 aria-label={`Remove ${r.name}`}
                 shape="square"

@@ -1,4 +1,5 @@
 import type { ListPanelTab } from '@/app/components/ListPanel/ListPanel';
+import { CHIP_ICONS } from '@/app/components/ui/Chip/chipIcons';
 
 /** The lists the admin hub's one tabbed panel switches between. */
 export type AdminListTab = 'users' | 'messages' | 'roles' | 'collections';
@@ -8,10 +9,10 @@ export type AdminListTab = 'users' | 'messages' | 'roles' | 'collections';
  * (no client code), so `adminHubContent.ts` can size the panel from the same list the strip renders.
  */
 export const ADMIN_LIST_TABS: ReadonlyArray<ListPanelTab<AdminListTab>> = [
-  { id: 'messages', label: 'Messages' },
-  { id: 'users', label: 'Users' },
-  { id: 'collections', label: 'Collections' },
-  { id: 'roles', label: 'Roles' },
+  { id: 'messages', label: 'Messages', icon: CHIP_ICONS.messages },
+  { id: 'users', label: 'Users', icon: CHIP_ICONS.users },
+  { id: 'collections', label: 'Collections', icon: CHIP_ICONS.collections },
+  { id: 'roles', label: 'Roles', icon: CHIP_ICONS.roles },
 ];
 
 export const DEFAULT_ADMIN_LIST_TAB: AdminListTab = 'messages';

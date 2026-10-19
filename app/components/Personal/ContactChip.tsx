@@ -4,8 +4,9 @@ import { useId, useState } from 'react';
 
 import { useMe } from '@/app/components/Auth/MeProvider';
 import { ContactForm } from '@/app/components/ContactForm/ContactForm';
+import { Chip } from '@/app/components/ui/Chip/Chip';
+import { CHIP_ICONS } from '@/app/components/ui/Chip/chipIcons';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
-import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 
 import styles from './ContactChip.module.scss';
@@ -51,11 +52,12 @@ export function ContactChip() {
 
   return (
     <>
-      <FilterChip
+      <Chip
         label="Contact"
+        icon={CHIP_ICONS.contact}
+        hideLabelBelow
         onToggle={() => setOpen(true)}
-        ariaHasPopup="dialog"
-        ariaExpanded={open}
+        dialog={{ open }}
       />
       <ContactModal open={open} onClose={close} lockedEmail={me?.email} />
     </>

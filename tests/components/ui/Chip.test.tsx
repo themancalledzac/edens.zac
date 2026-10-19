@@ -210,6 +210,84 @@ describe('Chip', () => {
   });
 });
 
+describe('Chip — dialog, tab and in-place link', () => {
+  it('marks a dialog trigger with aria-haspopup and its open state, not aria-pressed', () => {
+    const { rerender } = render(
+      <Chip
+        label="Share"
+        icon={CHIP_ICONS.share}
+        hideLabelBelow
+        onToggle={jest.fn()}
+        dialog={{ open: false }}
+      />
+    );
+    const chip = screen.getByRole('button', { name: 'Share' });
+    expect(chip).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(chip).toHaveAttribute('aria-expanded', 'false');
+    expect(chip).not.toHaveAttribute('aria-pressed');
+    rerender(
+      <Chip
+        label="Share"
+        icon={CHIP_ICONS.share}
+        hideLabelBelow
+        onToggle={jest.fn()}
+        dialog={{ open: true }}
+      />
+    );
+    expect(chip).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('renders a tab: selected one in the Tab order and pointing at the panel', () => {
+    render(
+      <div role="tablist">
+        <Chip
+          label="Messages"
+          active
+          tab={{ id: 't-messages', controls: 'panel' }}
+          onToggle={jest.fn()}
+        />
+        <Chip
+          label="Users"
+          active={false}
+          tab={{ id: 't-users', controls: 'panel' }}
+          onToggle={jest.fn()}
+        />
+      </div>
+    );
+    const [selected, other] = screen.getAllByRole('tab');
+    expect(selected).toHaveAttribute('id', 't-messages');
+    expect(selected).toHaveAttribute('aria-selected', 'true');
+    expect(selected).toHaveAttribute('tabindex', '0');
+    expect(selected).toHaveAttribute('aria-controls', 'panel');
+    expect(other).toHaveAttribute('aria-selected', 'false');
+    expect(other).toHaveAttribute('tabindex', '-1');
+    expect(other).not.toHaveAttribute('aria-controls');
+    expect(selected).not.toHaveAttribute('aria-pressed');
+  });
+
+  it('lets onSelect take over a plain click on a link and keeps the href', () => {
+    const onSelect = jest.fn();
+    render(<Chip label="Images" href="/user?tab=images" onSelect={onSelect} />);
+    const link = screen.getByRole('link', { name: 'Images' });
+    expect(fireEvent.click(link)).toBe(false);
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(link).toHaveAttribute('href', '/user?tab=images');
+  });
+
+  it.each([
+    ['meta', { metaKey: true }],
+    ['ctrl', { ctrlKey: true }],
+    ['shift', { shiftKey: true }],
+    ['alt', { altKey: true }],
+    ['middle button', { button: 1 }],
+  ])('leaves a %s click to the link, without calling onSelect', (_name, init) => {
+    const onSelect = jest.fn();
+    render(<Chip label="Images" href="/user?tab=images" onSelect={onSelect} />);
+    fireEvent.click(screen.getByRole('link', { name: 'Images' }), init);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
 describe('ChipRow', () => {
   it('draws the underline by default and drops it on request', () => {
     const { container, rerender } = render(

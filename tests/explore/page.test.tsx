@@ -125,7 +125,7 @@ describe('ExploreDirectory', () => {
     );
   });
 
-  it('renders every directory link as a FilterChip link', async () => {
+  it('renders every directory link as a Chip link', async () => {
     serveDirectory({
       tags: [{ id: 1, name: 'Mountains', slug: 'mountains' }],
       locations: [wireLocation(3, 'Patagonia', 'patagonia')],

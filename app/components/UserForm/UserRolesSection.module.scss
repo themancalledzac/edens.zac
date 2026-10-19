@@ -106,16 +106,9 @@
   line-height: 1;
 }
 
-/* Chip layout — a wrapping row rather than one line per role.
-
-   Deliberately the same skin as the filter bar's chips (see FilterChip.module.scss): transparent
-   fill, one --color-border hairline, --radius-1 corners, a --text-sm label at weight 500. These
-   chips sit a few centimetres from that bar in the same rail, so anything else read as a second
-   chip vocabulary on one screen.
-
-   Matched by token rather than by reusing the FilterChip COMPONENT: that renders a single <button>,
-   and a role chip holds two separate controls — a link to the role's own page and a remove. The
-   look is shared; the markup genuinely cannot be. */
+/* Chip layout: a wrapping row rather than one line per role. Each role name is a link Chip, the
+   same unboxed cell as the filter bar, followed by its remove ×. The two are separate controls, so
+   they sit side by side in one list item rather than inside one chip. */
 .chipList {
   display: flex;
   flex-wrap: wrap;
@@ -123,41 +116,34 @@
   margin: 0;
   padding: 0;
   list-style: none;
-
-  /* The escape hatch IconButton.module.scss documents, for the case it names outright: a chip
-     remove ×. Its box is well under 44px, so the coarse-pointer overlay would overhang far enough
-     to reach across the gap and swallow the neighbouring chip's taps. Legitimate here because the
-     action is reachable at full size elsewhere — the /admin Users panel renders this same section
-     without `compact`, where every remove keeps its 44px target. */
-  --touch-target-min: 0;
 }
 
-/* The join control, leading the chip row. A <select> skinned as a chip: `appearance: none` drops
-   the native arrow so it reads as a button, and its empty option supplies the "Add" label. Height
-   comes from the same --space-5 the chips' remove × sets, so the row is one flat line of controls
-   rather than a form control wedged among chips. */
+/* The join control, leading the chip row. A <select> skinned as an unboxed chip: `appearance: none`
+   drops the native arrow so it reads as a button, and its empty option supplies the "Add" label.
+   It is the Chip height, so the row is one flat line of controls. */
 .addItem {
   display: inline-flex;
 }
 
 .addChip {
-  height: var(--space-5);
-  padding: 0 var(--space-3);
+  min-width: 44px;
+  height: 32px;
+  padding: 0 var(--space-2);
   appearance: none;
   font-family: inherit;
   font-size: var(--text-sm);
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
-  color: var(--color-fg);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--color-on-surface-muted);
   background-color: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
+  border: 0;
+  border-radius: var(--radius-0);
   cursor: pointer;
-  transition: border-color var(--duration-fast) var(--ease-standard);
+  transition: color var(--duration-fast) var(--ease-standard);
 
   &:hover:not(:disabled) {
-    border-color: var(--color-fg);
+    color: var(--color-fg);
   }
 
   &:disabled {
@@ -166,35 +152,26 @@
   }
 
   &:focus-visible {
-    outline: var(--focus-ring);
-    outline-offset: 2px;
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
   }
 }
 
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  color: var(--color-fg);
-  background-color: transparent;
-  border: 1px solid var(--color-border-control);
-  border-radius: var(--radius-1);
-  transition: border-color var(--duration-fast) var(--ease-standard);
 
-  &:hover {
-    border-color: var(--color-fg);
-  }
+  /* Overrides IconButton's .sm footprint (--space-6 square) so the × sits on the Chip's line.
+     (0,2,0) beats the primitive's single class without !important.
 
-  /* Overrides IconButton's .sm footprint (--space-6 square), which would set the chip's height and
-     leave it half again as tall as the filter chips beside it. (0,2,0) beats the primitive's
-     single class without !important. */
+     --touch-target-min: 0 is the escape hatch IconButton.module.scss documents for a chip remove ×.
+     Its box is well under 44px, so the coarse-pointer overlay would reach across and swallow the
+     role link's taps. Legitimate here because the /admin Users panel renders this same section
+     without `compact`, where every remove keeps its 44px target. Set on the × only, so the role
+     link keeps its own 44px overlay. */
   .remove {
+    --touch-target-min: 0;
+
     width: var(--space-5);
     height: var(--space-5);
     min-width: 0;

@@ -17,7 +17,7 @@ import {
 import { PanelBody } from '@/app/components/ListPanel/PanelBody';
 import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIdentityModal';
 import { Button } from '@/app/components/ui/Button/Button';
-import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
+import { Chip } from '@/app/components/ui/Chip/Chip';
 import { UpgradeUserModal } from '@/app/components/UpgradeUserModal/UpgradeUserModal';
 import { UserForm } from '@/app/components/UserForm/UserForm';
 import { UserRolesSection } from '@/app/components/UserForm/UserRolesSection';
@@ -65,7 +65,7 @@ interface UserManagementPanelProps {
  * open when the body gains the create form, which would otherwise look like "+ New User" did
  * nothing.
  *
- * The "People" {@link FilterChip} is the body's first line (`toolbar`): it filters this list, so it
+ * The "People" {@link Chip} is the body's first line (`toolbar`): it filters this list, so it
  * sits on the list, and the header keeps exactly one action.
  *
  * Loading, a load failure with Retry, the empty state and the stale notice all render through
@@ -160,7 +160,7 @@ export function UserManagementPanel({ shell }: UserManagementPanelProps) {
 
   const toolbar =
     view.mode === 'list' ? (
-      <FilterChip label="People" active={showPeople} onToggle={() => setShowPeople(!showPeople)} />
+      <Chip label="People" active={showPeople} onToggle={() => setShowPeople(!showPeople)} />
     ) : null;
 
   const action =

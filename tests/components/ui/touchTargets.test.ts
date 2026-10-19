@@ -11,8 +11,6 @@ const UI_ROOT = path.resolve(__dirname, '../../../app/components/ui');
 const INTERACTIVE_MODULES = [
   'Button/Button.module.scss',
   'IconButton/IconButton.module.scss',
-  'FilterChip/FilterChip.module.scss',
-  'SegmentedChip/SegmentedChip.module.scss',
   'Chip/Chip.module.scss',
 ];
 

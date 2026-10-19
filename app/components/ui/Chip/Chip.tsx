@@ -1,6 +1,6 @@
 import { type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
-import { type Ref } from 'react';
+import { type MouseEvent, type Ref } from 'react';
 
 import styles from './Chip.module.scss';
 
@@ -37,11 +37,19 @@ interface ChipButtonProps extends ChipBaseProps {
   onToggle: () => void;
   href?: never;
   scroll?: never;
+  onSelect?: never;
   ref?: Ref<HTMLButtonElement>;
   /** Makes the chip a dropdown trigger. `open` drives `aria-expanded` and the active look. */
   menu?: { open: boolean };
   /** Renders the chip as one option of a `ChipRow` radiogroup, checked when `active`. */
   radio?: boolean;
+  /** Makes the chip open a dialog. `open` drives `aria-expanded`. */
+  dialog?: { open: boolean };
+  /**
+   * Renders the chip as one tab of a tablist, selected when `active`. Only the selected tab is in
+   * the Tab order, and only it points at the panel through `controls`.
+   */
+  tab?: { id: string; controls?: string };
 }
 
 interface ChipLinkProps extends ChipBaseProps {
@@ -49,9 +57,25 @@ interface ChipLinkProps extends ChipBaseProps {
   onToggle?: never;
   /** Forwarded to `next/link`. Defaults to `false`, right for a `?tab=` switch on the same page. */
   scroll?: boolean;
+  /**
+   * Takes over a plain left click so the caller can switch in place instead of navigating. A
+   * modifier click or another mouse button still follows the link.
+   */
+  onSelect?: () => void;
   ref?: never;
   menu?: never;
   radio?: never;
+  dialog?: never;
+  tab?: never;
+}
+
+/** Calls `onSelect` instead of navigating, unless a modifier key or a non-primary button is down. */
+function interceptPlainClick(event: MouseEvent, onSelect: () => void) {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+    return;
+  }
+  event.preventDefault();
+  onSelect();
 }
 
 /** A chip either acts in place (`onToggle`) or navigates (`href`), never both. */
@@ -61,8 +85,9 @@ export type ChipProps = ChipButtonProps | ChipLinkProps;
  * One cell of a {@link ChipRow}: an icon, a label, or both, with an optional count. No box: the
  * row draws the underline and dividers, and an active chip adds its own 2px underline.
  *
- * Renders a `<button>` for toggles, actions, dropdown triggers and radio options, or a `<Link>`
- * with `aria-current="page"` when it navigates. An unavailable link degrades to an inert span.
+ * Renders a `<button>` for toggles, actions, dropdown and dialog triggers, radio options and tabs,
+ * or a `<Link>` with `aria-current="page"` when it navigates. An unavailable link degrades to an
+ * inert span.
  */
 export function Chip({
   label,
@@ -79,8 +104,11 @@ export function Chip({
   scroll = false,
   onToggle,
   ref,
+  onSelect,
   menu,
   radio = false,
+  dialog,
+  tab,
 }: ChipProps) {
   const unavailable = state === 'unavailable';
   const lit = active === true || menu?.open === true;
@@ -129,6 +157,7 @@ export function Chip({
         className={classes}
         aria-label={accessibleName}
         aria-current={active === true ? 'page' : undefined}
+        onClick={onSelect ? (event: MouseEvent) => interceptPlainClick(event, onSelect) : undefined}
       >
         {body}
       </Link>
@@ -139,13 +168,17 @@ export function Chip({
     <button
       ref={ref}
       type="button"
-      role={radio ? 'radio' : undefined}
+      id={tab?.id}
+      role={radio ? 'radio' : tab ? 'tab' : undefined}
       className={classes}
       aria-label={accessibleName}
       aria-checked={radio ? active === true : undefined}
-      aria-pressed={!radio && !menu && active !== undefined ? active : undefined}
-      aria-expanded={menu?.open}
-      aria-haspopup={menu ? 'true' : undefined}
+      aria-selected={tab ? active === true : undefined}
+      aria-controls={tab && active === true ? tab.controls : undefined}
+      tabIndex={tab ? (active === true ? 0 : -1) : undefined}
+      aria-pressed={!radio && !menu && !dialog && !tab && active !== undefined ? active : undefined}
+      aria-expanded={menu?.open ?? dialog?.open}
+      aria-haspopup={menu ? 'true' : dialog ? 'dialog' : undefined}
       disabled={unavailable}
       onClick={onToggle}
     >
