@@ -30,10 +30,8 @@ export const viewport: Viewport = {
 /**
  * `<SkipLink>` sits above `{children}` — and therefore above the route segment's Suspense
  * boundary — so it reaches the browser in the shell's first bytes, ahead of the page's own chrome.
- * Rendered from inside a page shell it landed in React's deferred buffer instead, leaving the
- * footer's links as the page's first tab stops for as long as the boundary took to resolve. The
- * `<Footer>` is not part of this layout: `PageShell` and `CollectionPage` render it after their
- * `<main>`, so it streams with the page and never shows under the loading fallback. Every route pairs it with a landing zone; see {@link SkipLink}.
+ * Rendered from inside a page shell it landed in React's deferred buffer instead, joining the tab
+ * order only once the boundary resolved. Every route pairs it with a landing zone; see {@link SkipLink}.
  *
  * The CloudFront `preconnect` starts DNS/TCP/TLS during HTML parse rather than at the first
  * `<img>`. `crossOrigin` is required: image requests are anonymous-CORS, and a mismatched

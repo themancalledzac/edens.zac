@@ -26,22 +26,16 @@ jest.mock('@/app/components/ContentCollection/CollectionPage', () => ({
   __esModule: true,
   default: ({
     collection,
-    withFooter,
     backHref,
     header,
   }: {
     collection: { content: unknown[] };
-    withFooter?: boolean;
     backHref?: string;
     header?: ReactNode;
   }) => {
     mockCollectionSeen(collection);
     return (
-      <div
-        data-testid="collection-page"
-        data-with-footer={String(withFooter)}
-        data-back-href={backHref}
-      >
+      <div data-testid="collection-page" data-back-href={backHref}>
         {header}
         Items: {collection.content.length}
       </div>
@@ -149,27 +143,15 @@ describe('AllImagesClient', () => {
     expect(loadNext).toHaveBeenCalled();
   });
 
-  it('opts CollectionPage out of its footer and links back to /admin', () => {
+  it('links CollectionPage back to /admin', () => {
     render(<AllImagesClient initial={initial} />);
-    const page = screen.getByTestId('collection-page');
-    expect(page).toHaveAttribute('data-with-footer', 'false');
-    expect(page).toHaveAttribute('data-back-href', '/admin');
+    expect(screen.getByTestId('collection-page')).toHaveAttribute('data-back-href', '/admin');
   });
 
-  it('renders exactly one footer, after the sentinel and the loading text', () => {
+  it('renders no site footer', () => {
     mockUseImageBrowser.mockReturnValue({ ...baseHookResult, isLoading: true });
     const { container } = render(<AllImagesClient initial={initial} />);
-    const footers = container.querySelectorAll('footer');
-    expect(footers).toHaveLength(1);
-    const sentinel = container.querySelector('[aria-hidden="true"]');
-    const loading = screen.getByText(/loading more/i);
-    expect(sentinel).not.toBeNull();
-    expect(
-      sentinel!.compareDocumentPosition(footers[0]!) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
-    expect(
-      loading.compareDocumentPosition(footers[0]!) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
+    expect(container.querySelector('footer')).toBeNull();
   });
 
   it('A10: shows "All Images" and the initial.totalElements count through CollectionHeader', () => {

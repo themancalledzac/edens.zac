@@ -1,9 +1,8 @@
 /**
  * The skip link is rendered once, from the root layout, above the route segment's Suspense
  * boundary. That position is the whole point of the component: rendered inside a page shell it
- * arrived in React's deferred buffer, so the site-wide footer's links were the page's first two
- * tab stops until the boundary resolved (measured at 459ms on `/collections` in a production
- * build).
+ * arrived in React's deferred buffer, so it joined the tab order only once the boundary resolved
+ * (measured at 459ms on `/collections` in a production build).
  *
  * These tests render the REAL `RootLayout` around each page shell and assert against the emitted
  * markup, so they pin stream order rather than a hand-rolled approximation of the layout.
@@ -84,7 +83,7 @@ describe('skip link, composed through the root layout', () => {
       expect(doc.querySelectorAll('a[href="#main-content"]')).toHaveLength(1);
     });
 
-    it('puts the skip link first in the tab order, ahead of the header and the footer', () => {
+    it('puts the skip link first in the tab order, ahead of the header', () => {
       const { doc } = renderRoute(renderBody());
       const link = doc.querySelector('a[href="#main-content"]');
 
@@ -101,24 +100,6 @@ describe('skip link, composed through the root layout', () => {
       expect(target?.getAttribute('tabindex')).toBe('-1');
       expect(target?.contains(header)).toBe(false);
     });
-
-    /**
-     * The regression itself. The footer ships with the shell; before the fix the link shipped with
-     * the page inside the Suspense boundary, so it appeared LATER in the byte stream than the
-     * footer and the footer's Instagram/GitHub links were reachable first.
-     */
-    it('renders exactly one footer, after </main>', () => {
-      const { doc, html } = renderRoute(renderBody());
-      expect(doc.querySelectorAll('footer')).toHaveLength(1);
-      expect(html.indexOf('</main>')).toBeGreaterThan(-1);
-      expect(html.indexOf('</main>')).toBeLessThan(html.indexOf('<footer'));
-    });
-
-    it('appears earlier in the emitted markup than the footer', () => {
-      const { html } = renderRoute(renderBody());
-      expect(html.indexOf('Skip to main content')).toBeGreaterThan(-1);
-      expect(html.indexOf('Skip to main content')).toBeLessThan(html.indexOf('<footer'));
-    });
   });
 
   it('emits the skip link before the route body, so no route can push it down the stream', () => {
@@ -129,14 +110,12 @@ describe('skip link, composed through the root layout', () => {
   /**
    * The load-bearing assertion. Every route streams inside a Suspense boundary whose fallback is
    * `app/loading.tsx`; the shell around it flushes first. Standing in for that pending shell, the
-   * markup must ALREADY carry the skip link, and no footer: the footer belongs to the page shells,
-   * so it cannot exist while the fallback is on screen.
+   * markup must ALREADY carry the skip link.
    */
-  it('carries the skip link and no footer while the route is still pending', () => {
-    const { doc, html } = renderRoute(<Loading />);
+  it('carries the skip link while the route is still pending', () => {
+    const { doc } = renderRoute(<Loading />);
 
     expect(doc.querySelectorAll('a[href="#main-content"]')).toHaveLength(1);
-    expect(html).not.toContain('<footer');
   });
 
   /**

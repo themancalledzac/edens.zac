@@ -12,12 +12,10 @@ export const MAIN_CONTENT_ID = 'main-content';
  *
  * Rendered exactly once, from the root layout (`app/layout.tsx`), immediately inside `<body>`.
  * That position is load-bearing, not tidiness: every route segment streams inside a Suspense
- * boundary, and the site-wide `<Footer>` is part of the shell that flushes *before* that boundary
- * resolves. A skip link rendered inside a page shell therefore arrived in the hidden
- * `<div id="S:0">` buffer and only joined the tab order when React relocated the boundary — 8ms
- * after the footer on `/`, but 459ms on `/collections`. For that whole window the footer's
- * Instagram and GitHub links were the page's first two tab stops. Hoisting the link above the
- * boundary puts it in the first bytes of the stream, ahead of the footer, from the first paint.
+ * boundary. A skip link rendered inside a page shell arrived in the hidden `<div id="S:0">`
+ * buffer and only joined the tab order when React relocated the boundary — 8ms on `/`, but 459ms
+ * on `/collections`. Hoisting the link above the boundary puts it in the first bytes of the
+ * stream, ahead of the page's own chrome, from the first paint.
  *
  * Because it is unconditional, every route must offer a landing zone: wrap the page's content in
  * {@link SkipTarget}, or spread {@link skipTargetProps} onto an element that already plays that
