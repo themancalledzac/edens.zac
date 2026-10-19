@@ -7,9 +7,8 @@
 
 .container {
   /* Match the route loading fallback (app/loading.module.scss), which reserves
-     100dvh. The site-wide <Footer> renders after this container in the root
-     layout, so any mismatch between the loading reservation and this one shifts
-     the footer at handoff (100vh > 100dvh on mobile). Keep both on dvh. */
+     100dvh, so the handoff does not shift the page (100vh > 100dvh on mobile).
+     Keep both on dvh. */
   min-height: 100dvh;
   display: flex;
   flex-direction: column;

@@ -132,10 +132,7 @@ export interface FilterToolbarProps {
   density?: number;
   /** Upper bound of the fine slider. Defaults to 10 (desktop scale). */
   densityMax?: number;
-  /**
-   * Most distinct days the Date dimension keeps as flat chips before collapsing into the dropdown.
-   * Defaults to {@link MAX_FLAT_DATE_CHIPS}; narrow rails pass a smaller cap.
-   */
+  /** @deprecated Ignored. Years and days live in the single Date dropdown; no caller needs a cap. */
   flatDateLimit?: number;
   onDensityChange?: (value: number) => void;
   /**
@@ -170,25 +167,52 @@ const ORDER_GLYPHS: Record<FilterState['dateSortDirection'], string> = {
   off: '',
 };
 
-/**
- * Above this many distinct days, the Date dimension collapses from flat chips into the standard
- * dropdown so the bar cannot overflow. A fixed count rather than a measured width: available width
- * is unknown at SSR, and measuring would make the chips visibly reflow after hydration.
- */
+/** @deprecated Unused. Kept only so `CollectionContentRenderer` still compiles; remove with its import. */
 export const MAX_FLAT_DATE_CHIPS = 5;
 
-/**
- * The Year dimension's collapse threshold: three or fewer years stay flat chips, four or more
- * become the single-select "Year" dropdown, which closes on select.
- */
-export const MAX_FLAT_YEAR_CHIPS = 3;
+/** One option list inside a dropdown. The Date dropdown holds two: the years, then the days. */
+interface DropdownGroup {
+  key: ArrayFilterKey;
+  heading: string;
+  dim: ToolbarDimension;
+}
+
+/** One dropdown trigger and the option groups its panel or sheet shows. */
+interface DropdownControl {
+  key: ArrayFilterKey;
+  label: string;
+  groups: DropdownGroup[];
+}
 
 /**
- * A dimension that should render as flat chips rather than a dropdown: present, non-empty, and
- * within `cap` options. Returns null when it should collapse into the standard dropdown instead.
+ * The dropdowns the bar shows, in {@link ARRAY_FILTER_KEYS} order. Year and Date are one control:
+ * its trigger reads "Date" and its panel lists the years above the days, each group still writing
+ * its own filter key. A dimension with no options contributes nothing.
  */
-function flatDimension(dim: ToolbarDimension | undefined, cap: number): ToolbarDimension | null {
-  return dim !== undefined && dim.options.length > 0 && dim.options.length <= cap ? dim : null;
+function buildDropdownControls(
+  dimensions: Partial<Record<ArrayFilterKey, ToolbarDimension>>
+): DropdownControl[] {
+  const controls: DropdownControl[] = [];
+  for (const key of ARRAY_FILTER_KEYS) {
+    if (key === 'selectedYears') continue;
+    const dim = dimensions[key];
+    const groups: DropdownGroup[] = [];
+    if (key === 'selectedDates') {
+      const years = dimensions.selectedYears;
+      if (years && years.options.length > 0) {
+        groups.push({ key: 'selectedYears', heading: years.label, dim: years });
+      }
+    }
+    if (dim && dim.options.length > 0) groups.push({ key, heading: dim.label, dim });
+    if (groups.length > 0) {
+      controls.push({
+        key,
+        label: key === 'selectedDates' ? 'Date' : groups[0]!.dim.label,
+        groups,
+      });
+    }
+  }
+  return controls;
 }
 
 /**
@@ -228,7 +252,6 @@ export function FilterToolbar({
   showFilm = false,
   density,
   densityMax = 10,
-  flatDateLimit = MAX_FLAT_DATE_CHIPS,
   onDensityChange,
   densityVariant = 'tiers',
   densityTiers,
@@ -280,13 +303,8 @@ export function FilterToolbar({
     closeAll();
   };
 
-  const flatDates = flatDimension(dimensions.selectedDates, flatDateLimit);
-  const flatYears = flatDimension(dimensions.selectedYears, MAX_FLAT_YEAR_CHIPS);
-
-  const activeBadges = collectActiveFilterBadges(filterState, dimensions, ARRAY_FILTER_KEYS, [
-    ...(flatDates ? (['selectedDates'] as const) : []),
-    ...(flatYears ? (['selectedYears'] as const) : []),
-  ]);
+  const controls = buildDropdownControls(dimensions);
+  const activeBadges = collectActiveFilterBadges(filterState, dimensions, ARRAY_FILTER_KEYS);
 
   const upper: ToolbarExtra[] = [
     ...(sections && sections.length > 0
@@ -341,7 +359,7 @@ export function FilterToolbar({
 
           {showHighlyRated && (
             <FilterChip
-              label="Highly Rated"
+              label="Rated"
               count={counts?.highlyRated}
               active={filterState.highlyRatedOnly}
               onToggle={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
@@ -376,84 +394,56 @@ export function FilterToolbar({
             />
           )}
 
-          {flatYears?.options.map(year => {
-            const isSelected = filterState.selectedYears.includes(year);
-            const available =
-              isSelected || isOptionAvailable(filteredAvailable, 'selectedYears', year);
-            return (
-              <FilterChip
-                key={`year-${year}`}
-                label={year}
-                active={isSelected}
-                state={available ? 'available' : 'unavailable'}
-                onToggle={() =>
-                  toggleArrayFilter(filterState, onFilterChange, 'selectedYears', year)
-                }
-              />
-            );
-          })}
-
-          {flatDates?.options.map(day => {
-            const isSelected = filterState.selectedDates.includes(day);
-            const available =
-              isSelected || isOptionAvailable(filteredAvailable, 'selectedDates', day);
-            return (
-              <FilterChip
-                key={`date-${day}`}
-                label={flatDates.optionLabels?.[day] ?? day}
-                active={isSelected}
-                state={available ? 'available' : 'unavailable'}
-                onToggle={() =>
-                  toggleArrayFilter(filterState, onFilterChange, 'selectedDates', day)
-                }
-              />
-            );
-          })}
-
-          {ARRAY_FILTER_KEYS.map(key => {
-            if (key === 'selectedDates' && flatDates) return null;
-            if (key === 'selectedYears' && flatYears) return null;
-            const dim = dimensions[key];
-            if (!dim || dim.options.length === 0) return null;
-            const selected = filterState[key] as readonly string[];
-            const isOpen = openDropdown === key;
+          {controls.map(control => {
+            const isOpen = openDropdown === control.key;
             const renderOptions = () =>
-              dim.options.map(option => {
-                const isSelected = selected.includes(option);
-                const available = isSelected || isOptionAvailable(filteredAvailable, key, option);
+              control.groups.map(group => {
+                const selected = filterState[group.key] as readonly string[];
                 return (
-                  <FilterChip
-                    key={`${key}-${option}`}
-                    label={dim.optionLabels?.[option] ?? option}
-                    count={dim.counts?.[option]}
-                    active={isSelected}
-                    state={available ? 'available' : 'unavailable'}
-                    onToggle={() => {
-                      toggleArrayFilter(filterState, onFilterChange, key, option);
-                      closeAll();
-                    }}
-                  />
+                  <div key={group.key} className={styles.group}>
+                    {control.groups.length > 1 && (
+                      <span className={styles.groupHeading}>{group.heading}</span>
+                    )}
+                    {group.dim.options.map(option => {
+                      const isSelected = selected.includes(option);
+                      const available =
+                        isSelected || isOptionAvailable(filteredAvailable, group.key, option);
+                      return (
+                        <FilterChip
+                          key={`${group.key}-${option}`}
+                          label={group.dim.optionLabels?.[option] ?? option}
+                          count={group.dim.counts?.[option]}
+                          active={isSelected}
+                          state={available ? 'available' : 'unavailable'}
+                          onToggle={() => {
+                            toggleArrayFilter(filterState, onFilterChange, group.key, option);
+                            closeAll();
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
                 );
               });
             return (
-              <div key={key} className={styles.dropdown}>
+              <div key={control.key} className={styles.dropdown}>
                 <FilterChip
                   ref={node => {
-                    triggerRefs.current[key] = node;
+                    triggerRefs.current[control.key] = node;
                   }}
-                  label={dim.label}
+                  label={control.label}
                   trailing={isOpen ? '▴' : '▾'}
                   active={isOpen}
                   ariaExpanded={isOpen}
                   ariaHasPopup="true"
-                  onToggle={() => toggleOpen(key)}
+                  onToggle={() => toggleOpen(control.key)}
                 />
                 {isOpen && !isMobile && <div className={styles.panel}>{renderOptions()}</div>}
                 {isOpen && isMobile && (
                   <Modal open onClose={closeAll} variant="sheet-bottom" labelledBy={sheetHeadingId}>
                     <div className={styles.sheet}>
                       <h2 id={sheetHeadingId} className={styles.sheetHeading}>
-                        {dim.label}
+                        {control.label}
                       </h2>
                       <div className={styles.sheetOptions}>{renderOptions()}</div>
                     </div>

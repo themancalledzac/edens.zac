@@ -62,23 +62,9 @@ describe('PageShell', () => {
     expect(screen.getByRole('main')).toBeInTheDocument();
   });
 
-  describe('footer', () => {
-    it('renders one footer after <main>, as a child of the container', () => {
-      const { container } = render(<PageShell>x</PageShell>);
-      const main = screen.getByRole('main');
-      const footer = screen.getByRole('contentinfo');
-
-      expect(container.querySelectorAll('footer')).toHaveLength(1);
-      expect(footer.parentElement).toBe(main.parentElement);
-      expect(main.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      expect(main).not.toContainElement(footer);
-    });
-
-    it('omits the footer when withFooter={false}', () => {
-      const { container } = render(<PageShell withFooter={false}>x</PageShell>);
-      expect(container.querySelector('footer')).toBeNull();
-      expect(screen.getByRole('main')).toBeInTheDocument();
-    });
+  it('renders no site footer', () => {
+    const { container } = render(<PageShell>x</PageShell>);
+    expect(container.querySelector('footer')).toBeNull();
   });
 
   /**

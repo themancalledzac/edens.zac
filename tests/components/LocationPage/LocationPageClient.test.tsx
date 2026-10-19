@@ -106,19 +106,13 @@ describe('LocationPageClient — URL seeding', () => {
     mockInitialCriteria = { minRating: 4 };
     renderPage();
     expect(screen.getByTestId('content-blocks')).toHaveAttribute('data-count', '1');
-    expect(screen.getByRole('button', { name: /^Highly Rated/ })).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
+    expect(screen.getByRole('button', { name: /^Rated/ })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('does not seed highly rated from a minRating below 4', () => {
     mockInitialCriteria = { minRating: 3 };
     renderPage();
-    expect(screen.getByRole('button', { name: /^Highly Rated/ })).toHaveAttribute(
-      'aria-pressed',
-      'false'
-    );
+    expect(screen.getByRole('button', { name: /^Rated/ })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('seeds the film filter from isFilm', () => {
@@ -133,7 +127,7 @@ describe('LocationPageClient — URL seeding', () => {
 describe('LocationPageClient — URL syncing', () => {
   it('syncs buildLocationCriteria of the next state when Highly Rated toggles', () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /^Highly Rated/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Rated/ }));
     expect(lastSyncedCriteria()).toEqual(
       buildLocationCriteria({
         ...INITIAL_FILTER_STATE,
@@ -159,7 +153,7 @@ describe('LocationPageClient — URL syncing', () => {
   it('keeps seeded criteria in the next state it syncs', () => {
     mockInitialCriteria = { tags: ['tag-1'] };
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /^Highly Rated/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Rated/ }));
     expect(lastSyncedCriteria()).toEqual({ minRating: 4, tags: ['tag-1'] });
   });
 
@@ -180,7 +174,7 @@ describe('LocationPageClient — Location-only behaviour', () => {
   it('renders the collections row before the toolbar in document order', () => {
     renderPage();
     const row = screen.getByTestId('location-collections');
-    const toolbarChip = screen.getByRole('button', { name: /^Highly Rated/ });
+    const toolbarChip = screen.getByRole('button', { name: /^Rated/ });
     expect(
       row.compareDocumentPosition(toolbarChip) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();

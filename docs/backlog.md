@@ -139,7 +139,6 @@ The round ran #440 to #454 and edens.zac.backend#334. Its review docs are delete
 - **RV2** — `/all-images` renders an empty info block, about 38px tall, above its filter bar. Blocked on: nothing. Size: tiny.
 - **RV3** — Unknown slugs render the 404 page but answer HTTP 200. The root `app/loading.tsx` starts streaming before `notFound()` runs, so the status is already sent. Older than the round. Blocked on: nothing. Size: unsized.
 - **RV4** — `/explore` and `/search` wait on `meServer()` before streaming (#452), so the loading fallback paints first, about 0.4s in dev. Measure in production before changing it. Blocked on: nothing. Size: small.
-- **RV5** — Move the `/collections` failed-read state onto `StatusPage` with `onRetry`. Deferred from #453 because the page passes `me`. Blocked on: nothing. Size: small.
 - **RV6** — Fullscreen metadata chips are 26px tall, not the 44px touch target. Blocked on: nothing. Size: small.
 - **RV7** — Link the collection header's tags to `/tag/[slug]`. Dropped from #447 because tags arrive without slugs. Blocked on: BA5. Size: small FE.
 - **RV8** — Browser check of the unread count on the admin hub's Admin segment (#448). Blocked on: Zac, signed in. Size: tiny.
@@ -176,7 +175,6 @@ These need the EC2 box, a phone, the AWS console or the local machine. Ids are t
 - **O4** — Review the CI audit scope change in #441: `npm run audit` is `npm audit --omit=dev --audit-level=high`, because `braces` has no fix.
 - **O5** — Check that Amplify appends the client IP to `x-forwarded-for`: `curl -H 'X-Forwarded-For: 1.2.3.4'` against an endpoint that logs the resolved IP.
 - **O6** — Point the local backend at a local Postgres before anyone runs `tests/e2e/passkey.spec.ts`. Port 5432 on this Mac is the tunnel to the production database.
-- **O7** — Check production streaming after #445 deployed: on a phone-sized window, no `<footer>` shows while the loading fallback is up, and the spinner is replaced by the page frame. If Amplify buffers the response, record that.
 - **O9** — Local-only cleanup: `docs/superpowers/`, `docs/_archive/`, `.superpowers/`, `.claude/agent-memory/code-reviewer/`, and `todo/` after moving its one file to a backend issue.
 - **O10** — Redeploy the backend with `deploy.sh`; merging edens.zac.backend#334 did not deploy it. Then browser-check its parent covers.
 - **O11** — After rebuilding the local Docker backend with #334, anonymous admin from the Mac gets 401. Add `DEV_LOCAL_ADMIN_EXTRA_ADDRESSES=<Docker gateway IP>` to the local backend `.env`, or log in with the bootstrap admin. The 401's remote address in the debug log is the gateway IP.

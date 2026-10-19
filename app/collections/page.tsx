@@ -1,6 +1,7 @@
 import { type Metadata } from 'next';
 import { unstable_rethrow } from 'next/navigation';
 
+import { CollectionsReadError } from '@/app/collections/CollectionsReadError';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
@@ -117,16 +118,7 @@ export default async function CollectionsPage() {
   }
 
   if (!collection) {
-    return (
-      <PageShell me={me}>
-        <header className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>Collections</h1>
-        </header>
-        <p className={styles.empty}>
-          Unable to load collections right now. Please try again later.
-        </p>
-      </PageShell>
-    );
+    return <CollectionsReadError me={me} />;
   }
 
   const blocks = extractCollectionBlocks(collection.content);

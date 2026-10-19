@@ -40,7 +40,7 @@ interface InvitePageProps {
  * referrer mitigation is handled by the exported `metadata` above.
  *
  * Rendered through `PageShell` with `me={null}`: a signed-in visitor was redirected above, so the
- * header never needs the principal resolved. The shell supplies the header, the footer's anchor and
+ * header never needs the principal resolved. The shell supplies the header and
  * the skip target.
  */
 export default async function InvitePage({ params }: InvitePageProps) {
