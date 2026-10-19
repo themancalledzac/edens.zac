@@ -12,33 +12,26 @@ const EDIT = 'edit';
  * `router.refresh()` from the client gallery gate).
  *
  * Returns `null` in the browser — fetch already attaches same-origin cookies automatically.
+ *
+ * Returns `null` without calling `cookies()` during the production build: the call records a
+ * `DYNAMIC_SERVER_USAGE` digest at the call site that fails builds of routes with
+ * `generateStaticParams`, even if the thrown error is caught. `cookies()` also throws outside a
+ * request scope (`unstable_cache`, ISR revalidation); that means no cookies to forward, so it is
+ * swallowed. Any other error is logged and also yields `null`. `next/headers` is imported lazily
+ * because it only exists in the server runtime.
  */
 export async function getServerCookieHeader(): Promise<string | null> {
   if (typeof window !== 'undefined') return null;
 
-  // Skip entirely during the production build phase. Next.js's `cookies()`
-  // throws `DynamicServerError` (digest: 'DYNAMIC_SERVER_USAGE') outside a
-  // request scope, and the digest is recorded at the call site — *before*
-  // any try/catch we wrap around it. For routes that also declare
-  // `generateStaticParams`, that digest fails the build ("can't render
-  // statically because it used `cookies`"), even when our catch swallows
-  // the thrown error. Skipping the call entirely during build avoids
-  // triggering the digest. At build time no user request context exists,
-  // so there's no `gallery_access_<slug>` cookie to forward anyway.
   if (process.env.NEXT_PHASE === 'phase-production-build') return null;
 
   try {
-    // Lazy import: `next/headers` is only available in the server runtime.
     const { cookies } = await import('next/headers');
     const store = await cookies();
     const all = store.getAll();
     if (all.length === 0) return null;
     return all.map(c => `${c.name}=${c.value}`).join('; ');
   } catch (error: unknown) {
-    // `cookies()` throws whenever there's no request context — at build time,
-    // inside `generateStaticParams`, inside `unstable_cache`, during ISR
-    // background revalidation, or otherwise outside a per-request scope.
-    // All of those mean "no cookies to forward", not a real failure.
     if (
       error instanceof Error &&
       /outside a request scope|generatestaticparams|without an http request|rendered statically|dynamic server usage/i.test(
@@ -54,7 +47,6 @@ export async function getServerCookieHeader(): Promise<string | null> {
     ) {
       return null;
     }
-    // Any other unexpected error: warn and degrade gracefully rather than breaking the fetch.
     logger.warn('getServerCookieHeader', 'Unexpected error reading cookies', { error });
     return null;
   }
@@ -221,7 +213,8 @@ export async function clientFetchJson<T>(
 
 /**
  * Unified error handling for API requests
- * Handles both Response errors and catch block errors
+ * Handles both Response errors and catch block errors. Responses are detected by duck typing
+ * because `instanceof Response` is not reliable in every environment.
  *
  * @param error - Error to handle (can be Response, Error, ApiError, or unknown)
  * @param response - Optional Response object (if error is a Response, this should be the same)
@@ -233,7 +226,6 @@ async function throwApiError(error: unknown, response?: Response): Promise<never
     throw error;
   }
 
-  // Duck-type check instead of instanceof — Response may not be available in all environments
   const responseObj =
     error &&
     typeof error === 'object' &&

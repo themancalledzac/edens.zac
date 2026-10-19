@@ -19,7 +19,9 @@ const DEFAULT_PAGE_SIZE = 150;
  * Paginated all-images browser. SSR seeds page 0; on mount we auto-prefetch
  * page 1 so it's cached before the user scrolls. {@link loadNext} appends
  * subsequent pages on demand. {@code fetchingRef} prevents concurrent fetches
- * — pages are sequential, so a queue is overkill.
+ * — pages are sequential, so a queue is overkill. The prefetch is skipped when the SSR page
+ * is already the last, and its effect is mount-only on purpose (`fetchPage` and `initial`
+ * are captured once).
  */
 export function useImageBrowser(initial: PagedImages): UseImageBrowserResult {
   const [pages, setPages] = useState<PagedImages[]>([initial]);
@@ -57,14 +59,12 @@ export function useImageBrowser(initial: PagedImages): UseImageBrowserResult {
     void fetchPage(nextPage);
   }, [isDone, pages, fetchPage]);
 
-  // Auto-prefetch page 1 once on mount, unless the SSR page already covers everything.
   const didMountPrefetchRef = useRef(false);
   useEffect(() => {
     if (didMountPrefetchRef.current) return;
     didMountPrefetchRef.current = true;
     if (initial.isLast) return;
     void fetchPage(1);
-    // Intentionally mount-only — fetchPage and initial are captured by design.
   }, []);
 
   return { items, loadNext, isLoading, isDone, error };

@@ -21,6 +21,10 @@ import {
  * - `syncToUrl(criteria)` writes serialized params back via router.replace
  *   (no scroll jump, no history entry per change — the page entry stays the
  *   Back target). Empty criteria collapse to the bare pathname for a clean URL.
+ *   Only the filter keys are rewritten; other params such as `?image=<id>` are kept. The
+ *   write is skipped when the URL would not change (e.g. the Order chip is local-only),
+ *   because replacing a URL with itself still refetches the RSC payload and can make a
+ *   per-request cover change and the header row resize.
  */
 export function useFilterUrlState(): {
   initialCriteria: ContentFilterCriteria;
@@ -30,32 +34,18 @@ export function useFilterUrlState(): {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Parse once from the first-render params via a lazy initializer; subsequent
-  // URL writes are ours, so re-seeding from them would clobber in-flight user
-  // selections. searchParams is intentionally read only on mount.
   const [initialCriteria] = useState<ContentFilterCriteria>(() =>
     parseFilterFromParams(new URLSearchParams(searchParams.toString()))
   );
 
   const syncToUrl = useCallback(
     (criteria: ContentFilterCriteria) => {
-      // Merge into the live URL: drop only the filter keys we own (so a removed
-      // filter clears), then write the serialized ones. Params we don't own —
-      // notably `?image=<id>` for the fullscreen deep-link — are preserved.
       const params = new URLSearchParams(window.location.search);
       for (const k of FILTER_PARAM_KEYS) params.delete(k);
       for (const [k, v] of serializeFilterToParams(criteria)) params.append(k, v);
       const qs = params.toString();
       const next = qs ? `${pathname}?${qs}` : pathname;
 
-      // Not every filter is serialized to the URL — `dateSortDirection` (the Order chip) is purely
-      // local state, so toggling it lands here with `next` identical to the current URL. Replacing
-      // a URL with itself is not free: the App Router still refetches the RSC payload, re-running
-      // the server component and swapping in a fresh server render. On a page whose server read
-      // does not return a byte-identical payload each time — the synthetic `/user` and
-      // `/admin/users/[id]` collections, whose cover is chosen per request — that showed up as the
-      // header cover changing, and the header row visibly collapsing and regrowing to the new
-      // cover's aspect ratio, on every press of a chip that only reorders what is already loaded.
       if (next === `${window.location.pathname}${window.location.search}`) return;
 
       router.replace(next, { scroll: false });

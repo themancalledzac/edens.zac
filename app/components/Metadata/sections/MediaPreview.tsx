@@ -67,7 +67,8 @@ interface MediaPreviewProps {
  * Renders the left-side media preview panel of the MetadataModal.
  *
  * Three render paths:
- * - Bulk edit: a grid of thumbnails, one per selected item.
+ * - Bulk edit: a grid of thumbnails, one per selected item (`imageUrl` for images, `thumbnailUrl`
+ *   for GIFs).
  * - Single GIF/MP4: a looping `<video>` element.
  * - Single image: a `<next/image>` element.
  */
@@ -88,7 +89,6 @@ export default function MediaPreview({
           {selectedIds.map(imageId => {
             const item = selectedImages.find(i => i.id === imageId);
             if (!item) return null;
-            // Bulk-edit thumbnail src: image uses imageUrl, GIF uses thumbnailUrl (still WebP).
             const thumbSrc =
               item.contentType === 'GIF'
                 ? (item.thumbnailUrl ?? '')

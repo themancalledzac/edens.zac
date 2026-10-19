@@ -211,7 +211,6 @@ export default function CollectionListSelector({
     };
     const isCurrent = currentCollectionId != null && collection.id === currentCollectionId;
     const currentReason = "This is the collection you're editing — it can't be related to itself.";
-    // Synthetic tag-view rows are read-only until promoted; they never participate in toggles.
     const isDerived = collection.derived === true;
     const derivedReason = 'Tag view — Save as Collection to make it permanent';
     const isActivelyChild =

@@ -38,7 +38,8 @@ export function isCollectionCard(item: AnyContentModel): boolean {
  * The vertical penalty was RETIRED in the directional-prominence rewrite, so a
  * V5★ and an H5★ both return 5 — directionality is expressed downstream by AR
  * extremeness (width-cost Hv / height-demand Vv), not by demoting the rating.
- * Collection cards → 4, non-image/gif → 1, else the raw 0-5 rating (clamped).
+ * Collection cards → 4, non-image/gif → 1, else the raw 0-5 rating (clamped). Animated GIF/MP4
+ * blocks use the image rating; returning 1 for them made them pack as low-priority filler.
  *
  * This is the single rating accessor for the layout engine: it is both the
  * Stage-1 point-balance "points" and the base of the prominence P in
@@ -54,9 +55,6 @@ export function getEffectiveRating(item: AnyContentModel): number {
 
   if (isPanelContent(item)) return clamp(item.rating ?? 0, 0, 5);
 
-  // Animated GIF/MP4 blocks share the image rating semantics (0-5). The earlier `return 1`
-  // short-circuit here is what made GIFs always pack as low-priority filler in the row algorithm
-  // even after we added rating to the backend.
   if (!isContentImage(item) && !isGifContent(item)) {
     return 1;
   }

@@ -27,7 +27,8 @@ interface UseCaptureDateSelectionParams {
  * metadata editor.
  *
  * Like {@link useCoverImageSelection}, the pick persists immediately — there is no staged state to
- * return to, since reaching the grid means the metadata sheet has already closed.
+ * return to, since reaching the grid means the metadata sheet has already closed. Undated images,
+ * text blocks and other GIFs are rejected and pick mode stays active.
  */
 export function useCaptureDateSelection({
   collection,
@@ -44,8 +45,6 @@ export function useCaptureDateSelection({
       const source = (collection.content ?? []).find(block => block.id === imageId);
       const captureDate = source && isContentImage(source) ? source.captureDate : null;
 
-      // Undated images, text blocks and other GIFs are not valid sources. Stay in pick mode so
-      // the user can simply click a different block.
       if (!captureDate) {
         setError('That block has no capture date - pick an image that does.');
         return;

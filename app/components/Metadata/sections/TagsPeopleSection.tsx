@@ -18,13 +18,15 @@ export interface TagsPeopleSectionProps {
   availablePeople: ContentPersonModel[];
 }
 
+/**
+ * People are sorted alphabetically, case-insensitive, to match TagsSelector.
+ */
 export default function TagsPeopleSection({
   updateState,
   updateStateField,
   availableTags,
   availablePeople,
 }: TagsPeopleSectionProps): JSX.Element {
-  // People list alphabetical (case-insensitive), matching TagsSelector. Copy before sorting.
   const sortedPeople = useMemo(
     () => [...availablePeople].sort((a, b) => compareNames(a.name, b.name)),
     [availablePeople]

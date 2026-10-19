@@ -46,13 +46,11 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Portal target (document.body) is only available on the client.
   useEffect(() => setMounted(true), []);
 
   const closePicker = useCallback(() => setPickerTarget(null), []);
   const { preparing, startDownload } = useDownloadNavigation(closePicker);
 
-  // Esc closes the picker (only while open and no download is in flight).
   useEffect(() => {
     if (pickerTarget === null || preparing !== null) return;
     const handler = (e: globalThis.KeyboardEvent) => {
@@ -62,13 +60,10 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
     return () => document.removeEventListener('keydown', handler);
   }, [pickerTarget, preparing, closePicker]);
 
-  // Leaving select mode (e.g. via the bar's Cancel) must drop a stale "selected" picker.
   useEffect(() => {
     if (!isSelectMode) setPickerTarget(prev => (prev === 'selected' ? null : prev));
   }, [isSelectMode]);
 
-  // If the user deselects every image while the quality picker is open, auto-back-out of it —
-  // there's nothing left to download, so the picker should behave like Cancel.
   useEffect(() => {
     if (pickerTarget === 'selected' && selectedCount === 0) setPickerTarget(null);
   }, [pickerTarget, selectedCount]);
@@ -94,8 +89,6 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
     [collectionSlug, pickerTarget, download, startDownload]
   );
 
-  // The shared Web / Full / Cancel picker — used by both the "All" and "Selected" flows, always in
-  // the bottom bar. Short labels keep the bar from overflowing on mobile.
   const renderPicker = () => (
     <div className={styles.pickerRow} role="group" aria-label="Choose download quality">
       <Button
@@ -124,7 +117,6 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
     </div>
   );
 
-  // ── Inline entry: "Download" + All / Select (bottom of the metadata block) ──
   const inlineSection = (
     <div className={styles.downloadContainer}>
       <span className={styles.sectionLabel}>Download</span>
@@ -155,8 +147,6 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
     </div>
   );
 
-  // ── Single fixed action bar at the bottom — the one and only "download" location ──
-  // Shown for the All picker (not in select mode) and for the whole Select flow.
   const barVisible = mounted && (pickerTarget === 'all' || isSelectMode);
   const selectBar = barVisible
     ? createPortal(

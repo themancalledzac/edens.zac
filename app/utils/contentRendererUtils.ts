@@ -222,6 +222,9 @@ export function resolveValidDimensions({
  * announced "Image, button" instead of its action. Emptiness is the signal; each consumer picks
  * the wording that fits what its element does.
  *
+ * Only collection cards (checked with {@link isCollectionCard}, as the layout rating does) get
+ * `cardTypeBadge`; a plain parallax image's own tags must never show as a card label.
+ *
  * @param content - Any content model to normalize
  * @param calculatedWidth - Pre-calculated display width
  * @param calculatedHeight - Pre-calculated display height
@@ -322,10 +325,6 @@ export function normalizeContentToRendererProps(
       imageHeight: dimensions.imageHeight,
       alt: humanLabel(content.alt, content.title, content.caption) ?? '',
       overlayText: content.overlayText,
-      // Only collection cards (parallax blocks converted from a collection, so they carry
-      // a slug) get a badge — a plain parallax IMAGE's own tags must never surface as a
-      // card label. Shares {@link isCollectionCard}'s discriminant rather than restating
-      // it, so the badge and the layout rating can never disagree about what a card is.
       cardTypeBadge: isCollectionCard(content)
         ? (collectionPublicLabel(content) ?? undefined)
         : undefined,

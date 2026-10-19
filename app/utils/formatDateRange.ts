@@ -68,7 +68,8 @@ const ISO_DATE_REGEX = /^(\d{4})-(\d{2})-(\d{2})(?:[ T].*)?$/;
  * negative-offset zones).
  *
  * Returns null when the input is absent or not a real calendar date — `2026-02-30` and
- * `2026-13-01` are rejected, not silently rolled over.
+ * `2026-13-01` are rejected, not silently rolled over. An out-of-range month indexes past
+ * `DAYS_IN_MONTH`, which doubles as the month check.
  */
 export function parseIsoDateParts(iso?: string | null): DateParts | null {
   if (!iso) {
@@ -82,7 +83,6 @@ export function parseIsoDateParts(iso?: string | null): DateParts | null {
   const month = Number(match[2]);
   const day = Number(match[3]);
 
-  // An out-of-range month indexes past the table, which is the month check.
   const monthLength = DAYS_IN_MONTH[month - 1];
   if (monthLength === undefined) {
     return null;

@@ -28,7 +28,6 @@ interface FullScreenDownloadButtonProps {
 export default function FullScreenDownloadButton({ imageId }: FullScreenDownloadButtonProps) {
   const [expanded, setExpanded] = useState(false);
 
-  // Collapse the picker whenever the viewer moves to a different image.
   useEffect(() => {
     setExpanded(false);
   }, [imageId]);

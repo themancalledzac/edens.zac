@@ -27,7 +27,6 @@ export function useInViewport(ref: RefObject<Element | null>, options: UseInView
 
   const { threshold = 0, root = null, rootMargin = '0px' } = options;
 
-  // Memoize observer options to prevent unnecessary effect re-runs
   const observerOptions = useMemo(
     (): IntersectionObserverInit => ({
       root,

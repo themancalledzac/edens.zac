@@ -44,6 +44,10 @@ export interface EssentialInfoSectionProps {
   onPickCaptureDate?: () => void;
 }
 
+/**
+ * The GIF capture date is not a bound field. It comes from clicking a reference image on the manage
+ * grid, so its button closes the sheet and hands off to pick mode.
+ */
 export default function EssentialInfoSection({
   updateState,
   updateStateField,
@@ -194,8 +198,6 @@ export default function EssentialInfoSection({
       {isGif && !isBulkEdit && (
         <div className={modalStyles.formGroup}>
           <label className={modalStyles.formLabel}>Capture date</label>
-          {/* Not a bound field: the date is sourced by clicking a reference image on the manage
-              grid, so this button closes the sheet and hands off to pick mode. */}
           <div className={modalStyles.inlineActionRow}>
             <span className={modalStyles.inlineActionValue}>
               {updateState.captureDate ? formatLongDate(updateState.captureDate) : 'Not set'}

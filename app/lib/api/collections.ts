@@ -181,6 +181,9 @@ export async function getCollectionsByLocation(
  *
  * Throws `ApiError` with status `429` when the rate limiter rejects the
  * request, so callers can surface a friendly "too many attempts" message.
+ *
+ * The response shape is validated at runtime: a regression returning no boolean `hasAccess`
+ * would otherwise silently unlock the gate without proof of access.
  */
 export async function validateClientGalleryAccess(
   slug: string,
@@ -213,9 +216,6 @@ export async function validateClientGalleryAccess(
     if (res.status === 404) throw new ApiError('Gallery not found', 404);
     throw new ApiError(message, res.status);
   }
-  // Runtime-validate the response shape — backend should always return
-  // `{ hasAccess: boolean }` but a regression here would silently flip the gate
-  // to "unlocked" without proof of access.
   const data: unknown = await res.json();
   if (
     typeof data !== 'object' ||

@@ -75,6 +75,12 @@ export interface EditModeLayerProps {
  * Consolidated edit experience for a collection page: grid, inline-edit context, Escape handler,
  * filter reset, and all edit overlays (EditBar, sheet, metadata + text-block modals).
  * Loaded via `next/dynamic` with `ssr: false` — admin-only deps stay out of the public bundle.
+ *
+ * Content comes from the admin DTO (it reflects saves, such as displayMode after a Reorder), falling
+ * back to the server seed. Escape exits manage mode only when no inline editor claimed it. Reorder
+ * and select clear active filters on entry. Cover picking is unavailable until the admin DTO loads
+ * and in modes that claim grid clicks; child-collection images get their own picker because the
+ * grid shows them only as the child's card.
  */
 export default function EditModeLayer({
   collection,
@@ -88,12 +94,9 @@ export default function EditModeLayer({
 }: EditModeLayerProps) {
   const router = useRouter();
 
-  // JS breakpoint: desktop shows both panels side-by-side; mobile uses a tab chooser.
-  // Safe to call — this component is dynamically imported ssr:false.
   const { isMobile } = useViewport();
   const twoColumn = !isMobile;
 
-  // Signal before paint so the public-grid fallback swaps out in the same frame — no double-grid flash.
   useLayoutEffect(() => {
     onMounted();
   }, [onMounted]);
@@ -115,8 +118,6 @@ export default function EditModeLayer({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      // Inline editors preventDefault their own Escape; bail so one keypress never both reverts
-      // an inline edit AND exits manage mode. The activeElement guard is a backup.
       if (event.defaultPrevented) return;
       if (edit.editingContent || edit.isTextBlockModalOpen) return;
       if (
@@ -142,17 +143,13 @@ export default function EditModeLayer({
     handleExitManage,
   ]);
 
-  // Prefer the admin DTO (reflects saves) over the frozen server seed — e.g. displayMode updates
-  // after a Reorder only appear in the admin DTO.
   const liveCollection = edit.currentState?.collection ?? collection;
 
-  // Falls back to the seed's content if the admin DTO omits it.
   const allContent = useMemo(
     () => liveCollection.content ?? collection.content ?? [],
     [liveCollection.content, collection.content]
   );
 
-  // Mirror live content to parent (see onLiveContentChange contract); cleanup resets to seed.
   useEffect(() => {
     onLiveContentChange?.(allContent);
     return () => onLiveContentChange?.(null);
@@ -192,7 +189,6 @@ export default function EditModeLayer({
     filterState.dateSortDirection,
   ]);
 
-  // Reorder and select must operate on the full unfiltered list; clear active filters on entry.
   useEffect(() => {
     if (edit.manageMode !== 'reorder' && edit.manageMode !== 'select') return;
     if (!hasAnyActiveFilter(filterState)) return;
@@ -222,8 +218,6 @@ export default function EditModeLayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edit.isSelectingCoverImage, edit.setIsSelectingCoverImage]);
 
-  // Withheld from the modes that already claim grid clicks for themselves, and until the admin
-  // DTO lands — the pick writes straight through to the API, so it needs the loaded collection.
   const canPickCover =
     editReady && (isPickingCover || edit.manageMode === 'browse' || edit.manageMode === 'edit');
 
@@ -249,9 +243,6 @@ export default function EditModeLayer({
     ]
   );
 
-  // Only the child-collection arm of the cover-candidate union (D3) needs a picker of its own:
-  // the collection's own images are on the grid, where pick mode already makes them clickable,
-  // but a child's images are represented there only by the child's card.
   const childCoverCandidates = edit.childCollectionImages ?? [];
 
   /**
@@ -300,7 +291,6 @@ export default function EditModeLayer({
           <div className={styles.editCanvas}>{grid}</div>
         </InlineEditProvider>
       ) : (
-        // No provider while the admin DTO loads — header card degrades to read-only.
         <div className={styles.editCanvas}>{grid}</div>
       )}
 
@@ -318,7 +308,6 @@ export default function EditModeLayer({
         </div>
       )}
 
-      {/* Pick mode arrives with the metadata sheet already closed, so the grid needs to say why. */}
       {edit.manageMode === 'pick-date' && (
         <div className={styles.hintBanner} role="status">
           Click an image to copy its capture date.
@@ -359,7 +348,6 @@ export default function EditModeLayer({
           ariaLabel="Manage"
           fixed
           cells={edit.bottomBarCells}
-          // On desktop both panels are shown side-by-side, so the Info/Structure chooser is dropped.
           tabs={twoColumn ? undefined : edit.bottomBarTabs}
           activeTab={edit.editTab}
           onTabChange={id => edit.setEditTab(id as typeof edit.editTab)}
@@ -384,7 +372,6 @@ export default function EditModeLayer({
           selectedIds={edit.selectedIds}
           selectedImages={edit.contentToEdit}
           currentCollectionId={collection.id}
-          // Gated on there being a date to copy at all — an empty pick mode would be a dead end.
           onPickCaptureDate={hasDatedImages ? edit.startCaptureDatePick : undefined}
         />
       )}

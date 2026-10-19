@@ -23,14 +23,13 @@ export interface ShareSessionProps {
  * The cost is one extra request on the first landing only — every later visit is served from the
  * cookie. A failure is logged and swallowed: the page the visitor asked for is already rendered
  * above, and the link in their messages keeps working, so an error banner would report a problem
- * they do not have.
+ * they do not have. The logged error never includes the token, since it is a bearer credential.
  */
 export function ShareSession({ token }: ShareSessionProps) {
   useEffect(() => {
     let cancelled = false;
     plantShareCookie(token).catch((error: unknown) => {
       if (!cancelled) {
-        // The token is deliberately not included — it is a bearer credential.
         logger.error('share', 'Could not start the share session', error);
       }
     });

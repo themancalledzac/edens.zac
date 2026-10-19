@@ -155,12 +155,8 @@ export default function Dropdown<T extends MetadataItem>({
 
   const handleSelectItem = (item: T) => {
     if (multiSelect) {
-      // Multi-select (Tags, People): toggle and KEEP the list open so several items
-      // can be picked in one pass. The list closes on click-outside
-      // (useClickOutsideMultiple) — not on each pick.
       onChange(toggleMultiSelection(selectedValues, item, getDisplayName));
     } else {
-      // Single-select (Camera, Lens, Film): one value is terminal, so close on pick.
       onChange(item);
       setIsSelectingFromDropdown(false);
     }
@@ -175,7 +171,6 @@ export default function Dropdown<T extends MetadataItem>({
   const isFieldVisible = (field: AddNewField): boolean => checkFieldVisible(field, formData);
 
   const handleAddNew = () => {
-    // Validate visible, required fields. Hidden fields (showWhen → false) are skipped.
     if (findMissingRequiredFields(addNewFields, formData).length > 0) return;
 
     const processedData = processAddNewFormData(addNewFields, formData);
@@ -212,7 +207,6 @@ export default function Dropdown<T extends MetadataItem>({
         <label className={styles.formLabel}>{label}</label>
       </div>
 
-      {/* Current Selection Display — itself the dropdown trigger */}
       <div
         className={styles.cameraDisplay}
         role="button"
@@ -274,7 +268,6 @@ export default function Dropdown<T extends MetadataItem>({
         </div>
       </div>
 
-      {/* Dropdown Selection */}
       {isSelectingFromDropdown && (
         <div className={styles.cameraDropdownList}>
           {options.length > 0 ? (
@@ -316,7 +309,6 @@ export default function Dropdown<T extends MetadataItem>({
         </div>
       )}
 
-      {/* Add New Form */}
       {isAddingNew && (
         <div className={styles.addNewInput}>
           {addNewFields.map((field, index) => {

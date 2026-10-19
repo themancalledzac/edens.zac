@@ -76,6 +76,9 @@ interface MetadataModalProps {
  * (Info · Camera · Collections) above the action bar. The photo is a top strip when the sheet is
  * tall and narrow and a left column otherwise — see `MetadataModal.module.scss`, which keys the
  * switch on height as well as width so a landscape phone does not stack.
+ *
+ * Remove only shows inside a collection; Delete always shows, including for GIFs. The last button
+ * reads "Close" until something is edited, then "Cancel".
  */
 export default function MetadataModal({
   onClose,
@@ -230,7 +233,6 @@ export default function MetadataModal({
               activeTab={activeTab}
               onTabChange={id => setActiveTab(id as TabId)}
               cells={[
-                // Remove: only available in a collection context; less destructive than Delete.
                 ...(currentCollectionId
                   ? [
                       {
@@ -242,7 +244,6 @@ export default function MetadataModal({
                       },
                     ]
                   : []),
-                // Delete: always present, including for GIFs (which have no Remove).
                 {
                   key: 'delete',
                   label: 'Delete',
@@ -257,8 +258,6 @@ export default function MetadataModal({
                   disabled: !hasChanges || saving,
                   onClick: () => formRef.current?.requestSubmit(),
                 },
-                // "Close" when nothing has been edited (nothing to discard); "Cancel" once
-                // there are unsaved changes, signalling the click abandons them.
                 {
                   key: 'cancel',
                   label: hasChanges ? 'Cancel' : 'Close',

@@ -17,9 +17,11 @@ import { AdminScrollManager } from './AdminScrollManager';
  *
  * No wrapper element remains — `PageShell` (and the collection-edit pages' own container) already
  * carry `min-height: 100dvh`, and the removed box only existed to paint behind them.
+ *
+ * `requireAdmin()` redirects non-admins and anonymous visitors to /login.
  */
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  await requireAdmin(); // redirects non-admins (and anon) to /login
+  await requireAdmin();
   return (
     <>
       <AdminScrollManager />

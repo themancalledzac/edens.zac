@@ -100,6 +100,13 @@ export interface CameraSettingsSectionProps {
   isGif: boolean;
 }
 
+/**
+ * Camera is the only add-new picker that saves before the form does. The save-time diff would drop
+ * `isFilm` and `defaultFilmFormat`, so it POSTs the camera right away and swaps the optimistic
+ * `{ id: 0 }` entry for the server one. A null response is a 204 success and keeps the optimistic
+ * entry. On failure it reverts to the prior camera and sets `createError`. Both swaps skip if the
+ * user picked a different camera in the meantime.
+ */
 export default function CameraSettingsSection({
   updateState,
   updateStateField,
@@ -110,8 +117,6 @@ export default function CameraSettingsSection({
   availableFilmFormats,
   isGif,
 }: CameraSettingsSectionProps): JSX.Element {
-  // Inline feedback when an eager camera-create fails (the only add-new picker
-  // that persists before save — see onAddNew below).
   const [createError, setCreateError] = useState<string | null>(null);
 
   return (
@@ -142,12 +147,8 @@ export default function CameraSettingsSection({
           const defaultFilmFormat = isFilm
             ? ((data.defaultFilmFormat as string | null) ?? null)
             : null;
-          // Snapshot the prior selection so a failed create can revert to it
-          // rather than nuking a camera the user already had chosen.
           const previousCamera = updateState.camera ?? null;
           setCreateError(null);
-          // Optimistic local update — assume the create succeeds. Reuses the
-          // same auto-toggle helper as picking an existing film camera.
           const optimisticCamera: ContentCameraModel = {
             id: 0,
             name: trimmedName,
@@ -155,16 +156,9 @@ export default function CameraSettingsSection({
             defaultFilmFormat,
           };
           updateStateField(computeCameraSelectionUpdate(optimisticCamera, updateState));
-          // Camera is the only add-new that eagerly persists: the save-time diff
-          // (buildCameraDiff) emits a name-only `newValue` that would drop
-          // isFilm/defaultFilmFormat, so we POST to /metadata/cameras here.
           void createCamera({ cameraName: trimmedName, isFilm, defaultFilmFormat })
             .then(created => {
-              // A null body is a 204 success — keep the optimistic { id: 0 }
-              // camera; the save-time newValue path persists it. NOT a failure.
               if (!created) return;
-              // Guarded: only swaps if the selection is still our placeholder, so
-              // a camera the user picked while this was in flight is preserved.
               replaceOptimisticCamera(trimmedName, {
                 id: created.id,
                 name: created.cameraName,
@@ -173,9 +167,6 @@ export default function CameraSettingsSection({
               });
             })
             .catch(error_ => {
-              // Real failure (createCamera throws on non-2xx). Revert the phantom
-              // camera (guarded — preserves a newer selection) and surface it so
-              // the user isn't left with a camera that was never persisted.
               logger.error('CameraSettingsSection', 'Failed to create camera', error_);
               replaceOptimisticCamera(trimmedName, previousCamera);
               setCreateError(`Couldn't save camera "${trimmedName}". Please try again.`);

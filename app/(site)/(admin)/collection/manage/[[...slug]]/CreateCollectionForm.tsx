@@ -18,11 +18,10 @@ import styles from './CreateCollectionForm.module.scss';
 /**
  * Minimal "create a new collection" form — the only surviving responsibility of the
  * old manage route. On success it redirects into the in-place edit surface (`?manage=1`).
+ * Both kind flags default off, which is an ordinary collection, so nothing extra is sent.
  */
 export function CreateCollectionForm() {
   const router = useRouter();
-  // Both flags default off: an ordinary collection is the default kind. The backend folds a
-  // request with neither flag onto its no-op base, so nothing extra is sent for that case.
   const [createData, setCreateData] = useState<CollectionCreateRequest>({ title: '' });
 
   const setKind = (kind: 'isClient' | 'isBlog', checked: boolean) => {

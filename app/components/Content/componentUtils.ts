@@ -38,18 +38,15 @@ export interface EffectiveViewport {
 
 /**
  * Choose the viewport to lay out with: the client-measured one once it's the better fit, otherwise
- * the SSR fallback (which avoids a hydration reflow while still fitting the viewport).
+ * the SSR fallback (which avoids a hydration reflow while still fitting the viewport). Mobile has no
+ * SSR width cap, so a wider real device (430px vs the 390px default) would stay short of
+ * full-bleed; on mobile the tolerance is dropped and the measured width always wins.
  */
 export function resolveEffectiveViewport(
   measured: ViewportDimensions,
   server: ServerViewport,
   tolerance: number
 ): EffectiveViewport {
-  // The tolerance keeps the SSR width across hydration to avoid a reflow. On desktop the SSR
-  // width is capped at pageMaxWidth, so it matches most real viewports exactly and keeping it is
-  // free. Mobile has no width cap, so a real device wider than the SSR fallback (e.g. a 430px
-  // phone vs the 390px default) would stay short of full-bleed. On mobile we therefore drop the
-  // tolerance and always adopt the measured width.
   const effectiveTolerance = measured.isMobile ? 0 : tolerance;
   const useMeasured = shouldUseMeasuredWidth(
     measured.contentWidth,
@@ -270,7 +267,6 @@ export function createSimpleBoxTree(items: CalculatedContentSize[]): BoxTree {
     };
   }
 
-  // For 3+ items: build a left-associative tree.
   let tree: BoxTree = {
     type: 'combined',
     direction: 'horizontal',

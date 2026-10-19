@@ -29,6 +29,11 @@ export interface FollowsContextValue {
 
 const FollowsContext = createContext<FollowsContextValue | null>(null);
 
+/**
+ * Keeps a ref mirror of the Set because `toggle` must pick its direction synchronously. State
+ * updaters run lazily, so reading state gives stale answers when two clicks land before a
+ * re-render. Rollback removes only the failed id so other in-flight toggles survive.
+ */
 export function FollowsProvider({
   initialFollowedIds,
   children,
@@ -38,14 +43,8 @@ export function FollowsProvider({
 }) {
   const [followedIds, setFollowedIds] = useState<Set<number>>(() => new Set(initialFollowedIds));
 
-  // Ref mirror of the followed Set, the synchronous source of truth for `toggle`'s follow/unfollow
-  // decision. React runs functional state updaters lazily at flush time, so reading membership from
-  // a closed-over Set (or from inside setFollowedIds) can't inform the persist/rollback direction
-  // that must be chosen on the same synchronous tick. A ref always holds the latest value, so two
-  // rapid clicks before a re-render each observe the other's result and stay consistent.
   const followedIdsRef = useRef(followedIds);
 
-  // Write the new Set to the ref and state together so they never drift.
   const commit = useCallback((next: Set<number>) => {
     followedIdsRef.current = next;
     setFollowedIds(next);
@@ -60,7 +59,6 @@ export function FollowsProvider({
     (collectionId: number) => {
       const wasFollowing = followedIdsRef.current.has(collectionId);
 
-      // Optimistic update off the current (ref) membership.
       const optimistic = new Set(followedIdsRef.current);
       if (wasFollowing) {
         optimistic.delete(collectionId);
@@ -71,7 +69,6 @@ export function FollowsProvider({
 
       const persist = wasFollowing ? removeFollow(collectionId) : addFollow(collectionId);
       persist.catch((error: unknown) => {
-        // Roll back just this id off the latest membership (other in-flight toggles are preserved).
         const rolledBack = new Set(followedIdsRef.current);
         if (wasFollowing) {
           rolledBack.add(collectionId);

@@ -87,7 +87,6 @@ export default function ReorderOverlay({
         <span aria-hidden="true">→</span>
       </button>
 
-      {/* Place target overlay — shown when another image is picked up */}
       {!isPickedUp && pickedUpImageId != null && (
         <button
           type="button"

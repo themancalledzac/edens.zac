@@ -50,7 +50,7 @@ export async function requestFullscreen(el: HTMLElement | null): Promise<boolean
   }
 }
 
-/** Exit fullscreen if the document is currently in it. Best-effort; never throws. */
+/** Exit fullscreen if the document is currently in it. Best-effort; a failed exit is swallowed. */
 export async function exitFullscreen(): Promise<void> {
   if (typeof document === 'undefined') return;
   if (!fullscreenElement()) return;
@@ -65,7 +65,7 @@ export async function exitFullscreen(): Promise<void> {
   try {
     await exit.call(doc);
   } catch {
-    // Best-effort: a failed exit shouldn't surface to the caller.
+    // Best-effort exit.
   }
 }
 

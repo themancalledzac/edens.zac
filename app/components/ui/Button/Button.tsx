@@ -37,8 +37,6 @@ export function Button({
   children,
   ...rest
 }: ButtonProps) {
-  // Filled variants (primary/secondary/danger) carry their own dark fill → white spinner;
-  // the transparent variants (ghost/outline) sit on the page surface → dark spinner.
   const spinnerColor = variant === 'ghost' || variant === 'outline' ? 'dark' : 'white';
   const classes = [styles.button, styles[variant], styles[size], className]
     .filter(Boolean)
