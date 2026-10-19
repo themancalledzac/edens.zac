@@ -1,4 +1,5 @@
 import { ContactChip } from '@/app/components/Personal/ContactChip';
+import { LogoutChip } from '@/app/components/Personal/LogoutChip';
 import { ownSpaceExtras } from '@/app/components/Personal/ownSpaceExtras';
 import { PasskeyChip } from '@/app/components/Personal/PasskeyChip';
 import { ShareChip } from '@/app/components/Personal/ShareChip';
@@ -15,12 +16,13 @@ const principal: MeResponse = {
 const share = { ok: false as const };
 
 describe('ownSpaceExtras', () => {
-  it('builds Share, Contact and Face / Touch ID with their weights', () => {
+  it('builds Share, Contact, Face / Touch ID and Log out with their weights', () => {
     const extras = ownSpaceExtras(principal, share);
     expect(extras.map(e => [e.key, e.weight, (e.node as { type: unknown }).type])).toEqual([
       ['share', CHIP_WEIGHT.share, ShareChip],
       ['contact', CHIP_WEIGHT.contact, ContactChip],
       ['passkey', CHIP_WEIGHT.passkey, PasskeyChip],
+      ['logout', CHIP_WEIGHT.logout, LogoutChip],
     ]);
   });
 

@@ -188,7 +188,7 @@ describe("AdminPage as the admin's own space", () => {
 
   it('passes the own-space chips like /user does', async () => {
     expect(gridProps(await renderAdmin()).toolbarExtras.map((e: { key: string }) => e.key)).toEqual(
-      ['share', 'contact', 'passkey']
+      ['share', 'contact', 'passkey', 'logout']
     );
   });
 
@@ -245,6 +245,7 @@ describe("AdminPage as the admin's own space", () => {
       'share',
       'contact',
       'passkey',
+      'logout',
     ]);
     expect(Object.keys(props.sections)).toEqual(['collections', 'images', 'saved']);
   });

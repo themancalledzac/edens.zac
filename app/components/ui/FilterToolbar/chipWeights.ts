@@ -9,6 +9,7 @@ export const CHIP_WEIGHT = {
   share: 400,
   contact: 300,
   passkey: 200,
+  logout: 100,
 } as const;
 
 /** A page-level chip the bar renders in its upper tier, in weight order. */
