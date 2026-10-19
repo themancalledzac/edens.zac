@@ -3,6 +3,7 @@
 import { type ReactElement } from 'react';
 
 import { useMe } from '@/app/components/Auth/MeProvider';
+import { CornerToggle } from '@/app/components/Content/CornerToggle';
 import { useSaves } from '@/app/components/Personal/SavesContext';
 
 import styles from './SaveHeart.module.scss';
@@ -30,20 +31,19 @@ export function SaveHeart({ contentId }: SaveHeartProps): ReactElement | null {
   const saved = saves.isSaved(contentId);
 
   return (
-    <button
-      type="button"
-      className={`${styles.saveHeart} ${saved ? styles.saveHeartActive : ''}`}
-      aria-pressed={saved}
-      aria-label={saved ? 'Remove from Your Space' : 'Save to Your Space'}
-      onClick={event => {
-        // Don't let the heart click bubble to the image wrapper (which opens fullscreen).
-        event.stopPropagation();
-        saves.toggle(contentId);
-      }}
-    >
-      <svg className={styles.saveHeartIcon} viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 21s-7.5-4.6-10-9.2C.6 9.1 1.6 5.7 4.6 4.7 6.6 4 8.7 4.8 10 6.4L12 8.7l2-2.3c1.3-1.6 3.4-2.4 5.4-1.7 3 1 4 4.4 2.6 7.1C19.5 16.4 12 21 12 21z" />
-      </svg>
-    </button>
+    <CornerToggle
+      pressed={saved}
+      label={saved ? 'Remove from Your Space' : 'Save to Your Space'}
+      onToggle={() => saves.toggle(contentId)}
+      icon={
+        <svg
+          className={`${styles.saveHeartIcon} ${saved ? styles.saveHeartIconActive : ''}`}
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path d="M12 21s-7.5-4.6-10-9.2C.6 9.1 1.6 5.7 4.6 4.7 6.6 4 8.7 4.8 10 6.4L12 8.7l2-2.3c1.3-1.6 3.4-2.4 5.4-1.7 3 1 4 4.4 2.6 7.1C19.5 16.4 12 21 12 21z" />
+        </svg>
+      }
+    />
   );
 }

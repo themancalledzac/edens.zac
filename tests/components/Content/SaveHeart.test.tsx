@@ -52,6 +52,15 @@ describe('SaveHeart', () => {
     expect(container.querySelector('button')).toBeNull();
   });
 
+  it('renders nothing without a SavesProvider', () => {
+    const { container } = render(
+      <MeProvider me={viewer}>
+        <SaveHeart contentId={42} />
+      </MeProvider>
+    );
+    expect(container.querySelector('button')).toBeNull();
+  });
+
   it('renders for any logged-in viewer (no gallery membership required)', () => {
     wrap(<SaveHeart contentId={42} />, viewer);
     expect(screen.getByRole('button', { name: /remove from your space/i })).toBeInTheDocument();
@@ -89,24 +98,43 @@ describe('SaveHeart', () => {
   });
 });
 
+describe('SaveHeart icon', () => {
+  it('renders the heart glyph with the unsaved class on an unsaved image', () => {
+    wrap(<SaveHeart contentId={99} />, viewer);
+    const svg = screen.getByRole('button', { name: /save to your space/i }).querySelector('svg');
+    expect(svg).toHaveAttribute('viewBox', '0 0 24 24');
+    expect(svg?.querySelector('path')).toHaveAttribute('d', expect.stringMatching(/^M12 21s/));
+    expect(svg).toHaveClass('saveHeartIcon');
+    expect(svg).not.toHaveClass('saveHeartIconActive');
+  });
+
+  it('renders the heart glyph with the saved class on a saved image', () => {
+    wrap(<SaveHeart contentId={42} />, viewer);
+    const svg = screen
+      .getByRole('button', { name: /remove from your space/i })
+      .querySelector('svg');
+    expect(svg).toHaveClass('saveHeartIcon');
+    expect(svg).toHaveClass('saveHeartIconActive');
+  });
+
+  it('renders through the shared corner toggle', () => {
+    wrap(<SaveHeart contentId={42} />, viewer);
+    expect(screen.getByRole('button', { name: /remove from your space/i })).toHaveClass(
+      'cornerToggle'
+    );
+  });
+});
+
 describe('SaveHeart stylesheet', () => {
   const scss = readFileSync(
     path.join(process.cwd(), 'app/components/Content/SaveHeart.module.scss'),
     'utf8'
   );
-  const baseRule = scss.slice(scss.indexOf('.saveHeart {'), scss.indexOf('.saveHeartIcon {'));
-  const coarse = scss.slice(scss.indexOf('(pointer: coarse)'));
 
-  it('draws a 32px square box with the scrim-dark-50 scrim and an 18px glyph', () => {
-    expect(baseRule).toContain('width: var(--space-6)');
-    expect(baseRule).toContain('height: var(--space-6)');
-    expect(baseRule).toContain('var(--scrim-dark-50)');
-    expect(scss).toMatch(/\.saveHeartIcon {\s*width: 18px;\s*height: 18px;/);
-  });
-
-  it('adds an invisible 44px top-right overlay and a 0.6 idle opacity on coarse pointers', () => {
-    expect(coarse).toMatch(/\.saveHeart::after {[^}]*width: 44px;[^}]*height: 44px;/);
-    expect(coarse).toMatch(/top: 0;[^}]*right: 0;/);
-    expect(coarse).toMatch(/\.saveHeart {[^}]*opacity: 0\.6;/);
+  it('keeps only the glyph fill and stroke rules', () => {
+    expect(scss).toMatch(/\.saveHeartIcon {[^}]*fill: none;[^}]*stroke: white;/);
+    expect(scss).toMatch(/\.saveHeartIconActive {[^}]*fill: var\(--color-heart\);/);
+    expect(scss).not.toContain('position: absolute');
+    expect(scss).not.toContain('pointer: coarse');
   });
 });
