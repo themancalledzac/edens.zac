@@ -40,36 +40,49 @@ describe('BottomNav', () => {
     mockMe.mockResolvedValue(null);
   });
 
-  it('renders Menu, Explore, Collections, Log in in order for an anonymous visitor', () => {
+  it('renders Explore, Collections, Log in, Menu in order for an anonymous visitor', () => {
     renderBar(null);
     const cells = screen.getByRole('navigation').children;
-    expect(cells[0]).toHaveTextContent('Menu');
-    expect(cells[1]).toHaveAttribute('href', '/explore');
-    expect(cells[2]).toHaveAttribute('href', '/collections');
-    expect(cells[3]).toHaveTextContent('Log in');
-    expect(cells[3]).toHaveAttribute('href', '/login');
+    expect(cells).toHaveLength(4);
+    expect(cells[0]).toHaveAttribute('href', '/explore');
+    expect(cells[0]).toHaveAttribute('aria-label', 'Explore');
+    expect(cells[1]).toHaveAttribute('href', '/collections');
+    expect(cells[1]).toHaveAttribute('aria-label', 'Collections');
+    expect(cells[2]).toHaveAttribute('href', '/login');
+    expect(cells[2]).toHaveAttribute('aria-label', 'Log in');
+    expect(cells[3]).toHaveAttribute('aria-label', 'Menu');
     expect(screen.getByRole('navigation')).toHaveAttribute('data-bottom-nav');
+  });
+
+  it('renders icon-only cells with no text', () => {
+    renderBar(null);
+    const cells = screen.getByRole('navigation').children;
+    for (const cell of Array.from(cells)) {
+      expect(cell).toHaveTextContent('');
+      expect(cell.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    }
   });
 
   it('shows Your space at /user for a signed-in non-admin, never Log in', () => {
     renderBar(makeMe(false));
-    expect(screen.queryByText('Log in')).not.toBeInTheDocument();
-    expect(screen.getByText('Your space')).toHaveAttribute('href', '/user');
+    expect(screen.queryByLabelText('Log in')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Your space')).toHaveAttribute('href', '/user');
   });
 
   it('points an admin Your space at /admin', () => {
     renderBar(makeMe(true));
-    expect(screen.getByText('Your space')).toHaveAttribute('href', '/admin');
+    expect(screen.getByLabelText('Your space')).toHaveAttribute('href', '/admin');
   });
 
-  it('keeps a reserved empty fourth cell and never shows Log in while me is undefined', () => {
+  it('keeps four cells with an empty You slot and never shows Log in while me is undefined', () => {
     renderBar();
     const cells = screen.getByRole('navigation').children;
     expect(cells).toHaveLength(4);
-    expect(cells[3]).toHaveAttribute('aria-hidden', 'true');
-    expect(cells[3]).toBeEmptyDOMElement();
-    expect(screen.queryByText('Log in')).not.toBeInTheDocument();
-    expect(screen.queryByText('Your space')).not.toBeInTheDocument();
+    expect(cells[2]).toHaveAttribute('aria-hidden', 'true');
+    expect(cells[2]).toBeEmptyDOMElement();
+    expect(cells[3]).toHaveAttribute('aria-label', 'Menu');
+    expect(screen.queryByLabelText('Log in')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Your space')).not.toBeInTheDocument();
   });
 
   it.each([
@@ -90,8 +103,8 @@ describe('BottomNav', () => {
     renderBar(null);
     const current = document.querySelectorAll('[aria-current]');
     expect(current).toHaveLength(1);
-    expect(screen.getByText('Collections')).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByText('Explore')).not.toHaveAttribute('aria-current');
+    expect(screen.getByLabelText('Collections')).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByLabelText('Explore')).not.toHaveAttribute('aria-current');
   });
 
   it('does not treat a sibling prefix as current', () => {
@@ -102,20 +115,20 @@ describe('BottomNav', () => {
 
   it('toggles the shared menu from the Menu cell and wires aria', () => {
     renderBar(null);
-    const menuCell = screen.getByRole('button', { name: 'Open navigation menu' });
+    const menuCell = screen.getByRole('button', { name: 'Menu' });
     expect(menuCell).toHaveAttribute('aria-expanded', 'false');
     expect(menuCell).not.toHaveAttribute('aria-controls');
     fireEvent.click(menuCell);
     expect(screen.getByTestId('probe')).toHaveTextContent('open');
-    const open = screen.getByRole('button', { name: 'Close navigation menu' });
+    const open = screen.getByRole('button', { name: 'Menu' });
     expect(open).toHaveAttribute('aria-expanded', 'true');
     expect(open).toHaveAttribute('aria-controls');
   });
 
   it('closes an open menu when a link cell is tapped', () => {
     renderBar(null);
-    fireEvent.click(screen.getByRole('button', { name: 'Open navigation menu' }));
-    fireEvent.click(screen.getByText('Explore'));
+    fireEvent.click(screen.getByRole('button', { name: 'Menu' }));
+    fireEvent.click(screen.getByLabelText('Explore'));
     expect(screen.getByTestId('probe')).toHaveTextContent('closed');
   });
 });
