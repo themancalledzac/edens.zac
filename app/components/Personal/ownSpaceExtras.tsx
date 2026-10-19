@@ -3,6 +3,7 @@ import { type ShareSettingsRead } from '@/app/lib/api/share';
 import { type MeResponse } from '@/app/types/Auth';
 
 import { ContactChip } from './ContactChip';
+import { LogoutChip } from './LogoutChip';
 import { PasskeyChip } from './PasskeyChip';
 import { ShareChip } from './ShareChip';
 
@@ -16,5 +17,6 @@ export function ownSpaceExtras(principal: MeResponse, share: ShareSettingsRead):
       weight: CHIP_WEIGHT.passkey,
       node: <PasskeyChip initiallyEnrolled={principal.passkeyCount > 0} />,
     },
+    { key: 'logout', weight: CHIP_WEIGHT.logout, node: <LogoutChip /> },
   ];
 }

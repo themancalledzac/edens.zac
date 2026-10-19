@@ -1,7 +1,6 @@
 'use client';
 
 import { CircleX } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { type PointerEvent, useEffect, useId, useRef, useState, useTransition } from 'react';
 
 import { About } from '@/app/components/About/About';
@@ -11,18 +10,18 @@ import { CopyrightYear } from '@/app/components/MenuDropdown/CopyrightYear';
 import { ContactModal } from '@/app/components/Personal/ContactChip';
 import { Disclosure } from '@/app/components/ui/Disclosure/Disclosure';
 import { NavLink } from '@/app/components/ui/NavLink/NavLink';
-import { clearCachedPanelData } from '@/app/hooks/useCachedPanelData';
 import { useDialogFocus } from '@/app/hooks/useDialogFocus';
 import { useFetchMe } from '@/app/hooks/useFetchMe';
+import { useLogout } from '@/app/hooks/useLogout';
 import { useSwipeToClose } from '@/app/hooks/useSwipeToClose';
 import { clearCacheAction } from '@/app/lib/actions/clearCache';
-import { logout } from '@/app/lib/api/auth';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type MeResponse } from '@/app/types/Auth';
 import { isLocalEnvironment } from '@/app/utils/environment';
 import { manageHref } from '@/app/utils/manageUrl';
 
 import styles from './MenuDropdown.module.scss';
+import { useIsPhone } from './useIsPhone';
 
 interface MenuDropdownProps {
   isOpen: boolean;
@@ -65,12 +64,17 @@ interface MenuNavItem {
 /**
  * Menu Dropdown
  *
- * Navigation overlay: a sheet under 768px that fills the viewport above the bottom bar, a
- * top-right panel above. On phones the bar stays visible and its Menu cell turns into the close X
- * (this component hides its own X there), the bar's controls join the focus trap
- * (`alsoTabbable`), and a downward swipe closes the sheet (`useSwipeToClose`); the socials and
- * copyright row moves to the top. It has an expandable About section and a Contact row that
- * closes the menu and opens the shared `ContactModal`.
+ * Navigation overlay: a top-right panel from 768px up, a bottom sheet under it. The sheet sits on
+ * top of the bottom bar, grows upward to its content and only scrolls when About is expanded. The
+ * dimmed page above it closes it on tap. The bar stays visible and its Menu cell turns into the
+ * close X (this component hides its own X there), the bar's controls join the focus trap
+ * (`alsoTabbable`), and a downward swipe closes the sheet (`useSwipeToClose`).
+ *
+ * On phones the sheet leaves out what the bar already has (Explore, Collections, Your space, Log
+ * in) and Log out, which is a chip on the own-space page. Top to bottom it shows the socials and
+ * copyright row, Search, About, Contact, then for admins a two-column grid of tiles (`useIsPhone`
+ * picks the list; the grid is CSS). About expands in place and Contact closes the menu and opens
+ * the shared `ContactModal`.
  *
  * Destinations are real `NavLink` anchors, so cmd-click / middle-click / open-in-new-tab and
  * Next's route prefetch all work; `onClick={onClose}` only dismisses the overlay. Only genuine
@@ -98,8 +102,8 @@ interface MenuNavItem {
  * is out there no keydown reaches it and Tab walks the `aria-modal`'d page behind the overlay.
  * Staying focusable keeps focus inside; the handler guards the pending state itself.
  *
- * Log out refreshes and clears the cached panel data even when `logout()` rejects: the cookie may
- * already be gone, and admin emails or message bodies must not outlive the session in the browser.
+ * Log out (desktop only) goes through `useLogout`, which clears cached panel data even when
+ * `logout()` rejects.
  *
  * "Update" links to `/[slug]?manage=1`, the same route the page is already on, so the soft
  * navigation hands `CollectionPageClient` `editMode=true` without remounting it. No slug falls
@@ -121,7 +125,8 @@ export function MenuDropdown({
   me: initialMe,
 }: MenuDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
+  const isPhone = useIsPhone();
+  const handleLogout = useLogout(onClose);
   const { onKeyDown } = useDialogFocus(dropdownRef, isOpen, onClose, {
     escape: 'document',
     respectAutoFocus: false,
@@ -143,16 +148,6 @@ export function MenuDropdown({
 
   const { me, loading: meLoading } = useFetchMe({ initialMe, enabled: hasOpened });
   const isAdmin = me?.isAdmin ?? false;
-
-  const handleLogout = () => {
-    void (async () => {
-      await logout().catch(() => {});
-      clearCachedPanelData();
-      router.push('/');
-      router.refresh();
-      onClose();
-    })();
-  };
 
   const handleClearCache = () => {
     if (isClearing) return;
@@ -214,15 +209,17 @@ export function MenuDropdown({
 
   if (!isOpen) return contactModal;
 
+  const searchNavItems: MenuNavItem[] = [{ label: 'Search', href: '/search', show: true }];
+
   const browseNavItems: MenuNavItem[] = [
-    { label: 'Explore', href: '/explore', show: true },
-    { label: 'Collections', href: '/collections', show: true },
+    { label: 'Explore', href: '/explore', show: !isPhone },
+    { label: 'Collections', href: '/collections', show: !isPhone },
     {
       label: 'Your space',
       href: me?.isAdmin ? '/admin' : '/user',
-      show: !meLoading && Boolean(me),
+      show: !isPhone && !meLoading && Boolean(me),
     },
-    { label: 'Log in', href: '/login', show: !meLoading && !me },
+    { label: 'Log in', href: '/login', show: !isPhone && !meLoading && !me },
   ];
 
   const adminNavItems: MenuNavItem[] = [
@@ -276,6 +273,7 @@ export function MenuDropdown({
         </div>
 
         <div className={styles.dropdownMenuOptionsWrapper}>
+          {renderNavItems(searchNavItems)}
           {renderNavItems(browseNavItems)}
 
           <Disclosure
@@ -298,25 +296,27 @@ export function MenuDropdown({
               <p id={adminLabelId} className={styles.adminLabel}>
                 Admin
               </p>
-              {renderNavItems(adminNavItems)}
-              {isLocalEnvironment() && (
-                <div className={styles.dropdownMenuItem}>
-                  <button
-                    type="button"
-                    className={styles.dropdownMenuButton}
-                    onClick={handleClearCache}
-                    aria-disabled={isClearing || undefined}
-                  >
-                    <span className={styles.dropdownMenuOptions}>
-                      {isClearing ? 'Clearing…' : 'Clear Cache'}
-                    </span>
-                  </button>
-                </div>
-              )}
+              <div className={styles.adminGrid}>
+                {renderNavItems(adminNavItems)}
+                {isLocalEnvironment() && (
+                  <div className={`${styles.dropdownMenuItem} ${styles.adminWide}`}>
+                    <button
+                      type="button"
+                      className={styles.dropdownMenuButton}
+                      onClick={handleClearCache}
+                      aria-disabled={isClearing || undefined}
+                    >
+                      <span className={styles.dropdownMenuOptions}>
+                        {isClearing ? 'Clearing…' : 'Clear Cache'}
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {!meLoading && me && (
+          {!isPhone && !meLoading && me && (
             <div className={styles.dropdownMenuItem}>
               <button type="button" className={styles.dropdownMenuButton} onClick={handleLogout}>
                 <span className={styles.dropdownMenuOptions}>Log out</span>

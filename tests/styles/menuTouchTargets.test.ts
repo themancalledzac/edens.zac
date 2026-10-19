@@ -269,12 +269,22 @@ describe('menu touch targets', () => {
     const { media } = splitMedia(menuCss);
     const barTop = 'calc(var(--bottom-nav-height) + env(safe-area-inset-bottom))';
     const sheet = declsFor(media, '.sheet');
-    expect(sheet['top']).toBe('0');
+    expect(sheet['top']).toBe('auto');
     expect(sheet['bottom']).toBe(barTop);
     expect(sheet['height']).toBe('auto');
     expect(sheet['border-radius']).toBe('0');
     expect(declsFor(media, '.sheet .dropdownCloseButtonWrapper')['display']).toBe('none');
     expect(declsFor(media, '.scrim')['inset']).toBe(`0 0 ${barTop}`);
+  });
+
+  it('A22: the phone admin links are a two-column grid of square tiles with the hub gap', () => {
+    const { media } = splitMedia(menuCss);
+    const grid = declsFor(media, '.sheet .adminGrid');
+    expect(grid['display']).toBe('grid');
+    expect(grid['grid-template-columns']).toBe('1fr 1fr');
+    expect(grid['gap']).toBe('0.8rem');
+    expect(declsFor(media, '.sheet .adminGrid .dropdownMenuItem')['border-radius']).toBe('0');
+    expect(declsFor(media, '.sheet .adminWide')['grid-column']).toBe('1/-1');
   });
 
   it('A20: this test file carries no inline comments', () => {

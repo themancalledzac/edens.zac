@@ -55,15 +55,17 @@
   }
 }
 
-// Phone sheet, applied alongside .dropdown. It fills the viewport from the top down to the top of
-// the bottom bar, which stays visible and carries the close X in its Menu cell, so the sheet's own
-// close button is hidden. The socials row moves to the top with `order`, leaving DOM and Tab order
-// alone.
+// Phone bottom sheet, applied alongside .dropdown. It sits on top of the bottom bar, which stays
+// visible and carries the close X in its Menu cell, so the sheet's own close button is hidden. The
+// sheet is as tall as its content and only scrolls (inside the options wrapper) once About is
+// expanded past the room above the bar. The socials row moves to the top with `order`, leaving DOM
+// and Tab order alone. Admin links become a two-column tile grid with square corners.
 @media (width < 768px) {
   .sheet {
-    top: 0;
+    top: auto;
     bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
     height: auto;
+    max-height: calc(100dvh - var(--bottom-nav-height) - env(safe-area-inset-bottom));
     z-index: calc(var(--z-sticky) + 2);
     border-radius: 0;
     touch-action: none;
@@ -75,26 +77,26 @@
   }
 
   .sheet .dropdownMenuOptionsWrapper {
+    flex: 0 1 auto;
     touch-action: pan-y;
     overscroll-behavior: contain;
-    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + var(--space-4));
+    padding-bottom: var(--space-3);
   }
 
   .sheet .dropdownMenuItem {
-    height: 4.25rem;
+    height: 3.25rem;
   }
 
   .sheet .dropdownMenuOptions {
-    height: 4.25rem;
-    font-size: var(--text-3xl);
+    height: 3.25rem;
+    font-size: var(--text-xl);
   }
 
   .sheet .dropdownSocialIconsWrapper {
     order: -1;
     height: auto;
     justify-content: space-between;
-    padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--page-padding-mobile)
-      var(--space-3);
+    padding: var(--space-3) var(--page-padding-mobile);
     border-top: none;
     border-bottom: 1px solid var(--color-border);
   }
@@ -112,6 +114,37 @@
   .sheet .dropdownCloseButtonWrapper {
     display: none;
   }
+
+  .sheet .adminGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+    padding-top: var(--space-2);
+  }
+
+  .sheet .adminGrid .dropdownMenuItem {
+    justify-content: center;
+    height: 3rem;
+    padding-bottom: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 0;
+    background-color: var(--color-surface-raised);
+  }
+
+  .sheet .adminGrid .dropdownMenuLink,
+  .sheet .adminGrid .dropdownMenuButton {
+    justify-content: center;
+    height: 100%;
+  }
+
+  .sheet .adminGrid .dropdownMenuOptions {
+    height: 100%;
+    font-size: var(--text-md);
+  }
+
+  .sheet .adminWide {
+    grid-column: 1 / -1;
+  }
 }
 
 .adminGroup {
@@ -120,9 +153,14 @@
   flex-shrink: 0;
 }
 
+.adminGrid {
+  display: flex;
+  flex-direction: column;
+}
+
 .adminLabel {
   margin: 0;
-  padding-top: var(--space-4);
+  padding-top: var(--space-3);
   text-align: right;
   font-size: var(--text-xs);
   letter-spacing: 0.08em;

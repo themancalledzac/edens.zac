@@ -767,6 +767,7 @@ describe('MenuDropdown — focus restore when the trigger is gone', () => {
 });
 
 const NAV_ORDER = [
+  'Search',
   'Explore',
   'Collections',
   'Your space',
@@ -848,6 +849,7 @@ describe('MenuDropdown — A12 item list and order', () => {
     );
 
     expect(renderedMenuOrder()).toEqual([
+      'Search',
       'Explore',
       'Collections',
       'Your space',
@@ -866,6 +868,7 @@ describe('MenuDropdown — A12 item list and order', () => {
     render(<MenuDropdown isOpen onClose={jest.fn()} me={principal} />);
 
     expect(renderedMenuOrder()).toEqual([
+      'Search',
       'Explore',
       'Collections',
       'Your space',
@@ -878,7 +881,14 @@ describe('MenuDropdown — A12 item list and order', () => {
   it('A12: orders an anonymous viewer Explore, Collections, Log in, About, Contact', () => {
     render(<MenuDropdown isOpen onClose={jest.fn()} me={null} />);
 
-    expect(renderedMenuOrder()).toEqual(['Explore', 'Collections', 'Log in', 'About', 'Contact']);
+    expect(renderedMenuOrder()).toEqual([
+      'Search',
+      'Explore',
+      'Collections',
+      'Log in',
+      'About',
+      'Contact',
+    ]);
   });
 
   it('A12: keeps the same order when the viewer is resolved by the lazy fetch', async () => {
@@ -887,6 +897,7 @@ describe('MenuDropdown — A12 item list and order', () => {
     await screen.findByRole('button', { name: /log out/i });
 
     expect(renderedMenuOrder()).toEqual([
+      'Search',
       'Explore',
       'Collections',
       'Your space',
@@ -1165,5 +1176,94 @@ describe('MenuDropdown — phone sheet layout', () => {
     const about = screen.getByRole('button', { name: 'About' });
 
     expect(login.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe('MenuDropdown — phone sheet contents', () => {
+  const originalMatchMedia = window.matchMedia;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPathname = '/some-collection';
+    mockIsLocal = false;
+    window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+    }));
+  });
+
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+    mockIsLocal = false;
+  });
+
+  it('leaves out the browse rows and Log out', () => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={principal} />);
+
+    for (const name of ['Explore', 'Collections', 'Your space', 'Log in']) {
+      expect(screen.queryByRole('link', { name })).not.toBeInTheDocument();
+    }
+    expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
+    expect(renderedMenuOrder()).toEqual(['Search', 'About', 'Contact']);
+  });
+
+  it('leaves out Log in for an anonymous visitor', () => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={null} />);
+
+    expect(screen.queryByRole('link', { name: /log in/i })).not.toBeInTheDocument();
+    expect(renderedMenuOrder()).toEqual(['Search', 'About', 'Contact']);
+  });
+
+  it('shows Search first, linking to /search', () => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={null} />);
+
+    expect(screen.getByRole('link', { name: 'Search' })).toHaveAttribute('href', '/search');
+  });
+
+  it('shows the admin tile grid with Clear Cache last for a local admin', () => {
+    mockIsLocal = true;
+    render(
+      <MenuDropdown
+        isOpen
+        onClose={jest.fn()}
+        me={adminPrincipal}
+        isCollectionPage
+        collectionSlug="x"
+      />
+    );
+
+    const group = screen.getByRole('group', { name: 'Admin' });
+    expect(renderedMenuOrder()).toEqual([
+      'Search',
+      'About',
+      'Contact',
+      'Create',
+      'Update',
+      'Metadata',
+      'Comments',
+      'Clear Cache',
+    ]);
+    expect(group).toContainElement(screen.getByRole('button', { name: 'Clear Cache' }));
+  });
+
+  it.each([
+    ['a non-admin', principal],
+    ['an anonymous visitor', null],
+  ])('has no admin tile grid for %s', (_label, me) => {
+    render(<MenuDropdown isOpen onClose={jest.fn()} me={me} />);
+
+    expect(screen.queryByRole('group', { name: 'Admin' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Create' })).not.toBeInTheDocument();
+  });
+
+  it('closes when the dimmed page above the sheet is tapped', () => {
+    const onClose = jest.fn();
+    const { container } = render(<MenuDropdown isOpen onClose={onClose} me={null} />);
+
+    fireEvent.click(container.querySelector('[aria-hidden="true"]')!);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

@@ -172,7 +172,12 @@ describe('UserPage', () => {
 
   it('hands the shared bar the Share, Contact and Face / Touch ID chips', async () => {
     const extras = gridProps(await renderTab()).toolbarExtras;
-    expect(extras.map((e: { key: string }) => e.key)).toEqual(['share', 'contact', 'passkey']);
+    expect(extras.map((e: { key: string }) => e.key)).toEqual([
+      'share',
+      'contact',
+      'passkey',
+      'logout',
+    ]);
   });
 
   it('renders through the shared UserSpaceGrid', async () => {
