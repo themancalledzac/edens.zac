@@ -301,8 +301,14 @@ export default function CollectionContentRenderer({
 
     /**
      * Gated on `onEditLocation`, not `inlineEdit`: a surface with no locations to pick (the admin
-     * user rail) would otherwise get an empty row offering to "Add location" to a user.
+     * user rail) would otherwise get an empty row offering to "Add location" to a user. The row
+     * stacks the location over a smaller muted date line.
      */
+    const hasInnerContent =
+      items.length > 0 ||
+      Boolean(inlineEdit) ||
+      Boolean(railExtras) ||
+      (canDownload && Boolean(collectionSlug));
     const showLocationRow = Boolean(dateItem || locationItem || inlineEdit?.onEditLocation);
 
     /**
@@ -314,7 +320,6 @@ export default function CollectionContentRenderer({
     const siblingsNode =
       collectionItems.length === 0 ? null : collectionItems.some(item => item.coverImageUrl) ? (
         <div className={cbStyles.metadataSiblingsContainer}>
-          <span className={cbStyles.metadataSiblingLabel}>Related</span>
           <div className={cbStyles.metadataSiblingCardRow}>
             {collectionItems.map(item =>
               item.coverImageUrl ? (
@@ -350,7 +355,6 @@ export default function CollectionContentRenderer({
         </div>
       ) : (
         <div className={cbStyles.metadataSiblingsContainer}>
-          <span className={cbStyles.metadataSiblingLabel}>Related</span>
           <div className={cbStyles.metadataSiblingsRow}>
             {collectionItems.map(item => (
               <Link
@@ -380,99 +384,101 @@ export default function CollectionContentRenderer({
         }}
       >
         <div className={cbStyles.blockContainer}>
-          <div className={cbStyles.metadataBlockInner}>
-            {inlineEdit && (
-              <div className={cbStyles.metadataTitleRow}>
-                {inlineEdit.titleLead ?? (
+          {hasInnerContent && (
+            <div className={cbStyles.metadataBlockInner}>
+              {inlineEdit && (
+                <div className={cbStyles.metadataTitleRow}>
+                  {inlineEdit.titleLead ?? (
+                    <InlineEditableText
+                      as="input"
+                      value={inlineEdit.title ?? ''}
+                      onCommit={value => inlineEdit.onCommitField('title', value)}
+                      readOnlyClassName={cbStyles.metadataTitle}
+                      editorClassName={
+                        inlineEdit.textEditorClassName &&
+                        `${cbStyles.metadataTitle} ${inlineEdit.textEditorClassName}`
+                      }
+                      placeholder="Title"
+                      ariaLabel={inlineEdit.titleLabel ?? 'Collection title'}
+                    />
+                  )}
+                  {inlineEdit.titleAside}
+                </div>
+              )}
+              {inlineEdit && !inlineEdit.hasCover && togglePickCover && (
+                <button
+                  type="button"
+                  className={cbStyles.metadataCoverPick}
+                  onClick={togglePickCover}
+                  aria-pressed={isPickingCover}
+                >
+                  <span aria-hidden="true">{isPickingCover ? '✕' : '🖼️'}</span>
+                  {isPickingCover ? 'Cancel cover selection' : 'Set cover image'}
+                </button>
+              )}
+              {showLocationRow && (
+                <div className={cbStyles.metadataHeaderRow}>
+                  {inlineEdit?.onEditLocation ? (
+                    <button
+                      type="button"
+                      className={cbStyles.metadataLocation}
+                      onClick={inlineEdit.onEditLocation}
+                    >
+                      {locationItem ? locationItem.value : 'Add location'}
+                    </button>
+                  ) : (
+                    locationItem && (
+                      <Link
+                        href={`/location/${locationItem.slug ?? slugify(locationItem.value)}`}
+                        className={cbStyles.metadataLocation}
+                      >
+                        {locationItem.value}
+                      </Link>
+                    )
+                  )}
+                  {dateItem && <div className={cbStyles.metadataDate}>{dateItem.value}</div>}
+                </div>
+              )}
+              {siblingsNode}
+              {inlineEdit?.beforeDescription}
+              <div className={cbStyles.metadataDescriptionContainer}>
+                {inlineEdit ? (
                   <InlineEditableText
-                    as="input"
-                    value={inlineEdit.title ?? ''}
-                    onCommit={value => inlineEdit.onCommitField('title', value)}
-                    readOnlyClassName={cbStyles.metadataTitle}
+                    as="textarea"
+                    value={inlineEdit.description}
+                    onCommit={value => inlineEdit.onCommitField('description', value)}
+                    readOnlyClassName={cbStyles.metadataDescription}
                     editorClassName={
                       inlineEdit.textEditorClassName &&
-                      `${cbStyles.metadataTitle} ${inlineEdit.textEditorClassName}`
+                      `${cbStyles.metadataDescription} ${inlineEdit.textEditorClassName}`
                     }
-                    placeholder="Title"
-                    ariaLabel={inlineEdit.titleLabel ?? 'Collection title'}
+                    placeholder="Add a description"
+                    ariaLabel={inlineEdit.descriptionLabel ?? 'Collection description'}
                   />
-                )}
-                {inlineEdit.titleAside}
-              </div>
-            )}
-            {inlineEdit && !inlineEdit.hasCover && togglePickCover && (
-              <button
-                type="button"
-                className={cbStyles.metadataCoverPick}
-                onClick={togglePickCover}
-                aria-pressed={isPickingCover}
-              >
-                <span aria-hidden="true">{isPickingCover ? '✕' : '🖼️'}</span>
-                {isPickingCover ? 'Cancel cover selection' : 'Set cover image'}
-              </button>
-            )}
-            {showLocationRow && (
-              <div className={cbStyles.metadataHeaderRow}>
-                {dateItem && <div className={cbStyles.metadataDate}>{dateItem.value}</div>}
-                {inlineEdit?.onEditLocation ? (
-                  <button
-                    type="button"
-                    className={cbStyles.metadataLocation}
-                    onClick={inlineEdit.onEditLocation}
-                  >
-                    {locationItem ? locationItem.value : 'Add location'}
-                  </button>
                 ) : (
-                  locationItem && (
-                    <Link
-                      href={`/location/${locationItem.slug ?? slugify(locationItem.value)}`}
-                      className={cbStyles.metadataLocation}
-                    >
-                      {locationItem.value}
-                    </Link>
+                  descriptionItem && (
+                    <p className={cbStyles.metadataDescription}>{descriptionItem.value}</p>
                   )
                 )}
               </div>
-            )}
-            {siblingsNode}
-            {inlineEdit?.beforeDescription}
-            <div className={cbStyles.metadataDescriptionContainer}>
-              {inlineEdit ? (
-                <InlineEditableText
-                  as="textarea"
-                  value={inlineEdit.description}
-                  onCommit={value => inlineEdit.onCommitField('description', value)}
-                  readOnlyClassName={cbStyles.metadataDescription}
-                  editorClassName={
-                    inlineEdit.textEditorClassName &&
-                    `${cbStyles.metadataDescription} ${inlineEdit.textEditorClassName}`
-                  }
-                  placeholder="Add a description"
-                  ariaLabel={inlineEdit.descriptionLabel ?? 'Collection description'}
-                />
-              ) : (
-                descriptionItem && (
-                  <p className={cbStyles.metadataDescription}>{descriptionItem.value}</p>
-                )
+              {filterItems.length > 0 && (
+                <div className={cbStyles.metadataFilters}>
+                  {filterItems.map(item => (
+                    <div
+                      key={`filter-${contentId}-${item.type}-${item.value}`}
+                      className={cbStyles.filterItem}
+                    >
+                      {item.value}
+                    </div>
+                  ))}
+                </div>
               )}
+              {canDownload && collectionSlug && (
+                <ClientGalleryDownload collectionSlug={collectionSlug} />
+              )}
+              {railExtras}
             </div>
-            {filterItems.length > 0 && (
-              <div className={cbStyles.metadataFilters}>
-                {filterItems.map(item => (
-                  <div
-                    key={`filter-${contentId}-${item.type}-${item.value}`}
-                    className={cbStyles.filterItem}
-                  >
-                    {item.value}
-                  </div>
-                ))}
-              </div>
-            )}
-            {canDownload && collectionSlug && (
-              <ClientGalleryDownload collectionSlug={collectionSlug} />
-            )}
-            {railExtras}
-          </div>
+          )}
           {collectionFilter && (
             <div className={cbStyles.filterBarWrapper}>
               <FilterToolbar
