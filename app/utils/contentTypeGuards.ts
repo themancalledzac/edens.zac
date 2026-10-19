@@ -126,8 +126,8 @@ export function getContentDimensions(
  * own placeholder default.
  *
  * Centralizes the `imageWidth ?? width` selection previously duplicated across
- * `extractImageDimensions` (contentRendererUtils), `extractCollectionDimensions`
- * (contentLayout), and the `LocationCollections` card. Distinct from
+ * `extractImageDimensions` (contentRendererUtils) and `extractCollectionDimensions`
+ * (contentLayout). Distinct from
  * {@link getContentDimensions}, which discriminates a full `Content` block and uses
  * `&&` semantics with a placeholder default.
  */
