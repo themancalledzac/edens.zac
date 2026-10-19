@@ -3,12 +3,13 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
+import { Chip } from '@/app/components/ui/Chip/Chip';
+import { CHIP_ICONS } from '@/app/components/ui/Chip/chipIcons';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
 import { Checkbox } from '@/app/components/ui/Field/Checkbox';
 import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
-import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { ApiError } from '@/app/lib/api/core';
 import {
@@ -255,7 +256,13 @@ export function ShareChip({ read }: ShareChipProps) {
 
   return (
     <>
-      <FilterChip label="Share" onToggle={openDialog} ariaHasPopup="dialog" ariaExpanded={open} />
+      <Chip
+        label="Share"
+        icon={CHIP_ICONS.share}
+        hideLabelBelow
+        onToggle={openDialog}
+        dialog={{ open }}
+      />
       <Modal open={open} onClose={() => setOpen(false)} variant="overlay" labelledBy="share-title">
         <div className={styles.content}>
           <div className={styles.header}>

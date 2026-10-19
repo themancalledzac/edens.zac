@@ -1,11 +1,10 @@
 import { type ReactNode } from 'react';
 
 /**
- * Order of the bar's upper tier, highest first. Sections lead; page actions follow. Filters have
- * no weight: they live in the wrap-reverse cluster below and never mix with these.
+ * Order of the page actions in the bar's upper tier, highest first. They always follow the
+ * sections. Filters have no weight: they live in the wrap-reverse cluster below.
  */
 export const CHIP_WEIGHT = {
-  sections: 500,
   share: 400,
   contact: 300,
   passkey: 200,

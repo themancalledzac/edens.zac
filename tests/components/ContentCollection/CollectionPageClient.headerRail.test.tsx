@@ -158,7 +158,7 @@ describe('CollectionPageClient — header rail', () => {
 
   /**
    * `onSectionSelect` travels through `CollectionFilterContext` and the header rail's
-   * `CollectionContentRenderer` to reach the real `FilterToolbar`/`SegmentedChip` a section chip
+   * `CollectionContentRenderer` to reach the real `FilterToolbar` a section chip
    * renders through — this is the one place that whole chain is exercised together.
    */
   it('routes a section click through onSectionSelect, all the way from the prop', () => {

@@ -4,7 +4,7 @@
  * value and no server round trip happens.
  *
  * `CollectionPageClient` is stood in here (this file is about the contract `UserSpaceGrid` hands
- * it, not `FilterToolbar`/`SegmentedChip`'s own rendering) and never keyed on the section, so the
+ * it, not `FilterToolbar`'s own rendering) and never keyed on the section, so the
  * "does not remount" cases tell a prop change apart from a teardown by a mount counter and DOM-node
  * identity rather than by output.
  */

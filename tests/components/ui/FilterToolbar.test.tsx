@@ -215,7 +215,7 @@ describe('FilterToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith({ filmFilter: 'film' });
   });
 
-  it('opens a dimension dropdown and toggles a value via FilterChip', () => {
+  it('opens a dimension dropdown and toggles a value via an option Chip', () => {
     const { onFilterChange } = renderToolbar({
       dimensions: { selectedTags: { label: 'Tags', options: ['sunset', 'forest'] } },
     });
@@ -712,6 +712,32 @@ describe('FilterToolbar upper tier', () => {
       el => el.getAttribute('aria-label') ?? el.textContent
     );
     expect(order).toEqual(['Sections', 'Share', 'Contact', 'Face']);
+  });
+
+  it('renders an icon section as an icon-only link on phones, named with its count', () => {
+    render(
+      <FilterToolbar
+        filterState={INITIAL_FILTER_STATE}
+        onFilterChange={() => {}}
+        dimensions={{}}
+        sections={[
+          {
+            key: 'saved',
+            label: 'Saved',
+            icon: 'saved',
+            count: 11,
+            href: '/user?tab=saved',
+          },
+          { key: 'images', label: 'Images', icon: 'images', href: '/user?tab=images' },
+        ]}
+        activeSectionKey="saved"
+      />
+    );
+    const saved = screen.getByRole('link', { name: 'Saved, 11' });
+    expect(saved).toHaveAttribute('aria-current', 'page');
+    expect(saved.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByText('Saved').className).toMatch(/labelWide/);
+    expect(screen.getByRole('link', { name: 'Images' })).not.toHaveAttribute('aria-current');
   });
 
   it('renders no upper tier on a page with neither sections nor extras', () => {

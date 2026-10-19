@@ -9,6 +9,7 @@ import {
   PanelAction,
   ViewAllLink,
 } from '@/app/components/ListPanel/ListPanel';
+import { CHIP_ICONS } from '@/app/components/ui/Chip/chipIcons';
 
 /**
  * The shell contract, inherited from `AdminPanel` when this component replaced it.
@@ -289,6 +290,25 @@ describe('ListPanel — tabbed', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Messages' }));
     expect(onChange).toHaveBeenCalledWith('messages');
     expect(onCollapsedChange).toHaveBeenCalledWith(false);
+  });
+
+  it('draws an icon tab as the icon alone on phones, still named by its label', () => {
+    render(
+      <ListPanel
+        title="Admin"
+        tabs={{
+          tabs: [{ id: 'messages', label: 'Messages', icon: CHIP_ICONS.messages }],
+          active: 'messages',
+          onChange: jest.fn(),
+        }}
+      >
+        <p>body</p>
+      </ListPanel>
+    );
+    const tab = screen.getByRole('tab', { name: 'Messages' });
+    expect(tab.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByText('Messages').className).toMatch(/labelWide/);
+    expect(screen.getByRole('tabpanel', { name: 'Messages' })).toHaveTextContent('body');
   });
 
   it('points no tab at the unmounted body while collapsed', () => {

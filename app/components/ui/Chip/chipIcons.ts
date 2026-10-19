@@ -1,15 +1,25 @@
 import {
   ArrowUpNarrowWide,
+  AtSign,
+  Bookmark,
   Calendar,
   Camera,
+  Crown,
   EyeOff,
   Film,
+  FingerprintPattern,
+  Folders,
   Grid2x2,
   Grid3x3,
+  Images,
+  Inbox,
+  LogOut,
   type LucideIcon,
   MapPinned,
   Network,
   RotateCcw,
+  Share,
+  Shield,
   Square,
   Star,
   Users,
@@ -32,7 +42,18 @@ export type ChipIconKey =
   | 'remove'
   | 'densityLarge'
   | 'densityMedium'
-  | 'densitySmall';
+  | 'densitySmall'
+  | 'admin'
+  | 'collections'
+  | 'images'
+  | 'saved'
+  | 'share'
+  | 'contact'
+  | 'passkey'
+  | 'logout'
+  | 'messages'
+  | 'users'
+  | 'roles';
 
 /**
  * The one place a chip's icon is chosen. Callers look icons up here rather than importing from
@@ -54,4 +75,15 @@ export const CHIP_ICONS: Record<ChipIconKey, LucideIcon> = {
   densityLarge: Square,
   densityMedium: Grid2x2,
   densitySmall: Grid3x3,
+  admin: Crown,
+  collections: Folders,
+  images: Images,
+  saved: Bookmark,
+  share: Share,
+  contact: AtSign,
+  passkey: FingerprintPattern,
+  logout: LogOut,
+  messages: Inbox,
+  users: Users,
+  roles: Shield,
 };
