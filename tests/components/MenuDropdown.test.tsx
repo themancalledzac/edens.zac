@@ -155,12 +155,15 @@ describe('MenuDropdown — auth actions', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('hides the /login row in the phone sheet selector list', () => {
+  it('keeps every row visible in the full-screen phone sheet', () => {
     const scss = readFileSync(
       join(process.cwd(), 'app/components/MenuDropdown/MenuDropdown.module.scss'),
       'utf8'
     );
-    expect(scss).toContain("a[href='/login']");
+    expect(scss).not.toContain("a[href='/login']");
+    expect(scss).not.toContain('max-height: 85dvh');
+    expect(scss).toContain('border-radius: 0');
+    expect(scss).toContain('height: 100dvh');
   });
 
   it('shows neither auth button while me() is still resolving', () => {
@@ -872,10 +875,10 @@ describe('MenuDropdown — A12 item list and order', () => {
     ]);
   });
 
-  it('A12: orders an anonymous viewer Explore, Collections, About, Contact, Log in', () => {
+  it('A12: orders an anonymous viewer Explore, Collections, Log in, About, Contact', () => {
     render(<MenuDropdown isOpen onClose={jest.fn()} me={null} />);
 
-    expect(renderedMenuOrder()).toEqual(['Explore', 'Collections', 'About', 'Contact', 'Log in']);
+    expect(renderedMenuOrder()).toEqual(['Explore', 'Collections', 'Log in', 'About', 'Contact']);
   });
 
   it('A12: keeps the same order when the viewer is resolved by the lazy fetch', async () => {
@@ -1110,5 +1113,57 @@ describe('MenuDropdown — A19 row markup unchanged', () => {
     expect(link.parentElement).toHaveClass('dropdownMenuItem');
     expect(link.querySelector('span')).toHaveClass('dropdownMenuOptions');
     expect(screen.getByRole('dialog')).toHaveClass('dropdown');
+  });
+});
+
+describe('MenuDropdown — phone sheet layout', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPathname = '/some-collection';
+  });
+
+  it('puts the social links and copyright line in one row', async () => {
+    mockMe.mockResolvedValue(null);
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    await screen.findByRole('link', { name: /log in/i });
+
+    const instagram = screen.getByRole('link', { name: 'Visit Instagram' });
+    const copyright = screen.getByText(/Zac Edens/);
+
+    expect(copyright).toHaveTextContent(`© ${new Date().getFullYear()} Zac Edens`);
+    expect(instagram.parentElement).toBe(copyright.parentElement);
+  });
+
+  it('groups admin links under an Admin label, with Log out after the group', async () => {
+    mockMe.mockResolvedValue(adminPrincipal);
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    const group = await screen.findByRole('group', { name: 'Admin' });
+    const logout = screen.getByRole('button', { name: /log out/i });
+
+    expect(group).toContainElement(screen.getByRole('link', { name: 'Create' }));
+    expect(group).toContainElement(screen.getByRole('link', { name: 'Metadata' }));
+    expect(group).not.toContainElement(logout);
+    expect(group.compareDocumentPosition(logout) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('has no Admin group for a non-admin', async () => {
+    mockMe.mockResolvedValue(principal);
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    await screen.findByRole('button', { name: /log out/i });
+
+    expect(screen.queryByRole('group', { name: 'Admin' })).not.toBeInTheDocument();
+  });
+
+  it('lists Log in with the primary links for an anonymous visitor', async () => {
+    mockMe.mockResolvedValue(null);
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    const login = await screen.findByRole('link', { name: /log in/i });
+    const about = screen.getByRole('button', { name: 'About' });
+
+    expect(login.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
