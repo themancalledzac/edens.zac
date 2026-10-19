@@ -25,7 +25,8 @@ export interface TagsSelectorProps {
  * `ContentTagModel[]`.
  *
  * Reused by both image editing (TagsPeopleSection) and the collection manage page so the
- * tag-picker UX stays identical across surfaces.
+ * tag-picker UX stays identical across surfaces. Options are listed alphabetically
+ * (case-insensitive) from a sorted copy; the caller's array is not mutated.
  */
 export default function TagsSelector({
   selectedTags,
@@ -34,8 +35,6 @@ export default function TagsSelector({
   label = 'Tags',
   emptyText = 'No tags selected',
 }: TagsSelectorProps): JSX.Element {
-  // Present the option list alphabetically (case-insensitive) so it stays scannable
-  // as the tag vocabulary grows. Copy before sorting — never mutate the caller's array.
   const sortedTags = useMemo(
     () => [...availableTags].sort((a, b) => compareNames(a.name, b.name)),
     [availableTags]

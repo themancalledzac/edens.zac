@@ -38,6 +38,8 @@ interface StructureTabProps {
  * stay live on the update contract for every collection, including one that holds child
  * collections, so hiding the controls behind `isParent` was the frontend half of the
  * "a parent holds only child collections" invariant that Rule B removes.
+ *
+ * The Rating control is hidden for the home collection, which is excluded from list views.
  */
 export function StructureTab({ edit }: StructureTabProps) {
   const router = useRouter();
@@ -169,7 +171,6 @@ export function StructureTab({ edit }: StructureTabProps) {
         />
       )}
 
-      {/* Rating orders multi-collection list views; home is excluded from lists, so no control. */}
       {collection?.id != null && !isHomeCollection && (
         <section aria-labelledby="edit-sheet-rating-heading" className={styles.formGroup}>
           <h3 id="edit-sheet-rating-heading" className={styles.formLabel}>

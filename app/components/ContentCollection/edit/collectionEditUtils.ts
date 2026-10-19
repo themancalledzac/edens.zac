@@ -471,7 +471,6 @@ export function applyPickAndPlace(
 
   const newOrder = [...currentOrder];
   newOrder.splice(fromIndex, 1);
-  // targetIndex shifts after the splice; re-locate the target
   const insertIndex = newOrder.indexOf(targetId);
   newOrder.splice(insertIndex, 0, pickedId);
 

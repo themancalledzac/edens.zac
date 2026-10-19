@@ -47,8 +47,7 @@ export function useViewport(): ViewportDimensions {
     });
   }, []);
 
-  const throttledMeasure = useThrottle(measure, 100); // fires immediately + every 100ms during resize
-
+  const throttledMeasure = useThrottle(measure, 100);
   useEffect(() => {
     measure();
     window.addEventListener('resize', throttledMeasure);

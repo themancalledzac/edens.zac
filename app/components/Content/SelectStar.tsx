@@ -39,7 +39,6 @@ export function SelectStar({ contentId }: SelectStarProps): ReactElement | null 
       aria-pressed={selected}
       aria-label={selected ? 'Remove from Your Selects' : 'Add to Your Selects'}
       onClick={event => {
-        // Don't let the star click bubble to the image wrapper (which opens fullscreen).
         event.stopPropagation();
         selects.toggle(contentId);
       }}

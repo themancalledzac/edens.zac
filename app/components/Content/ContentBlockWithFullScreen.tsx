@@ -43,6 +43,11 @@ interface ContentBlockWithFullScreenProps extends SharedRendererProps {
   /** SSR fallback viewport, forwarded to Component. */
   ssrViewport?: SsrViewport;
 }
+
+/**
+ * Content renderer that owns the fullscreen viewer. On mount, a `?image=<id>` param opens the
+ * viewer to that block without pushing a history entry, so Back still returns to the prior page.
+ */
 export default function ContentBlockWithFullScreen({
   content: allBlocks,
   priorityBlockIndex,
@@ -98,10 +103,6 @@ export default function ContentBlockWithFullScreen({
     );
   }, [allBlocks]);
 
-  // Deep-link restore: if the page loads with ?image=<id> and we have that block,
-  // open the viewer to it. Runs once on mount. showImage only replaceState-syncs
-  // the URL here (the param is already present), so no extra history entry is
-  // pushed and Back still returns to whatever preceded this page.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const id = new URLSearchParams(window.location.search).get('image');

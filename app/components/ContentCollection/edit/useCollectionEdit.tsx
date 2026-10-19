@@ -311,6 +311,11 @@ export interface UseCollectionEditResult {
 
 /**
  * Collection-edit state and actions for the manage surface; inert when `enabled` is false.
+ *
+ * The edit buffer and the staged People and gallery-access fields seed on collection identity
+ * change and on the one-time admin-DTO adoption, never on a background refresh. Every save calls
+ * `setCurrentState` with a DTO whose arrays are new identities, so reseeding on those would wipe
+ * unsaved edits. Save handlers reseed the staged fields from their own responses.
  */
 export function useCollectionEdit({
   collection: seedCollection,
@@ -536,16 +541,6 @@ export function useCollectionEdit({
   const seededStagedFieldsIdRef = useRef<number | null>(null);
   const seededStagedFieldsFromAdminRef = useRef(false);
 
-  /**
-   * Seed the staged People and gallery-access fields on collection identity change, on the
-   * one-time admin-DTO adoption, and on re-entering edit mode — never on a background refresh.
-   *
-   * Keying off `collection.people` / `.galleryPassword` / `.recipientEmails` instead wiped
-   * staged-but-unsaved edits. Every save path (inline title commit, cover pick, reorder save,
-   * upload, metadata save) calls `setCurrentState` with a fresh DTO whose arrays are new
-   * identities, so an unrelated save discarded a pending People or gallery change. The save
-   * handlers re-seed these fields themselves from their own responses.
-   */
   useEffect(() => {
     if (!enabled) {
       seededStagedFieldsIdRef.current = null;
@@ -701,10 +696,6 @@ export function useCollectionEdit({
     if (!enabled) resetToBrowse();
   }, [enabled, resetToBrowse]);
 
-  /**
-   * Reseed the edit buffer on collection identity change or on first admin DTO arrival.
-   * Background refreshes do NOT reseed to avoid wiping in-progress edits.
-   */
   useEffect(() => {
     const identityChanged = collection.id !== seededCollectionIdRef.current;
     const adoptingAdminDto =
@@ -1191,7 +1182,7 @@ export function useCollectionEdit({
     try {
       setDeleting(true);
       setError(null);
-      await deleteCollection(collection.id); // throws on failure
+      await deleteCollection(collection.id);
 
       collectionStorage.clear(collection.slug);
       collectionStorage.clearFull(collection.slug);

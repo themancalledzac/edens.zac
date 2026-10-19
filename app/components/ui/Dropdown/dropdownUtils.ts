@@ -113,7 +113,7 @@ export function findMissingRequiredFields(
     .filter(field => {
       if (!field.required) return false;
       const value = formData[field.name];
-      if (field.type === 'checkbox') return false; // checkboxes never "missing"
+      if (field.type === 'checkbox') return false;
       if (value === undefined || value === null) return true;
       return value.toString().trim() === '';
     });
@@ -130,8 +130,6 @@ export function processAddNewFormData(
 ): Record<string, string | number | boolean | null> {
   const processedData: Record<string, string | number | boolean | null> = {};
   for (const field of fields) {
-    // Drop fields that are hidden so the parent doesn't get stale values from
-    // a sibling toggle (e.g. defaultFilmFormat when isFilm flips off).
     if (!isFieldVisible(field, formData)) continue;
     const value = formData[field.name];
     if (field.type === 'checkbox') {

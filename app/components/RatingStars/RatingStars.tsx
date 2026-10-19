@@ -53,6 +53,10 @@ interface RatingStarsProps {
  * scrolls the page and the next Tab restarts from the top. Staying focusable means focus is never
  * lost, so nothing has to be restored afterwards. Arrow keys are still `preventDefault`ed while
  * pending, which makes them inert rather than letting ArrowDown fall through to the scroller.
+ *
+ * `initialRating` often arrives after mount (admin metadata fetch), so an effect re-seeds the
+ * state from it. A failed `onChange` is swallowed here because the caller already reports it;
+ * the stars keep the old value.
  */
 export default function RatingStars({ initialRating, onChange, ariaLabel }: RatingStarsProps) {
   const [rating, setRating] = useState<number | null>(initialRating);
@@ -60,8 +64,6 @@ export default function RatingStars({ initialRating, onChange, ariaLabel }: Rati
   const [tabStop, setTabStop] = useState(initialRating ?? 1);
   const starRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // `initialRating` often arrives after mount (admin metadata fetch), so the mount-time seed
-  // would otherwise show empty stars for an already-rated collection all session.
   useEffect(() => {
     setRating(initialRating);
     setTabStop(initialRating ?? 1);
@@ -73,8 +75,7 @@ export default function RatingStars({ initialRating, onChange, ariaLabel }: Rati
       await onChange(next);
       setRating(next);
     } catch {
-      // Swallowed deliberately: `onChange` surfaces the failure to the user before
-      // rethrowing, and the click handler discards this promise. Stars keep the old value.
+      // Swallowed: onChange already reports the failure.
     } finally {
       setPending(false);
     }

@@ -83,6 +83,12 @@ interface FullScreenModalProps {
  * tiles use: the backend seeds `title` from the uploaded filename, so naming the dialog straight
  * off `title` announced "Fullscreen image: DSC_4364.webp". A filename-shaped value is dropped in
  * favour of the next authored field, and the generic name when there is none.
+ *
+ * The viewer height is published as `--fs-height` from `window.visualViewport.height`, because iOS
+ * browsers report `dvh`/`lvh` values that don't match the visible area as the toolbar shows and
+ * hides. `useMe` sits above the early returns for the rules of hooks and is null outside a
+ * MeProvider. Locations and date prefer the image's own fields, then the collection's; GIF blocks
+ * have none of their own.
  */
 export function FullScreenModal({
   fullScreenState,
@@ -108,11 +114,6 @@ export function FullScreenModal({
     if (!isOpen) return;
     document.body.classList.add('fullscreen-open');
 
-    // Size the viewer to the ACTUAL visible viewport. iOS browsers (Brave especially) report CSS
-    // dvh/lvh that don't match the real glass — lvh overshoots while the toolbar shows, dvh
-    // undershoots while it's hidden. window.visualViewport.height is the one value that tracks the
-    // true visible height (effectively what Safari uses for dvh). Publish it as --fs-height and
-    // keep it current as the toolbar shows/hides.
     const vv = window.visualViewport;
     const setHeight = () => {
       const h = vv ? vv.height : window.innerHeight;
@@ -132,19 +133,14 @@ export function FullScreenModal({
     };
   }, [isOpen]);
 
-  // Capability gate for the single-image download control (see canDownloadCollection). Called
-  // before the early returns to satisfy the rules of hooks; degrades to null outside a MeProvider.
   const me = useMe();
 
-  // Target of the toggle's aria-controls. Only emitted while the panel is mounted (see below).
   const metadataPanelId = useId();
 
   if (!fullScreenState || !currentImage) return null;
 
   const isGif = isGifBlock(currentImage);
 
-  // Resolve locations/date: image fields take priority, falling back to the collection. GIF blocks
-  // carry neither, so they fall straight through to the collection.
   const displayLocations = resolveDisplayLocations(currentImage, collectionData);
   const displayDate = formatLongDate(resolveDisplayDate(currentImage, collectionData));
   const displayFilmStock = resolveDisplayFilmStock(currentImage);

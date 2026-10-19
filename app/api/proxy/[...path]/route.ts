@@ -12,7 +12,6 @@ function getBackendBase(): string {
 
 /** Builds the full backend URL from path segments and the original query string. */
 function buildTargetUrl(pathParts: string[], search: string): string {
-  // pathParts already contains everything after /api/proxy
   const targetPath = pathParts.join('/');
   const base = getBackendBase();
   const url = `${base}/${targetPath.replace(/^\/+/, '')}`;
@@ -62,6 +61,11 @@ function isAnonymousPrivilegedRequest(req: NextRequest, normalized: string): boo
 /**
  * Strips hop-by-hop and platform-specific headers, re-injects a sanitized real-IP,
  * and adds the internal API secret before forwarding to the backend.
+ *
+ * The real IP is the first hop of `x-vercel-forwarded-for`, else the last hop of
+ * `x-forwarded-for`, which the trusted edge (CloudFront/Amplify) appends. `x-real-ip` is never
+ * trusted because clients control it. TODO(CloudFlare Phase 2): drop the injection and use
+ * `CF-Connecting-IP`.
  */
 function forwardHeaders(req: NextRequest): Headers {
   const headers = new Headers();
@@ -90,18 +94,7 @@ function forwardHeaders(req: NextRequest): Headers {
     }
     headers.set(key, value);
   }
-  // Ensure JSON by default for non-multipart when client did not set
   if (!headers.has('accept')) headers.set('accept', 'application/json, */*;q=0.1');
-  // Re-inject sanitized real IP (stripped above to prevent header smuggling).
-  //
-  // Source order, most-trusted first:
-  //   1. `x-vercel-forwarded-for` first hop — harmless, absent on Amplify.
-  //   2. LAST hop of `x-forwarded-for` — on CloudFront/Amplify the client IP is
-  //      appended by the trusted edge, so the last hop is the real client. We do
-  //      NOT trust `x-real-ip`: it's fully client-controllable and spoofable on
-  //      Amplify (where the Vercel header never populates).
-  // TODO(CloudFlare Phase 2): drop this injection entirely and switch to
-  // `CF-Connecting-IP`, which CloudFlare sets and clients cannot forge.
   const realIpRaw =
     req.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() ??
     req.headers.get('x-forwarded-for')?.split(',').pop()?.trim() ??
@@ -113,7 +106,15 @@ function forwardHeaders(req: NextRequest): Headers {
   return headers;
 }
 
-/** Universal proxy handler — forwards all HTTP methods to the backend with CORS and size guards. */
+/**
+ * Universal proxy handler — forwards all HTTP methods to the backend with CORS and size guards.
+ *
+ * Body limits are 16 KB for JSON writes and 25 MB for multipart. Content-Length is only a fast
+ * reject; the buffered size is checked again. The body is a `Uint8Array` because Amplify's undici
+ * build rejects a bare `ArrayBuffer` with a 502. Set-Cookie is re-emitted one header at a time
+ * through `getSetCookie()`, since the Headers constructor comma-joins repeats and corrupts cookies
+ * whose Expires attribute contains a comma.
+ */
 async function handle(req: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const params = await context.params;
   const method = req.method;
@@ -133,8 +134,6 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
 
   const writeMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-  // 16 KB for JSON writes; 25 MB for multipart uploads. Content-Length is a fast
-  // reject only — we re-check against the actual buffered size below.
   const contentType = req.headers.get('content-type') ?? '';
   const isMultipart = contentType.startsWith('multipart/form-data');
   const maxBytes = isMultipart ? 25 * 1024 * 1024 : 16 * 1024;
@@ -149,13 +148,10 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
     }
   }
 
-  // Uint8Array (not bare ArrayBuffer) — Amplify's undici build rejects ArrayBuffer
-  // bodies with a 502; Uint8Array works uniformly across all runtimes.
   const body = ['GET', 'HEAD'].includes(method)
     ? undefined
     : new Uint8Array(await req.arrayBuffer());
 
-  // Authoritative size check — guards spoofed/missing Content-Length.
   if (writeMethods.has(method) && body && body.byteLength > maxBytes) {
     return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
   }
@@ -177,18 +173,10 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
     return NextResponse.json({ error: 'Bad gateway' }, { status: 502 });
   }
 
-  // Create a new response with streamed body and copied headers/status
   const resHeaders = new Headers(backendRes.headers);
-  // Remove hop-by-hop headers if present
   resHeaders.delete('content-encoding');
   resHeaders.delete('transfer-encoding');
   resHeaders.delete('connection');
-
-  // Multiple `Set-Cookie` headers are valid (e.g. an auth cookie + a CSRF
-  // cookie in one response). The Headers constructor combines repeated
-  // headers into a single comma-joined value, which corrupts cookies that
-  // contain commas in the Expires attribute. We re-emit each Set-Cookie
-  // explicitly via getSetCookie() so the browser sees the original list.
   resHeaders.delete('set-cookie');
   for (const cookie of backendRes.headers.getSetCookie()) {
     resHeaders.append('Set-Cookie', cookie);

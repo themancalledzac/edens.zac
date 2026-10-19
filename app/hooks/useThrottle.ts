@@ -37,7 +37,6 @@ export function useThrottle<T extends (...args: never[]) => void>(
       const now = Date.now();
       const timeSinceLastCall = now - lastCallRef.current;
 
-      // Clear any pending trailing call
       if (trailingTimeoutRef.current) clearTimeout(trailingTimeoutRef.current);
 
       if (timeSinceLastCall >= interval) {

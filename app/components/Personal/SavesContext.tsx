@@ -32,6 +32,11 @@ export interface SavesContextValue {
 
 const SavesContext = createContext<SavesContextValue | null>(null);
 
+/**
+ * Keeps a ref mirror of the Set because `toggle` must pick its direction synchronously. State
+ * updaters run lazily, so reading state gives stale answers when two clicks land before a
+ * re-render. Rollback removes only the failed id so other in-flight toggles survive.
+ */
 export function SavesProvider({
   initialSavedIds,
   children,
@@ -41,14 +46,8 @@ export function SavesProvider({
 }) {
   const [savedIds, setSavedIds] = useState<Set<number>>(() => new Set(initialSavedIds));
 
-  // Ref mirror of the saved Set, the synchronous source of truth for `toggle`'s add/remove
-  // decision. React runs functional state updaters lazily at flush time, so reading membership from
-  // a closed-over Set (or from inside setSavedIds) can't inform the persist/rollback direction that
-  // must be chosen on the same synchronous tick. A ref always holds the latest value, so two rapid
-  // clicks before a re-render each observe the other's result and stay consistent.
   const savedIdsRef = useRef(savedIds);
 
-  // Write the new Set to the ref and state together so they never drift.
   const commit = useCallback((next: Set<number>) => {
     savedIdsRef.current = next;
     setSavedIds(next);
@@ -60,7 +59,6 @@ export function SavesProvider({
     (imageId: number) => {
       const wasSaved = savedIdsRef.current.has(imageId);
 
-      // Optimistic update off the current (ref) membership.
       const optimistic = new Set(savedIdsRef.current);
       if (wasSaved) {
         optimistic.delete(imageId);
@@ -71,7 +69,6 @@ export function SavesProvider({
 
       const persist = wasSaved ? removeSave(imageId) : addSave(imageId);
       persist.catch((error: unknown) => {
-        // Roll back just this id off the latest membership (other in-flight toggles are preserved).
         const rolledBack = new Set(savedIdsRef.current);
         if (wasSaved) {
           rolledBack.add(imageId);

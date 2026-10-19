@@ -15,6 +15,8 @@ import { useMemo } from 'react';
  * - `pendingAdds` — items staged to be added (typically a `newValue` array). Any whose id is
  *   already saved is ignored, so callers can pass a raw membership array without pre-filtering.
  * - `pendingRemoves` — saved IDs staged for removal (a `remove` array).
+ * - `getId` is a pure projection (callers pass an inline arrow), so it is left out of the memo
+ *   dependencies on purpose.
  *
  * @returns Three `Set<number>`s: `savedIds`, `pendingAddIds`, `pendingRemoveIds`.
  */
@@ -26,8 +28,6 @@ export function useToggleTriple<T>(
 ): { savedIds: Set<number>; pendingAddIds: Set<number>; pendingRemoveIds: Set<number> } {
   const savedIds = useMemo(() => new Set(originalIds), [originalIds]);
 
-  // `getId` is a pure projection (callers pass an inline arrow like `c => c.collectionId`); its
-  // result depends only on `pendingAdds`, so it is intentionally not a dependency here.
   const pendingAddIds = useMemo(() => {
     const ids = new Set<number>();
     for (const item of pendingAdds ?? []) {

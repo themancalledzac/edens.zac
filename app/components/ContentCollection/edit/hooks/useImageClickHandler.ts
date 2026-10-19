@@ -29,6 +29,11 @@ interface UseImageClickHandlerParams {
   setIsMultiSelectMode: Dispatch<SetStateAction<boolean>>;
 }
 
+/**
+ * Routes a grid click by manage mode. During a cover pick, a click on the header cover block (a
+ * synthetic id, not a content row) is ignored so it cannot fail validation and raise an error
+ * banner; the block's own hover affordance cancels the pick.
+ */
 export function useImageClickHandler({
   isPickingCaptureDate,
   handleCaptureDateSourceClick,
@@ -52,9 +57,6 @@ export function useImageClickHandler({
       }
 
       if (isSelectingCoverImage) {
-        // The header cover block is a synthetic id, not a content row, so it is never a valid
-        // pick — swallow the click rather than let it fail validation and raise an error banner.
-        // Its own hover affordance is what cancels the pick.
         if (imageId === COVER_IMAGE_CONTENT_ID) return;
         handleCoverImageClick(imageId);
         return;

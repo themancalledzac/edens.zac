@@ -25,6 +25,10 @@ interface UseCoverImageSelectionParams {
   setError: Dispatch<SetStateAction<string | null>>;
 }
 
+/**
+ * Cover-image pick mode. A collection may hold its own images and child-collection refs at once
+ * (D3), so the validation pool is the union of both. Narrowing it would reject a legitimate cover.
+ */
 export function useCoverImageSelection({
   collection,
   childCollectionImages,
@@ -48,9 +52,6 @@ export function useCoverImageSelection({
     async (imageId: number) => {
       if (!collection) return;
 
-      // UNION, not XOR (D3): a collection may hold its own images AND child-collection refs at
-      // the same time, so both are legitimate cover sources. This pool VALIDATES the pick, so
-      // narrowing it to one side would reject a legitimate cover, not just hide it in the picker.
       const imagePool: AnyContentModel[] = [
         ...(collection.content ?? []),
         ...((childCollectionImages ?? []) as AnyContentModel[]),
