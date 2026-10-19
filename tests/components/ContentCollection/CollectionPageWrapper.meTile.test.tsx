@@ -5,6 +5,7 @@ import * as collectionsApi from '@/app/lib/api/collections';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { ME_TILE_ID } from '@/app/utils/meContentBlock';
+import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 const mockMeServer = jest.fn();
 const mockGetUserPage = jest.fn();
@@ -30,6 +31,8 @@ jest.mock('@/app/utils/ssrViewport', () => ({
     isMobile: false,
   })),
 }));
+
+const mockResolveSsrViewport = resolveSsrViewport as jest.MockedFunction<typeof resolveSsrViewport>;
 
 const mockGetCollectionBySlug = collectionsApi.getCollectionBySlug as jest.MockedFunction<
   typeof collectionsApi.getCollectionBySlug
@@ -123,6 +126,48 @@ describe('CollectionPageWrapper — Me tile injection', () => {
     expect(content).toHaveLength(2);
     expect(content.some((b: { id: number }) => b.id === ME_TILE_ID)).toBe(false);
     expect(mockGetUserPage).not.toHaveBeenCalled();
+  });
+
+  it('omits the Me tile and skips getUserPage() on a phone request', async () => {
+    mockMeServer.mockResolvedValue({
+      email: 'a@b.com',
+      isAdmin: false,
+      mfaSatisfied: true,
+      passkeyCount: 0,
+      galleries: [],
+    });
+    mockGetUserPage.mockResolvedValue(null);
+    mockGetCollectionBySlug.mockResolvedValue(homeCollection());
+    mockResolveSsrViewport.mockResolvedValueOnce({
+      contentWidth: 390,
+      viewportHeight: 800,
+      isMobile: true,
+    });
+
+    const element = await CollectionPageWrapper({ slug: 'home' });
+
+    const content = element.props.collection.content;
+    expect(content).toHaveLength(2);
+    expect(content.some((b: { id: number }) => b.id === ME_TILE_ID)).toBe(false);
+    expect(mockGetUserPage).not.toHaveBeenCalled();
+  });
+
+  it('keeps the Me tile first and fetches getUserPage() on a desktop request', async () => {
+    mockMeServer.mockResolvedValue({
+      email: 'a@b.com',
+      isAdmin: false,
+      mfaSatisfied: true,
+      passkeyCount: 0,
+      galleries: [],
+    });
+    mockGetUserPage.mockResolvedValue(null);
+    mockGetCollectionBySlug.mockResolvedValue(homeCollection());
+
+    const element = await CollectionPageWrapper({ slug: 'home' });
+
+    const content = element.props.collection.content;
+    expect(content[0].id).toBe(ME_TILE_ID);
+    expect(mockGetUserPage).toHaveBeenCalledTimes(1);
   });
 
   it('does NOT inject the Me tile on a non-home slug even when logged in', async () => {
