@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, redirect, unstable_rethrow } from 'next/navigation';
 
 import CollectionPageWrapper from '@/app/components/ContentCollection/CollectionPageWrapper';
 import { CollectionJsonLd } from '@/app/components/StructuredData/CollectionJsonLd';
@@ -27,6 +27,44 @@ export const dynamic = 'force-dynamic';
 
 const STATIC_FILES = ['favicon.ico', 'robots.txt', 'sitemap.xml', 'manifest.json'];
 
+/**
+ * Settles the response status before the root `loading.tsx` Suspense boundary streams.
+ *
+ * Streaming metadata means non-bot clients get their status from the page, not from
+ * `generateMetadata`, and a `notFound()` thrown once the fallback has streamed can no longer change
+ * the 200. The read is `getCollectionBySlug(slug, 0, 500)`, the same call `generateMetadata` and
+ * `CollectionPageWrapper` make, so it is served from the shared fetch cache with no extra request.
+ * Control-flow errors from Next.js (they carry a `digest`) are rethrown; any other failure is left
+ * for the page body to handle, so an outage is never reported as a missing page.
+ */
+async function assertCollectionExists(slug: string) {
+  try {
+    await getCollectionBySlug(slug, 0, 500);
+  } catch (error) {
+    if (error instanceof Error && 'digest' in error) throw error;
+    logger.warn('slug-page', 'existence check failed; deferring to the page body', { slug, error });
+  }
+}
+
+/**
+ * Resolves collection metadata and decides the response status for an unknown slug.
+ *
+ * Status mechanism (r-49.2 applies the same one to tag and location pages): metadata streams for
+ * non-bot clients, so the status for them is decided by the page body, which runs the existence
+ * check {@link assertCollectionExists} before returning its JSX. This function covers HTML-limited
+ * bots, which block on metadata, with the read it already makes, `getCollectionBySlug(slug, 0, 500)`, which throws
+ * `notFound()` on a backend 404 and shares its cache entry with the page body, so no extra request
+ * is made. The catch passes Next.js control-flow errors on through `unstable_rethrow` so that
+ * `notFound()` reaches the framework instead of being swallowed. Any other failure (5xx, network)
+ * is logged and falls back to the 'Not Found' title, so an outage is not reported as a missing page.
+ *
+ * OG/Twitter images are suppressed for password-protected collections: the cover image is private
+ * until the password is verified, and meta tags are crawlable without auth. This is keyed on
+ * `isPasswordProtected` alone, not the collection kind, because protected is private regardless of
+ * kind and the backend retains `coverImage` on locked responses. A protected payload missing the
+ * kind booleans (stale cache or deploy-order slip) is still suppressed and logged so the window
+ * is observable.
+ */
 export async function generateMetadata({ params }: CollectionPageProps): Promise<Metadata> {
   const { slug } = await params;
 
@@ -38,14 +76,8 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
     const collection = await getCollectionBySlug(slug, 0, 500);
     const title = collection.title;
     const description = collection.description ?? `${title} — photography by ${AUTHOR_NAME}`;
-    // Suppress OG/Twitter image for password-protected collections — the cover image is private
-    // until the password is verified, and meta tags are crawlable without auth. Keyed on
-    // `isPasswordProtected` alone (not the collection kind): protected is private regardless of
-    // kind, and the backend retains `coverImage` on locked responses, so this is the only defense.
     const isProtected = collection.isPasswordProtected === true;
     if (isProtected && collection.isClient === undefined) {
-      // Stale cache or a deploy-order slip: a protected payload without the kind booleans.
-      // Suppression still holds (it no longer reads them) — log so the window is observable.
       logger.warn('slug-page', 'Protected collection payload is missing isClient/isBlog', { slug });
     }
     const images =
@@ -71,8 +103,7 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
       },
     };
   } catch (error) {
-    // A transient API failure renders as "Not Found" metadata, which is indistinguishable from a
-    // genuinely missing slug — log so an outage is not silently reported as a 404.
+    unstable_rethrow(error);
     logger.warn('slug-page', 'generateMetadata failed; falling back to Not Found', { slug, error });
     return { title: 'Not Found' };
   }
@@ -113,6 +144,8 @@ export default async function CollectionPage({ params, searchParams }: Collectio
   if (editMode) {
     await requireAdmin();
   }
+
+  await assertCollectionExists(slug);
 
   return (
     <>
