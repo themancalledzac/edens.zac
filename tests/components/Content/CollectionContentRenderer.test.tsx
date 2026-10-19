@@ -34,7 +34,6 @@ jest.mock('@/app/components/ui/FilterToolbar/FilterToolbar', () => ({
     mockToolbarProps(props);
     return null;
   },
-  MAX_FLAT_DATE_CHIPS: 5,
 }));
 jest.mock('@/app/components/Auth/MeProvider', () => ({
   useMe: jest.fn(() => null),
@@ -1191,18 +1190,6 @@ describe('CollectionContentRenderer — info rail tightening (r-35.1)', () => {
     { type: 'date', value: 'Jul 2026' },
     { type: 'collection', value: 'Dolomites Film', slug: '/dolomites-film' },
   ];
-
-  it('A2: passes flatDateLimit 2 to the toolbar on mobile', () => {
-    mockFilterValue.current = filterContextValue;
-    render(<CollectionContentRenderer {...baseProps} isMobile textItems={siblingItems} />);
-    expect(mockToolbarProps).toHaveBeenCalledWith(expect.objectContaining({ flatDateLimit: 2 }));
-  });
-
-  it('A2: passes MAX_FLAT_DATE_CHIPS to the toolbar on desktop', () => {
-    mockFilterValue.current = filterContextValue;
-    render(<CollectionContentRenderer {...baseProps} textItems={siblingItems} />);
-    expect(mockToolbarProps).toHaveBeenCalledWith(expect.objectContaining({ flatDateLimit: 5 }));
-  });
 
   it('F2/A3: the related cards come before the description container in DOM order', () => {
     const { container } = render(
