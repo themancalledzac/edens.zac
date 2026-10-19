@@ -79,13 +79,13 @@ const baseProps = {
 };
 
 describe('CollectionContentRenderer — TEXT branch sibling collections', () => {
-  it('renders a Related label and a link per collection item', () => {
+  it('renders a link per collection item and no Related label', () => {
     const textItems: TextBlockItem[] = [
       { type: 'collection', value: 'Dolomites Film', slug: '/dolomites-film' },
       { type: 'collection', value: 'Dolomites 2025', slug: '/dolomites-2025' },
     ];
     render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
-    expect(screen.getByText('Related')).toBeInTheDocument();
+    expect(screen.queryByText('Related')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Dolomites Film' })).toHaveAttribute(
       'href',
       '/dolomites-film'
@@ -121,7 +121,7 @@ describe('CollectionContentRenderer — sibling collections as cover cards', () 
     ];
     render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
 
-    expect(screen.getByText('Related')).toBeInTheDocument();
+    expect(screen.queryByText('Related')).not.toBeInTheDocument();
 
     const filmLink = screen.getByRole('link', { name: /Dolomites Film/ });
     expect(filmLink).toHaveAttribute('href', '/dolomites-film');
@@ -159,7 +159,7 @@ describe('CollectionContentRenderer — sibling collections as cover cards', () 
     ];
     render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
 
-    expect(screen.getByText('Related')).toBeInTheDocument();
+    expect(screen.queryByText('Related')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Dolomites Film' })).toHaveAttribute(
       'href',
       '/dolomites-film'
@@ -1204,11 +1204,11 @@ describe('CollectionContentRenderer — info rail tightening (r-35.1)', () => {
     expect(mockToolbarProps).toHaveBeenCalledWith(expect.objectContaining({ flatDateLimit: 5 }));
   });
 
-  it('F2/A3: the Related label comes before the description container in DOM order', () => {
+  it('F2/A3: the related cards come before the description container in DOM order', () => {
     const { container } = render(
       <CollectionContentRenderer {...baseProps} textItems={siblingItems} />
     );
-    const related = screen.getByText('Related');
+    const related = screen.getByRole('link', { name: /Dolomites/ });
     const description = container.querySelector('[class*="metadataDescriptionContainer"]');
     expect(description).not.toBeNull();
     expect(
@@ -1225,21 +1225,48 @@ describe('CollectionContentRenderer — info rail tightening (r-35.1)', () => {
     expect(description).toBeEmptyDOMElement();
   });
 
-  it('A3: the Related block follows the date/location row directly', () => {
+  it('A3: the related block follows the location and date row directly', () => {
     const items: TextBlockItem[] = [
       ...siblingItems,
-      { type: 'location', value: 'Dolomites', slug: 'dolomites' },
+      { type: 'location', value: 'Dolomites Trip', slug: 'dolomites' },
       { type: 'description', value: 'A trip' },
     ];
     const { container } = render(<CollectionContentRenderer {...baseProps} textItems={items} />);
     const row = container.querySelector('[class*="metadataHeaderRow"]');
-    const related = screen.getByText('Related');
+    const related = container.querySelector('[class*="metadataSiblingsContainer"]');
     const description = container.querySelector('[class*="metadataDescriptionContainer"]');
     expect(row).not.toBeNull();
-    expect(row?.compareDocumentPosition(related) ?? 0).toBeTruthy();
-    expect(row?.compareDocumentPosition(related)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(related.compareDocumentPosition(description as Element)).toBe(
+    expect(row?.compareDocumentPosition(related as Element)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect((related as Element).compareDocumentPosition(description as Element)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING
     );
+  });
+
+  it('renders the date subheader under the location', () => {
+    const items: TextBlockItem[] = [
+      { type: 'date', value: 'Jul 2026' },
+      { type: 'location', value: 'Dolomites Trip', slug: 'dolomites' },
+    ];
+    const { container } = render(<CollectionContentRenderer {...baseProps} textItems={items} />);
+    const row = container.querySelector('[class*="metadataHeaderRow"]') as Element;
+    const location = screen.getByRole('link', { name: 'Dolomites Trip' });
+    const date = row.querySelector('[class*="metadataDate"]') as Element;
+    expect(date).toHaveTextContent('Jul 2026');
+    expect(location.compareDocumentPosition(date)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('renders the date alone in the subheader when there is no location', () => {
+    const items: TextBlockItem[] = [{ type: 'date', value: 'Jul 2026' }];
+    const { container } = render(<CollectionContentRenderer {...baseProps} textItems={items} />);
+    const row = container.querySelector('[class*="metadataHeaderRow"]') as Element;
+    expect(row.querySelector('[class*="metadataDate"]')).toHaveTextContent('Jul 2026');
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('renders no metadata block inner when there are no items and only the filter bar', () => {
+    mockFilterValue.current = filterContextValue;
+    const { container } = render(<CollectionContentRenderer {...baseProps} textItems={[]} />);
+    expect(container.querySelector('[class*="metadataBlockInner"]')).toBeNull();
+    expect(container.querySelector('[class*="filterBarWrapper"]')).not.toBeNull();
   });
 });
