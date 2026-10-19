@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { StatusPage } from '@/app/components/ui/StatusPage/StatusPage';
+import { type MeResponse } from '@/app/types/Auth';
 
 jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
   __esModule: true,
@@ -13,6 +15,11 @@ jest.mock('@/app/components/ui/BottomNav/BottomNav', () => ({
   default: () => null,
   BottomNav: () => null,
 }));
+
+jest.mock('@/app/components/ui/PageShell/PageShell', () => {
+  const actual = jest.requireActual('@/app/components/ui/PageShell/PageShell');
+  return { ...actual, PageShell: jest.fn(actual.PageShell) };
+});
 
 describe('StatusPage', () => {
   it('renders the title as an h1 and the message', () => {
@@ -44,5 +51,16 @@ describe('StatusPage', () => {
   it('renders the detail line when provided', () => {
     render(<StatusPage title="Error" message="m" detail="Error ID: abc123" />);
     expect(screen.getByText('Error ID: abc123')).toBeInTheDocument();
+  });
+
+  it('forwards me to the page shell', () => {
+    const me = { isAdmin: true } as MeResponse;
+    render(<StatusPage title="Error" message="m" me={me} />);
+    expect((PageShell as jest.Mock).mock.calls.at(-1)?.[0].me).toBe(me);
+  });
+
+  it('leaves me undefined on the shell when omitted', () => {
+    render(<StatusPage title="Error" message="m" />);
+    expect((PageShell as jest.Mock).mock.calls.at(-1)?.[0].me).toBeUndefined();
   });
 });

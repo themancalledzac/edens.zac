@@ -3,6 +3,7 @@ import { type ReactNode } from 'react';
 import { Button } from '@/app/components/ui/Button/Button';
 import { NavLink } from '@/app/components/ui/NavLink/NavLink';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
+import { type MeResponse } from '@/app/types/Auth';
 
 import styles from './StatusPage.module.scss';
 
@@ -17,6 +18,8 @@ export interface StatusPageProps {
   showHomeLink?: boolean;
   /** Render the SiteHeader chrome (default true). */
   withHeader?: boolean;
+  /** Resolved principal forwarded to the page shell's header and bottom nav. */
+  me?: MeResponse | null;
 }
 
 /**
@@ -30,9 +33,10 @@ export function StatusPage({
   onRetry,
   showHomeLink = true,
   withHeader = true,
+  me,
 }: StatusPageProps) {
   return (
-    <PageShell withHeader={withHeader}>
+    <PageShell withHeader={withHeader} me={me}>
       <div className={styles.status} role="alert">
         <h1 className={styles.title}>{title}</h1>
         <p className={styles.message}>{message}</p>
