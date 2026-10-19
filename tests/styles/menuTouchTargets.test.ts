@@ -301,13 +301,11 @@ describe('menu touch targets', () => {
   });
 });
 
-describe('token adoption in the menu, Dropdown and density control stylesheets', () => {
+describe('token adoption in the menu, Dropdown and chip stylesheets', () => {
   const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
   const menu = stripComments(read('app/components/MenuDropdown/MenuDropdown.module.scss'));
   const dropdown = stripComments(read('app/components/ui/Dropdown/Dropdown.module.scss'));
-  const density = stripComments(
-    read('app/components/ui/FilterToolbar/DensityTierControl.module.scss')
-  );
+  const chip = stripComments(read('app/components/ui/Chip/Chip.module.scss'));
 
   it('menu has no raw black rgb() scrims', () => {
     expect(menu).not.toMatch(/rgb\(\s*(?:0[\s,]+){2}0/);
@@ -326,8 +324,8 @@ describe('token adoption in the menu, Dropdown and density control stylesheets',
     expect(dropdown).not.toMatch(/transition:\s*all/);
   });
 
-  it('density control paints its borders with --color-border-control', () => {
-    expect(density).not.toMatch(/var\(--color-border\)/);
-    expect(density.match(/var\(--color-border-control\)/g)?.length).toBe(3);
+  it('chip dividers use --color-border-control and the row underline uses --color-border', () => {
+    expect(chip.match(/var\(--color-border-control\)/g)?.length).toBe(1);
+    expect(chip).toMatch(/border-bottom: 1px solid var\(--color-border\)/);
   });
 });

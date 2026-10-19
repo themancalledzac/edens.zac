@@ -12,16 +12,16 @@
   /* Same token as the Download row's .buttonRow, so the two stacked rows space their
      controls identically. Was a hardcoded 4px, which is what --space-1 resolves to. */
   gap: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
 
   /* Below 768px the bar wraps so `.trailing` either shares the bottom row with the chips or takes a
      line of its own. `.controls` carries `flex: 1 0 180px`: the 0 shrink keeps flex from squeezing
-     it under 180px (room for "Order" + "Rated"), so a manage-view slider that would starve the
-     chips wraps instead. The row gap is --space-2 because the density segments' 44px overlays
-     overhang the row above.
+     it under 180px (four icon chips), so a manage-view slider that would starve the chips wraps
+     instead. The row gap is --space-2 because the chips' 44px overlays overhang the row above.
 
-     The reset × is `display: none` while inactive on this branch. As an invisible slot it held back
-     its own width plus a gap (about 35px) from `.controls`, and a chip that would have fit beside
-     the density control wrapped to the row above. The × now takes its width only once a filter is
+     The reset chip is `display: none` while inactive on this branch. As an invisible slot it held back
+     its own 44px from `.controls`, and a chip that would have fit beside
+     the density control wrapped to the row above. The chip now takes its width only once a filter is
      active, the same moment the active-filter badges appear. */
   @media (width < 768px) {
     flex-wrap: wrap;
@@ -43,11 +43,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3) var(--space-1);
+  padding: var(--space-1) var(--space-3);
   border-top: 1px solid var(--color-border);
 
   @media (width >= 768px) {
-    padding: var(--space-2) 0 var(--space-1);
+    padding: var(--space-1) 0;
   }
 }
 
@@ -59,49 +59,19 @@
   align-items: center;
 }
 
-/* The wrapping half: every filter control. `min-width: 0` lets it shrink and wrap internally
-   instead of forcing the non-wrapping outer row to overflow.
-
-   `wrap-reverse`, not `wrap`: this cluster is built bottom-up, left-to-right. Its LAST row is the
-   one that sits against the content below and is the row a reader starts from, so that row fills
-   first and losing width pushes chips UP onto rows above it. Plain `wrap` fills top-down, which
-   inverts that — the bottom row ended up holding whatever single chip spilled over while the row
-   above it stayed full, so shrinking the bar moved one chip DOWN instead of moving several up.
-   Reversing the cross axis costs nothing else: lines still run left-to-right internally, and
-   `align-items: center` is symmetric so it is unaffected by the flip. */
+/* The wrapping half: every filter control, a ChipRow with `wrap="reverse"` so the bottom line fills
+   first and losing width pushes chips UP. `min-width: 0` lets it shrink and wrap internally instead
+   of forcing the non-wrapping outer row to overflow. */
 .controls {
-  display: flex;
-  flex-wrap: wrap-reverse;
-  align-items: center;
-
-  /* INVARIANT: keep this at >= --space-2 (8px) for as long as FilterChip paints the 44px
-     coarse-pointer overlay. A chip's box is ~29.6px tall, so its overlay overhangs by ~7.2px above
-     and below; at the previous --space-1 (4px) the overlay of every chip on a wrapped row reached
-     3.2px back over the chips on the row ABOVE and, painting later in DOM order, took their taps —
-     a touch near a chip's lower edge fired a different filter, with no cursor to reveal it. 8px
-     clears the overhang with 0.8px to spare. Tightening this again means lowering
-     --touch-target-min to match — see the docblock on FilterChip's .chip. */
-  gap: var(--space-2);
   flex: 1 1 auto;
   min-width: 0;
 }
 
-/* The pinned half: ONE right-hand group holding the reset × and the photo-size control as its two
-   children, rather than the two of them sitting beside .controls as separate top-level slots. As
-   siblings of the chip block they read as a left/middle/right trio of peers, which they are not —
-   they are the bar's trailing controls, and grouping them says so once instead of relying on two
-   independent pins to keep them together.
-
-   Never shrinks and never wraps, so overflowing chips wrap within .controls rather than pushing
-   this off the row. `flex-end` on .toolbar keeps it on the bar's anchored bottom row. */
+/* The pinned half: one ChipRow holding the reset chip and the photo-size control. Never shrinks
+   and never wraps, so overflowing chips wrap within .controls instead. `flex-end` on .toolbar keeps
+   it on the bar's anchored bottom row. */
 .trailing {
-  display: flex;
   flex: 0 0 auto;
-  align-items: center;
-
-  /* Same step the chips use, so the × sits in the bar's rhythm rather than crowding the
-     photo-size control it does NOT reset. */
-  gap: var(--space-2);
   margin-left: auto;
 }
 
@@ -110,18 +80,6 @@
 .densitySlot {
   display: flex;
   align-items: center;
-}
-
-/* Divides the controls from the active-filter badges that summarise a collapsed dimension. Margin
-   rather than gap so it reads as a rule between two groups, not as a third item in the row. Fixed
-   height rather than `align-self: stretch`: in a wrapping container stretch resolves against the
-   TALLEST line, so the rule grew to span every wrapped row. */
-.separator {
-  align-self: center;
-  width: 1px;
-  height: 1.25em;
-  margin: var(--space-1) var(--space-1);
-  background-color: var(--color-border);
 }
 
 .dropdown {
@@ -146,49 +104,6 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-0);
   box-shadow: 0 4px 12px var(--color-overlay-soft);
-}
-
-/* Leads .trailing — NOT a member of the wrapping .controls.
-
-   It used to flow inline after the last chip, which put it inside a wrapping container: once the
-   chips filled the row (engaging Order widens its chip by the direction glyph, which is enough on
-   its own) the × wrapped onto a line of its own away from the photo-size control, reading as a
-   stray glyph rather than one of the bar's controls. Riding in the trailing group instead holds it
-   on the bar's anchored bottom row whatever the chips do.
-
-   Never `margin-left: auto`: .trailing already carries the pin for the whole group, and a second
-   one here would be inert and mislead the next reader.
-
-   Vertical padding and the transparent hairline are the chip's own box metrics, so this sits level
-   with the chips it resets on the row the toolbar aligns to `flex-end`. */
-.reset {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-1) var(--space-2);
-  font: inherit;
-  font-size: var(--text-sm);
-  line-height: 1.4;
-  color: var(--color-fg);
-  background-color: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-0);
-  cursor: pointer;
-  opacity: 0.35;
-  transition:
-    opacity var(--duration-fast) var(--ease-standard),
-    background-color var(--duration-fast) var(--ease-standard);
-
-  &:hover {
-    opacity: 0.7;
-    background-color: var(--color-overlay-soft);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-  }
 }
 
 /* Always rendered so it occupies its slot in the flex row; hidden (not removed) when there is
