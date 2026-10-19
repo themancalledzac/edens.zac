@@ -4,6 +4,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { type ReactElement } from 'react';
 
 import TaxonomyPage from '@/app/components/TaxonomyPage/TaxonomyPage';
 import { getAllTags, searchImages } from '@/app/lib/api/content';
@@ -56,7 +57,12 @@ const mockSearchImages = searchImages as jest.Mock;
 const mockResolveSsrViewport = resolveSsrViewport as jest.Mock;
 
 const renderRoute = async (slug: string) => {
-  const element = await TagPageRoute({ params: Promise.resolve({ slug }) });
+  const boundary = await TagPageRoute({ params: Promise.resolve({ slug }) });
+  const content = boundary.props.children as ReactElement<Record<string, unknown>>;
+  const Content = content.type as (props: Record<string, unknown>) => Promise<ReactElement>;
+  const element = (await Content(content.props)) as ReactElement<
+    Parameters<typeof TaxonomyPage>[0]
+  >;
   return render(await TaxonomyPage(element.props));
 };
 

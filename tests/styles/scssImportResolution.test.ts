@@ -74,8 +74,8 @@ describe('SCSS module imports', () => {
     const authCard = imports.filter(({ specifier }) => specifier.includes('auth-card.module.scss'));
 
     expect(authCard.map(({ source }) => source).sort()).toEqual([
-      join('app', 'invite', '[token]', 'page.tsx'),
-      join('app', 'login', 'page.tsx'),
+      join('app', '(site)', 'invite', '[token]', 'page.tsx'),
+      join('app', '(site)', 'login', 'page.tsx'),
     ]);
     expect(new Set(authCard.map(({ target }) => target)).size).toBe(1);
     expect(existsSync(join(ROOT, 'app', 'styles', 'auth-card.module.scss'))).toBe(true);

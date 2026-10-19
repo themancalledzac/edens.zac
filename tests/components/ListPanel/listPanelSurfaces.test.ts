@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { COLLAPSED_PANEL_HEIGHT } from '@/app/(admin)/admin/adminHubContent';
+import { COLLAPSED_PANEL_HEIGHT } from '@/app/(site)/(admin)/admin/adminHubContent';
 import {
   panelChromeHeight,
   ROW_PADDING_Y,

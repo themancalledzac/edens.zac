@@ -1,6 +1,6 @@
 /**
  * Admin = authenticated admin principal: the backend enforces `hasRole('ADMIN')` on
- * `/api/admin/**` (see docs 009). Gating is centralized in `app/(admin)/layout.tsx` via
+ * `/api/admin/**` (see docs 009). Gating is centralized in `app/(site)/(admin)/layout.tsx` via
  * `requireAdmin()`.
  */
 import Link from 'next/link';
@@ -73,7 +73,7 @@ interface AdminUserDetailPageProps {
  * Only a genuine 404 (or an empty body) becomes `notFound()`. `getAdminUser` throws `ApiError`
  * out of `fetchAdminGetApi` for every non-OK status, so catching all of them would render "user
  * not found" at an admin whose backend is merely unreachable — or whose session has lapsed to a
- * 401. Those rethrow and land on `app/(admin)/error.tsx`, which offers a retry.
+ * 401. Those rethrow and land on `app/(site)/(admin)/error.tsx`, which offers a retry.
  *
  * The "no galleries yet" empty state below obeys the same rule, and depends on `loadUserSpace`
  * applying that same 404 narrowing to the page read: a `null` here means the backend answered and

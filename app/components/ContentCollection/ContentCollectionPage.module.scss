@@ -6,7 +6,7 @@
 */
 
 .container {
-  /* Match the route loading fallback (app/loading.module.scss), which reserves
+  /* Match the route loading fallback (app/components/ui/PageLoading/PageLoading.module.scss), which reserves
      100dvh, so the handoff does not shift the page (100vh > 100dvh on mobile).
      Keep both on dvh. */
   min-height: 100dvh;

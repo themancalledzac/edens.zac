@@ -1,6 +1,6 @@
 /** @jest-environment node */
 /**
- * Route tests for app/invite/[token]/page.tsx.
+ * Route tests for app/(site)/invite/[token]/page.tsx.
  *
  * Verifies the three-way branch on who is opening the link:
  *  - already signed in           → redirect('/'), token never looked up
@@ -31,13 +31,13 @@ jest.mock('@/app/lib/api/auth', () => ({
 }));
 
 // InviteForm is a client component — stub it for the server-env test.
-jest.mock('@/app/invite/[token]/InviteForm', () => ({
+jest.mock('@/app/(site)/invite/[token]/InviteForm', () => ({
   __esModule: true,
   default: ({ token, email }: { token: string; email: string }) => `InviteForm:${token}:${email}`,
 }));
 
+import InvitePage from '@/app/(site)/invite/[token]/page';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
-import InvitePage from '@/app/invite/[token]/page';
 import { meServer } from '@/app/lib/api/auth';
 import { getInvitePreview } from '@/app/lib/api/users';
 

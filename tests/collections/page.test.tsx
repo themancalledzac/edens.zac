@@ -28,8 +28,8 @@ jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
   default: ({ children }: { children: ReactNode }) => children,
 }));
 
-import { CollectionsReadError } from '@/app/collections/CollectionsReadError';
-import CollectionsPage from '@/app/collections/page';
+import { CollectionsReadError } from '@/app/(site)/collections/CollectionsReadError';
+import CollectionsPage from '@/app/(site)/collections/page';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { StatusPage } from '@/app/components/ui/StatusPage/StatusPage';

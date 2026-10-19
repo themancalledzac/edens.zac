@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
-import ManageCollectionPage from '@/app/(admin)/collection/manage/[[...slug]]/page';
+import ManageCollectionPage from '@/app/(site)/(admin)/collection/manage/[[...slug]]/page';
 
 const mockRedirect = jest.fn();
 
@@ -10,7 +10,7 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
 }));
 
-jest.mock('@/app/(admin)/collection/manage/[[...slug]]/CreateCollectionForm', () => ({
+jest.mock('@/app/(site)/(admin)/collection/manage/[[...slug]]/CreateCollectionForm', () => ({
   __esModule: true,
   default: () => <div data-testid="create-collection-form" />,
 }));

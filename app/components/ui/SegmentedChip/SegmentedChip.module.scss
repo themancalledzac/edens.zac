@@ -22,13 +22,13 @@
   }
 
   &:first-child .segment {
-    border-top-left-radius: calc(var(--radius-1) - 1px);
-    border-bottom-left-radius: calc(var(--radius-1) - 1px);
+    border-top-left-radius: var(--radius-0);
+    border-bottom-left-radius: var(--radius-0);
   }
 
   &:last-child .segment {
-    border-top-right-radius: calc(var(--radius-1) - 1px);
-    border-bottom-right-radius: calc(var(--radius-1) - 1px);
+    border-top-right-radius: var(--radius-0);
+    border-bottom-right-radius: var(--radius-0);
   }
 }
 

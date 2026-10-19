@@ -1,8 +1,9 @@
 import { type Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { cache } from 'react';
+import { cache, Suspense } from 'react';
 
 import LocationPage from '@/app/components/LocationPage/LocationPage';
+import { PageLoading } from '@/app/components/ui/PageLoading/PageLoading';
 import { getCollectionsByLocation } from '@/app/lib/api/collections';
 import { getAllLocations, searchImages } from '@/app/lib/api/content';
 
@@ -38,8 +39,7 @@ async function resolveLocationFromSlug(slug: string): Promise<ResolvedLocation |
 
 const getCachedLocation = cache(resolveLocationFromSlug);
 
-// Render on every request rather than at build time. See app/tag/[slug]/page.tsx
-// for the rationale — same trade-off applies here.
+/** Renders on every request rather than at build time; see app/tag/[slug]/page.tsx. */
 export const dynamic = 'force-dynamic';
 
 /**
@@ -62,13 +62,26 @@ export async function generateMetadata({ params }: LocationPageRouteProps): Prom
 }
 
 /**
- * Location Page Route
- *
- * Resolves the slug against real backend locations, then fetches collections and images in parallel.
- * Calls notFound() when the location doesn't exist or has no content.
- *
- * @remarks Cover image is the highest-rated image (rating >= 4), falling back to the first image.
- *   Collection listing endpoints may not include coverImage data, so the image list is used instead.
+ * Fetches the location's collections and images in parallel and renders the page. Runs inside the
+ * route's `<Suspense>`, so a location with no content gets the not-found UI with a `noindex` tag
+ * but keeps the 200 that has already streamed.
+ */
+async function LocationPageContent({ location }: { location: ResolvedLocation }) {
+  const [collections, images] = await Promise.all([
+    getCollectionsByLocation(location.slug),
+    searchImages({ locationId: location.id }),
+  ]);
+
+  if (collections.length === 0 && images.length === 0) notFound();
+
+  return <LocationPage locationName={location.name} collections={collections} images={images} />;
+}
+
+/**
+ * Location page route. Resolves the slug against real backend locations and throws `notFound()`
+ * before anything streams, so an unknown location answers a real 404. The route sits outside the
+ * `(site)` group's `loading.tsx` for that reason; the content streams behind its own `<Suspense>`.
+ * The lookup is the read `generateMetadata` already made, deduped by `getCachedLocation`.
  */
 export default async function LocationPageRoute({ params }: LocationPageRouteProps) {
   const { slug } = await params;
@@ -77,21 +90,9 @@ export default async function LocationPageRoute({ params }: LocationPageRoutePro
   const location = await getCachedLocation(slug);
   if (!location) notFound();
 
-  const [collections, images] = await Promise.all([
-    getCollectionsByLocation(location.slug),
-    searchImages({ locationId: location.id }),
-  ]);
-
-  if (collections.length === 0 && images.length === 0) notFound();
-
-  const coverImage = images.find(img => (img.rating ?? 0) >= 4) ?? images[0] ?? null;
-
   return (
-    <LocationPage
-      locationName={location.name}
-      collections={collections}
-      images={images}
-      coverImage={coverImage}
-    />
+    <Suspense fallback={<PageLoading />}>
+      <LocationPageContent location={location} />
+    </Suspense>
   );
 }

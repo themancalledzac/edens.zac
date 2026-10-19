@@ -1,7 +1,7 @@
 /** @jest-environment node */
 import type { ReactElement } from 'react';
 
-import MetadataPage from '@/app/(admin)/metadata/page';
+import MetadataPage from '@/app/(site)/(admin)/metadata/page';
 import { MetadataPageClient } from '@/app/components/MetadataPage/MetadataPageClient';
 import { meServer } from '@/app/lib/api/auth';
 import { getMetadata } from '@/app/lib/api/collections';

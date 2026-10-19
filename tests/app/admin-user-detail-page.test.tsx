@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { notFound } from 'next/navigation';
 import { type ReactNode } from 'react';
 
-import AdminUserDetailPage from '@/app/(admin)/admin/users/[id]/page';
+import AdminUserDetailPage from '@/app/(site)/(admin)/admin/users/[id]/page';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
@@ -29,7 +29,7 @@ jest.mock('@/app/lib/api/auth', () => ({
   meServer: jest.fn(),
 }));
 
-jest.mock('@/app/(admin)/admin/users/GenerateInviteButton', () => ({
+jest.mock('@/app/(site)/(admin)/admin/users/GenerateInviteButton', () => ({
   GenerateInviteButton: () => null,
 }));
 
@@ -38,7 +38,7 @@ jest.mock('@/app/(admin)/admin/users/GenerateInviteButton', () => ({
  * (`useRouter`, role reads); this suite verifies the page's orchestration of the shared space, so
  * stub them like the other children above. The editor must still render its children.
  */
-jest.mock('@/app/(admin)/admin/users/[id]/AdminUserSpaceEditor', () => ({
+jest.mock('@/app/(site)/(admin)/admin/users/[id]/AdminUserSpaceEditor', () => ({
   AdminUserSpaceEditor: ({ children }: { children: ReactNode }) => children,
 }));
 
@@ -46,7 +46,7 @@ jest.mock('@/app/components/UserForm/UserRolesSection', () => ({
   UserRolesSection: () => null,
 }));
 
-jest.mock('@/app/(admin)/admin/users/[id]/UpgradePersonButton', () => ({
+jest.mock('@/app/(site)/(admin)/admin/users/[id]/UpgradePersonButton', () => ({
   UpgradePersonButton: () => null,
 }));
 
@@ -92,7 +92,7 @@ async function renderPage() {
   render(element);
 }
 
-describe("app/(admin)/admin/users/[id] — renders the target user's space", () => {
+describe("app/(site)/(admin)/admin/users/[id] — renders the target user's space", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetAdminUser.mockResolvedValue(adminUser);
@@ -219,7 +219,7 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
 });
 
 /** Tag-only PERSON rows have no account and no space. This branch also guards direct-URL access. */
-describe('app/(admin)/admin/users/[id] — tag-only PERSON identities', () => {
+describe('app/(site)/(admin)/admin/users/[id] — tag-only PERSON identities', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockMeServer.mockResolvedValue(null);

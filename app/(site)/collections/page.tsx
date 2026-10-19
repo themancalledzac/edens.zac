@@ -1,7 +1,7 @@
 import { type Metadata } from 'next';
 import { unstable_rethrow } from 'next/navigation';
 
-import { CollectionsReadError } from '@/app/collections/CollectionsReadError';
+import { CollectionsReadError } from '@/app/(site)/collections/CollectionsReadError';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';

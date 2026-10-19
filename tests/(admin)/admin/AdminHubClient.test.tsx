@@ -2,8 +2,11 @@ import '@testing-library/jest-dom';
 
 import { fireEvent, render, screen } from '@testing-library/react';
 
-import { AdminHubClient } from '@/app/(admin)/admin/AdminHubClient';
-import { buildAdminHubContent, COLLAPSED_PANEL_SIZE } from '@/app/(admin)/admin/adminHubContent';
+import { AdminHubClient } from '@/app/(site)/(admin)/admin/AdminHubClient';
+import {
+  buildAdminHubContent,
+  COLLAPSED_PANEL_SIZE,
+} from '@/app/(site)/(admin)/admin/adminHubContent';
 
 /**
  * `page.collapsedLayout.test.ts` proves `withPanelFootprints` plus the real packer produce the

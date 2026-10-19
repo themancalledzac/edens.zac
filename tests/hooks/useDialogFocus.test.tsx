@@ -21,6 +21,10 @@ function Harness({ open, onClose, options, withInput = false }: HarnessProps) {
       <header>
         <button type="button">home</button>
       </header>
+      <nav data-bar>
+        <button type="button">bar link</button>
+        <button type="button">bar close</button>
+      </nav>
       {open && (
         <div ref={ref} role="dialog" tabIndex={-1} onKeyDown={onKeyDown} data-testid="dialog">
           <button type="button">first</button>
@@ -154,6 +158,49 @@ describe('useDialogFocus', () => {
       expect(document.body).toHaveClass('scroll-locked');
       rerender(<Harness open={false} onClose={jest.fn()} />);
       expect(document.body).not.toHaveClass('scroll-locked');
+    });
+  });
+
+  describe('alsoTabbable', () => {
+    const options = { alsoTabbable: '[data-bar] button' };
+    let rects: jest.SpyInstance;
+
+    beforeEach(() => {
+      rects = jest
+        .spyOn(HTMLElement.prototype, 'getClientRects')
+        .mockReturnValue([{}] as unknown as DOMRectList);
+    });
+
+    afterEach(() => rects.mockRestore());
+
+    it('lets Tab leave the last dialog control for the outside controls', () => {
+      render(<Harness open onClose={jest.fn()} options={options} />);
+      screen.getByText('last').focus();
+      const notPrevented = fireEvent.keyDown(screen.getByTestId('dialog'), { key: 'Tab' });
+      expect(notPrevented).toBe(true);
+    });
+
+    it('wraps Tab from the last outside control back to the first dialog control', () => {
+      render(<Harness open onClose={jest.fn()} options={options} />);
+      const barClose = screen.getByText('bar close');
+      barClose.focus();
+      fireEvent.keyDown(barClose, { key: 'Tab' });
+      expect(screen.getByText('first')).toHaveFocus();
+    });
+
+    it('sends Shift+Tab from the first dialog control to the last outside control', () => {
+      render(<Harness open onClose={jest.fn()} options={options} />);
+      screen.getByText('first').focus();
+      fireEvent.keyDown(screen.getByTestId('dialog'), { key: 'Tab', shiftKey: true });
+      expect(screen.getByText('bar close')).toHaveFocus();
+    });
+
+    it('ignores outside controls that are not rendered', () => {
+      rects.mockReturnValue([] as unknown as DOMRectList);
+      render(<Harness open onClose={jest.fn()} options={options} />);
+      screen.getByText('last').focus();
+      fireEvent.keyDown(screen.getByTestId('dialog'), { key: 'Tab' });
+      expect(screen.getByText('first')).toHaveFocus();
     });
   });
 });

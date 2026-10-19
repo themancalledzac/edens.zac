@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { panelContentHeight } from '@/app/(admin)/admin/adminHubContent';
+import { panelContentHeight } from '@/app/(site)/(admin)/admin/adminHubContent';
 import {
   panelChromeHeight,
   ROW_PADDING_Y,

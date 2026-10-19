@@ -1,6 +1,6 @@
 /** @jest-environment node */
 /**
- * Route tests for app/login/page.tsx.
+ * Route tests for app/(site)/login/page.tsx.
  *
  * Two things are covered. The session branch — a signed-in visitor is bounced to `/user` and never
  * sees the form. And the shell the page renders: `/login` and `/invite/[token]` used to own
@@ -28,16 +28,16 @@ jest.mock('@/app/lib/api/auth', () => ({
 }));
 
 // LoginForm is a client component — stub it for the server-env test.
-jest.mock('@/app/login/LoginForm', () => ({
+jest.mock('@/app/(site)/login/LoginForm', () => ({
   __esModule: true,
   default: () => 'LoginForm',
 }));
 
 import { redirect } from 'next/navigation';
 
+import LoginPage from '@/app/(site)/login/page';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { meServer } from '@/app/lib/api/auth';
-import LoginPage from '@/app/login/page';
 
 type StyledElement = ReactElement<{ className?: string; children?: ReactNode }>;
 type ShellElement = ReactElement<{ className?: string; children?: ReactNode; me?: unknown }>;

@@ -13,9 +13,9 @@ import { type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.node';
 
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
+import { PageLoading as Loading } from '@/app/components/ui/PageLoading/PageLoading';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import RootLayout from '@/app/layout';
-import Loading from '@/app/loading';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
@@ -108,8 +108,8 @@ describe('skip link, composed through the root layout', () => {
   });
 
   /**
-   * The load-bearing assertion. Every route streams inside a Suspense boundary whose fallback is
-   * `app/loading.tsx`; the shell around it flushes first. Standing in for that pending shell, the
+   * Routes stream inside a Suspense boundary whose fallback is
+   * `PageLoading`; the shell around it flushes first. Standing in for that pending shell, the
    * markup must ALREADY carry the skip link.
    */
   it('carries the skip link while the route is still pending', () => {

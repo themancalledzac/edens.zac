@@ -7,7 +7,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import { GenerateInviteButton } from '@/app/(admin)/admin/users/GenerateInviteButton';
+import { GenerateInviteButton } from '@/app/(site)/(admin)/admin/users/GenerateInviteButton';
 import { ApiError } from '@/app/lib/api/core';
 import * as usersApi from '@/app/lib/api/users';
 

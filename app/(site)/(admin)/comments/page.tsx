@@ -1,5 +1,5 @@
 // Admin = authenticated admin principal: the backend enforces hasRole('ADMIN') on
-// /api/admin/** (see docs 009). Gating centralized in app/(admin)/layout.tsx via requireAdmin().
+// /api/admin/** (see docs 009). Gating centralized in app/(site)/(admin)/layout.tsx via requireAdmin().
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { meServer } from '@/app/lib/api/auth';
 import { getAdminMessages } from '@/app/lib/api/messages';
