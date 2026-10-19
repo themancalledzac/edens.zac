@@ -2,14 +2,9 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { type ComponentProps } from 'react';
 
 import { CHIP_WEIGHT } from '@/app/components/ui/FilterToolbar/chipWeights';
-import {
-  FilterToolbar,
-  MAX_FLAT_DATE_CHIPS,
-  MAX_FLAT_YEAR_CHIPS,
-} from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { DENSITY_TIERS } from '@/app/constants';
 import { INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
-import { dayLabels } from '@/app/utils/collectionDates';
 
 type Props = ComponentProps<typeof FilterToolbar>;
 
@@ -89,13 +84,13 @@ describe('FilterToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'asc' });
   });
 
-  it('renders a highly-rated toggle with its count badge', () => {
+  it('labels the highly-rated toggle Rated and badges its count', () => {
     const { onFilterChange } = renderToolbar({
       showHighlyRated: true,
       counts: { highlyRated: 7 },
     });
     expect(screen.getByText('7')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /highly rated/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^rated/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ highlyRatedOnly: true });
   });
 
@@ -368,50 +363,42 @@ describe('FilterToolbar', () => {
     },
   };
 
-  it('renders each date as a flat chip at or below the threshold', () => {
+  const openDate = () => fireEvent.click(screen.getByRole('button', { name: /^date/i }));
+
+  it('renders the days inside one Date dropdown and never as flat chips', () => {
     renderToolbar({ dimensions: threeDays });
+    expect(screen.getByRole('button', { name: /^date/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /jul 20/i })).toBeNull();
+    openDate();
     expect(screen.getByRole('button', { name: /jul 20/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /jul 21/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /jul 22/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
   });
 
-  it('toggles a date on click', () => {
+  it('toggles a date from the dropdown', () => {
     const { onFilterChange } = renderToolbar({ dimensions: threeDays });
+    openDate();
     fireEvent.click(screen.getByRole('button', { name: /jul 21/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ selectedDates: ['2026-07-21'] });
   });
 
-  it('switches to the newly clicked date rather than selecting both', () => {
+  it('switches to the newly chosen date rather than selecting both', () => {
     const { onFilterChange } = renderToolbar({
       dimensions: threeDays,
       filterState: { ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] },
     });
+    openDate();
     fireEvent.click(screen.getByRole('button', { name: /jul 22/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ selectedDates: ['2026-07-22'] });
   });
 
-  it('clears the date when the chosen chip is clicked again', () => {
+  it('clears the date when the chosen option is clicked again', () => {
     const { onFilterChange } = renderToolbar({
       dimensions: threeDays,
       filterState: { ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] },
     });
-    fireEvent.click(screen.getByRole('button', { name: /jul 20/i }));
+    openDate();
+    fireEvent.click(screen.getByRole('button', { name: /^jul 20/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ selectedDates: [] });
-  });
-
-  it('switches the date from the dropdown fallback too', () => {
-    const options = Array.from(
-      { length: MAX_FLAT_DATE_CHIPS + 1 },
-      (_, i) => `2026-07-${String(20 + i).padStart(2, '0')}`
-    );
-    const { onFilterChange } = renderToolbar({
-      dimensions: { selectedDates: { label: 'Date', options, optionLabels: dayLabels(options) } },
-      filterState: { ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /^date/i }));
-    fireEvent.click(screen.getByRole('button', { name: /jul 25/i }));
-    expect(onFilterChange).toHaveBeenCalledWith({ selectedDates: ['2026-07-25'] });
   });
 
   it('keeps multi-select for the accumulating dimensions', () => {
@@ -424,35 +411,12 @@ describe('FilterToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith({ selectedTags: ['sunset', 'forest'] });
   });
 
-  it('still renders flat chips at exactly the threshold', () => {
-    const options = Array.from(
-      { length: MAX_FLAT_DATE_CHIPS },
-      (_, i) => `2026-07-${String(20 + i).padStart(2, '0')}`
-    );
-    renderToolbar({
-      dimensions: { selectedDates: { label: 'Date', options, optionLabels: dayLabels(options) } },
-    });
-    expect(screen.getByRole('button', { name: 'Jul 20' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
-  });
-
-  it('collapses to a dropdown above the threshold', () => {
-    const options = Array.from(
-      { length: MAX_FLAT_DATE_CHIPS + 1 },
-      (_, i) => `2026-07-${String(20 + i).padStart(2, '0')}`
-    );
-    renderToolbar({
-      dimensions: { selectedDates: { label: 'Date', options, optionLabels: dayLabels(options) } },
-    });
-    expect(screen.getByRole('button', { name: /^date/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /jul 20/i })).toBeNull();
-  });
-
   it('greys out a date that is unreachable under other filters', () => {
     renderToolbar({
       dimensions: threeDays,
       filteredAvailable: { selectedDates: ['2026-07-20'] },
     });
+    openDate();
     expect(screen.getByRole('button', { name: /jul 21/i })).toBeDisabled();
   });
 
@@ -782,24 +746,8 @@ describe('FilterToolbar active-filter summary', () => {
     expect(screen.queryByRole('button', { name: /^Remove / })).not.toBeInTheDocument();
   });
 
-  /**
-   * Flat date chips already carry their own selected state, so a badge for the same day would
-   * state it twice. Above MAX_FLAT_DATE_CHIPS the dates collapse into a dropdown and the badge
-   * becomes the only place the selection is legible — both directions are pinned here.
-   */
-  it('does not repeat a date that is already a flat chip', () => {
-    renderToolbar({
-      dimensions: { selectedDates: { label: 'Date', options: ['2026-07-20', '2026-07-21'] } },
-      filterState: { ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] },
-    });
-    expect(screen.queryByRole('button', { name: /^Remove / })).not.toBeInTheDocument();
-  });
-
-  it('summarises a date once the dimension has collapsed into a dropdown', () => {
-    const options = Array.from(
-      { length: MAX_FLAT_DATE_CHIPS + 1 },
-      (_, i) => `2026-07-${String(i + 10).padStart(2, '0')}`
-    );
+  it('summarises a selected date in a removable badge', () => {
+    const options = ['2026-07-10', '2026-07-11'];
     renderToolbar({
       dimensions: { selectedDates: { label: 'Date', options } },
       filterState: { ...INITIAL_FILTER_STATE, selectedDates: [options[0]!] },
@@ -808,74 +756,78 @@ describe('FilterToolbar active-filter summary', () => {
   });
 });
 
-describe('FilterToolbar year chips', () => {
-  const threeYears = { selectedYears: { label: 'Year', options: ['2019', '2024', '2026'] } };
+describe('FilterToolbar Date control (years and days)', () => {
+  const dimensions = {
+    selectedYears: { label: 'Year', options: ['2019', '2024', '2026'] },
+    selectedDates: {
+      label: 'Date',
+      options: ['2026-07-20', '2026-07-21'],
+      optionLabels: { '2026-07-20': 'Jul 20', '2026-07-21': 'Jul 21' },
+    },
+  };
 
-  it('collapses four years into the Year dropdown and keeps three flat', () => {
-    expect(MAX_FLAT_YEAR_CHIPS).toBe(3);
-  });
-
-  it('renders each year as its own flat chip', () => {
-    renderToolbar({ dimensions: threeYears });
-    for (const year of ['2019', '2024', '2026']) {
-      expect(screen.getByRole('button', { name: year })).toBeInTheDocument();
+  it('renders one Date trigger and no year or day chips', () => {
+    renderToolbar({ dimensions });
+    expect(screen.getByRole('button', { name: /^date/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^year/i })).toBeNull();
+    for (const label of ['2019', '2024', '2026', 'Jul 20', 'Jul 21']) {
+      expect(screen.queryByRole('button', { name: label })).toBeNull();
     }
-    expect(screen.queryByRole('button', { name: /^Year/ })).not.toBeInTheDocument();
   });
 
-  it('selects a year on click', () => {
-    const { onFilterChange } = renderToolbar({ dimensions: threeYears });
+  it('lists the years and the days together in the one dropdown', () => {
+    renderToolbar({ dimensions });
+    fireEvent.click(screen.getByRole('button', { name: /^date/i }));
+    for (const label of ['2019', '2024', '2026', 'Jul 20', 'Jul 21']) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    }
+  });
+
+  it('shows the Date control for years alone', () => {
+    renderToolbar({ dimensions: { selectedYears: dimensions.selectedYears } });
+    fireEvent.click(screen.getByRole('button', { name: /^date/i }));
+    expect(screen.getByRole('button', { name: '2024' })).toBeInTheDocument();
+  });
+
+  it('selects a year and closes the dropdown', () => {
+    const { onFilterChange } = renderToolbar({ dimensions });
+    fireEvent.click(screen.getByRole('button', { name: /^date/i }));
     fireEvent.click(screen.getByRole('button', { name: '2024' }));
     expect(onFilterChange).toHaveBeenCalledWith({ selectedYears: ['2024'] });
+    expect(screen.queryByRole('button', { name: '2019' })).toBeNull();
   });
 
   it('switches rather than accumulates, since an image has one capture year', () => {
     const { onFilterChange } = renderToolbar({
-      dimensions: threeYears,
+      dimensions,
       filterState: { ...INITIAL_FILTER_STATE, selectedYears: ['2024'] },
     });
+    fireEvent.click(screen.getByRole('button', { name: /^date/i }));
     fireEvent.click(screen.getByRole('button', { name: '2026' }));
     expect(onFilterChange).toHaveBeenCalledWith({ selectedYears: ['2026'] });
   });
 
-  it('clears the dimension when the sole selection is clicked again', () => {
+  it('clears the year when the sole selection is clicked again', () => {
     const { onFilterChange } = renderToolbar({
-      dimensions: threeYears,
+      dimensions,
       filterState: { ...INITIAL_FILTER_STATE, selectedYears: ['2024'] },
     });
-    fireEvent.click(screen.getByRole('button', { name: '2024' }));
+    fireEvent.click(screen.getByRole('button', { name: /^date/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^2024/ }));
     expect(onFilterChange).toHaveBeenCalledWith({ selectedYears: [] });
   });
 
-  it('collapses into a dropdown above the flat-chip cap', () => {
-    const options = Array.from({ length: MAX_FLAT_YEAR_CHIPS + 1 }, (_, i) => String(2010 + i));
-    renderToolbar({ dimensions: { selectedYears: { label: 'Year', options } } });
-    expect(screen.getByRole('button', { name: /^Year/ })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '2010' })).not.toBeInTheDocument();
-  });
-
-  it('does not repeat a year that is already a flat chip', () => {
+  it('summarises a selected year in a badge', () => {
     renderToolbar({
-      dimensions: threeYears,
-      filterState: { ...INITIAL_FILTER_STATE, selectedYears: ['2024'] },
+      dimensions,
+      filterState: { ...INITIAL_FILTER_STATE, selectedYears: ['2019'] },
     });
-    expect(screen.queryByRole('button', { name: /^Remove / })).not.toBeInTheDocument();
-  });
-
-  it('summarises a year once the dimension has collapsed into a dropdown', () => {
-    const options = Array.from({ length: MAX_FLAT_YEAR_CHIPS + 1 }, (_, i) => String(2010 + i));
-    renderToolbar({
-      dimensions: { selectedYears: { label: 'Year', options } },
-      filterState: { ...INITIAL_FILTER_STATE, selectedYears: ['2010'] },
-    });
-    expect(screen.getByRole('button', { name: 'Remove 2010 from Year' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove 2019 from Year' })).toBeInTheDocument();
   });
 
   it('greys out a year no longer reachable under the other active filters', () => {
-    renderToolbar({
-      dimensions: threeYears,
-      filteredAvailable: { selectedYears: ['2026'] },
-    });
+    renderToolbar({ dimensions, filteredAvailable: { selectedYears: ['2026'] } });
+    fireEvent.click(screen.getByRole('button', { name: /^date/i }));
     expect(screen.getByRole('button', { name: '2019' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '2026' })).toBeEnabled();
   });
@@ -952,62 +904,6 @@ describe('FilterToolbar — film stock', () => {
   it('renders no stock dropdown when the caller does not pass the dimension', () => {
     renderToolbar({ showFilm: true, filterState: withStock });
     expect(screen.queryByRole('button', { name: 'Film stock' })).not.toBeInTheDocument();
-  });
-
-  describe('flatDateLimit', () => {
-    const twoDayCap = 2;
-    const threeDays = {
-      selectedDates: {
-        label: 'Date',
-        options: ['2026-07-20', '2026-07-21', '2026-07-22'],
-        optionLabels: { '2026-07-20': 'Jul 20', '2026-07-21': 'Jul 21', '2026-07-22': 'Jul 22' },
-      },
-    };
-
-    it('F1: a limit of 2 collapses three flat dates into one Date dropdown chip', () => {
-      renderToolbar({ dimensions: threeDays, flatDateLimit: twoDayCap });
-      expect(screen.getByRole('button', { name: /^date/i })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /jul 20/i })).toBeNull();
-      expect(screen.queryByRole('button', { name: /jul 21/i })).toBeNull();
-      expect(screen.queryByRole('button', { name: /jul 22/i })).toBeNull();
-    });
-
-    it('F1/A2: the default limit renders the same three dates as flat chips', () => {
-      renderToolbar({ dimensions: threeDays });
-      expect(screen.getByRole('button', { name: /jul 20/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /jul 21/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /jul 22/i })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
-    });
-
-    it('A2: a limit of 2 keeps two dates flat', () => {
-      renderToolbar({
-        dimensions: {
-          selectedDates: { ...threeDays.selectedDates, options: ['2026-07-20', '2026-07-21'] },
-        },
-        flatDateLimit: twoDayCap,
-      });
-      expect(screen.getByRole('button', { name: /jul 20/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /jul 21/i })).toBeInTheDocument();
-    });
-
-    it('A2: the default limit is MAX_FLAT_DATE_CHIPS', () => {
-      const options = Array.from(
-        { length: MAX_FLAT_DATE_CHIPS + 1 },
-        (_, i) => `2026-07-${String(20 + i).padStart(2, '0')}`
-      );
-      renderToolbar({
-        dimensions: { selectedDates: { label: 'Date', options, optionLabels: dayLabels(options) } },
-      });
-      expect(screen.getByRole('button', { name: /^date/i })).toBeInTheDocument();
-    });
-
-    it('F1 twin: with the cap lifted to Infinity the collapse guard lets every date through as flat chips', () => {
-      renderToolbar({ dimensions: threeDays, flatDateLimit: Number.POSITIVE_INFINITY });
-      expect(screen.getByRole('button', { name: /jul 20/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /jul 22/i })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
-    });
   });
 
   describe('mobile sheet', () => {
