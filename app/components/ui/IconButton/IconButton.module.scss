@@ -9,8 +9,14 @@
   }
 }
 
-.iconButton {
+/* Zero-specificity default, so a caller's own `position` class wins whatever order the CSS chunks
+   load in. As a plain class tie it lost whenever this file loaded later, which dropped absolutely
+   pinned overlays (the Selects star) into normal flow below their image. */
+:where(.iconButton) {
   position: relative;
+}
+
+.iconButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
