@@ -27,7 +27,8 @@ interface ImageOverlaysProps {
  * - Visibility overlay (gray) for non-visible images
  * - Cover image overlay (checkmark) when selecting cover image
  * - Selected indicator (red circle with X) for selected images (download "select mode")
- * - Selects (favorites) star, when provided
+ * - Selects (favorites) star and Save heart, when provided. Hidden on touch screens, where they
+ *   crowd small tiles; there they live in the fullscreen viewer's action row instead.
  *
  * Only renders for IMAGE content type.
  */
@@ -59,8 +60,12 @@ export function ImageOverlays({
           </svg>
         </div>
       )}
-      {star}
-      {save}
+      {(star || save) && (
+        <div className={cbStyles.tileToggles}>
+          {star}
+          {save}
+        </div>
+      )}
     </>
   );
 }
