@@ -525,6 +525,17 @@
 // ring and the coarse-pointer hit area. What stays here is the placement, with the top offset
 // cleared of the device's top safe area so the control is not hidden under a notch.
 // Scoped under the wrapper (two classes) so `position` outranks IconButton's single-class rule.
+// Top-left row of per-image actions, level with and opposite the close button.
+.viewerActions {
+  position: absolute;
+  top: calc(20px + env(safe-area-inset-top, 0px));
+  left: 20px;
+  z-index: var(--z-modal-controls);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .imageFullScreenWrapper .closeButton {
   position: absolute;
   top: calc(20px + env(safe-area-inset-top, 0px));

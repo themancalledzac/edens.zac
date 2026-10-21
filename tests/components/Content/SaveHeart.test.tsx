@@ -138,3 +138,26 @@ describe('SaveHeart stylesheet', () => {
     expect(scss).not.toContain('pointer: coarse');
   });
 });
+
+describe('SaveHeart viewer variant', () => {
+  it('renders a round IconButton instead of the corner toggle', () => {
+    wrap(<SaveHeart contentId={42} variant="viewer" />, viewer);
+    const button = screen.getByRole('button', { name: /remove from your space/i });
+    expect(button).toHaveClass('iconButton', 'round', 'scrim', 'md');
+    expect(button).not.toHaveClass('cornerToggle');
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('toggles the save without letting the click reach the viewer', () => {
+    const onParentClick = jest.fn();
+    wrap(
+      <div onClick={onParentClick}>
+        <SaveHeart contentId={99} variant="viewer" />
+      </div>,
+      viewer
+    );
+    fireEvent.click(screen.getByRole('button', { name: /save to your space/i }));
+    expect(addSave).toHaveBeenCalledWith(99);
+    expect(onParentClick).not.toHaveBeenCalled();
+  });
+});

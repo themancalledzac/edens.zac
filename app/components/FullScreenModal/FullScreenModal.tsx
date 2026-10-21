@@ -13,6 +13,8 @@ import {
 
 import { useMe } from '@/app/components/Auth/MeProvider';
 import FullScreenDownloadButton from '@/app/components/ClientGalleryDownload/FullScreenDownloadButton';
+import { SaveHeart } from '@/app/components/Content/SaveHeart';
+import { SelectStar } from '@/app/components/Content/SelectStar';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
 import { IconButton } from '@/app/components/ui/IconButton/IconButton';
 import { Modal } from '@/app/components/ui/Modal/Modal';
@@ -61,7 +63,8 @@ interface FullScreenModalProps {
 
 /**
  * Fullscreen photo viewer: the framed photo, its metadata panel, and the overlay chrome
- * (close / prev / next / position counter / per-image download).
+ * (close / prev / next / position counter, and a top-left action row of download, Selects star
+ * and Save heart). Each action self-gates, so the row holds only what this viewer may use.
  *
  * Controls: close and the metadata toggle are `IconButton`s so they share the design system's
  * focus ring and coarse-pointer hit area. Both use the `scrim` variant and carry a viewer-local
@@ -423,8 +426,14 @@ export function FullScreenModal({
         />
       )}
 
-      {!immersive && canDownloadCollection(me, collectionData) && !isGif && (
-        <FullScreenDownloadButton imageId={currentImage.id} />
+      {!immersive && !isGif && (
+        <div className={styles.viewerActions}>
+          {canDownloadCollection(me, collectionData) && (
+            <FullScreenDownloadButton imageId={currentImage.id} />
+          )}
+          <SelectStar contentId={currentImage.id} variant="viewer" />
+          <SaveHeart contentId={currentImage.id} variant="viewer" />
+        </div>
       )}
     </div>
   );
