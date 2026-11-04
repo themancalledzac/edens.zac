@@ -1,11 +1,6 @@
-/* Download control for the fullscreen viewer (client galleries). Sits top-left, level with and opposite
-   the modal's close button. */
+/* Download control for the fullscreen viewer (client galleries). The viewer's action row places it. */
 
 .container {
-  position: absolute;
-  top: calc(20px + env(safe-area-inset-top, 0px));
-  left: 20px;
-  z-index: var(--z-modal-controls);
   display: flex;
   align-items: center;
 }
