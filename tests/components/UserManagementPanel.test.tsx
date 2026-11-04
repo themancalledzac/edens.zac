@@ -245,17 +245,15 @@ describe('UserManagementPanel', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('A5: the tag-only toggle is a People filter chip', async () => {
+  it('A5: tag-only PERSON rows show on first load, with no filter to turn on', async () => {
+    mockListUsers.mockResolvedValue([
+      ...USERS,
+      { id: 3, email: null, displayName: 'Zed Person', status: 'PERSON', description: null },
+    ]);
     render(<UserManagementPanel />);
-    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument());
 
-    const chip = screen.getByRole('button', { name: /people/i });
-    expect(chip).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.queryByLabelText(/show tag-only people/i)).not.toBeInTheDocument();
-
-    fireEvent.click(chip);
-    expect(mockListUsers).toHaveBeenCalledWith({ includePeople: true });
-    expect(screen.getByRole('button', { name: /people/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(await screen.findByText('Zed Person')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /people/i })).not.toBeInTheDocument();
   });
 
   describe('PERSON rows', () => {
@@ -267,7 +265,6 @@ describe('UserManagementPanel', () => {
     const openPerson = async () => {
       mockListUsers.mockResolvedValue(PEOPLE);
       render(<UserManagementPanel />);
-      fireEvent.click(await screen.findByRole('button', { name: /people/i }));
       const row = (await screen.findByText('Zed Person')).closest('li') as HTMLElement;
       fireEvent.click(within(row).getByRole('button'));
       return screen.findByRole('dialog');
@@ -282,7 +279,6 @@ describe('UserManagementPanel', () => {
     it('S1: an account sheet offers neither Merge… nor Upgrade', async () => {
       mockListUsers.mockResolvedValue(PEOPLE);
       render(<UserManagementPanel />);
-      fireEvent.click(await screen.findByRole('button', { name: /people/i }));
       await screen.findByText('Zed Person');
       fireEvent.click(
         within(screen.getByText('Alice').closest('li') as HTMLElement).getByRole('button')

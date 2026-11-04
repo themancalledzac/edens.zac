@@ -48,12 +48,11 @@ export async function createUser(req: UserCreateRequest): Promise<CreateUserResp
 }
 
 /**
- * List all user accounts via the admin endpoint (newest first). Returns `[]` when the endpoint
- * yields no body. Pass `includePeople: true` to also surface tag-only `PERSON` rows.
+ * List every user via the admin endpoint (newest first), tag-only `PERSON` rows included. Returns
+ * `[]` when the endpoint yields no body.
  */
-export async function listUsers(opts?: { includePeople?: boolean }): Promise<AdminUserSummary[]> {
-  const endpoint = opts?.includePeople ? '/users?includePeople=true' : '/users';
-  const result = await fetchAdminGetApi<AdminUserSummary[]>(endpoint);
+export async function listUsers(): Promise<AdminUserSummary[]> {
+  const result = await fetchAdminGetApi<AdminUserSummary[]>('/users');
   return result ?? [];
 }
 

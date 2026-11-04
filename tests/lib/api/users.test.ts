@@ -206,10 +206,6 @@ describe('acceptInvite', () => {
   });
 
   it('falls back to the status, not the JSON body, when the error object has no message', async () => {
-    // acceptInvite's inline handler diverges from the shared throwFromResponse in core.ts on
-    // exactly this branch: core stringifies the whole body, this returns `API error: <status>`.
-    // Every other test here supplies a { message } object, so the divergent branch was never
-    // reached. Pinned before E2 considers folding the two together.
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
       status: 409,
@@ -396,9 +392,6 @@ describe('getUserPageById', () => {
     expect(await getUserPageById(5)).toBeNull();
   });
 
-  // The docblock used to promise `null` on 404. It does not — `fetchAdminGetApi` throws for every
-  // non-OK status, and `loadUserSpace` relies on the throw to tell "no such page" from "backend
-  // down". If this ever starts resolving, the empty state upstream silently becomes a lie again.
   it('throws rather than resolving null on a 404', async () => {
     (core.fetchAdminGetApi as jest.Mock).mockRejectedValue(new ApiError('Not Found', 404));
 
@@ -522,16 +515,11 @@ describe('listFollowedCollectionIdsByUserServer', () => {
 });
 
 // ---------------------------------------------------------------------------
-// listUsers includePeople
+// listUsers
 // ---------------------------------------------------------------------------
 
-describe('listUsers includePeople', () => {
-  it('requests ?includePeople=true when asked', async () => {
-    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue([]);
-    await listUsers({ includePeople: true });
-    expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/users?includePeople=true');
-  });
-  it('requests plain /users by default', async () => {
+describe('listUsers', () => {
+  it('requests plain /users', async () => {
     (core.fetchAdminGetApi as jest.Mock).mockResolvedValue([]);
     await listUsers();
     expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/users');
