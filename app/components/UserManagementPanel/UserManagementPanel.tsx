@@ -17,7 +17,6 @@ import {
 import { PanelBody } from '@/app/components/ListPanel/PanelBody';
 import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIdentityModal';
 import { Button } from '@/app/components/ui/Button/Button';
-import { Chip } from '@/app/components/ui/Chip/Chip';
 import { UpgradeUserModal } from '@/app/components/UpgradeUserModal/UpgradeUserModal';
 import { UserForm } from '@/app/components/UserForm/UserForm';
 import { UserRolesSection } from '@/app/components/UserForm/UserRolesSection';
@@ -65,8 +64,7 @@ interface UserManagementPanelProps {
  * open when the body gains the create form, which would otherwise look like "+ New User" did
  * nothing.
  *
- * The "People" {@link Chip} is the body's first line (`toolbar`): it filters this list, so it
- * sits on the list, and the header keeps exactly one action.
+ * The list shows every user, tag-only PERSON rows included.
  *
  * Loading, a load failure with Retry, the empty state and the stale notice all render through
  * {@link PanelBody}, which checks the failure ahead of the empty state so a dead backend is never
@@ -86,7 +84,6 @@ interface UserManagementPanelProps {
 export function UserManagementPanel({ shell }: UserManagementPanelProps) {
   const seed = useAdminPanelSeed();
   const [view, setView] = useState<View>({ mode: 'list' });
-  const [showPeople, setShowPeople] = useState(false);
   const [sheetUserId, setSheetUserId] = useState<number | null>(null);
   const [sheetEditing, setSheetEditing] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -100,10 +97,10 @@ export function UserManagementPanel({ shell }: UserManagementPanelProps) {
     revalidationFailed,
     refresh,
   } = useCachedPanelData(
-    showPeople ? 'users:people' : 'users:base',
-    () => listUsers({ includePeople: showPeople }),
+    'users',
+    listUsers,
     'Could not load users. Retry, or check that the backend is running.',
-    showPeople ? null : seed.users
+    seed.users
   );
 
   const returnToList = useCallback(
@@ -158,11 +155,6 @@ export function UserManagementPanel({ shell }: UserManagementPanelProps) {
   const inList = view.mode === 'list';
   const viewTitle = view.mode === 'create' ? 'New User' : undefined;
 
-  const toolbar =
-    view.mode === 'list' ? (
-      <Chip label="People" active={showPeople} onToggle={() => setShowPeople(!showPeople)} />
-    ) : null;
-
   const action =
     view.mode === 'list' ? (
       <PanelAction onClick={openCreate}>+ New User</PanelAction>
@@ -176,7 +168,6 @@ export function UserManagementPanel({ shell }: UserManagementPanelProps) {
       title="Users"
       ariaLabel="User management"
       viewTitle={viewTitle}
-      toolbar={toolbar}
       action={action}
     >
       <PanelBody

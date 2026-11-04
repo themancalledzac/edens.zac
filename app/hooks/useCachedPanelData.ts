@@ -35,14 +35,9 @@ export interface AdminMessagesPayload {
  * compile error and every read comes back already typed. Two assertions survive, both contained
  * and both on the write side, where the caller has already proved the type: {@link writeMemory}
  * and {@link parseStored}.
- *
- * `users:base` and `users:people` are the same payload under two keys because the users panel's
- * "show tag-only people" toggle reshapes the fetch: the two variants cache independently so
- * flipping the toggle back paints from cache instead of refetching.
  */
 export interface PanelCacheSchema {
-  'users:base': AdminUserSummary[];
-  'users:people': AdminUserSummary[];
+  users: AdminUserSummary[];
   messages: AdminMessagesPayload;
   roles: RoleSummary[];
   collections: CollectionListModel[];
@@ -198,13 +193,9 @@ export function clearCachedPanelData(key?: PanelCacheKey): void {
   removeStorage(key);
 }
 
-/**
- * The default user-facing message for a failed foreground load of `key`. `users:base` and
- * `users:people` are one list to the admin, so both read as "users"; any other key names itself.
- */
+/** The default user-facing message for a failed foreground load of `key`. */
 export function panelErrorMessage(key: PanelCacheKey): string {
-  const label = key === 'users:base' || key === 'users:people' ? 'users' : key;
-  return `Could not load ${label}. Retry, or check that the backend is running.`;
+  return `Could not load ${key}. Retry, or check that the backend is running.`;
 }
 
 /**
@@ -287,8 +278,7 @@ export interface CachedPanelData<T> {
  * the error branch is reserved for "nothing to show", where the caller's existing failed-vs-empty
  * distinction still applies.
  *
- * `key` is part of the cache identity: variants (`users:people` vs `users:base`) cache
- * independently, and a key switch re-seeds from the new key's cache before revalidating. A fetch
+ * `key` is part of the cache identity: each key caches independently, and a key switch re-seeds from the new key's cache before revalidating. A fetch
  * is dropped when it resolves after its key was switched away, and equally when a local write or
  * another fetch has moved that key on since it started.
  *

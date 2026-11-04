@@ -1,6 +1,5 @@
 /**
- * Tests the identity-merge flow on UserManagementPanel: toggling the People chip reveals a
- * PERSON row whose detail sheet offers a Merge action; opening the modal, picking a survivor, and confirming calls
+ * Tests the identity-merge flow on UserManagementPanel: a PERSON row whose detail sheet offers a Merge action; opening the modal, picking a survivor, and confirming calls
  * {@link mergeUser} with `(targetId, sourceId)`. Also covers the safety guards: a null preview keeps
  * the confirm disabled, and PERSON rows are non-navigable (no account detail page to reach).
  *
@@ -33,9 +32,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   clearCachedPanelData();
   window.localStorage.clear();
-  (listUsers as jest.Mock).mockImplementation(async (opts?: { includePeople?: boolean }) =>
-    opts?.includePeople ? [account, person] : [account]
-  );
+  (listUsers as jest.Mock).mockResolvedValue([account, person]);
   (getMergePreview as jest.Mock).mockResolvedValue({
     sourceId: 2,
     sourceName: 'Danny Nieves',
@@ -61,7 +58,6 @@ it('merges a tag-only person into an account', async () => {
   const user = userEvent.setup();
   render(<UserManagementPanel />);
 
-  await user.click(await screen.findByRole('button', { name: /people/i }));
   await openPersonSheet(user);
   await user.click(await screen.findByRole('button', { name: /merge/i }));
 
@@ -77,7 +73,6 @@ it('keeps the confirm disabled (and never merges) when the preview is null', asy
   const user = userEvent.setup();
   render(<UserManagementPanel />);
 
-  await user.click(await screen.findByRole('button', { name: /people/i }));
   await openPersonSheet(user);
   await user.click(await screen.findByRole('button', { name: /merge/i }));
   await user.selectOptions(await screen.findByRole('combobox'), '1');
@@ -95,7 +90,6 @@ it('opens the sheet and does not navigate when a tag-only person row is clicked'
   const user = userEvent.setup();
   render(<UserManagementPanel />);
 
-  await user.click(await screen.findByRole('button', { name: /people/i }));
   const personRow = (await screen.findByText('Danny Nieves')).closest('li') as HTMLElement;
   await user.click(within(personRow).getByText('Danny Nieves'));
 

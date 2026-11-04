@@ -5,7 +5,7 @@
  * The module-level memory cache survives across tests in this file by design, so every test
  * clears it via `clearCachedPanelData()` in beforeEach. jsdom provides a real localStorage.
  *
- * Keys are the real ones (`roles`, `users:base`, `users:people`) because the cache only accepts
+ * Keys are the real ones (`roles`, `users`) because the cache only accepts
  * keys from `PanelCacheSchema` — a fixture key would not type-check, which is the schema working.
  */
 import { act, render, renderHook, waitFor } from '@testing-library/react';
@@ -499,23 +499,23 @@ describe('useCachedPanelData', () => {
     expect(result.current.data).toEqual([{ id: 2, name: 'newer' }]);
   });
 
-  it('a key switch re-seeds from the new key and caches variants independently', async () => {
-    const fetcher = jest.fn(async (key: string): Promise<AdminUserSummary[]> => [
-      key === 'users:base' ? user(1, 'base') : user(99, 'people'),
-    ]);
-    const initialProps: { cacheKey: 'users:base' | 'users:people' } = { cacheKey: 'users:base' };
+  it('a key switch re-seeds from the new key and caches each key independently', async () => {
+    const fetcher = jest.fn(async (key: string): Promise<AdminUserSummary[] | RoleSummary[]> =>
+      key === 'users' ? [user(1, 'base')] : [{ id: 99, name: 'role' }]
+    );
+    const initialProps: { cacheKey: 'users' | 'roles' } = { cacheKey: 'users' };
     const { result, rerender } = renderHook(
-      ({ cacheKey }: { cacheKey: 'users:base' | 'users:people' }) =>
+      ({ cacheKey }: { cacheKey: 'users' | 'roles' }) =>
         useCachedPanelData(cacheKey, () => fetcher(cacheKey), 'failed'),
       { initialProps }
     );
     await waitFor(() => expect(result.current.data).toEqual([user(1, 'base')]));
 
-    rerender({ cacheKey: 'users:people' });
+    rerender({ cacheKey: 'roles' });
     expect(result.current.loading).toBe(true);
-    await waitFor(() => expect(result.current.data).toEqual([user(99, 'people')]));
+    await waitFor(() => expect(result.current.data).toEqual([{ id: 99, name: 'role' }]));
 
-    rerender({ cacheKey: 'users:base' });
+    rerender({ cacheKey: 'users' });
     expect(result.current.loading).toBe(false);
     expect(result.current.data).toEqual([user(1, 'base')]);
   });
@@ -572,23 +572,14 @@ describe('useCachedPanelData error message', () => {
   const failing = () =>
     jest.fn(async (): Promise<AdminUserSummary[]> => Promise.reject(new Error('x')));
 
-  it('A10: panelErrorMessage labels users:base and users:people as users', () => {
-    expect(panelErrorMessage('users:base')).toBe(
-      'Could not load users. Retry, or check that the backend is running.'
-    );
-    expect(panelErrorMessage('users:people')).toBe(
-      'Could not load users. Retry, or check that the backend is running.'
-    );
-  });
-
-  it('A10: panelErrorMessage uses the key itself for other keys', () => {
+  it('A10: panelErrorMessage names the key', () => {
     expect(panelErrorMessage('roles')).toBe(
       'Could not load roles. Retry, or check that the backend is running.'
     );
   });
 
   it('A10: a foreground failure with no errorMessage reports the derived message', async () => {
-    const { result } = renderHook(() => useCachedPanelData('users:base', failing()));
+    const { result } = renderHook(() => useCachedPanelData('users', failing()));
     await waitFor(() =>
       expect(result.current.loadError).toBe(
         'Could not load users. Retry, or check that the backend is running.'
@@ -598,14 +589,14 @@ describe('useCachedPanelData error message', () => {
 
   it('S1: a caller errorMessage is kept exactly', async () => {
     const { result } = renderHook(() =>
-      useCachedPanelData('users:people', failing(), 'Custom failure text')
+      useCachedPanelData('users', failing(), 'Custom failure text')
     );
     await waitFor(() => expect(result.current.loadError).toBe('Custom failure text'));
   });
 
   it('twin A10: with the derivation off the derived message no longer appears', async () => {
     jest.spyOn(panelDataGuards, 'resolveErrorMessage').mockImplementation(() => 'plain');
-    const { result } = renderHook(() => useCachedPanelData('users:base', failing()));
+    const { result } = renderHook(() => useCachedPanelData('users', failing()));
     await waitFor(() => expect(result.current.loadError).not.toBeNull());
     expect(result.current.loadError).not.toBe(
       'Could not load users. Retry, or check that the backend is running.'
@@ -617,7 +608,7 @@ describe('useCachedPanelData error message', () => {
       .spyOn(panelDataGuards, 'resolveErrorMessage')
       .mockImplementation(key => panelErrorMessage(key));
     const { result } = renderHook(() =>
-      useCachedPanelData('users:people', failing(), 'Custom failure text')
+      useCachedPanelData('users', failing(), 'Custom failure text')
     );
     await waitFor(() => expect(result.current.loadError).not.toBeNull());
     expect(result.current.loadError).not.toBe('Custom failure text');
