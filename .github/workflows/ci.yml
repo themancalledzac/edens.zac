@@ -2,7 +2,7 @@
 #
 # Runs the same four checks CLAUDE.md prescribes locally — type check, ESLint,
 # Stylelint, Jest — so a claim that they pass stops being local-only, plus an
-# `npm audit` gate at high severity and above.
+# `npm audit` gate at high severity and above, covering dev dependencies too.
 #
 # The audit step lives in this job rather than its own because this job's name is
 # the required status check on main. A separate job would need adding to branch
