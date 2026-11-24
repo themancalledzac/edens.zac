@@ -113,7 +113,8 @@ function forwardHeaders(req: NextRequest): Headers {
  * reject; the buffered size is checked again. The body is a `Uint8Array` because Amplify's undici
  * build rejects a bare `ArrayBuffer` with a 502. Set-Cookie is re-emitted one header at a time
  * through `getSetCookie()`, since the Headers constructor comma-joins repeats and corrupts cookies
- * whose Expires attribute contains a comma.
+ * whose Expires attribute contains a comma. `fetch` hands back an already-decoded body, so the
+ * upstream `content-encoding` and `content-length` are dropped rather than forwarded.
  */
 async function handle(req: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const params = await context.params;
@@ -175,6 +176,7 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
 
   const resHeaders = new Headers(backendRes.headers);
   resHeaders.delete('content-encoding');
+  resHeaders.delete('content-length');
   resHeaders.delete('transfer-encoding');
   resHeaders.delete('connection');
   resHeaders.delete('set-cookie');

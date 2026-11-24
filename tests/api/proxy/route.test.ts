@@ -67,9 +67,6 @@ describe('BFF proxy /api/proxy/[...path] — Set-Cookie forwarding', () => {
     expect(setCookies).toContain(cookieB);
     expect(setCookies).toHaveLength(2);
 
-    // Pin that security attributes are preserved verbatim on the first cookie.
-    // A future refactor swapping getSetCookie() for manual header iteration
-    // must not silently drop these attributes.
     expect(setCookies[0]).toMatch(/httponly/i);
     expect(setCookies[0]).toMatch(/secure/i);
     expect(setCookies[0]).toMatch(/samesite=strict/i);
@@ -120,7 +117,6 @@ describe('BFF proxy /api/proxy/[...path] — payload size limits', () => {
       .spyOn(global, 'fetch')
       .mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
 
-    // 1 MB multipart body — well over the 16 KB JSON cap, well under the 25 MB multipart cap.
     const body = new Uint8Array(1024 * 1024);
     const req = new NextRequest('http://localhost:3000/api/proxy/api/admin/content/images/1', {
       method: 'POST',
@@ -141,7 +137,6 @@ describe('BFF proxy /api/proxy/[...path] — payload size limits', () => {
   });
 
   it('rejects multipart payloads larger than 25 MB with 413', async () => {
-    // 25 MB + 1 byte
     const body = new Uint8Array(25 * 1024 * 1024 + 1);
     const req = new NextRequest('http://localhost:3000/api/proxy/api/admin/content/images/1', {
       method: 'POST',
@@ -183,8 +178,6 @@ describe('BFF proxy /api/proxy/[...path] — payload size limits', () => {
   });
 
   it('enforces cap against actual buffered body size when Content-Length is missing', async () => {
-    // Construct a request where the underlying body is large but the
-    // Content-Length header is absent — the proxy must still reject it.
     const oversize = 'x'.repeat(16 * 1024 + 1);
     const req = new NextRequest('http://localhost:3000/api/proxy/api/read/messages', {
       method: 'POST',
@@ -194,7 +187,6 @@ describe('BFF proxy /api/proxy/[...path] — payload size limits', () => {
         origin: 'http://localhost:3000',
       },
     });
-    // Force the declared length to 0 so the early-reject path is bypassed.
     req.headers.set('content-length', '0');
 
     const res = await POST(req, {
@@ -322,7 +314,6 @@ describe('BFF proxy /api/proxy/[...path] — anonymous admin API refusal (prod)'
 
     expect(res.status).toBe(200);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    // The forwarded request carries the session cookie through to the backend.
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect((init.headers as Headers).get('cookie')).toBe('ezac_session=abc123');
   });
@@ -422,7 +413,6 @@ describe('BFF proxy /api/proxy/[...path] — anonymous admin API refusal (prod)'
 
     expect(res.status).toBe(200);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    // The forwarded request carries the session cookie through to the backend.
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect((init.headers as Headers).get('cookie')).toBe('ezac_session=abc123');
   });
@@ -463,8 +453,6 @@ describe('BFF proxy /api/proxy/[...path] — real-IP header sanitization', () =>
 
   it('does NOT forward a spoofed inbound x-real-ip as X-Real-IP', async () => {
     const init = await forwardWith({ 'x-real-ip': '6.6.6.6' });
-    // x-real-ip is client-controllable and no longer a source; without a trusted
-    // header there is no X-Real-IP to forward.
     expect((init.headers as Headers).get('x-real-ip')).toBeNull();
   });
 
@@ -521,8 +509,6 @@ describe('BFF proxy /api/proxy/[...path] — non-api path reject', () => {
       .mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
   }
 
-  // Spring Boot serves the actuator outside /api. Before the reject, this reached the
-  // backend carrying X-Internal-Secret — the channel gate the BFF injects on every hop.
   it('rejects actuator paths with 404 and does NOT forward', async () => {
     const fetchSpy = spyFetch();
     const req = new NextRequest('http://localhost:3000/api/proxy/actuator/env', { method: 'GET' });
@@ -551,10 +537,6 @@ describe('BFF proxy /api/proxy/[...path] — non-api path reject', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  // A `..` segment survives the api/ prefix check as a raw string, but the URL parser
-  // resolves it away inside fetch — `http://backend.test/api/../actuator/env` is
-  // requested as `http://backend.test/actuator/env`. The reject must catch it before
-  // that normalization, or the prefix check is decorative.
   it.each([
     [['api', '..', 'actuator', 'env'], 'a bare .. segment'],
     [['api', '%2e%2e', 'actuator'], 'the percent-encoded .. spelling'],
@@ -586,8 +568,6 @@ describe('BFF proxy /api/proxy/[...path] — non-api path reject', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  // Not every dot sequence escapes. `..%2F` stays a literal segment under api/ after
-  // normalization, so rejecting it would be over-blocking.
   it('still forwards a path whose encoded slash keeps it inside api/', async () => {
     const fetchSpy = spyFetch();
     const path = ['api', '..%2Fread'];
@@ -674,5 +654,48 @@ describe('BFF proxy /api/proxy/[...path] — www.zacedens.com origin', () => {
     expect(await postFrom('https://www.zacedens.com/')).toBe(403);
     expect(await postFrom('http://www.zacedens.com')).toBe(403);
     expect(await postFrom('https://www.zacedens.com.evil.example')).toBe(403);
+  });
+});
+
+describe('BFF proxy /api/proxy/[...path] — response body headers', () => {
+  const ORIGINAL_ENV = process.env;
+
+  beforeEach(() => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      INTERNAL_API_SECRET: 'test-secret',
+      API_URL: 'http://backend.test',
+      NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+      NODE_ENV: 'development',
+    };
+  });
+
+  afterEach(() => {
+    process.env = ORIGINAL_ENV;
+    jest.restoreAllMocks();
+  });
+
+  it('drops the upstream content-length and content-encoding, since fetch already decoded the body', async () => {
+    const body = '{"items":[1,2,3]}';
+    jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(body, {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+          'content-encoding': 'gzip',
+          'content-length': '7',
+        },
+      })
+    );
+
+    const req = new NextRequest('http://localhost:3000/api/proxy/api/read/collections/foo');
+    const res = await GET(req, {
+      params: Promise.resolve({ path: ['api', 'read', 'collections', 'foo'] }),
+    } as never);
+
+    expect(res.headers.get('content-length')).toBeNull();
+    expect(res.headers.get('content-encoding')).toBeNull();
+    expect(res.headers.get('content-type')).toBe('application/json');
+    expect(await res.text()).toBe(body);
   });
 });
