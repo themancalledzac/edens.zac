@@ -9,12 +9,10 @@ import {
   loginWithPasskey,
   logout,
   me,
-  meServer,
   registerPasskey,
 } from '@/app/lib/api/auth';
-import { ApiError, getApiBaseUrl, getServerCookieHeader } from '@/app/lib/api/core';
+import { ApiError } from '@/app/lib/api/core';
 import { type MeResponse } from '@/app/types/Auth';
-import { isLocalEnvironment } from '@/app/utils/environment';
 
 jest.mock('next/headers', () => ({ cookies: jest.fn() }));
 jest.mock('@/app/utils/environment', () => ({ isLocalEnvironment: jest.fn() }));
@@ -223,7 +221,6 @@ describe('base64url helpers', () => {
     const bytes = new Uint8Array([0, 1, 2, 250, 251, 252, 253, 254, 255]);
     const b64url = arrayBufferToBase64url(bytes.buffer);
 
-    // base64url uses -/_ and strips '=' padding
     expect(b64url).not.toContain('+');
     expect(b64url).not.toContain('/');
     expect(b64url).not.toContain('=');
@@ -233,7 +230,6 @@ describe('base64url helpers', () => {
   });
 
   it('decodes a known base64url string to the expected bytes', () => {
-    // "Aa-_" base64url => bytes 0x01 0xAF 0xBF
     const restored = new Uint8Array(base64urlToArrayBuffer('Aa-_'));
     expect(Array.from(restored)).toEqual([0x01, 0xaf, 0xbf]);
   });
@@ -246,24 +242,21 @@ describe('base64url helpers', () => {
 
 describe('registerPasskey', () => {
   it('runs the registration ceremony: start -> create -> finish', async () => {
-    // start: backend creation options (binary fields are base64url)
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
         headers: new Headers({ 'content-type': 'application/json' }),
         json: jest.fn().mockResolvedValue({
-          challenge: 'Aa-_', // bytes 0x01 0xAF 0xBF
+          challenge: 'Aa-_',
           rp: { id: 'localhost', name: 'Zac Edens Photography' },
           user: { id: 'Aa-_', name: 'admin@example.com', displayName: 'Admin' },
           pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
           excludeCredentials: [{ type: 'public-key', id: 'Aa-_' }],
         }),
       })
-      // finish: 204
       .mockResolvedValueOnce({ ok: true, status: 204, headers: new Headers() });
 
-    // navigator.credentials.create returns a PublicKeyCredential-shaped object
     mockCredentialsCreate.mockResolvedValue({
       id: 'cred-id',
       rawId: new Uint8Array([0x01, 0xaf, 0xbf]).buffer,
@@ -276,29 +269,26 @@ describe('registerPasskey', () => {
 
     await expect(registerPasskey()).resolves.toBeUndefined();
 
-    // start called
     expect(global.fetch).toHaveBeenNthCalledWith(
       1,
       '/api/proxy/api/auth/webauthn/register/start',
       expect.objectContaining({ method: 'POST', credentials: 'same-origin', cache: 'no-store' })
     );
 
-    // create() received decoded ArrayBuffers
     const createArg = mockCredentialsCreate.mock.calls[0][0];
     expect(createArg.publicKey.challenge).toBeInstanceOf(ArrayBuffer);
     expect(Array.from(new Uint8Array(createArg.publicKey.challenge))).toEqual([0x01, 0xaf, 0xbf]);
     expect(createArg.publicKey.user.id).toBeInstanceOf(ArrayBuffer);
     expect(createArg.publicKey.excludeCredentials[0].id).toBeInstanceOf(ArrayBuffer);
 
-    // finish posted base64url-encoded attestation
     const finishCall = (global.fetch as jest.Mock).mock.calls[1];
     expect(finishCall[0]).toBe('/api/proxy/api/auth/webauthn/register/finish');
     const finishBody = JSON.parse(finishCall[1].body as string);
     expect(finishBody.id).toBe('cred-id');
     expect(finishBody.rawId).toBe('Aa-_');
     expect(finishBody.type).toBe('public-key');
-    expect(finishBody.response.clientDataJSON).toBe('AQ'); // byte 0x01 -> base64url 'AQ'
-    expect(finishBody.response.attestationObject).toBe('rw'); // byte 0xAF -> 'rw'
+    expect(finishBody.response.clientDataJSON).toBe('AQ');
+    expect(finishBody.response.attestationObject).toBe('rw');
   });
 
   it('throws ApiError when start fails', async () => {
@@ -369,11 +359,10 @@ describe('loginWithPasskey', () => {
     const finishBody = JSON.parse(finishCall[1].body as string);
     expect(finishBody.id).toBe('cred-id');
     expect(finishBody.rawId).toBe('Aa-_');
-    expect(finishBody.response.authenticatorData).toBe('rw'); // 0xAF
-    expect(finishBody.response.signature).toBe('vw'); // 0xBF
-    expect(finishBody.response.userHandle).toBe('AQ'); // 0x01
+    expect(finishBody.response.authenticatorData).toBe('rw');
+    expect(finishBody.response.signature).toBe('vw');
+    expect(finishBody.response.userHandle).toBe('AQ');
 
-    // Session established on finish 204 — the auth-changed contract fires once.
     expect(authChangedListener).toHaveBeenCalledTimes(1);
   });
 
@@ -461,114 +450,5 @@ describe('loginWithPasskey', () => {
 
     const finishBody = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body as string);
     expect(finishBody.response.userHandle).toBeNull();
-  });
-});
-
-describe('meServer', () => {
-  const originalWindow = global.window;
-
-  beforeEach(() => {
-    (global.fetch as jest.Mock) = jest.fn();
-    jest.clearAllMocks();
-    (getApiBaseUrl as jest.Mock).mockReturnValue('http://localhost:8080/api/auth');
-    (isLocalEnvironment as jest.Mock).mockReturnValue(true);
-    Object.defineProperty(global, 'window', { value: undefined, writable: true });
-  });
-
-  afterEach(() => {
-    Object.defineProperty(global, 'window', { value: originalWindow, writable: true });
-  });
-
-  it('forwards the server cookie header and returns MeResponse on 200', async () => {
-    (getServerCookieHeader as jest.Mock).mockResolvedValue('ezac_session=abc');
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: jest.fn().mockResolvedValue({
-        email: 'c@x.com',
-        isAdmin: false,
-        mfaSatisfied: true,
-        passkeyCount: 0,
-        galleries: [],
-      }),
-    });
-
-    const result = await meServer();
-
-    expect(result?.email).toBe('c@x.com');
-    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
-    expect(url).toBe('http://localhost:8080/api/auth/me');
-    expect(init.headers.Cookie).toBe('ezac_session=abc');
-  });
-
-  it('returns null on 401', async () => {
-    (getServerCookieHeader as jest.Mock).mockResolvedValue(null);
-    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 401 });
-
-    expect(await meServer()).toBeNull();
-  });
-});
-
-describe('meServer — outside a local environment (A3)', () => {
-  const originalWindow = global.window;
-  const originalApiUrl = process.env.API_URL;
-  const originalSecret = process.env.INTERNAL_API_SECRET;
-  const originalAppUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-  beforeEach(() => {
-    (global.fetch as jest.Mock) = jest.fn();
-    jest.clearAllMocks();
-    (isLocalEnvironment as jest.Mock).mockReturnValue(false);
-    Object.defineProperty(global, 'window', { value: undefined, writable: true });
-    process.env.API_URL = 'https://backend.internal/';
-    process.env.INTERNAL_API_SECRET = 'sec-' + 'x'.repeat(8);
-    process.env.NEXT_PUBLIC_APP_URL = 'https://app.example.com';
-    (getServerCookieHeader as jest.Mock).mockResolvedValue('ezac_session=abc');
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: jest.fn().mockResolvedValue({ email: 'c@x.com' }),
-    });
-  });
-
-  afterEach(() => {
-    Object.defineProperty(global, 'window', { value: originalWindow, writable: true });
-    const restore = (key: string, value: string | undefined) => {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    };
-    restore('API_URL', originalApiUrl);
-    restore('INTERNAL_API_SECRET', originalSecret);
-    restore('NEXT_PUBLIC_APP_URL', originalAppUrl);
-  });
-
-  it('A3: calls the backend directly with X-Internal-Secret and keeps the Cookie', async () => {
-    await meServer();
-
-    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
-    expect(url).toBe('https://backend.internal/api/auth/me');
-    expect(url).not.toContain('/api/proxy');
-    expect(init.headers['X-Internal-Secret']).toBe('sec-xxxxxxxx');
-    expect(init.headers.Cookie).toBe('ezac_session=abc');
-  });
-
-  it('A3: still sends the secret when there is no cookie', async () => {
-    (getServerCookieHeader as jest.Mock).mockResolvedValue(null);
-
-    await meServer();
-
-    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
-    expect(init.headers['X-Internal-Secret']).toBe('sec-xxxxxxxx');
-    expect(init.headers.Cookie).toBeUndefined();
-  });
-
-  it('twin A3: with the local check letting everything through, no secret is sent', async () => {
-    (isLocalEnvironment as jest.Mock).mockReturnValue(true);
-
-    await meServer();
-
-    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
-    expect(url).toBe('http://localhost:8080/api/auth/me');
-    expect(init.headers['X-Internal-Secret']).toBeUndefined();
   });
 });

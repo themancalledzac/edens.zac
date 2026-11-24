@@ -3,7 +3,7 @@
  *
  * Verifies the fullscreen-viewer per-image download flow:
  *  - Click icon → reveals Web/Full picker (stops click bubbling to the viewer).
- *  - Picking a format navigates to the download URL (`window.location.href`). Navigation — not
+ *  - Picking a format navigates to the download URL (`navigateTo`). Navigation — not
  *    `fetch`+blob — is required because the backend 302-redirects to a presigned S3 URL to bypass
  *    the Amplify response-size cap, and a cross-origin `fetch` following that redirect would be
  *    blocked by S3 CORS.
@@ -14,24 +14,18 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 import FullScreenDownloadButton from '@/app/components/ClientGalleryDownload/FullScreenDownloadButton';
 import { downloadImageUrl } from '@/app/lib/api/downloads';
+import { navigateTo } from '@/app/utils/navigateTo';
+
+jest.mock('@/app/utils/navigateTo', () => ({ navigateTo: jest.fn() }));
 
 describe('FullScreenDownloadButton', () => {
-  const originalLocation = window.location;
-
   beforeEach(() => {
-    // jsdom's location.href is not assignable; swap in a plain object we can read back.
-    delete (window as unknown as { location?: Location }).location;
-    (window as unknown as { location: { href: string } }).location = { href: '' };
-  });
-
-  afterEach(() => {
-    (window as unknown as { location: Location }).location = originalLocation;
+    jest.clearAllMocks();
   });
 
   it('renders a download icon with an accessible label in the idle state', () => {
     render(<FullScreenDownloadButton imageId={42} />);
 
-    // Now a shared IconButton — still a non-submitting button named by its aria-label.
     const toggle = screen.getByRole('button', { name: /download image/i });
     expect(toggle).toBeInTheDocument();
     expect(toggle).toHaveAttribute('type', 'button');
@@ -50,7 +44,7 @@ describe('FullScreenDownloadButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /download image/i }));
     fireEvent.click(screen.getByRole('button', { name: /web-optimized/i }));
 
-    expect(window.location.href).toBe(downloadImageUrl(42, 'web'));
+    expect(navigateTo).toHaveBeenCalledWith(downloadImageUrl(42, 'web'));
   });
 
   it('navigates to the original download URL when "Full Size" is picked', () => {
@@ -58,7 +52,7 @@ describe('FullScreenDownloadButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /download image/i }));
     fireEvent.click(screen.getByRole('button', { name: /full-size/i }));
 
-    expect(window.location.href).toBe(downloadImageUrl(9001, 'original'));
+    expect(navigateTo).toHaveBeenCalledWith(downloadImageUrl(9001, 'original'));
   });
 
   it('stops icon click from bubbling to a parent fullscreen handler', () => {

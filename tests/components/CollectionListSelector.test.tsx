@@ -30,8 +30,6 @@ describe('CollectionListSelector', () => {
     jest.clearAllMocks();
   });
 
-  // Every row lives under a collapsible bucket section and `Disclosure` renders `{open && children}`,
-  // so a collapsed section has no rows in the DOM at all. Reach a row by opening its section first.
   const expandSection = (label: string | RegExp) =>
     fireEvent.click(screen.getByRole('button', { name: label }));
 
@@ -62,18 +60,15 @@ describe('CollectionListSelector', () => {
   });
 
   it('defaults label to "Collections"', () => {
-    // The COLLECTION bucket header also reads "Collections", so scope to the list's own
-    // <label> element rather than matching bare text.
     render(<CollectionListSelector {...defaultProps} />);
     expect(screen.getByText('Collections', { selector: 'label' })).toBeInTheDocument();
   });
 
   it('groups each collection under the section for its derived bucket', () => {
     render(<CollectionListSelector {...defaultProps} />);
-    // Portfolio A and No Type D are plain collections; Blog B and Gallery C are not.
-    expect(screen.getByRole('button', { name: /Collections \(2\)/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Blogs \(1\)/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Client Galleries \(1\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Collections\(2\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Blogs\(1\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Client Galleries\(1\)/ })).toBeInTheDocument();
   });
 
   it('fires onToggle when the Child checkbox is clicked', () => {
@@ -110,8 +105,6 @@ describe('CollectionListSelector', () => {
   });
 
   it('does not toggle when the row itself is clicked', () => {
-    // Rows are role="group" containers, not activatable controls — only the checkboxes and the
-    // name button act.
     const onToggle = jest.fn();
     render(<CollectionListSelector {...defaultProps} onToggle={onToggle} />);
 
@@ -154,7 +147,6 @@ describe('CollectionListSelector', () => {
         allCollections={[...mockCollections, { id: 9, name: 'Home', slug: 'home' }]}
       />
     );
-    // Visible with no section opened, and there is no Home accordion header to open.
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.queryAllByRole('button', { name: /^Home/ })).toHaveLength(0);
   });
@@ -204,8 +196,6 @@ describe('CollectionListSelector', () => {
     });
     it('exposes a Sibling and a Child toggle per collection row', () => {
       render(<CollectionListSelector {...twoColProps} />);
-      // Portfolio A carries neither isClient nor isBlog, so it buckets into the (default-collapsed)
-      // "Collections" accordion section — expand it first.
       fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
       expect(screen.getByLabelText('Toggle sibling Portfolio A')).toBeInTheDocument();
       expect(screen.getByLabelText('Toggle child Portfolio A')).toBeInTheDocument();
@@ -243,10 +233,6 @@ describe('CollectionListSelector', () => {
       expect(onToggleSibling).not.toHaveBeenCalled();
     });
     it('reflects independent saved state per column (sibling on B, child on A)', () => {
-      // Child-saved (id 1) and sibling-saved (id 2) rows must be visible together, but the accordion
-      // only opens ONE section at a time — neither row sets isClient/isBlog, so both bucket into the
-      // single "Collections" section and one expand
-      // reveals both. Ids/saved-sets are unchanged, so the per-column saved/empty assertions hold.
       const sameSection: CollectionListModel[] = [
         { id: 1, name: 'Portfolio A', slug: 'portfolio-a' },
         { id: 2, name: 'Blog B', slug: 'blog-b' },
@@ -271,7 +257,6 @@ describe('CollectionListSelector', () => {
         />
       );
 
-      // Blog B lives in the collapsed BLOG section — expand it before clicking its name button.
       fireEvent.click(screen.getByRole('button', { name: /Blogs/ }));
       fireEvent.click(screen.getByLabelText('Open Blog B'));
 
@@ -501,16 +486,12 @@ describe('three-column accordion mode', () => {
   });
 
   it('renders Parent column header', () => {
-    // There is no PARENT bucket any more, so "Parent" now renders exactly once — as the
-    // column header. The `within(columnHeaderRow)` scoping that disambiguated it is dead.
     renderInThreeColumnMode();
     expect(screen.getByText('Parent')).toBeInTheDocument();
   });
 
   it('renders HOME row always visible at top, no Home accordion header', () => {
     renderInThreeColumnMode();
-    // The pinned HOME row renders its name as a plain span (no onNavigate → no nav button),
-    // and HOME has no accordion header — so there is no button named exactly "Home".
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.queryAllByRole('button', { name: /^Home$/ })).toHaveLength(0);
   });
@@ -555,8 +536,6 @@ describe('three-column accordion mode', () => {
   });
 
   it('leaves the Sibling checkbox unaffected when the row is actively a Child', () => {
-    // Mutual exclusion only governs Child↔Parent, never Sibling. A row saved as a
-    // Child must still expose an enabled, clickable Sibling toggle.
     const onToggleSibling = jest.fn();
     render(
       <CollectionListSelector
@@ -612,8 +591,6 @@ describe('three-column accordion mode', () => {
   });
 
   it('applies the expandedRow class to rows revealed under an open section', () => {
-    // CSS modules are mocked by next/jest as an identity proxy, so
-    // `styles.expandedRow === 'expandedRow'` — query by the literal class name.
     const { container } = renderInThreeColumnMode();
     expect(container.querySelector('.expandedRow')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
@@ -621,7 +598,6 @@ describe('three-column accordion mode', () => {
   });
 
   it('buckets a row with no flags at all under Collections', () => {
-    // There is no unknown-type case any more: every row has a bucket by construction.
     renderInThreeColumnMode([{ id: 30, name: 'Weird Row', slug: 'weird-row' }]);
     expect(screen.queryByText('Weird Row')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
@@ -629,8 +605,6 @@ describe('three-column accordion mode', () => {
   });
 
   describe('currentCollectionId (you-are-here marker)', () => {
-    // Same render helper as the rest of the suite, plus a currentCollectionId prop. P1 (id 2)
-    // sets neither flag, so it buckets under "Collections"; it is the "current" row in these cases.
     function renderWithCurrent(currentCollectionId: number, rows = allBuckets) {
       return render(
         <CollectionListSelector
@@ -653,8 +627,6 @@ describe('three-column accordion mode', () => {
     }
 
     it('keeps the current row visible (not excluded) with all toggles disabled', () => {
-      // P1 (id 2) is the current collection — its "Collections" section auto-opens, so the row
-      // is present without any click. It is greyed out in place, never removed from the list.
       renderWithCurrent(2);
       expect(screen.getByText('P1')).toBeInTheDocument();
       expect(screen.getByLabelText('Toggle sibling P1')).toHaveAttribute('aria-disabled', 'true');
@@ -663,11 +635,9 @@ describe('three-column accordion mode', () => {
     });
 
     it("auto-opens the current collection's bucket on load, leaving others collapsed", () => {
-      renderWithCurrent(2); // buckets under "Collections"
-      // "Collections" is open by default → P1/P2 visible without clicking the header.
+      renderWithCurrent(2);
       expect(screen.getByText('P1')).toBeInTheDocument();
       expect(screen.getByText('P2')).toBeInTheDocument();
-      // A different section (Blogs) stays collapsed.
       expect(screen.queryByText('B1')).not.toBeInTheDocument();
       expect(screen.queryByText('B2')).not.toBeInTheDocument();
     });
@@ -678,7 +648,6 @@ describe('three-column accordion mode', () => {
     });
 
     it('does not render a navigate button for the current row', () => {
-      // The current collection must not self-navigate — no "Open P1" button.
       render(
         <CollectionListSelector
           allCollections={allBuckets}
@@ -699,7 +668,6 @@ describe('three-column accordion mode', () => {
         />
       );
       expect(screen.queryByLabelText('Open P1')).not.toBeInTheDocument();
-      // A non-current sibling in the same bucket (P2) still navigates.
       expect(screen.getByLabelText('Open P2')).toBeInTheDocument();
     });
   });
@@ -719,7 +687,6 @@ describe('derived tag-view rows', () => {
     pendingAddIds: new Set<number>(),
     pendingRemoveIds: new Set<number>(),
     onToggle: jest.fn(),
-    // parentMode engages accordion; derived rows land in the Collections bucket.
     parentSavedIds: new Set<number>(),
     parentPendingAddIds: new Set<number>(),
     parentPendingRemoveIds: new Set<number>(),
@@ -728,11 +695,8 @@ describe('derived tag-view rows', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
-  // A tag view is neither a client gallery nor a blog, so it buckets to Collections. The
-  // bucket header collides with the selector's own default `label="Collections"`, so reach
-  // it by role — the count suffix makes the accessible name unambiguous.
   const expandCollectionsSection = () =>
-    fireEvent.click(screen.getByRole('button', { name: /Collections \(1\)/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Collections\(1\)/ }));
 
   it('renders the derived row read-only (toggles disabled) and never fires toggle handlers', () => {
     const onToggle = jest.fn();
