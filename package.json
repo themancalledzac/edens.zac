@@ -28,19 +28,19 @@
   },
   "dependencies": {
     "lucide-react": "^1.41.0",
-    "next": "^16.3.8",
+    "next": "^16.4.6",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "sass": "^1.104.0"
   },
   "overrides": {
-    "fast-uri": "^3.1.6",
+    "fast-uri": "^3.1.9",
     "postcss": "^8.5.10"
   },
   "devDependencies": {
     "@eslint/js": "^8.57.1",
-    "@next/bundle-analyzer": "^16.3.4",
-    "@next/eslint-plugin-next": "^16.3.4",
+    "@next/bundle-analyzer": "^16.4.6",
+    "@next/eslint-plugin-next": "^16.4.6",
     "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -61,6 +61,6 @@
     "stylelint-config-standard-scss": "^17.0.0",
     "stylelint-prettier": "^5.0.3",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.69.0"
+    "typescript-eslint": "^8.74.0"
   }
 }

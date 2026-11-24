@@ -1,160 +1,62 @@
 # edens.zac
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![SCSS Modules](https://img.shields.io/badge/SCSS-Modules-CC6699?logo=sass)](https://sass-lang.com/)
-[![Spring Boot](https://img.shields.io/badge/Spring_Boot-Backend-6DB33F?logo=spring-boot)](https://spring.io/projects/spring-boot)
 
-A full-stack photography portfolio and content management platform. Built for performance, type safety, and visual impact.
+The frontend for [zacedens.com](https://zacedens.com), a photography portfolio. It serves public collections, private client galleries and blog entries, plus the admin tools that manage them. The Spring Boot API lives in [edens.zac.backend](https://github.com/themancalledzac/edens.zac.backend).
 
 ---
 
-## Tech Stack
+## Tech stack
 
-| Layer        | Technology                                        |
-| ------------ | ------------------------------------------------- |
-| **Frontend** | Next.js 16 (App Router), React 19, TypeScript 5.8 |
-| **Styling**  | SCSS Modules, responsive design                   |
-| **Backend**  | Spring Boot, Hibernate/JPA, RESTful API           |
-| **Database** | PostgreSQL on EC2                                 |
-| **Storage**  | AWS S3 + CloudFront CDN                           |
-| **Hosting**  | AWS Amplify (Next.js server, CloudFront-fronted)  |
-| **Testing**  | Jest, React Testing Library                       |
-| **Linting**  | ESLint 9 (flat config), Stylelint, Prettier       |
+| Layer    | Technology                                        |
+| -------- | ------------------------------------------------- |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript 5.9 |
+| Styling  | SCSS Modules                                      |
+| Backend  | Spring Boot REST API, PostgreSQL on EC2           |
+| Images   | AWS S3 behind CloudFront                          |
+| Hosting  | AWS Amplify                                       |
+| Testing  | Jest, React Testing Library, Playwright           |
+| Linting  | ESLint 9 (flat config), Stylelint, Prettier       |
 
 ---
 
 ## Features
 
-- **Photography Collections** -- One typeless collection primitive holding any mix of images, text, GIFs, and other collections; blogs and client deliveries get their own presentation
-- **Rating-Aware Image Sizing** -- Higher-rated images occupy more visual space. A 5-star hero fills an entire row; 2-star images share space with others.
-- **Custom Layout Algorithm** -- BoxTree-based recursive layout engine that arranges images into visually balanced rows using aspect ratio scoring and pattern detection
-- **Parallax Scroll Effects** -- Collection cards on the home page use depth-based parallax for a layered visual presentation
-- **Admin Panel** -- Collection creation, image metadata editing, drag-and-drop ordering, and content management
-- **Server-First Architecture** -- Maximized use of React Server Components for SEO, performance, and minimal client-side JavaScript
-- **Responsive Design** -- Adaptive layouts from mobile (2-slot) through desktop (5-slot) with breakpoint-aware image sizing
-- **CDN-Optimized Images** -- All images served via CloudFront with automatic WebP/AVIF conversion through Next.js Image
+Public site:
+
+- Collections that hold any mix of images, GIFs, text blocks and other collections.
+- A row layout that gives higher-rated photos more space.
+- A photo-size control (large, medium, small) on collection pages.
+- Tag and location pages, search, and an explore page.
+- Parallax collection cards.
+
+Accounts and client galleries:
+
+- Sign-in with password or passkey. New users join through invite links.
+- Per-gallery roles: `GENERAL` can view, `CLIENT` can also download and select favorites, `COLLABORATOR` can also edit curation.
+- Password-gated client galleries, share links, and full-resolution downloads.
+- A personal space at `/user` with the user's collections, images and saved photos. Users can follow collections.
+
+Admin:
+
+- An admin hub at `/admin` with user and role management, plus a page for messages sent through the contact form.
+- A collection editor, an all-images browser and a bulk metadata editor.
+- Image and GIF upload, cover selection and content ordering.
 
 ---
 
-## Architecture
-
-```
-                    +------------------+
-                    |   Next.js 16     |
-                    |   (App Router)   |
-                    +--------+---------+
-                             |
-              +--------------+--------------+
-              |                             |
-     +--------v---------+        +---------v--------+
-     |  Server Components|        |   API Routes     |
-     |  (pages, layouts) |        |   (proxy layer)  |
-     +--------+----------+        +---------+--------+
-              |                             |
-              +-------------+---------------+
-                            |
-                   +--------v---------+
-                   |   Spring Boot    |
-                   |   REST API       |
-                   +--------+---------+
-                            |
-              +-------------+-------------+
-              |                           |
-     +--------v---------+      +---------v--------+
-     |   PostgreSQL      |      |   AWS S3          |
-     |   (EC2)           |      |   + CloudFront    |
-     +-------------------+      +------------------+
-```
-
-**Frontend** -- Next.js App Router with Server Components as the default. Client components are used only where interactivity requires it (modals, forms, parallax). URL state replaces React Context wherever possible.
-
-**Backend** -- Spring Boot REST API handles data persistence, image uploads, and metadata management. The Next.js frontend communicates through a typed API client layer with proper error handling and caching.
-
-**Storage** -- Images are uploaded to S3 and served globally through CloudFront. Next.js Image handles format conversion and responsive sizing at the edge.
-
-**Hosting** -- The frontend runs as a live Next.js server on AWS Amplify, which puts its own CloudFront distribution in front. Merging to `main` builds and deploys automatically in about fifteen minutes; the build configuration lives in the Amplify console rather than in this repo. The S3 image CDN is a separate CloudFront distribution.
-
-**Database** -- PostgreSQL stores collections, content metadata, and relationships. Hibernate/JPA manages the schema and queries.
-
----
-
-## Key Technical Highlights
-
-### BoxTree Layout Algorithm
-
-A recursive binary tree (BoxTree) arranges images into visually balanced rows: greedy row fill, a point-balance split, then enumeration of every horizontal/vertical assignment scored on aspect ratio and equity.
-
-See [`app/utils/rowCombination.md`](app/utils/rowCombination.md).
-
-### Effective Rating System
-
-Images are classified by a rating (0-5 stars) that directly controls their visual prominence. The rating is orientation-agnostic: a vertical 5-star and a horizontal 5-star carry the same effective rating, and directionality is expressed downstream by aspect-ratio extremeness (width cost for horizontals, height demand for verticals) rather than by demoting the rating. Collection cards rate as 4; non-image content as 1.
-
-### Server Components
-
-The application defaults to Server Components. Data fetching, layout calculation, and HTML generation happen on the server. Client components are limited to interactive elements: the parallax scroll handler, modal overlays, image metadata forms, and the collection editor.
-
----
-
-## Project Structure
-
-```
-app/
-  layout.tsx, page.tsx            Root layout and home page
-  (admin)/                        Admin routes
-    admin/, admin/users/            Admin hub and user management
-    all-images/                     Image browser
-    collection/manage/              Collection editor
-    metadata/                       Metadata editing page
-  [slug]/                         Collection pages
-  collections/, all-client-galleries/  Collection lists
-  explore/, search/               Discovery
-  tag/[slug]/, location/[slug]/   Taxonomy pages
-  s/[token]/, invite/[token]/     Share and invite links
-  login/, user/                   Sign-in and the user's own space
-  api/                            proxy, revalidate, csp-report, client-errors
-  components/                     UI components (Content/, Metadata/, SiteHeader/, ...)
-  hooks/                          useParallax, useViewport, useFetchMe, useImageBrowser, ...
-  lib/                            api/ (typed client), actions/, storage/
-  types/, utils/, constants/, styles/
-proxy.ts                          Request proxy (admin and auth routing)
-tests/                            Jest tests mirroring app/; e2e/ holds Playwright specs
-docs/                             backlog.md and decisions.md
-```
-
----
-
-## Content Architecture
-
-A **collection** is a named, slugged, ordered grouping of any mix of content: images (S3-hosted, served via CloudFront), text blocks (database-stored, markdown), GIFs, and references to other collections. There is no collection type -- a collection is defined by what it contains, not by a category assigned up front.
-
-Two stored boolean flags carry the only distinctions the system still makes:
-
-- **`isClient`** -- a private client delivery, gated behind a per-collection password.
-- **`isBlog`** -- a dated entry, rendered and sorted chronologically.
-
-Both default to false, which is an ordinary collection. They are mutually exclusive; the backend rejects a collection that sets both.
-
-Everything else is derived rather than stored:
-
-- **Parent** -- a collection is a parent when it holds at least one collection reference. The server computes this over the whole content graph and returns it as `hasChildren` / `childCollectionIds`.
-- **Home** -- the collection whose slug is `home`.
-
-A collection can belong to several parents at once, so the content graph is a DAG rather than a tree.
-
----
-
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
-- Node.js 22+ (`engines` in package.json is `>=22`; `.nvmrc` pins 24)
-- npm 9+
-- Access to the Spring Boot backend (localhost:8080 for development)
+- Node.js 22 or later. `.nvmrc` pins 24.
+- npm 9 or later.
+- A running backend on `localhost:8080`. See the [backend README](https://github.com/themancalledzac/edens.zac.backend).
 
-### Installation
+### Install
 
 ```bash
 git clone https://github.com/themancalledzac/edens.zac.git
@@ -162,9 +64,9 @@ cd edens.zac
 npm install
 ```
 
-### Environment Variables
+### Environment variables
 
-Create a `.env.local` file in the project root:
+Create `.env.local` in the project root:
 
 ```bash
 API_URL=http://localhost:8080
@@ -173,51 +75,122 @@ NEXT_PUBLIC_ENV=local
 INTERNAL_API_SECRET=
 ```
 
-`API_URL` is the backend, `INTERNAL_API_SECRET` is sent to it as `X-Internal-Secret`, and `NEXT_PUBLIC_ENV=local` turns on the local admin shell. Never set it in a deploy.
+| Variable              | Purpose                                                                |
+| --------------------- | ---------------------------------------------------------------------- |
+| `API_URL`             | Backend base URL. Read only on the server.                             |
+| `INTERNAL_API_SECRET` | Sent to the backend as `X-Internal-Secret` on server-side requests.    |
+| `NEXT_PUBLIC_APP_URL` | The site's own origin.                                                 |
+| `NEXT_PUBLIC_ENV`     | `local` turns on the local admin bypass. Never set it in a deployment. |
 
-### Development
+### Scripts
 
-```bash
-# Start the development server (port 3000)
-npm run dev
-
-# Type checking
-npm run type-check
-
-# Linting (ESLint + Stylelint)
-npm run lint
-npm run lint:fix
-
-# Formatting
-npm run format
-
-# Testing
-npm test
-npm run test:watch
-```
-
-The application runs at `http://localhost:3000` — `npm run dev` is a bare `next dev`, which uses
-Next's default port.
+| Command              | What it does                              |
+| -------------------- | ----------------------------------------- |
+| `npm run dev`        | Dev server on `http://localhost:3000`     |
+| `npm run build`      | Production build                          |
+| `npm test`           | Jest unit and component tests             |
+| `npm run test:watch` | Jest in watch mode                        |
+| `npm run test:e2e`   | Playwright tests in `tests/e2e/`          |
+| `npm run type-check` | `tsc --noEmit`                            |
+| `npm run lint`       | ESLint and Stylelint                      |
+| `npm run lint:fix`   | ESLint and Stylelint with autofix         |
+| `npm run format`     | Prettier over the whole tree              |
+| `npm run analyze`    | Production build with the bundle analyzer |
 
 ### Working on admin pages
 
-`/admin` and the other `(admin)` routes render anonymously in local dev. On 2026-10-18 an anonymous `GET localhost:8080/api/admin/users` returned 200: the dev-profile `DevLocalAdminFilter` answers it as the bootstrap admin, and a bootstrap login with `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD` works. Backend PR edens.zac.backend#334 (merged 2026-10-18) limits that anonymous admin to loopback callers plus addresses in `DEV_LOCAL_ADMIN_EXTRA_ADDRESSES`. The local backend runs in Docker, so a Docker user sets that variable to the Docker gateway address or logs in at `http://localhost:3000/login`.
+In local dev, `/admin` and the other admin routes render without a login. The backend's dev profile also answers anonymous admin requests as the bootstrap admin, but only from loopback addresses and any listed in `DEV_LOCAL_ADMIN_EXTRA_ADDRESSES`. If the backend runs in Docker, either set that variable to the Docker gateway address or sign in at `http://localhost:3000/login` with `ADMIN_BOOTSTRAP_EMAIL` and `ADMIN_BOOTSTRAP_PASSWORD`.
 
-> **The local backend writes to production.** The backend container's datasource is `host.docker.internal:5432`, an SSH tunnel to the production EC2 database. Every admin mutation you make against localhost edits live rows.
-
-Open work lives in [`docs/backlog.md`](docs/backlog.md) and past decisions in [`docs/decisions.md`](docs/decisions.md).
+> **The local backend writes to production.** Local development reaches the database through an SSH tunnel to the production EC2 instance. Every admin change you make on localhost edits live data.
 
 ---
 
-## API Integration
+## Architecture
 
-The frontend communicates with a Spring Boot backend through a typed API client layer:
+```mermaid
+flowchart TD
+    Browser --> Next["Next.js on AWS Amplify"]
+    Next -->|"Server Components<br/>X-Internal-Secret"| API["Spring Boot API"]
+    Next -->|"Client components<br/>via /api/proxy"| API
+    API --> DB[("PostgreSQL on EC2")]
+    API --> S3["S3"]
+    Browser -->|images| CDN["CloudFront"] --> S3
+```
 
-- **Read endpoints**: `/api/read/collections/*` -- public collection data
-- **Admin endpoints**: `/api/admin/collections/*` -- collection management
-- **Content endpoints**: `/api/admin/content/*` -- content CRUD operations
+Server Components are the default. Pages fetch on the server, calling the backend directly with `INTERNAL_API_SECRET`. Client components are used where the page needs interaction: modals, forms, the editor, parallax and the fullscreen viewer. They call the backend through `/api/proxy`, which forwards the request with the user's session cookie and checks the path and origin.
 
-API functions in `app/lib/api/` use Next.js cache tags for ISR and on-demand revalidation.
+Only `app/lib/api/serverBackend.ts` and the proxy route read `API_URL` and `INTERNAL_API_SECRET`, so neither reaches a client bundle.
+
+Reads in `app/lib/api/` use Next.js cache tags (`collection-<slug>`, `collections-index` and others). Admin changes clear them through `/api/revalidate`.
+
+### Hosting and deploys
+
+Production runs as a Next.js server on AWS Amplify, which puts its own CloudFront distribution in front. Merging to `main` builds and deploys in about fifteen minutes. The build config lives in the Amplify console, not this repo.
+
+`main` is protected. The `Type check, lint, test` GitHub check must pass before a merge, and nobody can push to `main` directly.
+
+Images come from a separate CloudFront distribution over S3, pinned in `next.config.js`.
+
+---
+
+## Content model
+
+A collection is a named, ordered list of content. Content is images, GIFs, text blocks, or references to other collections. Collections have no type field. A collection is defined by what it holds.
+
+Two stored flags mark the only kinds the system treats differently:
+
+- `isClient`: a private client delivery, gated behind a per-collection password.
+- `isBlog`: a dated entry, shown and sorted by date.
+
+Both default to false, which is an ordinary collection. The backend rejects a collection with both set.
+
+Two other properties are derived, not stored:
+
+- A collection is a parent when it holds at least one collection reference. The server computes this over the whole content graph and returns `hasChildren` and `childCollectionIds`.
+- The home page is the collection with slug `home`.
+
+A collection can sit inside several parents, so the content graph is a DAG, not a tree.
+
+---
+
+## Layout
+
+Each image gets a prominence value from its 0 to 5 star rating. Rating does not depend on orientation: a 5-star portrait and a 5-star landscape have the same rating. Very wide or very tall images get extra weight. Collection cards count as 4 stars and text blocks as 1.
+
+The layout fills each row up to a width budget, then splits the row into a binary tree of horizontal and vertical groups (`BoxTree`). It scores every arrangement on aspect ratio and balance and keeps the best one. A photo gets a row to itself only when it is both highly rated and wide enough to need the space.
+
+Rows are measured in abstract slots: 8 on desktop and 3 on mobile. The photo-size control changes how many photos fit in a row.
+
+The full write-up is in [`app/utils/rowCombination.md`](app/utils/rowCombination.md).
+
+---
+
+## Project structure
+
+```
+app/
+  (site)/                     Site pages that share the site header
+    page.tsx                    Home
+    collections/, explore/, search/
+    login/, user/               Sign-in and the user's own space
+    s/[token]/, invite/[token]/ Share links and invites
+    (admin)/                    Admin-only routes
+      admin/                      Admin hub and user detail pages
+      all-images/, all-client-galleries/, comments/, metadata/
+      collection/manage/          Collection editor
+  [slug]/                     Collection pages
+  tag/[slug]/, location/[slug]/
+  api/                        proxy, revalidate, csp-report, client-errors
+  components/                 UI components
+  hooks/                      Shared hooks (useViewport, useParallax, useFetchMe, ...)
+  lib/                        api/ (typed backend client), actions/, storage/
+  types/, utils/, constants/, styles/
+proxy.ts                      Request proxy for admin and auth routing
+tests/                        Jest tests that mirror app/; e2e/ holds Playwright specs
+docs/                         backlog.md, decisions.md, browser-diagnostics.md
+```
+
+Open work is tracked in [`docs/backlog.md`](docs/backlog.md) and past decisions in [`docs/decisions.md`](docs/decisions.md). Contributor rules (imports, styling, testing) are in [`CLAUDE.md`](CLAUDE.md).
 
 ---
 

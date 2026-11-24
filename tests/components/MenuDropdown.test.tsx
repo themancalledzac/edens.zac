@@ -95,14 +95,14 @@ describe('MenuDropdown — auth actions', () => {
   it('clears cached admin panel data on logout', async () => {
     mockMe.mockResolvedValue(adminPrincipal);
     mockLogout.mockResolvedValue();
-    window.localStorage.setItem('adminPanel:v1:users:base', '[{"id":1}]');
+    window.localStorage.setItem('adminPanel:v1:users', '[{"id":1}]');
     window.localStorage.setItem('adminPanel:v1:messages', '{"messages":[],"total":0}');
     window.localStorage.setItem('unrelated', 'keep me');
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
     fireEvent.click(await screen.findByRole('button', { name: /log out/i }));
 
-    await waitFor(() => expect(window.localStorage.getItem('adminPanel:v1:users:base')).toBeNull());
+    await waitFor(() => expect(window.localStorage.getItem('adminPanel:v1:users')).toBeNull());
     expect(window.localStorage.getItem('adminPanel:v1:messages')).toBeNull();
     expect(window.localStorage.getItem('unrelated')).toBe('keep me');
   });
