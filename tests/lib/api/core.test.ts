@@ -1,3 +1,4 @@
+/** @jest-environment node */
 /**
  * Unit tests for core.ts
  * Tests API utilities including error handling and fetch functions
@@ -25,10 +26,8 @@ import { serverBackendTarget } from '@/app/lib/api/serverBackend';
 import { isLocalEnvironment } from '@/app/utils/environment';
 import { logger } from '@/app/utils/logger';
 
-// Mock fetch globally
 global.fetch = jest.fn();
 
-// Mock environment
 jest.mock('@/app/utils/environment', () => ({
   isLocalEnvironment: jest.fn(() => true),
 }));
@@ -40,7 +39,6 @@ jest.mock('@/app/lib/api/serverBackend', () => ({
   })),
 }));
 
-// Mock next/headers for getServerCookieHeader tests
 jest.mock('next/headers', () => ({
   cookies: jest.fn(),
 }));
@@ -996,7 +994,10 @@ describe('getServerApiTarget and server-side fetchers (A3, A4, A4b, A6b)', () =>
   });
 
   it('A4: the browser arm returns the relative proxy target with no headers', async () => {
-    Object.defineProperty(global, 'window', { value: originalWindow, writable: true });
+    Object.defineProperty(global, 'window', {
+      value: { location: { hostname: 'localhost' } },
+      writable: true,
+    });
 
     const target = await getServerApiTarget('read');
 
@@ -1004,7 +1005,10 @@ describe('getServerApiTarget and server-side fetchers (A3, A4, A4b, A6b)', () =>
   });
 
   it('A4b: the browser arm carries no X-Internal-Secret and never loads serverBackend', async () => {
-    Object.defineProperty(global, 'window', { value: originalWindow, writable: true });
+    Object.defineProperty(global, 'window', {
+      value: { location: { hostname: 'localhost' } },
+      writable: true,
+    });
 
     const target = await getServerApiTarget('admin');
 
