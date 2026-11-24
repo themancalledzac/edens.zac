@@ -11,17 +11,19 @@ import cbStyles from './ContentComponent.module.scss';
 
 interface SelectStarProps {
   contentId: number;
+  /** `tile` pins a small star to the grid tile's corner; `viewer` is a round button for the fullscreen action row. */
+  variant?: 'tile' | 'viewer';
 }
 
 /**
- * Corner star that adds/removes an image from the viewer's personal Selects. Reads `useMe()` and
+ * Star that adds/removes an image from the viewer's personal Selects. Reads `useMe()` and
  * `useSelects()` directly (the same context-not-props pattern `CollectionContentRenderer` already
  * uses for `useCollectionFilter`/`useInlineEdit`), so no props thread through the generic renderer
  * chain. The collection id comes from the SelectsProvider on the context. Renders nothing unless a
  * SelectsProvider is mounted AND the viewer holds a CLIENT membership on that collection. Distinct from the download
  * "select mode".
  */
-export function SelectStar({ contentId }: SelectStarProps): ReactElement | null {
+export function SelectStar({ contentId, variant = 'tile' }: SelectStarProps): ReactElement | null {
   const me = useMe();
   const selects = useSelects();
 
@@ -30,12 +32,13 @@ export function SelectStar({ contentId }: SelectStarProps): ReactElement | null 
   }
 
   const selected = selects.isSelected(contentId);
+  const isTile = variant === 'tile';
 
   return (
     <IconButton
       variant="scrim"
-      size="sm"
-      className={`${cbStyles.selectStar} ${selected ? cbStyles.selectStarActive : ''}`}
+      size={isTile ? 'sm' : 'md'}
+      className={`${isTile ? cbStyles.selectStar : ''} ${selected ? cbStyles.selectStarActive : ''}`}
       aria-pressed={selected}
       aria-label={selected ? 'Remove from Your Selects' : 'Add to Your Selects'}
       onClick={event => {

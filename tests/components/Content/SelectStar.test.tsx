@@ -88,3 +88,20 @@ describe('SelectStar', () => {
     expect(screen.getByTestId('ids')).toHaveTextContent('');
   });
 });
+
+describe('SelectStar viewer variant', () => {
+  it('renders a medium button without the tile corner pin', () => {
+    wrap(<SelectStar contentId={42} variant="viewer" />, client);
+    const button = screen.getByRole('button', { name: /remove from your selects/i });
+    expect(button).toHaveClass('md', 'selectStarActive');
+    expect(button).not.toHaveClass('selectStar');
+  });
+
+  it('keeps the corner pin on the default tile variant', () => {
+    wrap(<SelectStar contentId={42} />, client);
+    expect(screen.getByRole('button', { name: /remove from your selects/i })).toHaveClass(
+      'sm',
+      'selectStar'
+    );
+  });
+});

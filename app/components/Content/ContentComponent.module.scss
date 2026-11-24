@@ -267,6 +267,16 @@
   stroke-linejoin: round;
 }
 
+/* Star and heart on a grid tile. `display: contents` keeps them positioned against the tile. On
+   touch screens they are hidden, and the fullscreen viewer's action row carries them instead. */
+.tileToggles {
+  display: contents;
+
+  @media (hover: none) {
+    display: none;
+  }
+}
+
 /* Selects (favorites) star — top-left corner toggle on client-gallery images. The box, colour and
    touch target come from IconButton; this only pins it to the corner. */
 .selectStar {
