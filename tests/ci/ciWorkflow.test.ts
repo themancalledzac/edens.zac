@@ -15,9 +15,12 @@
  * tests hold that arrangement in place: the blessed version lives in `.nvmrc` alone, the
  * workflow keeps reading it rather than reverting to an inline pin, and `engines.node` stays
  * a floor the blessed version clears.
+ *
+ * The audit covers dev dependencies too, and Dependabot watches npm and the workflow's actions,
+ * so an advisory in lint or test tooling fails CI instead of waiting in the Dependabot tab.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = process.cwd();
@@ -93,5 +96,20 @@ describe('CI workflow', () => {
 
   it('declares engines.node as a floor with no upper bound', () => {
     expect(packageJson.engines.node).not.toMatch(/<\s*\d/);
+  });
+
+  it('audits dev dependencies as well as production ones', () => {
+    expect(packageJson.scripts.audit).toMatch(/^npm audit\b/);
+    expect(packageJson.scripts.audit).not.toMatch(/--omit|--production|--only/);
+  });
+});
+
+describe('Dependabot config', () => {
+  const dependabotPath = join(ROOT, '.github', 'dependabot.yml');
+
+  it.each(['npm', 'github-actions'])('watches the %s ecosystem', ecosystem => {
+    expect(existsSync(dependabotPath)).toBe(true);
+    const config = readFileSync(dependabotPath, 'utf8');
+    expect(config).toMatch(new RegExp(String.raw`package-ecosystem: ["']?${ecosystem}["']?`));
   });
 });

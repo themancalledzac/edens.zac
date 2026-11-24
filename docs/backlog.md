@@ -170,7 +170,6 @@ These need the EC2 box, a phone, the AWS console or the local machine. Ids are t
   If the redeploy refuses to boot with the `ProdWebAuthnGuard` message, the `.env` edit did not take.
 
 - **O2** — After O1, phone test on the apex: password sign-in, "Face / Touch ID" on `/admin`, sign out, passkey sign-in on `/login`. Repeat on Android. If `passkeyCount` from `/api/proxy/api/auth/me` is above 0 before any enrollment, delete the stale credential with `DELETE /api/admin/users/{id}/passkeys/{credentialId}`.
-- **O4** — Review the CI audit scope change in #441: `npm run audit` is `npm audit --omit=dev --audit-level=high`, because `braces` has no fix.
 - **O5** — Check that Amplify appends the client IP to `x-forwarded-for`: `curl -H 'X-Forwarded-For: 1.2.3.4'` against an endpoint that logs the resolved IP.
 - **O6** — Point the local backend at a local Postgres before anyone runs `tests/e2e/passkey.spec.ts`. Port 5432 on this Mac is the tunnel to the production database.
 - **O9** — Local-only cleanup: `docs/superpowers/`, `docs/_archive/`, `.superpowers/`, `.claude/agent-memory/code-reviewer/`, and `todo/` after moving its one file to a backend issue.
